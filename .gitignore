@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.Python
+*.so
+
+.venv*/
+.vscode/
+.cursorrules
+
+
+docker/data/
+output/
+plugins/
+tests/
+configs/
+
+README.md

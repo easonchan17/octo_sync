@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.Python
+*.so
+
+.venv*/
+.vscode/
+.git/
+.cursorrules
+
+docker/
+output/
+plugins/
+tests/

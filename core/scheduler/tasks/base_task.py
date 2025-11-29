@@ -1,0 +1,78 @@
+import uuid
+from threading import Event
+from typing import Any, List
+from abc import ABC, abstractmethod
+from core.logger.logger_manager import LoggerManager
+from core.config.config_manager import ConfigManager
+from core.browser.interceptor import Interceptor, InterceptRuleConverter
+
+class BaseTask(ABC):
+    def __init__(self, name: str = None) -> None:
+        self.id = str(uuid.uuid4())
+        self.name = name or self.__class__.__name__
+        self.logger = LoggerManager.get_instance().get_logger(self.name)
+        self.config_manager = ConfigManager.get_instance()
+        self.interceptor = Interceptor.get_instance()
+        self.interceptor_rule_converter = InterceptRuleConverter()
+        self.cancel_event = Event()
+
+    def cancel(self) -> None:
+        self.cancel_event.set()
+
+    def should_stop(self) -> bool:
+        return self.cancel_event.is_set()
+
+    @abstractmethod
+    def execute(self, *args, **kwargs) -> Any:
+        pass
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}(name='{self.name}')"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+class WrappedTask(BaseTask):
+    def __init__(self, task: BaseTask) -> None:
+        self.task = task
+
+    def cancel(self) -> None:
+        self.task.cancel()
+
+    def execute(self, *args, **kwargs) -> Any:
+        return self.task.execute(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.task, name)
+
+class AsyncTask(WrappedTask):
+    def __init__(self, task: BaseTask) -> None:
+        super().__init__(task)
+        self.is_async = True
+
+class SyncTask(WrappedTask):
+    def __init__(self, task: BaseTask) -> None:
+        super().__init__(task)
+        self.is_async = False
+
+class Pipeline(BaseTask):
+    def __init__(self, *tasks: BaseTask) -> None:
+        super().__init__()
+        self.tasks: List[BaseTask] = list(tasks)
+
+    def cancel(self) -> None:
+        for task in self.tasks:
+            task.cancel()
+
+    def execute(self, *args, **kwargs) -> None:
+        for i, task in enumerate(self.tasks):
+            if self.should_stop():
+                break
+
+            self.logger.info(f"Executing task {i+1}/{len(self.tasks)}: {task.name}")
+            task.execute(*args, **kwargs)
+            self.logger.info(f"Task {task.name} completed")
+
+    def __str__(self) -> str:
+        task_names = [task.name for task in self.tasks]
+        return f"Pipeline({', '.join(task_names)})"

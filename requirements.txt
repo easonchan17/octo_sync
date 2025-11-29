@@ -1,0 +1,13 @@
+uvicorn>=0.34.0
+fastapi>=0.116.1
+SQLAlchemy==2.0.40
+PyYAML==6.0.2
+playwright==1.53.0
+pydantic==2.11.2
+psycopg2==2.9.10
+chardet==5.2.0
+camoufox[geoip]==0.4.11
+pytz>=2025.2
+pyarrow==22.0.0
+pandas==2.3.3
+bs4==0.0.2

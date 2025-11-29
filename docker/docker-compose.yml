@@ -1,0 +1,56 @@
+services:
+  octo-sync:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: 1
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: octopus
+      DB_USER: octopus
+      DB_PASSWORD: 123456
+      DB_POOL_SIZE: 10
+      DB_MAX_OVERFLOW: 5
+      DB_POOL_TIMEOUT: 30
+      DB_POOL_RECYCLE: 300
+    volumes:
+      - ../configs:/app/configs
+      - ../output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15
+    ports:
+      - '5432:5432'
+    command:
+      [
+        "postgres",
+        "-cshared_preload_libraries=pg_stat_statements"
+      ]
+    environment:
+      POSTGRES_USER: octopus
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: octopus
+      PGDATA: "/var/lib/postgresql/data"
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U octopus -d octopus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
