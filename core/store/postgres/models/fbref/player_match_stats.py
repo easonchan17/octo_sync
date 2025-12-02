@@ -1,5 +1,5 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, String
+from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, String, Boolean
 from ..base_model import Base, StatusMixin, DictMixin, Status
 
 class PlayerMatchStats(Base, StatusMixin, DictMixin):
@@ -19,6 +19,7 @@ class PlayerMatchStats(Base, StatusMixin, DictMixin):
     player_name = Column(String(128), nullable=False)
     position = Column(String(16), nullable=True)
     minutes = Column(Integer, nullable=True)
+    is_starter = Column(Boolean, nullable=False)
 
     goals = Column(Integer, nullable=True)
     shots = Column[int](Integer, nullable=True)
@@ -37,6 +38,7 @@ class PlayerMatchStats(Base, StatusMixin, DictMixin):
     miscontrols = Column(Integer, nullable=True)
 
     tackles = Column(Integer, nullable=True)
+    tackles_won = Column(Integer, nullable=True)
     blocks = Column(Integer, nullable=True)
     interceptions = Column(Integer, nullable=True)
     ball_recoveries = Column(Integer, nullable=True)
