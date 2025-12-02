@@ -19,7 +19,11 @@ from core.scheduler.tasks.sync.fbref import (
     SyncShooting,
     SyncPlayerMatchStats
 )
-from core.scheduler.tasks.analysis.analyzers import MatchStatsAnalyzer, PlayerStatsAnalyzer
+from core.scheduler.tasks.analysis.analyzers import (
+    MatchStatsAnalyzer,
+    OutfieldPlayerStatsAnalyzer,
+    GoalkeeperStatsAnalyzer
+)
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.store.postgres.models import (
@@ -223,9 +227,9 @@ def create_analysis_fbref_match_stats_task(
 ) -> BaseTask:
     return Pipeline(
         MatchStatsAnalyzer(site, payload),
-        PlayerStatsAnalyzer(site, payload)
+        OutfieldPlayerStatsAnalyzer(site, payload),
+        GoalkeeperStatsAnalyzer(site, payload)
     )
-
 
 @Registry.register('sync.fbref.batch')
 def create_sync_fbref_batch_task(
@@ -251,7 +255,6 @@ def create_sync_fbref_batch_task(
         SyncShooting(site, payload),
         SyncGoalKeeping(site, payload)
     )
-
 
 @Registry.register('sync.zcy.category')
 def create_sync_zcy_category_task(

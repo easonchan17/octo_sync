@@ -50,10 +50,10 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
 
         player_stats_dict = self.to_dict(
             player_stats,
-            ['match_code', 'player_code', 'team_code', 'player_name', 'position', 'minutes', 'goals', 'shots', 'shots_on_target', 'npxg',
+            ['match_code', 'player_code', 'team_code', 'player_name', 'position', 'minutes', 'is_starter', 'goals', 'shots', 'shots_on_target', 'npxg',
              'xg_assist', 'shot_creating_actions', 'progressive_passes', 'key_passes',
              'progressive_carries', 'take_ons_won', 'fouls_drawn', 'dispossessed', 'miscontrols',
-             'tackles', 'blocks', 'interceptions', 'ball_recoveries', 'challenges_lost',
+             'tackles', 'tackles_won', 'blocks', 'interceptions', 'ball_recoveries', 'challenges_lost',
              'aerials_won', 'aerials_lost',
              'gk_goals_against', 'gk_psxg', 'gk_crosses', 'gk_crosses_stopped', 'gk_def_actions_outside_pen_area'],
             ['match_code', 'player_code']
@@ -68,6 +68,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                     'player_name': insert_stmt.excluded.player_name,
                     'position': insert_stmt.excluded.position,
                     'minutes': insert_stmt.excluded.minutes,
+                    'is_starter': insert_stmt.excluded.is_starter,
                     'goals': insert_stmt.excluded.goals,
                     'shots': insert_stmt.excluded.shots,
                     'shots_on_target': insert_stmt.excluded.shots_on_target,
@@ -82,6 +83,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                     'dispossessed': insert_stmt.excluded.dispossessed,
                     'miscontrols': insert_stmt.excluded.miscontrols,
                     'tackles': insert_stmt.excluded.tackles,
+                    'tackles_won': insert_stmt.excluded.tackles_won,
                     'blocks': insert_stmt.excluded.blocks,
                     'interceptions': insert_stmt.excluded.interceptions,
                     'ball_recoveries': insert_stmt.excluded.ball_recoveries,
@@ -101,6 +103,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                         PlayerMatchStats.player_name != insert_stmt.excluded.player_name,
                         PlayerMatchStats.position != insert_stmt.excluded.position,
                         PlayerMatchStats.minutes != insert_stmt.excluded.minutes,
+                        PlayerMatchStats.is_starter != insert_stmt.excluded.is_starter,
                         PlayerMatchStats.goals != insert_stmt.excluded.goals,
                         PlayerMatchStats.shots != insert_stmt.excluded.shots,
                         PlayerMatchStats.shots_on_target != insert_stmt.excluded.shots_on_target,
@@ -115,6 +118,17 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                         PlayerMatchStats.dispossessed != insert_stmt.excluded.dispossessed,
                         PlayerMatchStats.miscontrols != insert_stmt.excluded.miscontrols,
                         PlayerMatchStats.tackles != insert_stmt.excluded.tackles,
+                        or_(
+                            PlayerMatchStats.tackles_won != insert_stmt.excluded.tackles_won,
+                            and_(
+                                PlayerMatchStats.tackles_won.is_(None),
+                                insert_stmt.excluded.tackles_won.isnot(None)
+                            ),
+                            and_(
+                                PlayerMatchStats.tackles_won.isnot(None),
+                                insert_stmt.excluded.tackles_won.is_(None)
+                            )
+                        ),
                         PlayerMatchStats.blocks != insert_stmt.excluded.blocks,
                         PlayerMatchStats.interceptions != insert_stmt.excluded.interceptions,
                         PlayerMatchStats.ball_recoveries != insert_stmt.excluded.ball_recoveries,

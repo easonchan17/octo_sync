@@ -11,3 +11,7 @@ HOME_POSSESSION_COL = "home_possession"
 AWAY_POSSESSION_COL = "away_possession"
 REST_DAYS_COL = "rest_days"
 MINUTES_PLAYED_COL = "minutes"
+PRIMARY_POSITION_COL = "primary_position"
+POSITION_COL = "position"
+
+EPSILON = 1e-6
