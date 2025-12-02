@@ -7,8 +7,8 @@ class FeatureSelector(BaseProcessor):
         if not features:
             raise ValueError("Features list cannot be empty")
 
-        cols_to_select = self.df.columns.intersection(features)
-        if cols_to_select.empty:
+        cols_to_select = [col for col in features if col in self.df.columns]
+        if not cols_to_select:
             raise ValueError("No columns to select")
 
         self.logger.info(f"Selected {len(cols_to_select)} columns using keep_cols.")

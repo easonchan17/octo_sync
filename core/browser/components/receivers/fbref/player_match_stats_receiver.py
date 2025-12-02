@@ -52,6 +52,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 player_stats_dict[player_code].update({
                     "team_code": team_code,
                     "player_name": player.text,
+                    "is_starter": True if re.match(r'^\S', player.text) else False,
                     "player_code": player_code,
                     "position": get_text(position),
                     "minutes": get_number(minutes),
@@ -128,9 +129,11 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 player = row.find("th", {"data-stat": "player"})
                 player_code = extract_player_code_from_cell(player)
 
+                tackles_won = row.find("td", {"data-stat": "tackles_won"})
                 challenges_lost = row.find("td", {"data-stat": "challenges_lost"})
 
                 player_stats_dict[player_code].update({
+                    "tackles_won": get_number(tackles_won),
                     "challenges_lost": get_number(challenges_lost)
                 })
 
@@ -197,6 +200,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 player_name=stats.get("player_name"),
                 position=stats.get("position"),
                 minutes=stats.get("minutes"),
+                is_starter=stats.get("is_starter"),
                 goals=stats.get("goals"),
                 shots=stats.get("shots"),
                 shots_on_target=stats.get("shots_on_target"),
@@ -204,6 +208,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 xg_assist=stats.get("xg_assist"),
                 shot_creating_actions=stats.get("shot_creating_actions"),
                 tackles=stats.get("tackles"),
+                tackles_won=stats.get("tackles_won"),
                 blocks=stats.get("blocks"),
                 interceptions=stats.get("interceptions"),
                 progressive_passes=stats.get("progressive_passes"),

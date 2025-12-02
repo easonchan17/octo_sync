@@ -53,18 +53,18 @@ class BaseAnalyzer(BaseTask):
             self.logger.error(f"Error saving output: {e}", exc_info=True)
 
     def save_output(self, df: pd.DataFrame, output_path: Path) -> None:
-        feature_list_path = output_path.parent / f"feature_{output_path.name}"
-        feature_df = pd.DataFrame({"feature_name": df.columns})
+        # feature_list_path = output_path.parent / f"feature_{output_path.name}"
+        # feature_df = pd.DataFrame({"feature_name": df.columns})
 
         if output_path.suffix == ".csv":
             df.to_csv(output_path, index=False)
-            feature_df.to_csv(feature_list_path, index=False)
+            # feature_df.to_csv(feature_list_path, index=False)
         elif output_path.suffix == ".json":
             df.to_json(output_path, orient="records", indent=2)
-            feature_df.to_json(feature_list_path, orient="records", indent=2)
+            # feature_df.to_json(feature_list_path, orient="records", indent=2)
         elif output_path.suffix == ".parquet":
             df.to_parquet(output_path, index=False)
-            feature_df.to_parquet(feature_list_path, index=False)
+            # feature_df.to_parquet(feature_list_path, index=False)
         else:
             raise ValueError(f"Unsupported output format: {output_path.suffix}")
 
