@@ -38,7 +38,7 @@ class SyncPassing(BaseTask):
 
                 season_range = f"{season}-{season+1}"
                 club_name, club_name_with_dash = normalize_club_name(club_name)
-                self.logger.info(f"club name: {club_name}")
+                # self.logger.info(f"club name: {club_name}")
 
                 if self.club_synchronizer.is_synced(
                     self.site,

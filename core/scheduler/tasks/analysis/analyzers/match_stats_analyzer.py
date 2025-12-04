@@ -381,6 +381,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         df = deriver.df
         df = SampleFilter(df).process("home_rest_days")
         df = SampleFilter(df).process("away_rest_days")
+        df = SampleFilter(df).process("home_gf_ema_5")
+        df = SampleFilter(df).process("away_gf_ema_5")
 
         # Finishing ability (overperformance)
         FormulaDeriver(df).process("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5", 1)
@@ -455,8 +457,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         FormulaDeriver(df).process("away_disruption_volume_ema_5", "away_blocks_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5")
 
         # Passes allowed per defensive action
-        FormulaDeriver(df).process("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5) * 100")
-        FormulaDeriver(df).process("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5) * 100")
+        FormulaDeriver(df).process("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5)", decimals=2)
+        FormulaDeriver(df).process("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5)", decimals=2)
 
         # Goalkeeper aerial control
         FormulaDeriver(df).process("home_gk_crosses_stopped_ratio_ema_5", "home_gk_crosses_stopped_ema_5 / home_gk_crosses_ema_5 * 100")
@@ -521,52 +523,60 @@ class MatchStatsAnalyzer(BaseAnalyzer):
 
         if not required_features:
             required_features = [
+                "kickoff_time",
+                "comp_name",
+                "match_code",
+                "home_team",
+                "home_code",
+                "away_team",
+                "away_code",
                 "home_point",
-                "home_h2h_points","away_h2h_points","h2h_points_diff",
+                "home_h2h_points", "away_h2h_points", "h2h_points_diff",
                 "home_xg_lagged", "away_xg_lagged",
                 'home_rest_days', 'away_rest_days', 'rest_days_diff',
-                'home_h2h_points', 'away_h2h_points', 'h2h_points_diff',
-                'home_xg_ema_5', 'away_xg_ema_5', 'xg_ema_5_diff',
-                'home_possession_ema_5', 'away_possession_ema_5', 'possession_ema_5_diff',
+                # 'home_xg_ema_5', 'away_xg_ema_5', 'xg_ema_5_diff',
+                # 'home_possession_ema_5', 'away_possession_ema_5', 'possession_ema_5_diff',
+                # 'home_passes_ema_5', 'away_passes_ema_5', 'passes_ema_5_diff',
+                # 'home_xg_assist_ema_5', 'away_xg_assist_ema_5', 'xg_assist_ema_5_diff',
                 'home_sca_passes_dead_ema_5', 'away_sca_passes_dead_ema_5', 'sca_passes_dead_ema_5_diff',
-                'home_sca_take_ons_ema_5', 'away_sca_take_ons_ema_5', 'sca_take_ons_ema_5_diff',
-                'home_passes_ema_5', 'away_passes_ema_5', 'passes_ema_5_diff',
-                'home_passes_progressive_ema_5', 'away_passes_progressive_ema_5', 'passes_progressive_ema_5_diff',
+                # 'home_sca_take_ons_ema_5', 'away_sca_take_ons_ema_5', 'sca_take_ons_ema_5_diff',
+                # 'home_passes_progressive_ema_5', 'away_passes_progressive_ema_5', 'passes_progressive_ema_5_diff',
                 'home_passes_progressive_distance_ema_5', 'away_passes_progressive_distance_ema_5', 'passes_progressive_distance_ema_5_diff',
                 'home_passes_long_ema_5', 'away_passes_long_ema_5', 'passes_long_ema_5_diff',
-                'home_xg_assist_ema_5', 'away_xg_assist_ema_5', 'xg_assist_ema_5_diff',
-                'home_pass_xa_ema_5', 'away_pass_xa_ema_5', 'pass_xa_ema_5_diff',
-                'home_passes_into_penalty_area_ema_5', 'away_passes_into_penalty_area_ema_5', 'passes_into_penalty_area_ema_5_diff',
+                # 'home_pass_xa_ema_5', 'away_pass_xa_ema_5', 'pass_xa_ema_5_diff',
+                # 'home_passes_into_penalty_area_ema_5', 'away_passes_into_penalty_area_ema_5', 'passes_into_penalty_area_ema_5_diff',
                 'home_crosses_into_penalty_area_ema_5', 'away_crosses_into_penalty_area_ema_5', 'crosses_into_penalty_area_ema_5_diff',
                 'home_average_shot_distance_ema_5', 'away_average_shot_distance_ema_5', 'average_shot_distance_ema_5_diff',
                 'home_tackles_att_third_ema_5', 'away_tackles_att_third_ema_5', 'tackles_att_third_ema_5_diff',
-                'home_challenges_ema_5', 'away_challenges_ema_5', 'challenges_ema_5_diff',
-                'home_challenges_lost_ema_5', 'away_challenges_lost_ema_5', 'challenges_lost_ema_5_diff',
+                # 'home_challenges_ema_5', 'away_challenges_ema_5', 'challenges_ema_5_diff',
+                # 'home_challenges_lost_ema_5', 'away_challenges_lost_ema_5', 'challenges_lost_ema_5_diff',
                 'home_errors_shot_ema_5', 'away_errors_shot_ema_5', 'errors_shot_ema_5_diff',
-                'home_gk_psxg_ema_5', 'away_gk_psxg_ema_5', 'gk_psxg_ema_5_diff',
-                'home_gk_crosses_stopped_ema_5', 'away_gk_crosses_stopped_ema_5', 'gk_crosses_stopped_ema_5_diff',
-                'home_gk_crosses_ema_5', 'away_gk_crosses_ema_5', 'gk_crosses_ema_5_diff',
-                'home_gk_def_actions_outside_pen_area_ema_5', 'away_gk_def_actions_outside_pen_area_ema_5', 'gk_def_actions_outside_pen_area_ema_5_diff',
+                # 'home_gk_psxg_ema_5', 'away_gk_psxg_ema_5', 'gk_psxg_ema_5_diff',
+                # 'home_gk_crosses_stopped_ema_5', 'away_gk_crosses_stopped_ema_5', 'gk_crosses_stopped_ema_5_diff',
+                # 'home_gk_crosses_ema_5', 'away_gk_crosses_ema_5', 'gk_crosses_ema_5_diff',
+                # 'home_gk_def_actions_outside_pen_area_ema_5', 'away_gk_def_actions_outside_pen_area_ema_5', 'gk_def_actions_outside_pen_area_ema_5_diff',
                 'home_gk_avg_distance_def_actions_ema_5', 'away_gk_avg_distance_def_actions_ema_5', 'gk_avg_distance_def_actions_ema_5_diff',
-                'home_luck_ema_5', 'away_luck_ema_5', 'luck_ema_5_diff', 'home_field_tilt_ema_5', 'away_field_tilt_ema_5', 'field_tilt_ema_5_diff',
-                'home_safe_control_ema_5', 'away_safe_control_ema_5', 'safe_control_ema_5_diff', 'home_long_passes_acc_ema_5', 'away_long_passes_acc_ema_5', 'long_passes_acc_ema_5_diff',
-                'home_long_passes_share_ema_5', 'away_long_passes_share_ema_5', 'long_passes_share_ema_5_diff',
-                'home_box_penetration_ratio_ema_5', 'away_box_penetration_ratio_ema_5', 'box_penetration_ratio_ema_5_diff',
-                'home_creativity_share_ema_5', 'away_creativity_share_ema_5', 'creativity_share_ema_5_diff',
-                'home_final_third_entry_share_ema_5', 'away_final_third_entry_share_ema_5', 'final_third_entry_share_ema_5_diff',
-                'home_passes_progressive_rate_ema_5', 'away_passes_progressive_rate_ema_5', 'passes_progressive_rate_ema_5_diff',
-                'home_passes_progressive_share_ema_5', 'away_passes_progressive_share_ema_5', 'passes_progressive_share_ema_5_diff',
-                'home_shots_acc_ratio_ema_5', 'away_shots_acc_ratio_ema_5', 'shots_acc_ratio_ema_5_diff',
-                'home_shots_conversion_ratio_ema_5', 'away_shots_conversion_ratio_ema_5', 'shots_conversion_ratio_ema_5_diff',
-                'home_goal_to_xg_ema_5', 'away_goal_to_xg_ema_5', 'goal_to_xg_ema_5_diff',
-                'home_gsaa_ema_5', 'away_gsaa_ema_5', 'gsaa_ema_5_diff',
-                'home_tackles_success_ratio_ema_5', 'away_tackles_success_ratio_ema_5', 'tackles_success_ratio_ema_5_diff',
-                'home_challenges_success_ratio_ema_5', 'away_challenges_success_ratio_ema_5', 'challenges_success_ratio_ema_5_diff',
-                'home_high_press_ratio_ema_5', 'away_high_press_ratio_ema_5', 'high_press_ratio_ema_5_diff',
-                'home_disruption_volume_ema_5', 'away_disruption_volume_ema_5', 'disruption_volume_ema_5_diff',
-                'home_ppda_global_ema_5', 'away_ppda_global_ema_5', 'ppda_global_ema_5_diff',
-                'home_gk_crosses_stopped_ratio_ema_5', 'away_gk_crosses_stopped_ratio_ema_5', 'gk_crosses_stopped_ratio_ema_5_diff',
-                'home_set_piece_sca_ratio_ema_5', 'away_set_piece_sca_ratio_ema_5', 'set_piece_sca_ratio_ema_5_diff',
-                'home_take_on_sca_ratio_ema_5', 'away_take_on_sca_ratio_ema_5', 'take_on_sca_ratio_ema_5_diff']
+                'home_luck_ema_5', 'away_luck_ema_5', 'luck_ema_5_diff',
+                'home_field_tilt_ema_5', 'away_field_tilt_ema_5', 'field_tilt_ema_5_diff',
+                # 'home_safe_control_ema_5', 'away_safe_control_ema_5', 'safe_control_ema_5_diff', 'home_long_passes_acc_ema_5', 'away_long_passes_acc_ema_5', 'long_passes_acc_ema_5_diff',
+                # 'home_long_passes_share_ema_5', 'away_long_passes_share_ema_5', 'long_passes_share_ema_5_diff',
+                # 'home_box_penetration_ratio_ema_5', 'away_box_penetration_ratio_ema_5', 'box_penetration_ratio_ema_5_diff',
+                # 'home_creativity_share_ema_5', 'away_creativity_share_ema_5', 'creativity_share_ema_5_diff',
+                # 'home_final_third_entry_share_ema_5', 'away_final_third_entry_share_ema_5', 'final_third_entry_share_ema_5_diff',
+                # 'home_passes_progressive_rate_ema_5', 'away_passes_progressive_rate_ema_5', 'passes_progressive_rate_ema_5_diff',
+                # 'home_passes_progressive_share_ema_5', 'away_passes_progressive_share_ema_5', 'passes_progressive_share_ema_5_diff',
+                # 'home_shots_acc_ratio_ema_5', 'away_shots_acc_ratio_ema_5', 'shots_acc_ratio_ema_5_diff',
+                # 'home_shots_conversion_ratio_ema_5', 'away_shots_conversion_ratio_ema_5', 'shots_conversion_ratio_ema_5_diff',
+                # 'home_goal_to_xg_ema_5', 'away_goal_to_xg_ema_5', 'goal_to_xg_ema_5_diff',
+                # 'home_gsaa_ema_5', 'away_gsaa_ema_5', 'gsaa_ema_5_diff',
+                # 'home_tackles_success_ratio_ema_5', 'away_tackles_success_ratio_ema_5', 'tackles_success_ratio_ema_5_diff',
+                # 'home_challenges_success_ratio_ema_5', 'away_challenges_success_ratio_ema_5', 'challenges_success_ratio_ema_5_diff',
+                # 'home_high_press_ratio_ema_5', 'away_high_press_ratio_ema_5', 'high_press_ratio_ema_5_diff',
+                # 'home_disruption_volume_ema_5', 'away_disruption_volume_ema_5', 'disruption_volume_ema_5_diff',
+                'home_ppda_global_ema_5', 'away_ppda_global_ema_5', 'ppda_global_ema_5_diff'
+                # 'home_gk_crosses_stopped_ratio_ema_5', 'away_gk_crosses_stopped_ratio_ema_5', 'gk_crosses_stopped_ratio_ema_5_diff',
+                # 'home_set_piece_sca_ratio_ema_5', 'away_set_piece_sca_ratio_ema_5', 'set_piece_sca_ratio_ema_5_diff',
+                # 'home_take_on_sca_ratio_ema_5', 'away_take_on_sca_ratio_ema_5', 'take_on_sca_ratio_ema_5_diff'
+            ]
 
         return FeatureSelector(df).process(required_features)

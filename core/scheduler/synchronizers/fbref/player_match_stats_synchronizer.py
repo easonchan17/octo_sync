@@ -50,7 +50,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
 
         player_stats_dict = self.to_dict(
             player_stats,
-            ['match_code', 'player_code', 'team_code', 'player_name', 'position', 'minutes', 'is_starter', 'goals', 'shots', 'shots_on_target', 'npxg',
+            ['match_code', 'player_code', 'team_code', 'player_name', 'position', 'minutes', 'is_starter', 'goals', 'penalties_made', 'shots', 'shots_on_target', 'npxg',
              'xg_assist', 'shot_creating_actions', 'progressive_passes', 'key_passes',
              'progressive_carries', 'take_ons_won', 'fouls_drawn', 'dispossessed', 'miscontrols',
              'tackles', 'tackles_won', 'blocks', 'interceptions', 'ball_recoveries', 'challenges_lost',
@@ -70,6 +70,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                     'minutes': insert_stmt.excluded.minutes,
                     'is_starter': insert_stmt.excluded.is_starter,
                     'goals': insert_stmt.excluded.goals,
+                    'penalties_made': insert_stmt.excluded.penalties_made,
                     'shots': insert_stmt.excluded.shots,
                     'shots_on_target': insert_stmt.excluded.shots_on_target,
                     'npxg': insert_stmt.excluded.npxg,
@@ -105,6 +106,17 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                         PlayerMatchStats.minutes != insert_stmt.excluded.minutes,
                         PlayerMatchStats.is_starter != insert_stmt.excluded.is_starter,
                         PlayerMatchStats.goals != insert_stmt.excluded.goals,
+                        or_(
+                            PlayerMatchStats.penalties_made != insert_stmt.excluded.penalties_made,
+                            and_(
+                                PlayerMatchStats.penalties_made.is_(None),
+                                insert_stmt.excluded.penalties_made.isnot(None)
+                            ),
+                            and_(
+                                PlayerMatchStats.penalties_made.isnot(None),
+                                insert_stmt.excluded.penalties_made.is_(None)
+                            )
+                        ),
                         PlayerMatchStats.shots != insert_stmt.excluded.shots,
                         PlayerMatchStats.shots_on_target != insert_stmt.excluded.shots_on_target,
                         PlayerMatchStats.npxg != insert_stmt.excluded.npxg,

@@ -22,8 +22,10 @@ from core.scheduler.tasks.sync.fbref import (
 from core.scheduler.tasks.analysis.analyzers import (
     MatchStatsAnalyzer,
     OutfieldPlayerStatsAnalyzer,
-    GoalkeeperStatsAnalyzer
+    GoalkeeperStatsAnalyzer,
+    MatchStatsAggregator
 )
+from core.scheduler.tasks.analysis.training.bayesian_optimize_trainer import BayesianOptimizeTrainer
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.store.postgres.models import (
@@ -55,6 +57,7 @@ class Registry:
         return cls._registry[name](site, db, payload)
 
 
+#****************** fbref ****************#
 @Registry.register('sync.fbref.countries')
 def create_sync_fbref_countries_task(
     site: Site,
@@ -219,17 +222,6 @@ def create_sync_fbref_player_match_stats_task(
         SyncPlayerMatchStats(site, payload)
     )
 
-@Registry.register('analysis.fbref.match_stats')
-def create_analysis_fbref_match_stats_task(
-    site: Site,
-    db: PostgreSQLManager,
-    payload: Optional[Dict[str, Any]]
-) -> BaseTask:
-    return Pipeline(
-        MatchStatsAnalyzer(site, payload),
-        OutfieldPlayerStatsAnalyzer(site, payload),
-        GoalkeeperStatsAnalyzer(site, payload)
-    )
 
 @Registry.register('sync.fbref.batch')
 def create_sync_fbref_batch_task(
@@ -253,9 +245,10 @@ def create_sync_fbref_batch_task(
         SyncPassing(site, payload),
         SyncDefensiveAction(site, payload),
         SyncShooting(site, payload),
-        SyncGoalKeeping(site, payload)
+        SyncGoalKeeping(site, payload),
+        SyncPlayerMatchStats(site, payload)
     )
-
+#******************** zcy ******************#
 @Registry.register('sync.zcy.category')
 def create_sync_zcy_category_task(
     site: Site,
@@ -318,4 +311,25 @@ def create_sync_zcy_product_task(
 
     return Pipeline(
         SyncProduct(site)
+    )
+
+#******************** model training *******************#
+@Registry.register('analysis.fbref.match_stats')
+def create_analysis_fbref_match_stats_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    return Pipeline(
+        MatchStatsAggregator(site, payload)
+    )
+
+@Registry.register('training.winball')
+def create_training_bayesian_optimization_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    return Pipeline(
+        BayesianOptimizeTrainer(payload)
     )

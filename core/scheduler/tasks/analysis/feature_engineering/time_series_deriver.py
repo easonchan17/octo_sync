@@ -4,8 +4,8 @@ from abc import abstractmethod
 from .base_processor import BaseProcessor
 from .constants import KICKOFF_TIME_COL, REST_DAYS_COL
 
-def rest_days_calculator(fixtures: pd.DataFrame, group_col: str, unified_col: str, default_value: Optional[float] = None) -> pd.Series:
-    time_diff = fixtures.groupby(
+def rest_days_calculator(df: pd.DataFrame, group_col: str, unified_col: str, default_value: Optional[float] = None) -> pd.Series:
+    time_diff = df.groupby(
         group_col,
         observed=True
     )[unified_col].diff()
@@ -17,13 +17,13 @@ def rest_days_calculator(fixtures: pd.DataFrame, group_col: str, unified_col: st
 
     return rest_days
 
-def ema_calculator(fixtures: pd.DataFrame, group_col: str, unified_col: str, default_value: Optional[float] = None, span: int = 5) -> pd.Series:
-    ema_values = fixtures.groupby(
+def ema_calculator(df: pd.DataFrame, group_col: str, unified_col: str, default_value: Optional[float] = None, span: int = 5) -> pd.Series:
+    ema_values = df.groupby(
         group_col,
         observed=True,
         group_keys=False
-    )[unified_col].apply(
-        lambda group: group.ewm(span=span, adjust=False).mean().shift(1)
+    )[unified_col].transform(
+        lambda group: group.ewm(span=span, min_periods=min(span, 5), adjust=False).mean().shift(1)
     )
 
     if default_value is not None:
@@ -31,8 +31,8 @@ def ema_calculator(fixtures: pd.DataFrame, group_col: str, unified_col: str, def
 
     return ema_values
 
-def lag_calculator(fixtures: pd.DataFrame, group_col: str, unified_col: str, default_value: Optional[float] = None) -> pd.Series:
-    lagged_values = fixtures.groupby(
+def lag_calculator(df: pd.DataFrame, group_col: str, unified_col: str, default_value: Optional[float] = None) -> pd.Series:
+    lagged_values = df.groupby(
         group_col,
         observed=True,
         group_keys=False
