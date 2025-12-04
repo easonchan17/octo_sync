@@ -59,6 +59,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
                     "minutes": player_stat.minutes,
                     "is_starter": player_stat.is_starter,
                     "goals": player_stat.goals,
+                    "penalties_made": player_stat.penalties_made,
                     "shots": player_stat.shots,
                     "shots_on_target": player_stat.shots_on_target,
                     "npxg": player_stat.npxg,
@@ -100,8 +101,10 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             ]), na=False)
         )
 
+        FormulaDeriver(df).process("non_penalty_goals", "goals-penalties_made")
+
         PerTimeDeriver(df).process([
-            "goals",
+            "non_penalty_goals",
             "shots",
             "shots_on_target",
             "npxg",
@@ -136,7 +139,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         deriver = PlayerTimeSeriesDeriver(df)
         deriver.process_rest_days(decimals=2)
         valid_features = [
-            "goals_per_90",
+            "non_penalty_goals_per_90",
             "shots_per_90",
             "shots_on_target_per_90",
             "npxg_per_90",
@@ -163,10 +166,11 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
 
         df = deriver.df
         df = SampleFilter(df).process("rest_days")
+        df = SampleFilter(df).process("npxg_per_90_ema_5")
         benchmarks = OutfieldBenchmarkCalculator(df).process()
 
-        FormulaDeriver(df).process("finishing_form", f"0.5 * npxg_per_90_ema_5 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_5 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * goals_per_90_ema_5 / {benchmarks['goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_5-shots_on_target_per_90_ema_5) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
-        FormulaDeriver(df).process("finishing_ability", f"0.5 * npxg_per_90_ema_20 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_20 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * goals_per_90_ema_20 / {benchmarks['goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_20 - shots_on_target_per_90_ema_20) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).process("finishing_form", f"0.5 * npxg_per_90_ema_5 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_5 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_5 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_5-shots_on_target_per_90_ema_5) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).process("finishing_ability", f"0.5 * npxg_per_90_ema_20 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_20 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_20 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_20 - shots_on_target_per_90_ema_20) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
 
         FormulaDeriver(df).process("creativity_form", f"0.4 * xg_assist_per_90_ema_5 / {benchmarks['xg_assist_per_90_ema_20']} + 0.3 * shot_creating_actions_per_90_ema_5 / {benchmarks['shot_creating_actions_per_90_ema_20']} + 0.2 * progressive_passes_per_90_ema_5 / {benchmarks['progressive_passes_per_90_ema_20']} + 0.1 * key_passes_per_90_ema_5 / {benchmarks['key_passes_per_90_ema_20']}", decimals=4)
         FormulaDeriver(df).process("creativity_ability", f"0.4 * xg_assist_per_90_ema_20 / {benchmarks['xg_assist_per_90_ema_20']} + 0.3 * shot_creating_actions_per_90_ema_20 / {benchmarks['shot_creating_actions_per_90_ema_20']} + 0.2 * progressive_passes_per_90_ema_20 / {benchmarks['progressive_passes_per_90_ema_20']} + 0.1 * key_passes_per_90_ema_20 / {benchmarks['key_passes_per_90_ema_20']}", decimals=4)
@@ -193,15 +197,21 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
                 "team_code",
                 "player_name",
                 "rest_days",
-                "position",
+                # "position",
                 "primary_position",
-                # "goals_per_90_ema_5",
+                "is_starter",
+                "minutes",
+                # "golas",
+                # "penalties_made",
+                # "non_penalty_goals",
+                # "npxg",
+                # "non_penalty_goals_per_90_ema_5",
+                # "npxg_per_90_ema_5",
                 # "goals_per_90_ema_20",
                 # "shots_per_90_ema_5",
                 # "shots_per_90_ema_20",
                 # "shots_on_target_per_90_ema_5",
                 # "shots_on_target_per_90_ema_20",
-                # "npxg_per_90_ema_5",
                 # "npxg_per_90_ema_20",
                 # "xg_assist_per_90_ema_5",
                 # "xg_assist_per_90_ema_20",
@@ -342,6 +352,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
 
         df = deriver.df
         df = SampleFilter(df).process("rest_days")
+        df = SampleFilter(df).process("gk_psxg_per_90_ema_5")
         benchmarks = GoalkeeperBenchmarkCalculator(df).process()
 
         FormulaDeriver(df).process("gk_form", f"0.6 * (gk_psxg_per_90_ema_5 - gk_goals_against_per_90_ema_5) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_5 / (gk_crosses_per_90_ema_5 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_5 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
@@ -360,6 +371,8 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
                 "team_code",
                 "player_name",
                 "rest_days",
+                "is_starter",
+                "minutes",
                 # "gk_goals_against_per_90_ema_5",
                 # "gk_goals_against_per_90_ema_20",
                 # "gk_psxg_per_90_ema_5",

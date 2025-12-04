@@ -11,5 +11,7 @@ class FeatureSelector(BaseProcessor):
         if not cols_to_select:
             raise ValueError("No columns to select")
 
+        cols_to_select = list(dict.fromkeys(cols_to_select))
+
         self.logger.info(f"Selected {len(cols_to_select)} columns using keep_cols.")
         return self.df[cols_to_select].copy()
