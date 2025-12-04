@@ -40,6 +40,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 position = row.find("td", {"data-stat": "position"})
                 minutes = row.find("td", {"data-stat": "minutes"})
                 goals = row.find("td", {"data-stat": "goals"})
+                pens_made = row.find("td", {"data-stat": "pens_made"})
                 shots = row.find("td", {"data-stat": "shots"})
                 shots_on_target = row.find("td", {"data-stat": "shots_on_target"})
                 npxg = row.find("td", {"data-stat": "npxg"})
@@ -57,6 +58,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                     "position": get_text(position),
                     "minutes": get_number(minutes),
                     "goals": get_number(goals),
+                    "penalties_made": get_number(pens_made),
                     "shots": get_number(shots),
                     "shots_on_target": get_number(shots_on_target),
                     "npxg": get_float(npxg),
@@ -202,6 +204,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 minutes=stats.get("minutes"),
                 is_starter=stats.get("is_starter"),
                 goals=stats.get("goals"),
+                penalties_made=stats.get("penalties_made"),
                 shots=stats.get("shots"),
                 shots_on_target=stats.get("shots_on_target"),
                 npxg=stats.get("npxg"),

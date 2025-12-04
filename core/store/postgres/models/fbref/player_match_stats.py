@@ -22,6 +22,7 @@ class PlayerMatchStats(Base, StatusMixin, DictMixin):
     is_starter = Column(Boolean, nullable=False)
 
     goals = Column(Integer, nullable=True)
+    penalties_made = Column(Integer, nullable=True)
     shots = Column[int](Integer, nullable=True)
     shots_on_target = Column(Integer, nullable=True)
     npxg = Column(Float, nullable=True)
