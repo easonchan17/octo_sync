@@ -2,6 +2,15 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, Optional
+from core.scheduler.tasks.analysis.feature_engineering import FormulaDeriver
+from core.scheduler.tasks.analysis.feature_engineering.constants import (
+    FIXTURE_CODE_COL,
+    TEAM_CODE_COL,
+    HOME_CODE_COL,
+    AWAY_CODE_COL,
+    PRIMARY_POSITION_COL,
+    IS_STARTER_COL
+)
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.pandas_utils import save_dataframe
 from .match_stats_analyzer import MatchStatsAnalyzer
@@ -80,107 +89,80 @@ class MatchStatsAggregator(BaseTask):
     ) -> pd.DataFrame:
         result_df = match_stats_df.copy()
 
-        finish_reg_positions = ['FW', 'LW', 'RW', 'AM', 'LM', 'RM']
-        creativity_reg_positions = ['AM', 'CM', 'LM', 'RM', 'LW', 'RW']
-        progression_reg_positions = ['LW', 'RW', 'WB', 'LM', 'RM', 'AM']
+        finish_reg_positions = ['FW', 'LW', 'RW', 'AM', 'LM', 'RM', 'WB']
+        creativity_reg_positions = ['AM', 'CM', 'LM', 'RM', 'DM', 'LW', 'RW', 'WB']
+        progression_reg_positions = ['LW', 'RW', 'WB', 'LM', 'RM', 'AM', 'LB', 'RB']
         defense_reg_positions = ['CB', 'LB', 'RB', 'WB', 'DM']
-        aerial_max_positions = ['CB', 'FW']
-        aerial_avg_positions = ['CB', 'LB', 'RB', 'WB']
+        aerial_max_positions = ['CB', 'DM', 'FW', 'WB']
+        aerial_avg_positions = ['CB', 'DM', 'WB']
 
         outfield_starters = outfield_player_stats_df[
-            (outfield_player_stats_df['is_starter'] == True) &
-            (outfield_player_stats_df['primary_position'] != 'GK')
+            (outfield_player_stats_df[IS_STARTER_COL] == True) &
+            (outfield_player_stats_df[PRIMARY_POSITION_COL] != 'GK')
         ].copy()
         if outfield_starters.empty:
             raise ValueError("No outfield starters found")
 
         goalkeeper_starters = goalkeeper_stats_df[
-            goalkeeper_stats_df['is_starter'] == True
+            goalkeeper_stats_df[IS_STARTER_COL] == True
         ].copy()
         if goalkeeper_starters.empty:
             raise ValueError("No goalkeeper starters found")
 
         for idx, match_row in result_df.iterrows():
-            match_code = match_row['match_code']
-            home_code = match_row['home_code']
-            away_code = match_row['away_code']
+            match_code = match_row[FIXTURE_CODE_COL]
+            home_code = match_row[HOME_CODE_COL]
+            away_code = match_row[AWAY_CODE_COL]
 
-            match_outfield = outfield_starters[outfield_starters['match_code'] == match_code]
-            match_gk = goalkeeper_starters[goalkeeper_starters['match_code'] == match_code]
+            match_outfield = outfield_starters[outfield_starters[FIXTURE_CODE_COL] == match_code]
+            match_gk = goalkeeper_starters[goalkeeper_starters[FIXTURE_CODE_COL] == match_code]
 
-            home_outfield = match_outfield[match_outfield['team_code'] == home_code]
-            away_outfield = match_outfield[match_outfield['team_code'] == away_code]
+            home_outfield = match_outfield[match_outfield[TEAM_CODE_COL] == home_code]
+            away_outfield = match_outfield[match_outfield[TEAM_CODE_COL] == away_code]
 
-            home_gk = match_gk[match_gk['team_code'] == home_code]
-            away_gk = match_gk[match_gk['team_code'] == away_code]
+            home_gk = match_gk[match_gk[TEAM_CODE_COL] == home_code]
+            away_gk = match_gk[match_gk[TEAM_CODE_COL] == away_code]
 
             for prefix, outfield_df in [('home', home_outfield), ('away', away_outfield)]:
-                if not outfield_df.empty:
-                    finish_reg_mask = outfield_df['primary_position'].isin(finish_reg_positions)
-                    # finish_aux_mask = ~finish_reg_mask
+                finish_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(finish_reg_positions)
+                creativity_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(creativity_reg_positions)
+                progression_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(progression_reg_positions)
+                defense_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(defense_reg_positions)
+                aerial_max_mask = outfield_df[PRIMARY_POSITION_COL].isin(aerial_max_positions)
+                aerial_avg_mask = outfield_df[PRIMARY_POSITION_COL].isin(aerial_avg_positions)
 
-                    creativity_reg_mask = outfield_df['primary_position'].isin(creativity_reg_positions)
-                    # creativity_aux_mask = ~creativity_reg_mask
+                result_df.at[idx, f'{prefix}_finish_form_reg'] = outfield_df[finish_reg_mask]['finishing_form'].sum()
+                result_df.at[idx, f'{prefix}_finish_ability_reg'] = outfield_df[finish_reg_mask]['finishing_ability'].sum()
+                result_df.at[idx, f'{prefix}_creativity_form_reg'] = outfield_df[creativity_reg_mask]['creativity_form'].sum()
+                result_df.at[idx, f'{prefix}_creativity_ability_reg'] = outfield_df[creativity_reg_mask]['creativity_ability'].sum()
+                result_df.at[idx, f'{prefix}_progression_form_reg'] = outfield_df[progression_reg_mask]['progression_form'].sum()
+                result_df.at[idx, f'{prefix}_progression_ability_reg'] = outfield_df[progression_reg_mask]['progression_ability'].sum()
+                result_df.at[idx, f'{prefix}_defense_form_reg'] = outfield_df[defense_reg_mask]['defense_form'].sum()
+                result_df.at[idx, f'{prefix}_defense_ability_reg'] = outfield_df[defense_reg_mask]['defense_ability'].sum()
 
-                    progression_reg_mask = outfield_df['primary_position'].isin(progression_reg_positions)
-                    # progression_aux_mask = ~progression_reg_mask
-
-                    defense_reg_mask = outfield_df['primary_position'].isin(defense_reg_positions)
-                    # defense_aux_mask = ~defense_reg_mask
-
-                    aerial_max_mask = outfield_df['primary_position'].isin(aerial_max_positions)
-                    aerial_avg_mask = outfield_df['primary_position'].isin(aerial_avg_positions)
-
-                    result_df.at[idx, f'{prefix}_finish_form_reg'] = round(outfield_df[finish_reg_mask]['finishing_form'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_finish_form_aux'] = round(outfield_df[finish_aux_mask]['finishing_form'].sum(), 4)
-                    result_df.at[idx, f'{prefix}_finish_ability_reg'] = round(outfield_df[finish_reg_mask]['finishing_ability'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_finish_ability_aux'] = round(outfield_df[finish_aux_mask]['finishing_ability'].sum(), 4)
-
-                    result_df.at[idx, f'{prefix}_creativity_form_reg'] = round(outfield_df[creativity_reg_mask]['creativity_form'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_creativity_form_aux'] = round(outfield_df[creativity_aux_mask]['creativity_form'].sum(), 4)
-                    result_df.at[idx, f'{prefix}_creativity_ability_reg'] = round(outfield_df[creativity_reg_mask]['creativity_ability'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_creativity_ability_aux'] = round(outfield_df[creativity_aux_mask]['creativity_ability'].sum(), 4)
-
-                    result_df.at[idx, f'{prefix}_progression_form_reg'] = round(outfield_df[progression_reg_mask]['progression_form'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_progression_form_aux'] = round(outfield_df[progression_aux_mask]['progression_form'].sum(), 4)
-                    result_df.at[idx, f'{prefix}_progression_ability_reg'] = round(outfield_df[progression_reg_mask]['progression_ability'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_progression_ability_aux'] = round(outfield_df[progression_aux_mask]['progression_ability'].sum(), 4)
-
-                    result_df.at[idx, f'{prefix}_defense_form_reg'] = round(outfield_df[defense_reg_mask]['defense_form'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_defense_form_aux'] = round(outfield_df[defense_aux_mask]['defense_form'].sum(), 4)
-                    result_df.at[idx, f'{prefix}_defense_ability_reg'] = round(outfield_df[defense_reg_mask]['defense_ability'].sum(), 4)
-                    # result_df.at[idx, f'{prefix}_defense_ability_aux'] = round(outfield_df[defense_aux_mask]['defense_ability'].sum(), 4)
-
-                    aerial_max_data = outfield_df[aerial_max_mask]['aerial_form']
-                    if not aerial_max_data.empty:
-                        result_df.at[idx, f'{prefix}_aerial_form_reg'] = round(aerial_max_data.max(), 4)
-                    else:
-                        result_df.at[idx, f'{prefix}_aerial_form_reg'] = 0.0
-
-                    aerial_avg_data = outfield_df[aerial_avg_mask]['aerial_form']
-                    if not aerial_avg_data.empty:
-                        result_df.at[idx, f'{prefix}_aerial_form_avg'] = round(aerial_avg_data.mean(), 4)
-                    else:
-                        result_df.at[idx, f'{prefix}_aerial_form_avg'] = 0.0
-
-                    aerial_max_ability_data = outfield_df[aerial_max_mask]['aerial_ability']
-                    if not aerial_max_ability_data.empty:
-                        result_df.at[idx, f'{prefix}_aerial_ability_reg'] = round(aerial_max_ability_data.max(), 4)
-                    else:
-                        result_df.at[idx, f'{prefix}_aerial_ability_reg'] = 0.0
-
-                    aerial_avg_ability_data = outfield_df[aerial_avg_mask]['aerial_ability']
-                    if not aerial_avg_ability_data.empty:
-                        result_df.at[idx, f'{prefix}_aerial_ability_avg'] = round(aerial_avg_ability_data.mean(), 4)
-                    else:
-                        result_df.at[idx, f'{prefix}_aerial_ability_avg'] = 0.0
+                aerial_max_data = outfield_df[aerial_max_mask]['aerial_form']
+                if not aerial_max_data.empty:
+                    result_df.at[idx, f'{prefix}_aerial_form_max'] = aerial_max_data.max()
                 else:
-                    for suffix in ['reg', 'aux', 'avg']:
-                        for feature in ['finish_form', 'finish_ability', 'creativity_form', 'creativity_ability',
-                                       'progression_form', 'progression_ability', 'defense_form', 'defense_ability',
-                                       'aerial_form', 'aerial_ability']:
-                            if suffix in ['reg', 'aux'] or (suffix == 'avg' and 'aerial' in feature):
-                                result_df.at[idx, f'{prefix}_{feature}_{suffix}'] = 0.0
+                    result_df.at[idx, f'{prefix}_aerial_form_max'] = 0.0
+
+                aerial_avg_data = outfield_df[aerial_avg_mask]['aerial_form']
+                if not aerial_avg_data.empty:
+                    result_df.at[idx, f'{prefix}_aerial_form_avg'] = round(aerial_avg_data.mean(), 4)
+                else:
+                    result_df.at[idx, f'{prefix}_aerial_form_avg'] = 0.0
+
+                aerial_max_ability_data = outfield_df[aerial_max_mask]['aerial_ability']
+                if not aerial_max_ability_data.empty:
+                    result_df.at[idx, f'{prefix}_aerial_ability_max'] = aerial_max_ability_data.max()
+                else:
+                    result_df.at[idx, f'{prefix}_aerial_ability_max'] = 0.0
+
+                aerial_avg_ability_data = outfield_df[aerial_avg_mask]['aerial_ability']
+                if not aerial_avg_ability_data.empty:
+                    result_df.at[idx, f'{prefix}_aerial_ability_avg'] = round(aerial_avg_ability_data.mean(), 4)
+                else:
+                    result_df.at[idx, f'{prefix}_aerial_ability_avg'] = 0.0
 
             for prefix, gk_df in [('home', home_gk), ('away', away_gk)]:
                 if not gk_df.empty:
@@ -206,8 +188,9 @@ class MatchStatsAggregator(BaseTask):
             'progression_ability_reg',
             'defense_form_reg',
             'defense_ability_reg',
+            'aerial_form_max',
             'aerial_form_avg',
-            'aerial_ability_reg',
+            'aerial_ability_max',
             'aerial_ability_avg',
             'gk_form',
             'gk_ability'
@@ -221,6 +204,33 @@ class MatchStatsAggregator(BaseTask):
             if home_col in result_df.columns and away_col in result_df.columns:
                 result_df[diff_col] = round(result_df[home_col] - result_df[away_col], 4)
             else:
-                self.logger.warning(f"Cannot create {diff_col}: missing {home_col} or {away_col}")
+                self.logger.error(f"Cannot create {diff_col}: missing {home_col} or {away_col}")
+                return None
 
+        FormulaDeriver(result_df).process('home_attack_form', 'home_finish_form_reg + home_creativity_form_reg + home_progression_form_reg')
+        FormulaDeriver(result_df).process('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg')
+        FormulaDeriver(result_df).process('home_defense_form', 'home_defense_form_reg + home_aerial_form_max + home_gk_form')
+        FormulaDeriver(result_df).process('away_defense_form', 'away_defense_form_reg + away_aerial_form_max + away_gk_form')
+        FormulaDeriver(result_df).process('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form')
+        FormulaDeriver(result_df).process('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form')
+        FormulaDeriver(result_df).process('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form')
+
+        FormulaDeriver(result_df).process('home_attack_ability', 'home_finish_ability_reg + home_creativity_ability_reg + home_progression_ability_reg')
+        FormulaDeriver(result_df).process('away_attack_ability', 'away_finish_ability_reg + away_creativity_ability_reg + away_progression_ability_reg')
+        FormulaDeriver(result_df).process('home_defense_ability', 'home_defense_ability_reg + home_aerial_ability_max + home_gk_ability')
+        FormulaDeriver(result_df).process('away_defense_ability', 'away_defense_ability_reg + away_aerial_ability_max + away_gk_ability')
+        FormulaDeriver(result_df).process('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability')
+        FormulaDeriver(result_df).process('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability')
+        FormulaDeriver(result_df).process('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability')
+
+        FormulaDeriver(result_df).process('home_attack_form_over_ability', 'home_attack_form - home_attack_ability')
+        FormulaDeriver(result_df).process('away_attack_form_over_ability', 'away_attack_form - away_attack_ability')
+        FormulaDeriver(result_df).process('home_defense_form_over_ability', 'home_defense_form - home_defense_ability')
+        FormulaDeriver(result_df).process('away_defense_form_over_ability', 'away_defense_form - away_defense_ability')
+
+        FormulaDeriver(result_df).process('home_finish_vs_away_gk_ability', 'home_finish_ability_reg - away_gk_ability')
+        FormulaDeriver(result_df).process('away_finish_vs_home_gk_ability', 'away_finish_ability_reg - home_gk_ability')
+
+        FormulaDeriver(result_df).process('home_total_luck', 'home_attack_form_over_ability + home_defense_form_over_ability')
+        FormulaDeriver(result_df).process('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability')
         return result_df

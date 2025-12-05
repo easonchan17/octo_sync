@@ -4,7 +4,8 @@ from .base_processor import BaseProcessor
 from .constants import (
     HOME_CODE_COL,
     AWAY_CODE_COL,
-    HOME_POINT_COL
+    HOME_POINT_COL,
+    AWAY_POINT_COL
 )
 
 class HeadToHeadPointsDeriver(BaseProcessor):
@@ -35,19 +36,8 @@ class HeadToHeadPointsDeriver(BaseProcessor):
             home_h2h_points.append(h2h_history[pair_key].get(home_code, 0))
             away_h2h_points.append(h2h_history[pair_key].get(away_code, 0))
 
-            home_point = row[HOME_POINT_COL]
-            if home_point == 2:
-                home_points = 3
-                away_points = 0
-            elif home_point == 1:
-                home_points = 1
-                away_points = 1
-            else:
-                home_points = 0
-                away_points = 3
-
-            h2h_history[pair_key][home_code] = h2h_history[pair_key].get(home_code, 0) + home_points
-            h2h_history[pair_key][away_code] = h2h_history[pair_key].get(away_code, 0) + away_points
+            h2h_history[pair_key][home_code] = h2h_history[pair_key].get(home_code, 0) + row[HOME_POINT_COL]
+            h2h_history[pair_key][away_code] = h2h_history[pair_key].get(away_code, 0) + row[AWAY_POINT_COL]
 
         self.df[home_h2h_points_col] = pd.Series(home_h2h_points, index=df.index)
         self.df[away_h2h_points_col] = pd.Series(away_h2h_points, index=df.index)

@@ -1,5 +1,4 @@
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float, Text
 from ..base_model import Base, StatusMixin, DictMixin, Status
 
@@ -46,8 +45,7 @@ class Fixture(Base, StatusMixin, DictMixin):
     home_formation = Column(String(16), nullable=True)
     away_formation = Column(String(16), nullable=True)
 
-    match_report = Column(String(256), nullable=False)
-
+    match_report = Column[str](String(512), nullable=False)
     notes = Column(Text, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
