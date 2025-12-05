@@ -18,14 +18,12 @@ class BenchmarkCalculator(BaseProcessor):
         super().__init__(df)
 
         self.ensure_column_exists(POSITION_COL)
-        self.ensure_column_does_not_exist(PRIMARY_POSITION_COL)
+        self.ensure_column_exists(PRIMARY_POSITION_COL)
         self.benchmarks = {}
 
     def ensure_positions_consistency(self, total_positions: List[str]) -> None:
-        total_positions_set = set(total_positions)
-
-        self.df[PRIMARY_POSITION_COL] = self.df[POSITION_COL].str.split(",").str[0].str.strip()
         unique_positions = sorted(self.df[PRIMARY_POSITION_COL].dropna().unique().tolist())
+        total_positions_set = set(total_positions)
         unique_positions_set = set(unique_positions)
 
         if unique_positions_set != total_positions_set:

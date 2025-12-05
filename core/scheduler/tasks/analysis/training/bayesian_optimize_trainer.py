@@ -149,7 +149,8 @@ class BayesianOptimizeTrainer(BaseTask):
 
         y = df['home_point'].copy()
         y = y.replace(3, 2)
-        X = df.drop(columns=[
+
+        columns_to_drop = [
             'kickoff_time',
             'comp_name',
             'match_code',
@@ -160,7 +161,17 @@ class BayesianOptimizeTrainer(BaseTask):
             'away_team',
             'away_code',
             'home_point',
-        ], axis=1)
+        ]
+        existing_columns_to_drop = [col for col in columns_to_drop if col in df.columns]
+        if existing_columns_to_drop:
+            X = df.drop(columns=existing_columns_to_drop, axis=1)
+        else:
+            X = df.copy()
+
+        missing_columns = [col for col in columns_to_drop if col not in df.columns]
+        if missing_columns:
+            self.logger.warning(f"Columns not found in DataFrame (skipped): {missing_columns}")
+
 
         # with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.width', None):
         #     self.logger.info("\n%s", X.head())
