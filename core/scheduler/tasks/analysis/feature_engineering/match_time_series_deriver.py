@@ -9,7 +9,8 @@ from .constants import (
     AWAY_CODE_COL,
     KICKOFF_TIME_COL,
     IS_HOME_COL,
-    ORIGINAL_INDEX_COL
+    ORIGINAL_INDEX_COL,
+    POINT_COL
 )
 
 class MatchTimeSeriesDeriver(TimeSeriesDeriver):

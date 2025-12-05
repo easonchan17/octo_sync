@@ -147,17 +147,23 @@ class BayesianOptimizeTrainer(BaseTask):
         output_path = Path(output_path)
         df = load_dataframe(output_path/self.data_file)
 
-        y = df['home_point']
+        y = df['home_point'].copy()
+        y = y.replace(3, 2)
         X = df.drop(columns=[
             'kickoff_time',
             'comp_name',
             'match_code',
+            'page_url',
+            'match_report',
             'home_team',
             'home_code',
-            'home_point',
             'away_team',
-            'away_code'
+            'away_code',
+            'home_point',
         ], axis=1)
+
+        # with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.width', None):
+        #     self.logger.info("\n%s", X.head())
         self.logger.info(X.head())
 
         split_idx = int(len(X) * (1 - self.test_size))

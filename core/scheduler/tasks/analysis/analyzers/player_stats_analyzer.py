@@ -138,7 +138,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
 
         deriver = PlayerTimeSeriesDeriver(df)
         deriver.process_rest_days(decimals=2)
-        valid_features = [
+        selected_features = [
             "non_penalty_goals_per_90",
             "shots_per_90",
             "shots_on_target_per_90",
@@ -161,8 +161,8 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             "aerials_won_per_90",
             "aerials_lost_per_90"
         ]
-        deriver.process_ema_batch(valid_features, decimals=1)
-        deriver.process_ema_batch(valid_features, decimals=1, span=20)
+        deriver.process_ema_batch(selected_features, decimals=1)
+        deriver.process_ema_batch(selected_features, decimals=1, span=20)
 
         df = deriver.df
         df = SampleFilter(df).process("rest_days")
