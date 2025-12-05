@@ -109,6 +109,29 @@ class MatchStatsAggregator(BaseTask):
         if goalkeeper_starters.empty:
             raise ValueError("No goalkeeper starters found")
 
+        position_features = [
+            'finishing_form', 'finishing_ability',
+            'creativity_form', 'creativity_ability',
+            'progression_form', 'progression_ability',
+            'defense_form', 'defense_ability',
+            'aerial_form', 'aerial_ability'
+        ]
+
+        position_stats_map = {}
+        for feature in position_features:
+            if feature in outfield_starters.columns:
+                feature_position_mean = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].mean()
+                position_stats_map[feature] = feature_position_mean.to_dict()
+                self.logger.debug(f"Position averages for {feature}: {position_stats_map[feature]}")
+
+        gk_features = ['gk_form', 'gk_ability']
+        gk_position_stats_map = {}
+        for feature in gk_features:
+            if feature in goalkeeper_starters.columns:
+                gk_mean = goalkeeper_starters[feature].mean()
+                gk_position_stats_map[feature] = gk_mean
+                self.logger.debug(f"GK average for {feature}: {gk_mean}")
+
         for idx, match_row in result_df.iterrows():
             match_code = match_row[FIXTURE_CODE_COL]
             home_code = match_row[HOME_CODE_COL]
@@ -131,36 +154,154 @@ class MatchStatsAggregator(BaseTask):
                 aerial_max_mask = outfield_df[PRIMARY_POSITION_COL].isin(aerial_max_positions)
                 aerial_avg_mask = outfield_df[PRIMARY_POSITION_COL].isin(aerial_avg_positions)
 
-                result_df.at[idx, f'{prefix}_finish_form_reg'] = outfield_df[finish_reg_mask]['finishing_form'].sum()
-                result_df.at[idx, f'{prefix}_finish_ability_reg'] = outfield_df[finish_reg_mask]['finishing_ability'].sum()
-                result_df.at[idx, f'{prefix}_creativity_form_reg'] = outfield_df[creativity_reg_mask]['creativity_form'].sum()
-                result_df.at[idx, f'{prefix}_creativity_ability_reg'] = outfield_df[creativity_reg_mask]['creativity_ability'].sum()
-                result_df.at[idx, f'{prefix}_progression_form_reg'] = outfield_df[progression_reg_mask]['progression_form'].sum()
-                result_df.at[idx, f'{prefix}_progression_ability_reg'] = outfield_df[progression_reg_mask]['progression_ability'].sum()
-                result_df.at[idx, f'{prefix}_defense_form_reg'] = outfield_df[defense_reg_mask]['defense_form'].sum()
-                result_df.at[idx, f'{prefix}_defense_ability_reg'] = outfield_df[defense_reg_mask]['defense_ability'].sum()
+                finish_reg_data = outfield_df[finish_reg_mask]
+                creativity_reg_data = outfield_df[creativity_reg_mask]
+                progression_reg_data = outfield_df[progression_reg_mask]
+                defense_reg_data = outfield_df[defense_reg_mask]
 
-                aerial_max_data = outfield_df[aerial_max_mask]['aerial_form']
-                if not aerial_max_data.empty:
-                    result_df.at[idx, f'{prefix}_aerial_form_max'] = aerial_max_data.max()
+                def fill_na_with_position_average(data_df, feature_name, positions, fallback_default=1.0):
+                    if data_df.empty or feature_name not in data_df.columns:
+                        return pd.Series(dtype=float)
+
+                    filled_series = data_df[feature_name].copy()
+                    na_mask = filled_series.isna()
+
+                    if not na_mask.any():
+                        return filled_series
+
+                    for idx in filled_series[na_mask].index:
+                        if idx not in data_df.index:
+                            continue
+
+                        player_position = data_df.loc[idx, PRIMARY_POSITION_COL]
+
+                        if pd.isna(player_position):
+                            filled_series.loc[idx] = fallback_default
+                            continue
+
+                        position_mean = position_stats_map.get(feature_name, {}).get(player_position)
+
+                        if position_mean is not None and not pd.isna(position_mean):
+                            filled_series.loc[idx] = position_mean
+                        else:
+                            if positions:
+                                position_group_means = [
+                                    position_stats_map.get(feature_name, {}).get(pos)
+                                    for pos in positions
+                                    if position_stats_map.get(feature_name, {}).get(pos) is not None
+                                ]
+                                if position_group_means:
+                                    filled_series.loc[idx] = sum(position_group_means) / len(position_group_means)
+                                else:
+                                    filled_series.loc[idx] = fallback_default
+                            else:
+                                filled_series.loc[idx] = fallback_default
+
+                    return filled_series
+
+                finish_form_filled = fill_na_with_position_average(
+                    finish_reg_data,
+                    'finishing_form',
+                    finish_reg_positions,
+                    fallback_default=0.0
+                )
+                finish_ability_filled = fill_na_with_position_average(
+                    finish_reg_data,
+                    'finishing_ability',
+                    finish_reg_positions,
+                    fallback_default=1.0
+                )
+                creativity_form_filled = fill_na_with_position_average(
+                    creativity_reg_data,
+                    'creativity_form',
+                    creativity_reg_positions,
+                    fallback_default=0.0
+                )
+                creativity_ability_filled = fill_na_with_position_average(
+                    creativity_reg_data,
+                    'creativity_ability',
+                    creativity_reg_positions,
+                    fallback_default=1.0
+                )
+                progression_form_filled = fill_na_with_position_average(
+                    progression_reg_data,
+                    'progression_form',
+                    progression_reg_positions,
+                    fallback_default=0.0
+                )
+                progression_ability_filled = fill_na_with_position_average(
+                    progression_reg_data,
+                    'progression_ability',
+                    progression_reg_positions,
+                    fallback_default=1.0
+                )
+                defense_form_filled = fill_na_with_position_average(
+                    defense_reg_data,
+                    'defense_form',
+                    defense_reg_positions,
+                    fallback_default=0.0
+                )
+                defense_ability_filled = fill_na_with_position_average(
+                    defense_reg_data,
+                    'defense_ability',
+                    defense_reg_positions,
+                    fallback_default=1.0
+                )
+
+                result_df.at[idx, f'{prefix}_finish_form_reg'] = finish_form_filled.sum()
+                result_df.at[idx, f'{prefix}_finish_ability_reg'] = finish_ability_filled.sum()
+                result_df.at[idx, f'{prefix}_creativity_form_reg'] = creativity_form_filled.sum()
+                result_df.at[idx, f'{prefix}_creativity_ability_reg'] = creativity_ability_filled.sum()
+                result_df.at[idx, f'{prefix}_progression_form_reg'] = progression_form_filled.sum()
+                result_df.at[idx, f'{prefix}_progression_ability_reg'] = progression_ability_filled.sum()
+                result_df.at[idx, f'{prefix}_defense_form_reg'] = defense_form_filled.sum()
+                result_df.at[idx, f'{prefix}_defense_ability_reg'] = defense_ability_filled.sum()
+
+                aerial_max_data_df = outfield_df[aerial_max_mask]
+                if not aerial_max_data_df.empty:
+                    aerial_max_data_filled = fill_na_with_position_average(
+                        aerial_max_data_df,
+                        'aerial_form',
+                        aerial_max_positions,
+                        fallback_default=0.0
+                    )
+                    result_df.at[idx, f'{prefix}_aerial_form_max'] = aerial_max_data_filled.max()
                 else:
                     result_df.at[idx, f'{prefix}_aerial_form_max'] = 0.0
 
-                aerial_avg_data = outfield_df[aerial_avg_mask]['aerial_form']
-                if not aerial_avg_data.empty:
-                    result_df.at[idx, f'{prefix}_aerial_form_avg'] = round(aerial_avg_data.mean(), 4)
+                aerial_avg_data_df = outfield_df[aerial_avg_mask]
+                if not aerial_avg_data_df.empty:
+                    aerial_avg_data_filled = fill_na_with_position_average(
+                        aerial_avg_data_df,
+                        'aerial_form',
+                        aerial_avg_positions,
+                        fallback_default=0.0
+                    )
+                    result_df.at[idx, f'{prefix}_aerial_form_avg'] = round(aerial_avg_data_filled.mean(), 4)
                 else:
                     result_df.at[idx, f'{prefix}_aerial_form_avg'] = 0.0
 
-                aerial_max_ability_data = outfield_df[aerial_max_mask]['aerial_ability']
-                if not aerial_max_ability_data.empty:
-                    result_df.at[idx, f'{prefix}_aerial_ability_max'] = aerial_max_ability_data.max()
+                aerial_max_ability_data_df = outfield_df[aerial_max_mask]
+                if not aerial_max_ability_data_df.empty:
+                    aerial_max_ability_data_filled = fill_na_with_position_average(
+                        aerial_max_ability_data_df,
+                        'aerial_ability',
+                        aerial_max_positions,
+                        fallback_default=1.0
+                    )
+                    result_df.at[idx, f'{prefix}_aerial_ability_max'] = aerial_max_ability_data_filled.max()
                 else:
                     result_df.at[idx, f'{prefix}_aerial_ability_max'] = 0.0
 
-                aerial_avg_ability_data = outfield_df[aerial_avg_mask]['aerial_ability']
-                if not aerial_avg_ability_data.empty:
-                    result_df.at[idx, f'{prefix}_aerial_ability_avg'] = round(aerial_avg_ability_data.mean(), 4)
+                aerial_avg_ability_data_df = outfield_df[aerial_avg_mask]
+                if not aerial_avg_ability_data_df.empty:
+                    aerial_avg_ability_data_filled = fill_na_with_position_average(
+                        aerial_avg_ability_data_df,
+                        'aerial_ability',
+                        aerial_avg_positions,
+                        fallback_default=1.0
+                    )
+                    result_df.at[idx, f'{prefix}_aerial_ability_avg'] = round(aerial_avg_ability_data_filled.mean(), 4)
                 else:
                     result_df.at[idx, f'{prefix}_aerial_ability_avg'] = 0.0
 
@@ -168,16 +309,22 @@ class MatchStatsAggregator(BaseTask):
                 if not gk_df.empty:
                     gk_row = gk_df.iloc[0]
                     if 'gk_form' in gk_row:
-                        result_df.at[idx, f'{prefix}_gk_form'] = round(gk_row['gk_form'], 4)
+                        gk_form_val = gk_row['gk_form']
+                        if pd.isna(gk_form_val):
+                            gk_form_val = gk_position_stats_map.get('gk_form', 0.0)
+                        result_df.at[idx, f'{prefix}_gk_form'] = round(gk_form_val, 4)
                     else:
-                        result_df.at[idx, f'{prefix}_gk_form'] = 0.0
+                        result_df.at[idx, f'{prefix}_gk_form'] = round(gk_position_stats_map.get('gk_form', 0.0), 4)
                     if 'gk_ability' in gk_row:
-                        result_df.at[idx, f'{prefix}_gk_ability'] = round(gk_row['gk_ability'], 4)
+                        gk_ability_val = gk_row['gk_ability']
+                        if pd.isna(gk_ability_val):
+                            gk_ability_val = gk_position_stats_map.get('gk_ability', 1.0)
+                        result_df.at[idx, f'{prefix}_gk_ability'] = round(gk_ability_val, 4)
                     else:
-                        result_df.at[idx, f'{prefix}_gk_ability'] = 0.0
+                        result_df.at[idx, f'{prefix}_gk_ability'] = round(gk_position_stats_map.get('gk_ability', 1.0), 4)
                 else:
-                    result_df.at[idx, f'{prefix}_gk_form'] = 0.0
-                    result_df.at[idx, f'{prefix}_gk_ability'] = 0.0
+                    result_df.at[idx, f'{prefix}_gk_form'] = round(gk_position_stats_map.get('gk_form', 0.0), 4)
+                    result_df.at[idx, f'{prefix}_gk_ability'] = round(gk_position_stats_map.get('gk_ability', 1.0), 4)
 
         diff_features = [
             'finish_form_reg',

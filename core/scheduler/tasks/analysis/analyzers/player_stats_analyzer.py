@@ -14,7 +14,7 @@ from ..feature_engineering.benchmark_calculator import (
 from ..feature_engineering.player_time_series_deriver import PlayerTimeSeriesDeriver
 from ..feature_engineering.possession_adjusted_deriver import PossessionAdjustedDeriver
 from .base_analyzer import BaseAnalyzer
-from ..feature_engineering.constants import EPSILON
+from ..feature_engineering.constants import EPSILON, POSITION_COL, PRIMARY_POSITION_COL
 
 class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
     def query_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
@@ -101,6 +101,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             ]), na=False)
         )
 
+        df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         FormulaDeriver(df).process("non_penalty_goals", "goals-penalties_made")
 
         PerTimeDeriver(df).process([
@@ -165,9 +166,10 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         deriver.process_ema_batch(selected_features, decimals=1, span=20)
 
         df = deriver.df
-        df = SampleFilter(df).process("rest_days")
-        df = SampleFilter(df).process("npxg_per_90_ema_5")
-        benchmarks = OutfieldBenchmarkCalculator(df).process()
+        df_for_benchmark = df.copy()
+        df_for_benchmark = SampleFilter(df_for_benchmark).process("rest_days")
+        df_for_benchmark = SampleFilter(df_for_benchmark).process("npxg_per_90_ema_5")
+        benchmarks = OutfieldBenchmarkCalculator(df_for_benchmark).process()
 
         FormulaDeriver(df).process("finishing_form", f"0.5 * npxg_per_90_ema_5 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_5 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_5 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_5-shots_on_target_per_90_ema_5) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
         FormulaDeriver(df).process("finishing_ability", f"0.5 * npxg_per_90_ema_20 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_20 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_20 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_20 - shots_on_target_per_90_ema_20) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
@@ -328,6 +330,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
             ]), na=False)
         )
 
+        df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         DefaultImputer(df).process("gk_def_actions_outside_pen_area", 0)
 
         PerTimeDeriver(df).process([
@@ -351,9 +354,10 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         deriver.process_ema_batch(valid_features, decimals=1, span=20)
 
         df = deriver.df
-        df = SampleFilter(df).process("rest_days")
-        df = SampleFilter(df).process("gk_psxg_per_90_ema_5")
-        benchmarks = GoalkeeperBenchmarkCalculator(df).process()
+        df_for_benchmark = df.copy()
+        df_for_benchmark = SampleFilter(df_for_benchmark).process("rest_days")
+        df_for_benchmark = SampleFilter(df_for_benchmark).process("gk_psxg_per_90_ema_5")
+        benchmarks = GoalkeeperBenchmarkCalculator(df_for_benchmark).process()
 
         FormulaDeriver(df).process("gk_form", f"0.6 * (gk_psxg_per_90_ema_5 - gk_goals_against_per_90_ema_5) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_5 / (gk_crosses_per_90_ema_5 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_5 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
         FormulaDeriver(df).process("gk_ability", f"0.6 * (gk_psxg_per_90_ema_20 - gk_goals_against_per_90_ema_20) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_20 / (gk_crosses_per_90_ema_20 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_20 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)

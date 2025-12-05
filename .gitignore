@@ -10,6 +10,9 @@ __pycache__/
 
 docker/data/
 output/
+!output/
+!output/features/
+!output/features/aggregated_stats_*
 plugins/
 tests/
 configs/
