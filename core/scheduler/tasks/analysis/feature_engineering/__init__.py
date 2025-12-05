@@ -15,6 +15,7 @@ from .difference_deriver import DifferenceDeriver
 from .head_to_head_points_deriver import HeadToHeadPointsDeriver
 from .per_time_deriver import PerTimeDeriver
 from .possession_adjusted_deriver import PossessionAdjustedDeriver
+from .page_url_deriver import PageUrlDeriver
 
 __all__ = [
     'BaseProcessor',
@@ -33,5 +34,6 @@ __all__ = [
     'DifferenceDeriver',
     'HeadToHeadPointsDeriver',
     'PerTimeDeriver',
-    'PossessionAdjustedDeriver'
+    'PossessionAdjustedDeriver',
+    'PageUrlDeriver'
 ]
