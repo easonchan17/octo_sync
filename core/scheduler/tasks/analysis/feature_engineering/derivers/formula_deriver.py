@@ -3,7 +3,12 @@ from typing import Optional
 from .base_deriver import BaseDeriver
 
 class FormulaDeriver(BaseDeriver):
-    def derive(self, feature: str, formula: str, decimals: Optional[int] = 0) -> Optional[pd.DataFrame]:
+    def derive(
+        self,
+        feature: str,
+        formula: str,
+        decimals: Optional[int] = None
+    ) -> None:
         self.ensure_column_does_not_exist(feature)
 
         if not formula:

@@ -2,19 +2,25 @@ from typing import List, Optional
 from .base_deriver import BaseDeriver
 from ..constants import MINUTES_PLAYED_COL
 
-class PerTimeDeriver(BaseDeriver):
-    def derive(self, features: List[str], time_unit: int = 90, threshold: int = 30, decimals: Optional[int] = 2) -> None:
+class TimeScaleDeriver(BaseDeriver):
+    def derive(
+        self,
+        features: List[str],
+        unit_minutes: int = 90,
+        min_minutes: int = 30,
+        decimals: Optional[int] = None
+    ) -> None:
         if not features:
             raise ValueError("Features list cannot be empty")
 
-        if time_unit <= 0:
+        if unit_minutes <= 0:
             raise ValueError("time_unit must be greater than 0")
 
         self.ensure_column_exists(MINUTES_PLAYED_COL)
-        effective_minutes = self.df[MINUTES_PLAYED_COL].clip(lower=threshold)
-        scaling_factor = effective_minutes / float(time_unit)
+        effective_minutes = self.df[MINUTES_PLAYED_COL].clip(lower=min_minutes)
+        scaling_factor = effective_minutes / float(unit_minutes)
 
-        suffix = f"_per_{time_unit}"
+        suffix = f"_per_{unit_minutes}"
         for feature in features:
             self.ensure_column_exists(feature)
 
