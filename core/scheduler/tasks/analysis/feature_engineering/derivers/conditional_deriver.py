@@ -1,8 +1,8 @@
 import numpy as np
 from typing import List, Any
-from .base_processor import BaseProcessor
+from ..processor import FeatureProcessor
 
-class ConditionalDeriver(BaseProcessor):
+class ConditionalDeriver(FeatureProcessor):
     def process(self, feature: str, conditions: List[str], choices: List[Any]) -> None:
         self.ensure_column_does_not_exist(feature)
 

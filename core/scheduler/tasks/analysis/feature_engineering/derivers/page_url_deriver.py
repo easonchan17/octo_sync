@@ -1,6 +1,6 @@
 from urllib.parse import urljoin
-from .base_processor import BaseProcessor
-from .constants import (
+from ..processor import FeatureProcessor
+from ..constants import (
     SITE_HOST,
     PAGE_URL_TEMPLATE,
     PAGE_URL_COL,
@@ -11,7 +11,7 @@ from .constants import (
 )
 from core.utils.html_utils import normalize_club_name
 
-class PageUrlDeriver(BaseProcessor):
+class PageUrlDeriver(FeatureProcessor):
     def process(self) -> None:
         self.ensure_column_does_not_exist(PAGE_URL_COL)
         self.ensure_column_exists(MATCH_REPORT_COL)

@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 from typing import List, Optional
-from .base_processor import BaseProcessor
-from .constants import (
+from ..processor import FeatureProcessor
+from ..constants import (
     TEAM_CODE_COL,
     HOME_CODE_COL,
     AWAY_CODE_COL,
@@ -10,7 +10,7 @@ from .constants import (
     AWAY_POSSESSION_COL
 )
 
-class PossessionAdjustedDeriver(BaseProcessor):
+class PossessionAdjustedDeriver(FeatureProcessor):
     def process(self, features: List[str], decimals: Optional[int] = 2) -> None:
         if not features:
             raise ValueError("Features list cannot be empty")

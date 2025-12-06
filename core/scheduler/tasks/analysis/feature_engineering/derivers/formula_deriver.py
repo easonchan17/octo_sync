@@ -1,8 +1,8 @@
 import pandas as pd
 from typing import Optional
-from .base_processor import BaseProcessor
+from ..processor import FeatureProcessor
 
-class FormulaDeriver(BaseProcessor):
+class FormulaDeriver(FeatureProcessor):
     def process(self, feature: str, formula: str, decimals: Optional[int] = 0) -> Optional[pd.DataFrame]:
         self.ensure_column_does_not_exist(feature)
 

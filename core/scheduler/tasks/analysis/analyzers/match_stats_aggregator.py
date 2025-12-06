@@ -9,7 +9,13 @@ from core.scheduler.tasks.analysis.feature_engineering.constants import (
     HOME_CODE_COL,
     AWAY_CODE_COL,
     PRIMARY_POSITION_COL,
-    IS_STARTER_COL
+    IS_STARTER_COL,
+    FINISH_REG_POSITIONS,
+    CREATIVITY_REG_POSITIONS,
+    PROGRESSION_REG_POSITIONS,
+    DEFENSE_REG_POSITIONS,
+    AERIAL_MAX_POSITIONS,
+    AERIAL_AVG_POSITIONS
 )
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.pandas_utils import save_dataframe
@@ -89,13 +95,6 @@ class MatchStatsAggregator(BaseTask):
     ) -> pd.DataFrame:
         result_df = match_stats_df.copy()
 
-        finish_reg_positions = ['FW', 'LW', 'RW', 'AM', 'LM', 'RM', 'WB']
-        creativity_reg_positions = ['AM', 'CM', 'LM', 'RM', 'DM', 'LW', 'RW', 'WB']
-        progression_reg_positions = ['LW', 'RW', 'WB', 'LM', 'RM', 'AM', 'LB', 'RB']
-        defense_reg_positions = ['CB', 'LB', 'RB', 'WB', 'DM']
-        aerial_max_positions = ['CB', 'DM', 'FW', 'WB']
-        aerial_avg_positions = ['CB', 'DM', 'WB']
-
         outfield_starters = outfield_player_stats_df[
             (outfield_player_stats_df[IS_STARTER_COL] == True) &
             (outfield_player_stats_df[PRIMARY_POSITION_COL] != 'GK')
@@ -120,17 +119,17 @@ class MatchStatsAggregator(BaseTask):
         position_stats_map = {}
         for feature in position_features:
             if feature in outfield_starters.columns:
-                feature_position_mean = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].mean()
-                position_stats_map[feature] = feature_position_mean.to_dict()
-                self.logger.debug(f"Position averages for {feature}: {position_stats_map[feature]}")
+                feature_position_quantile = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(0.25)
+                position_stats_map[feature] = feature_position_quantile.to_dict()
+                self.logger.debug(f"Position 25th percentile for {feature}: {position_stats_map[feature]}")
 
         gk_features = ['gk_form', 'gk_ability']
         gk_position_stats_map = {}
         for feature in gk_features:
             if feature in goalkeeper_starters.columns:
-                gk_mean = goalkeeper_starters[feature].mean()
-                gk_position_stats_map[feature] = gk_mean
-                self.logger.debug(f"GK average for {feature}: {gk_mean}")
+                gk_quantile = goalkeeper_starters[feature].quantile(0.25)
+                gk_position_stats_map[feature] = gk_quantile
+                self.logger.debug(f"GK 25th percentile for {feature}: {gk_quantile}")
 
         for idx, match_row in result_df.iterrows():
             match_code = match_row[FIXTURE_CODE_COL]
@@ -147,12 +146,12 @@ class MatchStatsAggregator(BaseTask):
             away_gk = match_gk[match_gk[TEAM_CODE_COL] == away_code]
 
             for prefix, outfield_df in [('home', home_outfield), ('away', away_outfield)]:
-                finish_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(finish_reg_positions)
-                creativity_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(creativity_reg_positions)
-                progression_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(progression_reg_positions)
-                defense_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(defense_reg_positions)
-                aerial_max_mask = outfield_df[PRIMARY_POSITION_COL].isin(aerial_max_positions)
-                aerial_avg_mask = outfield_df[PRIMARY_POSITION_COL].isin(aerial_avg_positions)
+                finish_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(FINISH_REG_POSITIONS)
+                creativity_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(CREATIVITY_REG_POSITIONS)
+                progression_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(PROGRESSION_REG_POSITIONS)
+                defense_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(DEFENSE_REG_POSITIONS)
+                aerial_max_mask = outfield_df[PRIMARY_POSITION_COL].isin(AERIAL_MAX_POSITIONS)
+                aerial_avg_mask = outfield_df[PRIMARY_POSITION_COL].isin(AERIAL_AVG_POSITIONS)
 
                 finish_reg_data = outfield_df[finish_reg_mask]
                 creativity_reg_data = outfield_df[creativity_reg_mask]
@@ -179,19 +178,19 @@ class MatchStatsAggregator(BaseTask):
                             filled_series.loc[idx] = fallback_default
                             continue
 
-                        position_mean = position_stats_map.get(feature_name, {}).get(player_position)
+                        position_quantile = position_stats_map.get(feature_name, {}).get(player_position)
 
-                        if position_mean is not None and not pd.isna(position_mean):
-                            filled_series.loc[idx] = position_mean
+                        if position_quantile is not None and not pd.isna(position_quantile):
+                            filled_series.loc[idx] = position_quantile
                         else:
                             if positions:
-                                position_group_means = [
+                                position_group_quantiles = [
                                     position_stats_map.get(feature_name, {}).get(pos)
                                     for pos in positions
                                     if position_stats_map.get(feature_name, {}).get(pos) is not None
                                 ]
-                                if position_group_means:
-                                    filled_series.loc[idx] = sum(position_group_means) / len(position_group_means)
+                                if position_group_quantiles:
+                                    filled_series.loc[idx] = sum(position_group_quantiles) / len(position_group_quantiles)
                                 else:
                                     filled_series.loc[idx] = fallback_default
                             else:
@@ -202,49 +201,49 @@ class MatchStatsAggregator(BaseTask):
                 finish_form_filled = fill_na_with_position_average(
                     finish_reg_data,
                     'finishing_form',
-                    finish_reg_positions,
+                    FINISH_REG_POSITIONS,
                     fallback_default=0.0
                 )
                 finish_ability_filled = fill_na_with_position_average(
                     finish_reg_data,
                     'finishing_ability',
-                    finish_reg_positions,
+                    FINISH_REG_POSITIONS,
                     fallback_default=1.0
                 )
                 creativity_form_filled = fill_na_with_position_average(
                     creativity_reg_data,
                     'creativity_form',
-                    creativity_reg_positions,
+                    CREATIVITY_REG_POSITIONS,
                     fallback_default=0.0
                 )
                 creativity_ability_filled = fill_na_with_position_average(
                     creativity_reg_data,
                     'creativity_ability',
-                    creativity_reg_positions,
+                    CREATIVITY_REG_POSITIONS,
                     fallback_default=1.0
                 )
                 progression_form_filled = fill_na_with_position_average(
                     progression_reg_data,
                     'progression_form',
-                    progression_reg_positions,
+                    PROGRESSION_REG_POSITIONS,
                     fallback_default=0.0
                 )
                 progression_ability_filled = fill_na_with_position_average(
                     progression_reg_data,
                     'progression_ability',
-                    progression_reg_positions,
+                    PROGRESSION_REG_POSITIONS,
                     fallback_default=1.0
                 )
                 defense_form_filled = fill_na_with_position_average(
                     defense_reg_data,
                     'defense_form',
-                    defense_reg_positions,
+                    DEFENSE_REG_POSITIONS,
                     fallback_default=0.0
                 )
                 defense_ability_filled = fill_na_with_position_average(
                     defense_reg_data,
                     'defense_ability',
-                    defense_reg_positions,
+                    DEFENSE_REG_POSITIONS,
                     fallback_default=1.0
                 )
 
@@ -262,7 +261,7 @@ class MatchStatsAggregator(BaseTask):
                     aerial_max_data_filled = fill_na_with_position_average(
                         aerial_max_data_df,
                         'aerial_form',
-                        aerial_max_positions,
+                        AERIAL_MAX_POSITIONS,
                         fallback_default=0.0
                     )
                     result_df.at[idx, f'{prefix}_aerial_form_max'] = aerial_max_data_filled.max()
@@ -274,7 +273,7 @@ class MatchStatsAggregator(BaseTask):
                     aerial_avg_data_filled = fill_na_with_position_average(
                         aerial_avg_data_df,
                         'aerial_form',
-                        aerial_avg_positions,
+                        AERIAL_AVG_POSITIONS,
                         fallback_default=0.0
                     )
                     result_df.at[idx, f'{prefix}_aerial_form_avg'] = round(aerial_avg_data_filled.mean(), 4)
@@ -286,7 +285,7 @@ class MatchStatsAggregator(BaseTask):
                     aerial_max_ability_data_filled = fill_na_with_position_average(
                         aerial_max_ability_data_df,
                         'aerial_ability',
-                        aerial_max_positions,
+                        AERIAL_MAX_POSITIONS,
                         fallback_default=1.0
                     )
                     result_df.at[idx, f'{prefix}_aerial_ability_max'] = aerial_max_ability_data_filled.max()
@@ -298,7 +297,7 @@ class MatchStatsAggregator(BaseTask):
                     aerial_avg_ability_data_filled = fill_na_with_position_average(
                         aerial_avg_ability_data_df,
                         'aerial_ability',
-                        aerial_avg_positions,
+                        AERIAL_AVG_POSITIONS,
                         fallback_default=1.0
                     )
                     result_df.at[idx, f'{prefix}_aerial_ability_avg'] = round(aerial_avg_ability_data_filled.mean(), 4)

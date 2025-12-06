@@ -3,7 +3,7 @@ from typing import Optional, Set, Any
 from abc import ABC, abstractmethod
 from core.logger.logger_manager import LoggerManager
 
-class BaseProcessor(ABC):
+class FeatureProcessor(ABC):
     def __init__(self, df: pd.DataFrame) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self.df = df
@@ -66,7 +66,3 @@ class BaseProcessor(ABC):
 
         self.df.loc[null_mask, feature] = values
         self.logger.info(f"Filled None values for {feature} with formula: {formula}")
-
-    @abstractmethod
-    def process(self, *args, **kwargs) -> Optional[pd.DataFrame]:
-        pass

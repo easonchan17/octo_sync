@@ -3,16 +3,15 @@ from typing import Any, Dict, List, Optional
 from core.store.postgres.models import (
     Fixture, PlayerMatchStats
 )
-from ..feature_engineering.sample_filter import SampleFilter
-from ..feature_engineering.formula_deriver import FormulaDeriver
-from ..feature_engineering.per_time_deriver import PerTimeDeriver
-from ..feature_engineering.feature_selector import FeatureSelector
-from ..feature_engineering.default_imputer import DefaultImputer
-from ..feature_engineering.benchmark_calculator import (
-    OutfieldBenchmarkCalculator, GoalkeeperBenchmarkCalculator
+from ..feature_engineering import (
+    FeatureSelector,
+    FormulaDeriver,
+    PerTimeDeriver,
+    DefaultImputer,
+    PlayerTimeSeriesDeriver,
+    PossessionAdjustedDeriver
 )
-from ..feature_engineering.player_time_series_deriver import PlayerTimeSeriesDeriver
-from ..feature_engineering.possession_adjusted_deriver import PossessionAdjustedDeriver
+from ..feature_engineering import OutfieldFeatureBenchmark, GoalkeeperFeatureBenchmark
 from .base_analyzer import BaseAnalyzer
 from ..feature_engineering.constants import EPSILON, POSITION_COL, PRIMARY_POSITION_COL
 
@@ -92,7 +91,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         required_features: Optional[List[str]] = None
     ) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
-        df = SampleFilter(df).process(
+        df = FeatureSelector(df).filter_rows(
             "notes",
             lambda x: x.str.startswith(tuple([
                 "Match Postponed",
@@ -167,9 +166,9 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
 
         df = deriver.df
         df_for_benchmark = df.copy()
-        df_for_benchmark = SampleFilter(df_for_benchmark).process("rest_days")
-        df_for_benchmark = SampleFilter(df_for_benchmark).process("npxg_per_90_ema_5")
-        benchmarks = OutfieldBenchmarkCalculator(df_for_benchmark).process()
+        df_for_benchmark = FeatureSelector(df_for_benchmark).filter_rows("rest_days")
+        df_for_benchmark = FeatureSelector(df_for_benchmark).filter_rows("npxg_per_90_ema_5")
+        benchmarks = OutfieldFeatureBenchmark(df_for_benchmark).calculate()
 
         FormulaDeriver(df).process("finishing_form", f"0.5 * npxg_per_90_ema_5 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_5 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_5 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_5-shots_on_target_per_90_ema_5) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
         FormulaDeriver(df).process("finishing_ability", f"0.5 * npxg_per_90_ema_20 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_20 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_20 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_20 - shots_on_target_per_90_ema_20) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
@@ -260,7 +259,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
                 "aerial_form",
                 "aerial_ability"
             ]
-        return FeatureSelector(df).process(required_features)
+        return FeatureSelector(df).select_columns(required_features)
 
 class GoalkeeperStatsAnalyzer(BaseAnalyzer):
     def query_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
@@ -321,7 +320,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         required_features: Optional[List[str]] = None
     ) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
-        df = SampleFilter(df).process(
+        df = FeatureSelector(df).filter_rows(
             "notes",
             lambda x: x.str.startswith(tuple([
                 "Match Postponed",
@@ -355,9 +354,9 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
 
         df = deriver.df
         df_for_benchmark = df.copy()
-        df_for_benchmark = SampleFilter(df_for_benchmark).process("rest_days")
-        df_for_benchmark = SampleFilter(df_for_benchmark).process("gk_psxg_per_90_ema_5")
-        benchmarks = GoalkeeperBenchmarkCalculator(df_for_benchmark).process()
+        df_for_benchmark = FeatureSelector(df_for_benchmark).filter_rows("rest_days")
+        df_for_benchmark = FeatureSelector(df_for_benchmark).filter_rows("gk_psxg_per_90_ema_5")
+        benchmarks = GoalkeeperFeatureBenchmark(df_for_benchmark).calculate()
 
         FormulaDeriver(df).process("gk_form", f"0.6 * (gk_psxg_per_90_ema_5 - gk_goals_against_per_90_ema_5) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_5 / (gk_crosses_per_90_ema_5 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_5 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
         FormulaDeriver(df).process("gk_ability", f"0.6 * (gk_psxg_per_90_ema_20 - gk_goals_against_per_90_ema_20) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_20 / (gk_crosses_per_90_ema_20 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_20 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
@@ -377,6 +376,8 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
                 "rest_days",
                 "is_starter",
                 "minutes",
+                "gk_form",
+                "gk_ability"
                 # "gk_goals_against_per_90_ema_5",
                 # "gk_goals_against_per_90_ema_20",
                 # "gk_psxg_per_90_ema_5",
@@ -386,8 +387,6 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
                 # "gk_crosses_stopped_per_90_ema_5",
                 # "gk_crosses_stopped_per_90_ema_20",
                 # "gk_def_actions_outside_pen_area_per_90_ema_5",
-                # "gk_def_actions_outside_pen_area_per_90_ema_20",
-                "gk_form",
-                "gk_ability"
+                # "gk_def_actions_outside_pen_area_per_90_ema_20"
             ]
-        return FeatureSelector(df).process(required_features)
+        return FeatureSelector(df).select_columns(required_features)
