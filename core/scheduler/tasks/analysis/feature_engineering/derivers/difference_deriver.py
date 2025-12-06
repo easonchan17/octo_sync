@@ -1,8 +1,8 @@
 from typing import List, Optional
-from ..processor import FeatureProcessor
+from .base_deriver import BaseDeriver
 
-class DifferenceDeriver(FeatureProcessor):
-    def process(self, features: List[str], decimals: Optional[int] = 0) -> None:
+class DifferenceDeriver(BaseDeriver):
+    def derive(self, features: List[str], decimals: Optional[int] = 0) -> None:
         if not features:
             raise ValueError("Features list cannot be empty")
 

@@ -15,7 +15,8 @@ from core.scheduler.tasks.analysis.feature_engineering.constants import (
     PROGRESSION_REG_POSITIONS,
     DEFENSE_REG_POSITIONS,
     AERIAL_MAX_POSITIONS,
-    AERIAL_AVG_POSITIONS
+    AERIAL_AVG_POSITIONS,
+    IMPUTATION_QUANTILE
 )
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.pandas_utils import save_dataframe
@@ -119,7 +120,7 @@ class MatchStatsAggregator(BaseTask):
         position_stats_map = {}
         for feature in position_features:
             if feature in outfield_starters.columns:
-                feature_position_quantile = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(0.25)
+                feature_position_quantile = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(IMPUTATION_QUANTILE)
                 position_stats_map[feature] = feature_position_quantile.to_dict()
                 self.logger.debug(f"Position 25th percentile for {feature}: {position_stats_map[feature]}")
 
@@ -127,7 +128,7 @@ class MatchStatsAggregator(BaseTask):
         gk_position_stats_map = {}
         for feature in gk_features:
             if feature in goalkeeper_starters.columns:
-                gk_quantile = goalkeeper_starters[feature].quantile(0.25)
+                gk_quantile = goalkeeper_starters[feature].quantile(IMPUTATION_QUANTILE)
                 gk_position_stats_map[feature] = gk_quantile
                 self.logger.debug(f"GK 25th percentile for {feature}: {gk_quantile}")
 
@@ -353,30 +354,30 @@ class MatchStatsAggregator(BaseTask):
                 self.logger.error(f"Cannot create {diff_col}: missing {home_col} or {away_col}")
                 return None
 
-        FormulaDeriver(result_df).process('home_attack_form', 'home_finish_form_reg + home_creativity_form_reg + home_progression_form_reg')
-        FormulaDeriver(result_df).process('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg')
-        FormulaDeriver(result_df).process('home_defense_form', 'home_defense_form_reg + home_aerial_form_max + home_gk_form')
-        FormulaDeriver(result_df).process('away_defense_form', 'away_defense_form_reg + away_aerial_form_max + away_gk_form')
-        FormulaDeriver(result_df).process('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form')
-        FormulaDeriver(result_df).process('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form')
-        FormulaDeriver(result_df).process('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form')
+        FormulaDeriver(result_df).derive('home_attack_form', 'home_finish_form_reg + home_creativity_form_reg + home_progression_form_reg')
+        FormulaDeriver(result_df).derive('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg')
+        FormulaDeriver(result_df).derive('home_defense_form', 'home_defense_form_reg + home_aerial_form_max + home_gk_form')
+        FormulaDeriver(result_df).derive('away_defense_form', 'away_defense_form_reg + away_aerial_form_max + away_gk_form')
+        FormulaDeriver(result_df).derive('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form')
+        FormulaDeriver(result_df).derive('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form')
+        FormulaDeriver(result_df).derive('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form')
 
-        FormulaDeriver(result_df).process('home_attack_ability', 'home_finish_ability_reg + home_creativity_ability_reg + home_progression_ability_reg')
-        FormulaDeriver(result_df).process('away_attack_ability', 'away_finish_ability_reg + away_creativity_ability_reg + away_progression_ability_reg')
-        FormulaDeriver(result_df).process('home_defense_ability', 'home_defense_ability_reg + home_aerial_ability_max + home_gk_ability')
-        FormulaDeriver(result_df).process('away_defense_ability', 'away_defense_ability_reg + away_aerial_ability_max + away_gk_ability')
-        FormulaDeriver(result_df).process('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability')
-        FormulaDeriver(result_df).process('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability')
-        FormulaDeriver(result_df).process('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability')
+        FormulaDeriver(result_df).derive('home_attack_ability', 'home_finish_ability_reg + home_creativity_ability_reg + home_progression_ability_reg')
+        FormulaDeriver(result_df).derive('away_attack_ability', 'away_finish_ability_reg + away_creativity_ability_reg + away_progression_ability_reg')
+        FormulaDeriver(result_df).derive('home_defense_ability', 'home_defense_ability_reg + home_aerial_ability_max + home_gk_ability')
+        FormulaDeriver(result_df).derive('away_defense_ability', 'away_defense_ability_reg + away_aerial_ability_max + away_gk_ability')
+        FormulaDeriver(result_df).derive('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability')
+        FormulaDeriver(result_df).derive('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability')
+        FormulaDeriver(result_df).derive('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability')
 
-        FormulaDeriver(result_df).process('home_attack_form_over_ability', 'home_attack_form - home_attack_ability')
-        FormulaDeriver(result_df).process('away_attack_form_over_ability', 'away_attack_form - away_attack_ability')
-        FormulaDeriver(result_df).process('home_defense_form_over_ability', 'home_defense_form - home_defense_ability')
-        FormulaDeriver(result_df).process('away_defense_form_over_ability', 'away_defense_form - away_defense_ability')
+        FormulaDeriver(result_df).derive('home_attack_form_over_ability', 'home_attack_form - home_attack_ability')
+        FormulaDeriver(result_df).derive('away_attack_form_over_ability', 'away_attack_form - away_attack_ability')
+        FormulaDeriver(result_df).derive('home_defense_form_over_ability', 'home_defense_form - home_defense_ability')
+        FormulaDeriver(result_df).derive('away_defense_form_over_ability', 'away_defense_form - away_defense_ability')
 
-        FormulaDeriver(result_df).process('home_finish_vs_away_gk_ability', 'home_finish_ability_reg - away_gk_ability')
-        FormulaDeriver(result_df).process('away_finish_vs_home_gk_ability', 'away_finish_ability_reg - home_gk_ability')
+        FormulaDeriver(result_df).derive('home_finish_vs_away_gk_ability', 'home_finish_ability_reg - away_gk_ability')
+        FormulaDeriver(result_df).derive('away_finish_vs_home_gk_ability', 'away_finish_ability_reg - home_gk_ability')
 
-        FormulaDeriver(result_df).process('home_total_luck', 'home_attack_form_over_ability + home_defense_form_over_ability')
-        FormulaDeriver(result_df).process('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability')
+        FormulaDeriver(result_df).derive('home_total_luck', 'home_attack_form_over_ability + home_defense_form_over_ability')
+        FormulaDeriver(result_df).derive('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability')
         return result_df

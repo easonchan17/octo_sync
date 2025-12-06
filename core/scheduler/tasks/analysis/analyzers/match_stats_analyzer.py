@@ -352,23 +352,23 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             ]), na=False)
         )
 
-        ConditionalDeriver(df).process(
+        ConditionalDeriver(df).derive(
             "home_point",
             ["home_gf > away_gf", "home_gf == away_gf", "home_gf < away_gf"],
             [3, 1, 0]
         )
-        ConditionalDeriver(df).process(
+        ConditionalDeriver(df).derive(
             "away_point",
             ["home_gf > away_gf", "home_gf == away_gf", "home_gf < away_gf"],
             [0, 1, 3]
         )
-        HeadToHeadPointsDeriver(df).process("h2h_points")
+        HeadToHeadPointsDeriver(df).derive("h2h_points")
 
-        MeanImputer(df).process("home_average_shot_distance", 1)
-        MeanImputer(df).process("away_average_shot_distance", 1)
+        MeanImputer(df).impute("home_average_shot_distance", 1)
+        MeanImputer(df).impute("away_average_shot_distance", 1)
 
         deriver = MatchTimeSeriesDeriver(df)
-        deriver.process_rest_days(decimals=2)
+        deriver.derive_rest_days(decimals=2)
         selected_features = [
             "gf", "xg", "possession",
             "sca", "sca_passes_dead", "sca_take_ons",
@@ -383,10 +383,10 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             "gk_psxg", "gk_crosses_stopped", "gk_crosses",
             "gk_def_actions_outside_pen_area", "gk_avg_distance_def_actions"
         ]
-        deriver.process_ema_batch(selected_features, decimals=1, min_periods = 2)
-        deriver.process_lagged("xg", decimals=1)
-        deriver.process_ppg("point", is_home=True, min_periods = 2)
-        deriver.process_ppg("point", is_home=False, min_periods = 2)
+        deriver.derive_ema_batch(selected_features, decimals=1, min_periods = 2)
+        deriver.derive_lagged("xg", decimals=1)
+        deriver.derive_ppg("point", is_home=True, min_periods = 2)
+        deriver.derive_ppg("point", is_home=False, min_periods = 2)
 
         df = deriver.df
 
@@ -402,97 +402,97 @@ class MatchStatsAnalyzer(BaseAnalyzer):
 
 
         # Finishing ability (overperformance)
-        FormulaDeriver(df).process("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5", 1)
-        FormulaDeriver(df).process("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5", 1)
+        FormulaDeriver(df).derive("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5", 1)
+        FormulaDeriver(df).derive("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5", 1)
 
         # Attacking pressure (field tilt)
-        FormulaDeriver(df).process("home_field_tilt_ema_5", "home_passes_into_final_third_ema_5 / (home_passes_into_final_third_ema_5 + away_passes_into_final_third_ema_5) * 100")
-        FormulaDeriver(df).process("away_field_tilt_ema_5", "100 - home_field_tilt_ema_5")
+        FormulaDeriver(df).derive("home_field_tilt_ema_5", "home_passes_into_final_third_ema_5 / (home_passes_into_final_third_ema_5 + away_passes_into_final_third_ema_5) * 100")
+        FormulaDeriver(df).derive("away_field_tilt_ema_5", "100 - home_field_tilt_ema_5")
 
         # Safe possession control
-        FormulaDeriver(df).process("home_safe_control_ema_5", "home_possession_ema_5 - home_field_tilt_ema_5")
-        FormulaDeriver(df).process("away_safe_control_ema_5", "away_possession_ema_5 - away_field_tilt_ema_5")
+        FormulaDeriver(df).derive("home_safe_control_ema_5", "home_possession_ema_5 - home_field_tilt_ema_5")
+        FormulaDeriver(df).derive("away_safe_control_ema_5", "away_possession_ema_5 - away_field_tilt_ema_5")
 
         # Long pass accuracy
-        FormulaDeriver(df).process("home_long_passes_acc_ema_5", "home_passes_completed_long_ema_5 / home_passes_long_ema_5 * 100")
-        FormulaDeriver(df).process("away_long_passes_acc_ema_5", "away_passes_completed_long_ema_5 / away_passes_long_ema_5 * 100")
+        FormulaDeriver(df).derive("home_long_passes_acc_ema_5", "home_passes_completed_long_ema_5 / home_passes_long_ema_5 * 100")
+        FormulaDeriver(df).derive("away_long_passes_acc_ema_5", "away_passes_completed_long_ema_5 / away_passes_long_ema_5 * 100")
 
         # Long pass share
-        FormulaDeriver(df).process("home_long_passes_share_ema_5", "home_passes_long_ema_5 / home_passes_ema_5 * 100")
-        FormulaDeriver(df).process("away_long_passes_share_ema_5", "away_passes_long_ema_5 / away_passes_ema_5 * 100")
+        FormulaDeriver(df).derive("home_long_passes_share_ema_5", "home_passes_long_ema_5 / home_passes_ema_5 * 100")
+        FormulaDeriver(df).derive("away_long_passes_share_ema_5", "away_passes_long_ema_5 / away_passes_ema_5 * 100")
 
         # Box penetration ratio
-        FormulaDeriver(df).process("home_box_penetration_ratio_ema_5", "home_passes_into_penalty_area_ema_5 / home_passes_into_final_third_ema_5 * 100")
-        FormulaDeriver(df).process("away_box_penetration_ratio_ema_5", "away_passes_into_penalty_area_ema_5 / away_passes_into_final_third_ema_5 * 100")
+        FormulaDeriver(df).derive("home_box_penetration_ratio_ema_5", "home_passes_into_penalty_area_ema_5 / home_passes_into_final_third_ema_5 * 100")
+        FormulaDeriver(df).derive("away_box_penetration_ratio_ema_5", "away_passes_into_penalty_area_ema_5 / away_passes_into_final_third_ema_5 * 100")
 
         # Attacking creativity share
-        FormulaDeriver(df).process("home_creativity_share_ema_5", "home_pass_xa_ema_5 / home_xg_ema_5 * 100")
-        FormulaDeriver(df).process("away_creativity_share_ema_5", "away_pass_xa_ema_5 / away_xg_ema_5 * 100")
+        FormulaDeriver(df).derive("home_creativity_share_ema_5", "home_pass_xa_ema_5 / home_xg_ema_5 * 100")
+        FormulaDeriver(df).derive("away_creativity_share_ema_5", "away_pass_xa_ema_5 / away_xg_ema_5 * 100")
 
         # Final third entry share
-        FormulaDeriver(df).process("home_final_third_entry_share_ema_5", "home_passes_into_final_third_ema_5 / home_passes_ema_5 * 100")
-        FormulaDeriver(df).process("away_final_third_entry_share_ema_5", "away_passes_into_final_third_ema_5 / away_passes_ema_5 * 100")
+        FormulaDeriver(df).derive("home_final_third_entry_share_ema_5", "home_passes_into_final_third_ema_5 / home_passes_ema_5 * 100")
+        FormulaDeriver(df).derive("away_final_third_entry_share_ema_5", "away_passes_into_final_third_ema_5 / away_passes_ema_5 * 100")
 
         # Progressive pass rate
-        FormulaDeriver(df).process("home_passes_progressive_rate_ema_5", "home_passes_progressive_ema_5 / home_passes_ema_5 * 100")
-        FormulaDeriver(df).process("away_passes_progressive_rate_ema_5", "away_passes_progressive_ema_5 / away_passes_ema_5 * 100")
+        FormulaDeriver(df).derive("home_passes_progressive_rate_ema_5", "home_passes_progressive_ema_5 / home_passes_ema_5 * 100")
+        FormulaDeriver(df).derive("away_passes_progressive_rate_ema_5", "away_passes_progressive_ema_5 / away_passes_ema_5 * 100")
 
         # Progressive pass distance share
-        FormulaDeriver(df).process("home_passes_progressive_share_ema_5", "home_passes_progressive_distance_ema_5 / home_passes_total_distance_ema_5 * 100")
-        FormulaDeriver(df).process("away_passes_progressive_share_ema_5", "away_passes_progressive_distance_ema_5 / away_passes_total_distance_ema_5 * 100")
+        FormulaDeriver(df).derive("home_passes_progressive_share_ema_5", "home_passes_progressive_distance_ema_5 / home_passes_total_distance_ema_5 * 100")
+        FormulaDeriver(df).derive("away_passes_progressive_share_ema_5", "away_passes_progressive_distance_ema_5 / away_passes_total_distance_ema_5 * 100")
 
         # Shot accuracy ratio
-        FormulaDeriver(df).process("home_shots_acc_ratio_ema_5", "home_shots_on_target_ema_5 / home_shots_ema_5 * 100")
-        FormulaDeriver(df).process("away_shots_acc_ratio_ema_5", "away_shots_on_target_ema_5 / away_shots_ema_5 * 100")
+        FormulaDeriver(df).derive("home_shots_acc_ratio_ema_5", "home_shots_on_target_ema_5 / home_shots_ema_5 * 100")
+        FormulaDeriver(df).derive("away_shots_acc_ratio_ema_5", "away_shots_on_target_ema_5 / away_shots_ema_5 * 100")
 
         # Shot conversion ratio
-        FormulaDeriver(df).process("home_shots_conversion_ratio_ema_5", "home_gf_ema_5 / home_shots_ema_5 * 100")
-        FormulaDeriver(df).process("away_shots_conversion_ratio_ema_5", "away_gf_ema_5 / away_shots_ema_5 * 100")
+        FormulaDeriver(df).derive("home_shots_conversion_ratio_ema_5", "home_gf_ema_5 / home_shots_ema_5 * 100")
+        FormulaDeriver(df).derive("away_shots_conversion_ratio_ema_5", "away_gf_ema_5 / away_shots_ema_5 * 100")
 
         # Finishing ability ratio
-        FormulaDeriver(df).process("home_goal_to_xg_ema_5", "home_gf_ema_5 / home_xg_ema_5 * 100")
-        FormulaDeriver(df).process("away_goal_to_xg_ema_5", "away_gf_ema_5 / away_xg_ema_5 * 100")
+        FormulaDeriver(df).derive("home_goal_to_xg_ema_5", "home_gf_ema_5 / home_xg_ema_5 * 100")
+        FormulaDeriver(df).derive("away_goal_to_xg_ema_5", "away_gf_ema_5 / away_xg_ema_5 * 100")
 
         # Goalkeeper save ability above average
-        FormulaDeriver(df).process("home_gsaa_ema_5", "home_gk_psxg_ema_5 - away_gf_ema_5", decimals=1)
-        FormulaDeriver(df).process("away_gsaa_ema_5", "away_gk_psxg_ema_5 - home_gf_ema_5", decimals=1)
+        FormulaDeriver(df).derive("home_gsaa_ema_5", "home_gk_psxg_ema_5 - away_gf_ema_5", decimals=1)
+        FormulaDeriver(df).derive("away_gsaa_ema_5", "away_gk_psxg_ema_5 - home_gf_ema_5", decimals=1)
 
         # Tackle success ratio
-        FormulaDeriver(df).process("home_tackles_success_ratio_ema_5", "home_tackles_won_ema_5 / home_tackles_ema_5 * 100")
-        FormulaDeriver(df).process("away_tackles_success_ratio_ema_5", "away_tackles_won_ema_5 / away_tackles_ema_5 * 100")
+        FormulaDeriver(df).derive("home_tackles_success_ratio_ema_5", "home_tackles_won_ema_5 / home_tackles_ema_5 * 100")
+        FormulaDeriver(df).derive("away_tackles_success_ratio_ema_5", "away_tackles_won_ema_5 / away_tackles_ema_5 * 100")
 
         # Challenge success ability
-        FormulaDeriver(df).process("home_challenges_success_ratio_ema_5", "(home_challenges_ema_5-home_challenges_lost_ema_5) / home_challenges_ema_5 * 100")
-        FormulaDeriver(df).process("away_challenges_success_ratio_ema_5", "(away_challenges_ema_5-away_challenges_lost_ema_5) / away_challenges_ema_5 * 100")
+        FormulaDeriver(df).derive("home_challenges_success_ratio_ema_5", "(home_challenges_ema_5-home_challenges_lost_ema_5) / home_challenges_ema_5 * 100")
+        FormulaDeriver(df).derive("away_challenges_success_ratio_ema_5", "(away_challenges_ema_5-away_challenges_lost_ema_5) / away_challenges_ema_5 * 100")
 
         # High press ability
-        FormulaDeriver(df).process("home_high_press_ratio_ema_5", "home_tackles_att_third_ema_5 / home_tackles_ema_5 * 100")
-        FormulaDeriver(df).process("away_high_press_ratio_ema_5", "away_tackles_att_third_ema_5 / away_tackles_ema_5 * 100")
+        FormulaDeriver(df).derive("home_high_press_ratio_ema_5", "home_tackles_att_third_ema_5 / home_tackles_ema_5 * 100")
+        FormulaDeriver(df).derive("away_high_press_ratio_ema_5", "away_tackles_att_third_ema_5 / away_tackles_ema_5 * 100")
 
         # Disruption volume
-        FormulaDeriver(df).process("home_disruption_volume_ema_5", "home_blocks_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5")
-        FormulaDeriver(df).process("away_disruption_volume_ema_5", "away_blocks_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5")
+        FormulaDeriver(df).derive("home_disruption_volume_ema_5", "home_blocks_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5")
+        FormulaDeriver(df).derive("away_disruption_volume_ema_5", "away_blocks_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5")
 
         # Passes allowed per defensive action
-        FormulaDeriver(df).process("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5)", decimals=2)
-        FormulaDeriver(df).process("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5)", decimals=2)
+        FormulaDeriver(df).derive("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5)", decimals=2)
+        FormulaDeriver(df).derive("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5)", decimals=2)
 
         # Goalkeeper aerial control
-        FormulaDeriver(df).process("home_gk_crosses_stopped_ratio_ema_5", "home_gk_crosses_stopped_ema_5 / home_gk_crosses_ema_5 * 100")
-        FormulaDeriver(df).process("away_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ema_5 / away_gk_crosses_ema_5 * 100")
+        FormulaDeriver(df).derive("home_gk_crosses_stopped_ratio_ema_5", "home_gk_crosses_stopped_ema_5 / home_gk_crosses_ema_5 * 100")
+        FormulaDeriver(df).derive("away_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ema_5 / away_gk_crosses_ema_5 * 100")
 
         # Set piece creation ability
-        FormulaDeriver(df).process("home_set_piece_sca_ratio_ema_5", "home_sca_passes_dead_ema_5 / home_sca_ema_5 * 100")
-        FormulaDeriver(df).process("away_set_piece_sca_ratio_ema_5", "away_sca_passes_dead_ema_5 / away_sca_ema_5 * 100")
+        FormulaDeriver(df).derive("home_set_piece_sca_ratio_ema_5", "home_sca_passes_dead_ema_5 / home_sca_ema_5 * 100")
+        FormulaDeriver(df).derive("away_set_piece_sca_ratio_ema_5", "away_sca_passes_dead_ema_5 / away_sca_ema_5 * 100")
 
         # Dribbling ability
-        FormulaDeriver(df).process("home_take_on_sca_ratio_ema_5", "home_sca_take_ons_ema_5 / home_sca_ema_5 * 100")
-        FormulaDeriver(df).process("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5 * 100")
+        FormulaDeriver(df).derive("home_take_on_sca_ratio_ema_5", "home_sca_take_ons_ema_5 / home_sca_ema_5 * 100")
+        FormulaDeriver(df).derive("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5 * 100")
 
-        FormulaDeriver(df).process("home_home_dependency", "home_point_home_ema_5 - home_point_away_ema_5", decimals=2)
-        FormulaDeriver(df).process("away_home_dependency", "away_point_home_ema_5 - away_point_away_ema_5", decimals=2)
+        FormulaDeriver(df).derive("home_home_dependency", "home_point_home_ema_5 - home_point_away_ema_5", decimals=2)
+        FormulaDeriver(df).derive("away_home_dependency", "away_point_home_ema_5 - away_point_away_ema_5", decimals=2)
 
-        DifferenceDeriver(df).process([
+        DifferenceDeriver(df).derive([
             "rest_days",
             "h2h_points",
             "xg_ema_5",
@@ -541,7 +541,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             "take_on_sca_ratio_ema_5"
         ], decimals=2)
 
-        PageUrlDeriver(df).process()
+        PageUrlDeriver(df).derive()
 
         if not required_features:
             required_features = [
