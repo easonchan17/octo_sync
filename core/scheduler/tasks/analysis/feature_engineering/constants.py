@@ -12,16 +12,27 @@ AWAY_CODE_COL        = "away_code"
 POINT_COL            = "point"
 HOME_POINT_COL       = "home_point"
 AWAY_POINT_COL       = "away_point"
+HOME_GF_COL          = "home_gf"
+AWAY_GF_COL          = "away_gf"
 HOME_POSSESSION_COL  = "home_possession"
 AWAY_POSSESSION_COL  = "away_possession"
 PAGE_URL_COL         = "page_url"
 MATCH_REPORT_COL     = "match_report"
+XG_COL               = "xg"
+NOTES_COL            = "notes"
 
 PLAYER_CODE_COL      = "player_code"
 IS_STARTER_COL       = "is_starter"
 POSITION_COL         = "position"
 PRIMARY_POSITION_COL = "primary_position"
 MINUTES_PLAYED_COL   = "minutes"
+NON_PENALTY_GOALS_COL = "non_penalty_goals"
+GOALS_COL            = "goals"
+PENALTIES_MADE_COL   = "penalties_made"
+
+
+HOME_VENUE = "home"
+AWAY_VENUE = "away"
 
 EPSILON = 1e-6
 IMPUTATION_QUANTILE = 0.15

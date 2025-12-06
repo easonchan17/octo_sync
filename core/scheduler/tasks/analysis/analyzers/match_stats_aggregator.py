@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -23,7 +24,53 @@ from core.utils.pandas_utils import save_dataframe
 from .match_stats_analyzer import MatchStatsAnalyzer
 from .player_stats_analyzer import OutfieldPlayerStatsAnalyzer, GoalkeeperStatsAnalyzer
 
+
 class MatchStatsAggregator(BaseTask):
+    OUTFIELD_FEATURES = [
+        'finish_form', 'finish_ability',
+        'creativity_form', 'creativity_ability',
+        'progression_form', 'progression_ability',
+        'defense_form', 'defense_ability',
+        'aerial_form', 'aerial_ability'
+    ]
+
+    GK_FEATURES = ['gk_form', 'gk_ability']
+
+    HOME_AWAY_DIFF_FEATURES = [
+        'finish_form_reg', 'finish_ability_reg',
+        'creativity_form_reg', 'creativity_ability_reg',
+        'progression_form_reg', 'progression_ability_reg',
+        'defense_form_reg', 'defense_ability_reg',
+        'aerial_form_max', 'aerial_form_avg',
+        'aerial_ability_max', 'aerial_ability_avg',
+        'gk_form', 'gk_ability'
+    ]
+
+    FORMULA_BASED_FEATURES = [
+        ('home_attack_form', 'home_finish_form_reg + home_creativity_form_reg + home_progression_form_reg'),
+        ('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg'),
+        ('home_defense_form', 'home_defense_form_reg + home_aerial_form_max + home_gk_form'),
+        ('away_defense_form', 'away_defense_form_reg + away_aerial_form_max + away_gk_form'),
+        ('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form', 4),
+        ('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form', 4),
+        ('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form', 4),
+        ('home_attack_ability', 'home_finish_ability_reg + home_creativity_ability_reg + home_progression_ability_reg'),
+        ('away_attack_ability', 'away_finish_ability_reg + away_creativity_ability_reg + away_progression_ability_reg'),
+        ('home_defense_ability', 'home_defense_ability_reg + home_aerial_ability_max + home_gk_ability'),
+        ('away_defense_ability', 'away_defense_ability_reg + away_aerial_ability_max + away_gk_ability'),
+        ('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability', 4),
+        ('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability', 4),
+        ('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability', 4),
+        ('home_attack_form_over_ability', 'home_attack_form - home_attack_ability', 4),
+        ('away_attack_form_over_ability', 'away_attack_form - away_attack_ability', 4),
+        ('home_defense_form_over_ability', 'home_defense_form - home_defense_ability', 4),
+        ('away_defense_form_over_ability', 'away_defense_form - away_defense_ability', 4),
+        ('home_finish_vs_away_gk_ability', 'home_finish_ability_reg - away_gk_ability', 4),
+        ('away_finish_vs_home_gk_ability', 'away_finish_ability_reg - home_gk_ability', 4),
+        ('home_total_luck', 'home_attack_form_over_ability + home_defense_form_over_ability'),
+        ('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability'),
+    ]
+
     def __init__(self, site, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self.match_stats_analyzer = MatchStatsAnalyzer(site, payload)
@@ -90,294 +137,162 @@ class MatchStatsAggregator(BaseTask):
 
     def aggregate(
         self,
-        match_stats_df: Optional[pd.DataFrame],
-        outfield_player_stats_df: Optional[pd.DataFrame],
-        goalkeeper_stats_df: Optional[pd.DataFrame]
+        match_stats_df: pd.DataFrame,
+        outfield_player_stats_df: pd.DataFrame,
+        goalkeeper_stats_df: pd.DataFrame
     ) -> pd.DataFrame:
-        result_df = match_stats_df.copy()
-
-        outfield_starters = outfield_player_stats_df[
-            (outfield_player_stats_df[IS_STARTER_COL] == True) &
-            (outfield_player_stats_df[PRIMARY_POSITION_COL] != 'GK')
-        ].copy()
+        outfield_starters = outfield_player_stats_df[outfield_player_stats_df[IS_STARTER_COL] == True].copy()
         if outfield_starters.empty:
             raise ValueError("No outfield starters found")
 
-        goalkeeper_starters = goalkeeper_stats_df[
-            goalkeeper_stats_df[IS_STARTER_COL] == True
-        ].copy()
-        if goalkeeper_starters.empty:
+        outfield_count = outfield_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).size()
+        if (outfield_count != 10).any():
+            raise ValueError("Outfield starters count is not 10")
+
+
+        gk_starters = goalkeeper_stats_df[goalkeeper_stats_df[IS_STARTER_COL] == True].copy()
+        if gk_starters.empty:
             raise ValueError("No goalkeeper starters found")
 
-        position_features = [
-            'finishing_form', 'finishing_ability',
-            'creativity_form', 'creativity_ability',
-            'progression_form', 'progression_ability',
-            'defense_form', 'defense_ability',
-            'aerial_form', 'aerial_ability'
+        gk_count = gk_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).size()
+        if (gk_count != 1).any():
+            raise ValueError("Goalkeeper starters count is not 1")
+
+
+        outfield_stats_map = {}
+        for feature in self.OUTFIELD_FEATURES:
+            quantile_by_position = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(IMPUTATION_QUANTILE)
+            outfield_stats_map[feature] = quantile_by_position.to_dict()
+
+        gk_stats_map = {}
+        for feature in self.GK_FEATURES:
+            gk_stats_map[feature] = gk_starters[feature].quantile(IMPUTATION_QUANTILE)
+
+        for feature in self.OUTFIELD_FEATURES:
+            fill_values = outfield_starters[PRIMARY_POSITION_COL].map(outfield_stats_map[feature])
+            outfield_starters[feature] = outfield_starters[feature].fillna(fill_values)
+
+        for feature in self.GK_FEATURES:
+            gk_starters[feature] = gk_starters[feature].fillna(gk_stats_map[feature])
+
+        # for idx, match_data in match_stats_df.iterrows():
+        #     self._aggregate_match(match_data, outfield_starters, gk_starters)
+        #     match_stats_df.loc[idx] = match_data
+
+        agg_rules = {}
+
+        sum_features_map = {
+            'finish': (FINISH_REG_POSITIONS, ['finish_form', 'finish_ability']),
+            'creativity': (CREATIVITY_REG_POSITIONS, ['creativity_form', 'creativity_ability']),
+            'progression': (PROGRESSION_REG_POSITIONS, ['progression_form', 'progression_ability']),
+            'defense': (DEFENSE_REG_POSITIONS, ['defense_form', 'defense_ability'])
+        }
+        for positions, features in sum_features_map.values():
+            mask = outfield_starters[PRIMARY_POSITION_COL].isin(positions)
+            for feature in features:
+                outfield_starters[f"{feature}_reg_tmp"] = outfield_starters[feature].where(mask, 0.0)
+                agg_rules[f"{feature}_reg_tmp"] = "sum"
+
+        aerial_max_mask = outfield_starters[PRIMARY_POSITION_COL].isin(AERIAL_MAX_POSITIONS)
+        aerial_avg_mask = outfield_starters[PRIMARY_POSITION_COL].isin(AERIAL_AVG_POSITIONS)
+        for feature in ['aerial_form', 'aerial_ability']:
+            outfield_starters[f"{feature}_max_tmp"] = outfield_starters[feature].where(aerial_max_mask, np.nan)
+            agg_rules[f"{feature}_max_tmp"] = "max"
+            outfield_starters[f"{feature}_avg_tmp"] = outfield_starters[feature].where(aerial_avg_mask, np.nan)
+            agg_rules[f"{feature}_avg_tmp"] = "mean"
+
+        team_stats = outfield_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).agg(agg_rules).round(4).reset_index()
+        rename_dict = {feature: feature.replace('_reg_tmp', '_reg').replace('_max_tmp', '_max').replace('_avg_tmp', '_avg')
+                       for feature in team_stats.columns if '_tmp' in feature}
+        team_stats = team_stats.rename(columns=rename_dict)
+
+        gk_stats = gk_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL])[['gk_form', 'gk_ability']].first().reset_index()
+        team_stats = team_stats.merge(
+            gk_stats,
+            on=[FIXTURE_CODE_COL, TEAM_CODE_COL],
+            how='inner'
+        )
+
+        home_stats = team_stats.copy()
+        home_stats.columns = [
+            f"home_{feature}" if feature not in [FIXTURE_CODE_COL, TEAM_CODE_COL] else feature for feature in home_stats.columns
         ]
 
-        position_stats_map = {}
-        for feature in position_features:
-            if feature in outfield_starters.columns:
-                feature_position_quantile = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(IMPUTATION_QUANTILE)
-                position_stats_map[feature] = feature_position_quantile.to_dict()
-                self.logger.debug(f"Position 25th percentile for {feature}: {position_stats_map[feature]}")
+        match_stats_df = match_stats_df.merge(
+            home_stats,
+            left_on=[FIXTURE_CODE_COL, HOME_CODE_COL],
+            right_on=[FIXTURE_CODE_COL, TEAM_CODE_COL],
+            how='inner'
+        ).drop(columns=[TEAM_CODE_COL])
 
-        gk_features = ['gk_form', 'gk_ability']
-        gk_position_stats_map = {}
-        for feature in gk_features:
-            if feature in goalkeeper_starters.columns:
-                gk_quantile = goalkeeper_starters[feature].quantile(IMPUTATION_QUANTILE)
-                gk_position_stats_map[feature] = gk_quantile
-                self.logger.debug(f"GK 25th percentile for {feature}: {gk_quantile}")
-
-        for idx, match_row in result_df.iterrows():
-            match_code = match_row[FIXTURE_CODE_COL]
-            home_code = match_row[HOME_CODE_COL]
-            away_code = match_row[AWAY_CODE_COL]
-
-            match_outfield = outfield_starters[outfield_starters[FIXTURE_CODE_COL] == match_code]
-            match_gk = goalkeeper_starters[goalkeeper_starters[FIXTURE_CODE_COL] == match_code]
-
-            home_outfield = match_outfield[match_outfield[TEAM_CODE_COL] == home_code]
-            away_outfield = match_outfield[match_outfield[TEAM_CODE_COL] == away_code]
-
-            home_gk = match_gk[match_gk[TEAM_CODE_COL] == home_code]
-            away_gk = match_gk[match_gk[TEAM_CODE_COL] == away_code]
-
-            for prefix, outfield_df in [('home', home_outfield), ('away', away_outfield)]:
-                finish_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(FINISH_REG_POSITIONS)
-                creativity_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(CREATIVITY_REG_POSITIONS)
-                progression_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(PROGRESSION_REG_POSITIONS)
-                defense_reg_mask = outfield_df[PRIMARY_POSITION_COL].isin(DEFENSE_REG_POSITIONS)
-                aerial_max_mask = outfield_df[PRIMARY_POSITION_COL].isin(AERIAL_MAX_POSITIONS)
-                aerial_avg_mask = outfield_df[PRIMARY_POSITION_COL].isin(AERIAL_AVG_POSITIONS)
-
-                finish_reg_data = outfield_df[finish_reg_mask]
-                creativity_reg_data = outfield_df[creativity_reg_mask]
-                progression_reg_data = outfield_df[progression_reg_mask]
-                defense_reg_data = outfield_df[defense_reg_mask]
-
-                def fill_na_with_position_average(data_df, feature_name, positions, fallback_default=1.0):
-                    if data_df.empty or feature_name not in data_df.columns:
-                        return pd.Series(dtype=float)
-
-                    filled_series = data_df[feature_name].copy()
-                    na_mask = filled_series.isna()
-
-                    if not na_mask.any():
-                        return filled_series
-
-                    for idx in filled_series[na_mask].index:
-                        if idx not in data_df.index:
-                            continue
-
-                        player_position = data_df.loc[idx, PRIMARY_POSITION_COL]
-
-                        if pd.isna(player_position):
-                            filled_series.loc[idx] = fallback_default
-                            continue
-
-                        position_quantile = position_stats_map.get(feature_name, {}).get(player_position)
-
-                        if position_quantile is not None and not pd.isna(position_quantile):
-                            filled_series.loc[idx] = position_quantile
-                        else:
-                            if positions:
-                                position_group_quantiles = [
-                                    position_stats_map.get(feature_name, {}).get(pos)
-                                    for pos in positions
-                                    if position_stats_map.get(feature_name, {}).get(pos) is not None
-                                ]
-                                if position_group_quantiles:
-                                    filled_series.loc[idx] = sum(position_group_quantiles) / len(position_group_quantiles)
-                                else:
-                                    filled_series.loc[idx] = fallback_default
-                            else:
-                                filled_series.loc[idx] = fallback_default
-
-                    return filled_series
-
-                finish_form_filled = fill_na_with_position_average(
-                    finish_reg_data,
-                    'finishing_form',
-                    FINISH_REG_POSITIONS,
-                    fallback_default=0.0
-                )
-                finish_ability_filled = fill_na_with_position_average(
-                    finish_reg_data,
-                    'finishing_ability',
-                    FINISH_REG_POSITIONS,
-                    fallback_default=1.0
-                )
-                creativity_form_filled = fill_na_with_position_average(
-                    creativity_reg_data,
-                    'creativity_form',
-                    CREATIVITY_REG_POSITIONS,
-                    fallback_default=0.0
-                )
-                creativity_ability_filled = fill_na_with_position_average(
-                    creativity_reg_data,
-                    'creativity_ability',
-                    CREATIVITY_REG_POSITIONS,
-                    fallback_default=1.0
-                )
-                progression_form_filled = fill_na_with_position_average(
-                    progression_reg_data,
-                    'progression_form',
-                    PROGRESSION_REG_POSITIONS,
-                    fallback_default=0.0
-                )
-                progression_ability_filled = fill_na_with_position_average(
-                    progression_reg_data,
-                    'progression_ability',
-                    PROGRESSION_REG_POSITIONS,
-                    fallback_default=1.0
-                )
-                defense_form_filled = fill_na_with_position_average(
-                    defense_reg_data,
-                    'defense_form',
-                    DEFENSE_REG_POSITIONS,
-                    fallback_default=0.0
-                )
-                defense_ability_filled = fill_na_with_position_average(
-                    defense_reg_data,
-                    'defense_ability',
-                    DEFENSE_REG_POSITIONS,
-                    fallback_default=1.0
-                )
-
-                result_df.at[idx, f'{prefix}_finish_form_reg'] = finish_form_filled.sum()
-                result_df.at[idx, f'{prefix}_finish_ability_reg'] = finish_ability_filled.sum()
-                result_df.at[idx, f'{prefix}_creativity_form_reg'] = creativity_form_filled.sum()
-                result_df.at[idx, f'{prefix}_creativity_ability_reg'] = creativity_ability_filled.sum()
-                result_df.at[idx, f'{prefix}_progression_form_reg'] = progression_form_filled.sum()
-                result_df.at[idx, f'{prefix}_progression_ability_reg'] = progression_ability_filled.sum()
-                result_df.at[idx, f'{prefix}_defense_form_reg'] = defense_form_filled.sum()
-                result_df.at[idx, f'{prefix}_defense_ability_reg'] = defense_ability_filled.sum()
-
-                aerial_max_data_df = outfield_df[aerial_max_mask]
-                if not aerial_max_data_df.empty:
-                    aerial_max_data_filled = fill_na_with_position_average(
-                        aerial_max_data_df,
-                        'aerial_form',
-                        AERIAL_MAX_POSITIONS,
-                        fallback_default=0.0
-                    )
-                    result_df.at[idx, f'{prefix}_aerial_form_max'] = aerial_max_data_filled.max()
-                else:
-                    result_df.at[idx, f'{prefix}_aerial_form_max'] = 0.0
-
-                aerial_avg_data_df = outfield_df[aerial_avg_mask]
-                if not aerial_avg_data_df.empty:
-                    aerial_avg_data_filled = fill_na_with_position_average(
-                        aerial_avg_data_df,
-                        'aerial_form',
-                        AERIAL_AVG_POSITIONS,
-                        fallback_default=0.0
-                    )
-                    result_df.at[idx, f'{prefix}_aerial_form_avg'] = round(aerial_avg_data_filled.mean(), 4)
-                else:
-                    result_df.at[idx, f'{prefix}_aerial_form_avg'] = 0.0
-
-                aerial_max_ability_data_df = outfield_df[aerial_max_mask]
-                if not aerial_max_ability_data_df.empty:
-                    aerial_max_ability_data_filled = fill_na_with_position_average(
-                        aerial_max_ability_data_df,
-                        'aerial_ability',
-                        AERIAL_MAX_POSITIONS,
-                        fallback_default=1.0
-                    )
-                    result_df.at[idx, f'{prefix}_aerial_ability_max'] = aerial_max_ability_data_filled.max()
-                else:
-                    result_df.at[idx, f'{prefix}_aerial_ability_max'] = 0.0
-
-                aerial_avg_ability_data_df = outfield_df[aerial_avg_mask]
-                if not aerial_avg_ability_data_df.empty:
-                    aerial_avg_ability_data_filled = fill_na_with_position_average(
-                        aerial_avg_ability_data_df,
-                        'aerial_ability',
-                        AERIAL_AVG_POSITIONS,
-                        fallback_default=1.0
-                    )
-                    result_df.at[idx, f'{prefix}_aerial_ability_avg'] = round(aerial_avg_ability_data_filled.mean(), 4)
-                else:
-                    result_df.at[idx, f'{prefix}_aerial_ability_avg'] = 0.0
-
-            for prefix, gk_df in [('home', home_gk), ('away', away_gk)]:
-                if not gk_df.empty:
-                    gk_row = gk_df.iloc[0]
-                    if 'gk_form' in gk_row:
-                        gk_form_val = gk_row['gk_form']
-                        if pd.isna(gk_form_val):
-                            gk_form_val = gk_position_stats_map.get('gk_form', 0.0)
-                        result_df.at[idx, f'{prefix}_gk_form'] = round(gk_form_val, 4)
-                    else:
-                        result_df.at[idx, f'{prefix}_gk_form'] = round(gk_position_stats_map.get('gk_form', 0.0), 4)
-                    if 'gk_ability' in gk_row:
-                        gk_ability_val = gk_row['gk_ability']
-                        if pd.isna(gk_ability_val):
-                            gk_ability_val = gk_position_stats_map.get('gk_ability', 1.0)
-                        result_df.at[idx, f'{prefix}_gk_ability'] = round(gk_ability_val, 4)
-                    else:
-                        result_df.at[idx, f'{prefix}_gk_ability'] = round(gk_position_stats_map.get('gk_ability', 1.0), 4)
-                else:
-                    result_df.at[idx, f'{prefix}_gk_form'] = round(gk_position_stats_map.get('gk_form', 0.0), 4)
-                    result_df.at[idx, f'{prefix}_gk_ability'] = round(gk_position_stats_map.get('gk_ability', 1.0), 4)
-
-        diff_features = [
-            'finish_form_reg',
-            'finish_ability_reg',
-            'creativity_form_reg',
-            'creativity_ability_reg',
-            'progression_form_reg',
-            'progression_ability_reg',
-            'defense_form_reg',
-            'defense_ability_reg',
-            'aerial_form_max',
-            'aerial_form_avg',
-            'aerial_ability_max',
-            'aerial_ability_avg',
-            'gk_form',
-            'gk_ability'
+        away_stats = team_stats.copy()
+        away_stats.columns = [
+            f"away_{feature}" if feature not in [FIXTURE_CODE_COL, TEAM_CODE_COL] else feature for feature in away_stats.columns
         ]
+        match_stats_df = match_stats_df.merge(
+            away_stats,
+            left_on=[FIXTURE_CODE_COL, AWAY_CODE_COL],
+            right_on=[FIXTURE_CODE_COL, TEAM_CODE_COL],
+            how='inner'
+        ).drop(columns=[TEAM_CODE_COL])
 
-        for feature_name in diff_features:
-            home_col = f'home_{feature_name}'
-            away_col = f'away_{feature_name}'
-            diff_col = f'{feature_name}_diff'
+        for feature in self.HOME_AWAY_DIFF_FEATURES:
+            name = f'{feature}_diff'
+            formula = f"home_{feature} - away_{feature}"
+            FormulaDeriver(match_stats_df).derive(name, formula, decimals=4)
 
-            if home_col in result_df.columns and away_col in result_df.columns:
-                result_df[diff_col] = round(result_df[home_col] - result_df[away_col], 4)
-            else:
-                self.logger.error(f"Cannot create {diff_col}: missing {home_col} or {away_col}")
-                return None
+        for item in self.FORMULA_BASED_FEATURES:
+            feature, formula = item[0], item[1]
+            decimals = item[2] if len(item) > 2 else 4
+            FormulaDeriver(match_stats_df).derive(feature, formula, decimals=decimals)
 
-        FormulaDeriver(result_df).derive('home_attack_form', 'home_finish_form_reg + home_creativity_form_reg + home_progression_form_reg')
-        FormulaDeriver(result_df).derive('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg')
-        FormulaDeriver(result_df).derive('home_defense_form', 'home_defense_form_reg + home_aerial_form_max + home_gk_form')
-        FormulaDeriver(result_df).derive('away_defense_form', 'away_defense_form_reg + away_aerial_form_max + away_gk_form')
-        FormulaDeriver(result_df).derive('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form')
-        FormulaDeriver(result_df).derive('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form')
-        FormulaDeriver(result_df).derive('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form')
+        return match_stats_df
 
-        FormulaDeriver(result_df).derive('home_attack_ability', 'home_finish_ability_reg + home_creativity_ability_reg + home_progression_ability_reg')
-        FormulaDeriver(result_df).derive('away_attack_ability', 'away_finish_ability_reg + away_creativity_ability_reg + away_progression_ability_reg')
-        FormulaDeriver(result_df).derive('home_defense_ability', 'home_defense_ability_reg + home_aerial_ability_max + home_gk_ability')
-        FormulaDeriver(result_df).derive('away_defense_ability', 'away_defense_ability_reg + away_aerial_ability_max + away_gk_ability')
-        FormulaDeriver(result_df).derive('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability')
-        FormulaDeriver(result_df).derive('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability')
-        FormulaDeriver(result_df).derive('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability')
+    # def _aggregate_match(
+    #     self,
+    #     match_data: pd.Series,
+    #     outfield_starters: pd.DataFrame,
+    #     gk_starters: pd.DataFrame
+    # ) -> None:
+    #     match_code = match_data[FIXTURE_CODE_COL]
+    #     home_code = match_data[HOME_CODE_COL]
+    #     away_code = match_data[AWAY_CODE_COL]
 
-        FormulaDeriver(result_df).derive('home_attack_form_over_ability', 'home_attack_form - home_attack_ability')
-        FormulaDeriver(result_df).derive('away_attack_form_over_ability', 'away_attack_form - away_attack_ability')
-        FormulaDeriver(result_df).derive('home_defense_form_over_ability', 'home_defense_form - home_defense_ability')
-        FormulaDeriver(result_df).derive('away_defense_form_over_ability', 'away_defense_form - away_defense_ability')
+    #     match_outfield = outfield_starters[outfield_starters[FIXTURE_CODE_COL] == match_code]
+    #     match_gk = gk_starters[gk_starters[FIXTURE_CODE_COL] == match_code]
 
-        FormulaDeriver(result_df).derive('home_finish_vs_away_gk_ability', 'home_finish_ability_reg - away_gk_ability')
-        FormulaDeriver(result_df).derive('away_finish_vs_home_gk_ability', 'away_finish_ability_reg - home_gk_ability')
+    #     home_outfield = match_outfield[match_outfield[TEAM_CODE_COL] == home_code]
+    #     away_outfield = match_outfield[match_outfield[TEAM_CODE_COL] == away_code]
+    #     home_gk = match_gk[match_gk[TEAM_CODE_COL] == home_code]
+    #     away_gk = match_gk[match_gk[TEAM_CODE_COL] == away_code]
 
-        FormulaDeriver(result_df).derive('home_total_luck', 'home_attack_form_over_ability + home_defense_form_over_ability')
-        FormulaDeriver(result_df).derive('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability')
-        return result_df
+    #     if not (len(home_outfield) == len(away_outfield) == 10):
+    #         raise ValueError(f"Match {match_code}: Home outfield={len(home_outfield)}, Away outfield={len(away_outfield)}")
+    #     if not (len(home_gk) == len(away_gk) == 1):
+    #         raise ValueError(f"Match {match_code}: Home GK={len(home_gk)}, Away GK={len(away_gk)}")
+
+    #     for venue, starters in [('home', home_outfield), ('away', away_outfield)]:
+    #         finish_players = starters[starters[PRIMARY_POSITION_COL].isin(FINISH_REG_POSITIONS)]
+    #         creativity_players = starters[starters[PRIMARY_POSITION_COL].isin(CREATIVITY_REG_POSITIONS)]
+    #         progression_players = starters[starters[PRIMARY_POSITION_COL].isin(PROGRESSION_REG_POSITIONS)]
+    #         defense_players = starters[starters[PRIMARY_POSITION_COL].isin(DEFENSE_REG_POSITIONS)]
+    #         aerial_max_players = starters[starters[PRIMARY_POSITION_COL].isin(AERIAL_MAX_POSITIONS)]
+    #         aerial_avg_players = starters[starters[PRIMARY_POSITION_COL].isin(AERIAL_AVG_POSITIONS)]
+
+    #         match_data[f'{venue}_finish_form_reg'] = finish_players['finish_form'].sum()
+    #         match_data[f'{venue}_finish_ability_reg'] = finish_players['finish_ability'].sum()
+    #         match_data[f'{venue}_creativity_form_reg'] = creativity_players['creativity_form'].sum()
+    #         match_data[f'{venue}_creativity_ability_reg'] = creativity_players['creativity_ability'].sum()
+    #         match_data[f'{venue}_progression_form_reg'] = progression_players['progression_form'].sum()
+    #         match_data[f'{venue}_progression_ability_reg'] = progression_players['progression_ability'].sum()
+    #         match_data[f'{venue}_defense_form_reg'] = defense_players['defense_form'].sum()
+    #         match_data[f'{venue}_defense_ability_reg'] = defense_players['defense_ability'].sum()
+    #         match_data[f'{venue}_aerial_form_max'] = aerial_max_players['aerial_form'].max()
+    #         match_data[f'{venue}_aerial_form_avg'] = round(aerial_avg_players['aerial_form'].mean(), 4)
+    #         match_data[f'{venue}_aerial_ability_max'] = aerial_max_players['aerial_ability'].max()
+    #         match_data[f'{venue}_aerial_ability_avg'] = round(aerial_avg_players['aerial_ability'].mean(), 4)
+
+    #     for venue, gk_df in [('home', home_gk), ('away', away_gk)]:
+    #         gk_row = gk_df.iloc[0]
+    #         match_data[f'{venue}_gk_form'] = gk_row['gk_form']
+    #         match_data[f'{venue}_gk_ability'] = gk_row['gk_ability']
