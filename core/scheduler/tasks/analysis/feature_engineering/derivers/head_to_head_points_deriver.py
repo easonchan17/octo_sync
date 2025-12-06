@@ -1,14 +1,8 @@
 import pandas as pd
-from typing import Optional
-from .base_processor import BaseProcessor
-from .constants import (
-    HOME_CODE_COL,
-    AWAY_CODE_COL,
-    HOME_POINT_COL,
-    AWAY_POINT_COL
-)
+from ..processor import FeatureProcessor
+from ..constants import HOME_CODE_COL, AWAY_CODE_COL, HOME_POINT_COL, AWAY_POINT_COL
 
-class HeadToHeadPointsDeriver(BaseProcessor):
+class HeadToHeadPointsDeriver(FeatureProcessor):
     def process(self, feature: str) -> None:
         self.ensure_column_exists(HOME_CODE_COL)
         self.ensure_column_exists(AWAY_CODE_COL)

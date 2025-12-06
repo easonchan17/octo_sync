@@ -1,8 +1,8 @@
 from typing import List, Optional
-from .base_processor import BaseProcessor
-from .constants import MINUTES_PLAYED_COL
+from ..processor import FeatureProcessor
+from ..constants import MINUTES_PLAYED_COL
 
-class PerTimeDeriver(BaseProcessor):
+class PerTimeDeriver(FeatureProcessor):
     def process(self, features: List[str], time_unit: int = 90, threshold: int = 30, decimals: Optional[int] = 2) -> None:
         if not features:
             raise ValueError("Features list cannot be empty")

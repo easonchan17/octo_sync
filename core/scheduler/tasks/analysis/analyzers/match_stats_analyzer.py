@@ -7,15 +7,16 @@ from core.store.postgres.models import (
     Fixture, GoalAndShotCreation, Passing, Shooting,
     DefensiveAction, GoalKeeping
 )
-from ..feature_engineering.sample_filter import SampleFilter
-from ..feature_engineering.mean_imputer import MeanImputer
-from ..feature_engineering.formula_deriver import FormulaDeriver
-from ..feature_engineering.feature_selector import FeatureSelector
-from ..feature_engineering.conditional_deriver import ConditionalDeriver
-from ..feature_engineering.match_time_series_deriver import MatchTimeSeriesDeriver
-from ..feature_engineering.difference_deriver import DifferenceDeriver
-from ..feature_engineering.head_to_head_points_deriver import HeadToHeadPointsDeriver
-from ..feature_engineering.page_url_deriver import PageUrlDeriver
+from ..feature_engineering import (
+    FeatureSelector,
+    MeanImputer,
+    FormulaDeriver,
+    ConditionalDeriver,
+    MatchTimeSeriesDeriver,
+    DifferenceDeriver,
+    HeadToHeadPointsDeriver,
+    PageUrlDeriver
+)
 from .base_analyzer import BaseAnalyzer
 
 class MatchStatsAnalyzer(BaseAnalyzer):
@@ -342,7 +343,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         required_features: Optional[List[str]] = None
     ) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
-        df = SampleFilter(df).process(
+        df = FeatureSelector(df).filter_rows(
             "notes",
             lambda x: x.str.startswith(tuple([
                 "Match Postponed",
@@ -390,14 +391,14 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         df = deriver.df
 
         # TODO: Add features: xg standard deviation for last 10 matches, points gained in last 5 matches
-        df = SampleFilter(df).process("home_rest_days")
-        df = SampleFilter(df).process("away_rest_days")
-        df = SampleFilter(df).process("home_gf_ema_5")
-        df = SampleFilter(df).process("away_gf_ema_5")
-        df = SampleFilter(df).process("home_point_home_ema_5")
-        df = SampleFilter(df).process("away_point_home_ema_5")
-        df = SampleFilter(df).process("home_point_away_ema_5")
-        df = SampleFilter(df).process("away_point_away_ema_5")
+        df = FeatureSelector(df).filter_rows("home_rest_days")
+        df = FeatureSelector(df).filter_rows("away_rest_days")
+        df = FeatureSelector(df).filter_rows("home_gf_ema_5")
+        df = FeatureSelector(df).filter_rows("away_gf_ema_5")
+        df = FeatureSelector(df).filter_rows("home_point_home_ema_5")
+        df = FeatureSelector(df).filter_rows("away_point_home_ema_5")
+        df = FeatureSelector(df).filter_rows("home_point_away_ema_5")
+        df = FeatureSelector(df).filter_rows("away_point_away_ema_5")
 
 
         # Finishing ability (overperformance)
@@ -603,4 +604,4 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                 'home_take_on_sca_ratio_ema_5', 'away_take_on_sca_ratio_ema_5', 'take_on_sca_ratio_ema_5_diff'
             ]
 
-        return FeatureSelector(df).process(required_features)
+        return FeatureSelector(df).select_columns(required_features)
