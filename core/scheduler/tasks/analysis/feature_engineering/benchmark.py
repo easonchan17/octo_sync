@@ -2,7 +2,7 @@ import json
 import numpy as np
 import pandas as pd
 from typing import Dict, List
-from .processor import FeatureProcessor
+from .context import FeatureContext
 from .constants import (
     PRIMARY_POSITION_COL,
     POSITION_COL,
@@ -15,7 +15,7 @@ from .constants import (
     GK_EMPIRICAL_BENCHMARKS
 )
 
-class FeatureBenchmark(FeatureProcessor):
+class FeatureBenchmark(FeatureContext):
     def __init__(self, df: pd.DataFrame):
         super().__init__(df)
 

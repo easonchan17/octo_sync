@@ -1,8 +1,8 @@
 import pandas as pd
 from typing import Callable, Optional, List
-from .processor import FeatureProcessor
+from .context import FeatureContext
 
-class FeatureSelector(FeatureProcessor):
+class FeatureSelector(FeatureContext):
     def select_columns(self, features: List[str]) -> pd.DataFrame:
         if not features:
             raise ValueError("Features list cannot be empty")

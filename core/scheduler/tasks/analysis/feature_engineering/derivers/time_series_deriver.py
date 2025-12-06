@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 from abc import abstractmethod
 from typing import Callable, Optional, Any, List
-from ..processor import FeatureProcessor
+from .base_deriver import BaseDeriver
+from .calculators import rest_days_calculator, ema_calculator, ppg_calculator, lag_calculator
 from ..constants import (
     KICKOFF_TIME_COL,
     REST_DAYS_COL,
@@ -15,105 +16,20 @@ from ..constants import (
     PLAYER_CODE_COL
 )
 
-def rest_days_calculator(
-    df: pd.DataFrame,
-    team_code_col: str,
-    unified_col: str,
-    default_value: Optional[float] = None
-) -> pd.Series:
-    time_diff = df.groupby(
-        team_code_col,
-        observed=True
-    )[unified_col].diff()
-
-    rest_days = time_diff / pd.Timedelta(days=1)
-
-    if default_value is not None:
-        rest_days = rest_days.fillna(default_value)
-
-    return rest_days
-
-def ema_calculator(
-    df: pd.DataFrame,
-    team_code_col: str,
-    unified_col: str,
-    default_value: Optional[float] = None,
-    span: int = 5,
-    min_periods: int = 5
-) -> pd.Series:
-    ema_values = df.groupby(
-        team_code_col,
-        observed=True,
-        group_keys=False
-    )[unified_col].transform(
-        lambda group: group.ewm(
-            span=span,
-            min_periods=min(span, min_periods),
-            adjust=False
-        ).mean().shift(1)
-    )
-
-    if default_value is not None:
-        ema_values = ema_values.fillna(default_value)
-
-    return ema_values
-
-def ppg_calculator(
-    df: pd.DataFrame,
-    team_code_col: str,
-    is_home: bool,
-    unified_col: str,
-    default_value: Optional[float] = None,
-    span: int = 5,
-    min_periods: int = 5
-) -> pd.Series:
-    masked_series = df[unified_col].where(df[IS_HOME_COL] == is_home, np.nan)
-    ppg_values = df.assign(_temp_masked=masked_series).groupby(
-        team_code_col,
-        observed=True,
-        group_keys=False
-    )['_temp_masked'].transform(
-        lambda group: group.ewm(
-            span=span,
-            min_periods=min(span, min_periods),
-            adjust=False,
-            ignore_na=True
-        ).mean().shift(1).ffill()
-    )
-
-    if default_value is not None:
-        ppg_values = ppg_values.fillna(default_value)
-
-    return ppg_values
-
-def lag_calculator(
-    df: pd.DataFrame,
-    team_code_col: str,
-    unified_col: str,
-    default_value: Optional[float] = None
-) -> pd.Series:
-    lagged_values = df.groupby(
-        team_code_col,
-        observed=True,
-        group_keys=False
-    )[unified_col].shift(1)
-
-    if default_value is not None:
-        lagged_values = lagged_values.fillna(default_value)
-
-    return lagged_values
-
-class TimeSeriesDeriver(FeatureProcessor):
+class TimeSeriesDeriver(BaseDeriver):
     def __init__(self, df: pd.DataFrame) -> None:
         super().__init__(df)
         self.create_view()
 
-    def process_rest_days(
+    def derive(self, *args, **kwargs) -> None:
+        pass
+
+    def derive_rest_days(
         self,
         decimals: Optional[int] = 0,
         default_value: Optional[Any] = None
     ) -> None:
-        self.process(
+        self._derive_feature(
             derived_col=REST_DAYS_COL,
             unified_col=KICKOFF_TIME_COL,
             calculator=rest_days_calculator,
@@ -121,7 +37,7 @@ class TimeSeriesDeriver(FeatureProcessor):
             default_value=default_value
         )
 
-    def process_ema(
+    def derive_ema(
         self,
         feature: str,
         decimals: Optional[int] = 0,
@@ -140,7 +56,7 @@ class TimeSeriesDeriver(FeatureProcessor):
                 min_periods
             )
         )
-        self.process(
+        self._derive_feature(
             derived_col=derived_col,
             unified_col=feature,
             calculator=calculator,
@@ -148,7 +64,7 @@ class TimeSeriesDeriver(FeatureProcessor):
             default_value=default_value
         )
 
-    def process_ppg(
+    def derive_ppg(
         self,
         feature: str,
         is_home: bool,
@@ -170,7 +86,7 @@ class TimeSeriesDeriver(FeatureProcessor):
                 min_periods
             )
         )
-        self.process(
+        self._derive_feature(
             derived_col=derived_col,
             unified_col=feature,
             calculator=calculator,
@@ -178,7 +94,7 @@ class TimeSeriesDeriver(FeatureProcessor):
             default_value=default_value
         )
 
-    def process_ema_batch(
+    def derive_ema_batch(
         self,
         features: List[str],
         decimals: Optional[int] = 0,
@@ -190,16 +106,16 @@ class TimeSeriesDeriver(FeatureProcessor):
             raise ValueError("Features list cannot be empty")
 
         for feature in features:
-            self.process_ema(feature, decimals=decimals, default_value=default_value, span=span, min_periods=min_periods)
+            self.derive_ema(feature, decimals=decimals, default_value=default_value, span=span, min_periods=min_periods)
 
-    def process_lagged(
+    def derive_lagged(
         self,
         feature: str,
         decimals: Optional[int] = 0,
         default_value: Optional[Any] = None
     ) -> None:
         derived_col = f"{feature}_lagged"
-        self.process(
+        self._derive_feature(
             derived_col=derived_col,
             unified_col=feature,
             calculator=lag_calculator,
@@ -212,7 +128,7 @@ class TimeSeriesDeriver(FeatureProcessor):
         pass
 
     @abstractmethod
-    def process(
+    def _derive_feature(
         self,
         derived_col: str,
         unified_col: str,
@@ -247,7 +163,7 @@ class MatchTimeSeriesDeriver(TimeSeriesDeriver):
         team_fixtures = pd.concat([home_fixtures, away_fixtures], ignore_index=True)
         self.team_fixtures = team_fixtures.sort_values([TEAM_CODE_COL, KICKOFF_TIME_COL]).reset_index(drop=True)
 
-    def process(
+    def _derive_feature(
         self,
         derived_col: str,
         unified_col: str,
@@ -293,7 +209,7 @@ class PlayerTimeSeriesDeriver(TimeSeriesDeriver):
         self.df[KICKOFF_TIME_COL] = pd.to_datetime(self.df[KICKOFF_TIME_COL])
         self.df = self.df.sort_values([PLAYER_CODE_COL, KICKOFF_TIME_COL]).reset_index(drop=True)
 
-    def process(
+    def _derive_feature(
         self,
         derived_col: str,
         unified_col: str,

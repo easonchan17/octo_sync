@@ -1,9 +1,9 @@
 import pandas as pd
-from ..processor import FeatureProcessor
+from .base_deriver import BaseDeriver
 from ..constants import HOME_CODE_COL, AWAY_CODE_COL, HOME_POINT_COL, AWAY_POINT_COL
 
-class HeadToHeadPointsDeriver(FeatureProcessor):
-    def process(self, feature: str) -> None:
+class HeadToHeadPointsDeriver(BaseDeriver):
+    def derive(self, feature: str) -> None:
         self.ensure_column_exists(HOME_CODE_COL)
         self.ensure_column_exists(AWAY_CODE_COL)
         self.ensure_column_exists(HOME_POINT_COL)

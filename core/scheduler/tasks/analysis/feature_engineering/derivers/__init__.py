@@ -1,3 +1,4 @@
+from .base_deriver import BaseDeriver
 from .formula_deriver import FormulaDeriver
 from .conditional_deriver import ConditionalDeriver
 from .difference_deriver import DifferenceDeriver
@@ -12,6 +13,7 @@ from .time_series_deriver import (
 )
 
 __all__ = [
+    'BaseDeriver',
     'FormulaDeriver',
     'ConditionalDeriver',
     'DifferenceDeriver',
