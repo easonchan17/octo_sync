@@ -15,7 +15,12 @@ from ..feature_engineering import (
     FormulaDeriver,
     TeamTimeSeriesDeriver
 )
-from ..feature_engineering.constants import SITE_HOST, PAGE_URL_TEMPLATE
+from ..feature_engineering.constants import (
+    HOME_CODE_COL, HOME_TEAM_COL, SITE_HOST, PAGE_URL_TEMPLATE,
+    PAGE_URL_COL, MATCH_REPORT_COL, SEASON_COL,
+    HOME_VENUE, AWAY_VENUE, HOME_GF_COL, AWAY_GF_COL,
+    HOME_POINT_COL, AWAY_POINT_COL, XG_COL, NOTES_COL
+)
 from .base_analyzer import BaseAnalyzer
 
 
@@ -46,10 +51,10 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     ]
 
     FORMULA_BASED_FEATURES = [
-        ("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5"),
-        ("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5"),
+        ("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5", 4),
+        ("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5", 4),
         ("home_field_tilt_ema_5", "home_passes_into_final_third_ema_5 / (home_passes_into_final_third_ema_5 + away_passes_into_final_third_ema_5)", 4),
-        ("away_field_tilt_ema_5", "1 - home_field_tilt_ema_5"),
+        ("away_field_tilt_ema_5", "1 - home_field_tilt_ema_5", 4),
         ("home_safe_control_ema_5", "home_possession_ema_5 - home_field_tilt_ema_5"),
         ("away_safe_control_ema_5", "away_possession_ema_5 - away_field_tilt_ema_5"),
         ("home_long_passes_acc_ema_5", "home_passes_completed_long_ema_5 / home_passes_long_ema_5", 4),
@@ -434,52 +439,51 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     ) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
         df = FeatureSelector(df).filter_rows(
-            "notes",
+            NOTES_COL,
             lambda x: x.str.startswith(("Match Postponed", "Match Cancelled", "Match awarded to"), na=False)
         )
 
         MeanImputer(df).impute("home_average_shot_distance", 1)
         MeanImputer(df).impute("away_average_shot_distance", 1)
 
-        df['home_point'] = np.select(
-            [df['home_gf'] > df['away_gf'], df['home_gf'] == df['away_gf']],
+        df[HOME_POINT_COL] = np.select(
+            [df[HOME_GF_COL] > df[AWAY_GF_COL], df[HOME_GF_COL] == df[AWAY_GF_COL]],
             [3, 1],
             default=0
         )
-        df['away_point'] = np.select(
-            [df['home_gf'] > df['away_gf'], df['home_gf'] == df['away_gf']],
+        df[AWAY_POINT_COL] = np.select(
+            [df[HOME_GF_COL] > df[AWAY_GF_COL], df[HOME_GF_COL] == df[AWAY_GF_COL]],
             [0, 1],
             default=3
         )
 
         deriver = TeamTimeSeriesDeriver(df)
         deriver.derive_rest_days(decimals=2)
+        deriver.derive_lagged(XG_COL, decimals=1)
         deriver.derive_h2h_points(decimals=2)
         deriver.derive_venue_performance(decimals=2, min_periods=2)
-        deriver.derive_lagged("xg", decimals=1)
         for feature in self.EMA_BASED_FEATURES:
             deriver.derive_ema(feature, decimals=4, min_periods=2)
-
-        df = deriver.df
+        df = deriver.get_result()
 
         for feature in self.NOT_NONE_FEATURES:
             df = FeatureSelector(df).filter_rows(feature)
 
         for item in self.FORMULA_BASED_FEATURES:
             feature, formula = item[0], item[1]
-            decimals = item[2] if len(item) > 2 else None
+            decimals = item[2] if len(item) > 2 else 4
             FormulaDeriver(df).derive(feature, formula, decimals)
 
         for feature in self.HOME_AWAY_DIFF_FEATURES:
             name = f"{feature}_diff"
-            formula = f"home_{feature} - away_{feature}"
-            FormulaDeriver(df).derive(name, formula)
+            formula = f"{HOME_VENUE}_{feature} - {AWAY_VENUE}_{feature}"
+            FormulaDeriver(df).derive(name, formula, decimals=4)
 
-        df["page_url"] = df.apply(lambda row: PAGE_URL_TEMPLATE.format(
-            season=normalize_season_range(row['season']),
-            club_code=row["home_code"],
-            club_name=normalize_club_name(row["home_team"])[1]
+        df[PAGE_URL_COL] = df.apply(lambda row: PAGE_URL_TEMPLATE.format(
+            season=normalize_season_range(row[SEASON_COL]),
+            club_code=row[HOME_CODE_COL],
+            club_name=normalize_club_name(row[HOME_TEAM_COL])[1]
         ), axis=1)
-        df["match_report"] = df["match_report"].apply(lambda uri: urljoin(SITE_HOST, uri))
+        df[MATCH_REPORT_COL] = df[MATCH_REPORT_COL].apply(lambda uri: urljoin(SITE_HOST, uri))
 
         return FeatureSelector(df).select_columns(required_features or self.REQUIRED_FEATURES)
