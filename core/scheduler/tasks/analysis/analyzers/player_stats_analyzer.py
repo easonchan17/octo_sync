@@ -101,9 +101,9 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         )
 
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
-        FormulaDeriver(df).process("non_penalty_goals", "goals-penalties_made")
+        FormulaDeriver(df).derive("non_penalty_goals", "goals-penalties_made")
 
-        PerTimeDeriver(df).process([
+        PerTimeDeriver(df).derive([
             "non_penalty_goals",
             "shots",
             "shots_on_target",
@@ -127,7 +127,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             "aerials_lost"
         ], decimals=1)
 
-        PossessionAdjustedDeriver(df).process([
+        PossessionAdjustedDeriver(df).derive([
             "tackles_per_90",
             "tackles_won_per_90",
             "interceptions_per_90",
@@ -137,7 +137,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         ], decimals=2)
 
         deriver = PlayerTimeSeriesDeriver(df)
-        deriver.process_rest_days(decimals=2)
+        deriver.derive_rest_days(decimals=2)
         selected_features = [
             "non_penalty_goals_per_90",
             "shots_per_90",
@@ -161,8 +161,8 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             "aerials_won_per_90",
             "aerials_lost_per_90"
         ]
-        deriver.process_ema_batch(selected_features, decimals=1)
-        deriver.process_ema_batch(selected_features, decimals=1, span=20)
+        deriver.derive_ema_batch(selected_features, decimals=1)
+        deriver.derive_ema_batch(selected_features, decimals=1, span=20)
 
         df = deriver.df
         df_for_benchmark = df.copy()
@@ -170,20 +170,20 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         df_for_benchmark = FeatureSelector(df_for_benchmark).filter_rows("npxg_per_90_ema_5")
         benchmarks = OutfieldFeatureBenchmark(df_for_benchmark).calculate()
 
-        FormulaDeriver(df).process("finishing_form", f"0.5 * npxg_per_90_ema_5 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_5 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_5 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_5-shots_on_target_per_90_ema_5) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
-        FormulaDeriver(df).process("finishing_ability", f"0.5 * npxg_per_90_ema_20 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_20 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_20 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_20 - shots_on_target_per_90_ema_20) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("finishing_form", f"0.5 * npxg_per_90_ema_5 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_5 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_5 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_5-shots_on_target_per_90_ema_5) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("finishing_ability", f"0.5 * npxg_per_90_ema_20 / {benchmarks['npxg_per_90_ema_20']} + 0.3 * shots_on_target_per_90_ema_20 / {benchmarks['shots_on_target_per_90_ema_20']} + 0.2 * non_penalty_goals_per_90_ema_20 / {benchmarks['non_penalty_goals_per_90_ema_20']} - 0.5 * (shots_per_90_ema_20 - shots_on_target_per_90_ema_20) / {benchmarks['shots_per_90_ema_20-shots_on_target_per_90_ema_20']}", decimals=4)
 
-        FormulaDeriver(df).process("creativity_form", f"0.4 * xg_assist_per_90_ema_5 / {benchmarks['xg_assist_per_90_ema_20']} + 0.3 * shot_creating_actions_per_90_ema_5 / {benchmarks['shot_creating_actions_per_90_ema_20']} + 0.2 * progressive_passes_per_90_ema_5 / {benchmarks['progressive_passes_per_90_ema_20']} + 0.1 * key_passes_per_90_ema_5 / {benchmarks['key_passes_per_90_ema_20']}", decimals=4)
-        FormulaDeriver(df).process("creativity_ability", f"0.4 * xg_assist_per_90_ema_20 / {benchmarks['xg_assist_per_90_ema_20']} + 0.3 * shot_creating_actions_per_90_ema_20 / {benchmarks['shot_creating_actions_per_90_ema_20']} + 0.2 * progressive_passes_per_90_ema_20 / {benchmarks['progressive_passes_per_90_ema_20']} + 0.1 * key_passes_per_90_ema_20 / {benchmarks['key_passes_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("creativity_form", f"0.4 * xg_assist_per_90_ema_5 / {benchmarks['xg_assist_per_90_ema_20']} + 0.3 * shot_creating_actions_per_90_ema_5 / {benchmarks['shot_creating_actions_per_90_ema_20']} + 0.2 * progressive_passes_per_90_ema_5 / {benchmarks['progressive_passes_per_90_ema_20']} + 0.1 * key_passes_per_90_ema_5 / {benchmarks['key_passes_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("creativity_ability", f"0.4 * xg_assist_per_90_ema_20 / {benchmarks['xg_assist_per_90_ema_20']} + 0.3 * shot_creating_actions_per_90_ema_20 / {benchmarks['shot_creating_actions_per_90_ema_20']} + 0.2 * progressive_passes_per_90_ema_20 / {benchmarks['progressive_passes_per_90_ema_20']} + 0.1 * key_passes_per_90_ema_20 / {benchmarks['key_passes_per_90_ema_20']}", decimals=4)
 
-        FormulaDeriver(df).process("progression_form", f"0.4 * progressive_carries_per_90_ema_5 / {benchmarks['progressive_carries_per_90_ema_20']} + 0.3 * take_ons_won_per_90_ema_5 / {benchmarks['take_ons_won_per_90_ema_20']} + 0.3 * fouls_drawn_per_90_ema_5 / {benchmarks['fouls_drawn_per_90_ema_20']} - 0.5 * (dispossessed_per_90_ema_5 + miscontrols_per_90_ema_5) / {benchmarks['dispossessed_per_90_ema_20+miscontrols_per_90_ema_20']}", decimals=4)
-        FormulaDeriver(df).process("progression_ability", f"0.4 * progressive_carries_per_90_ema_20 / {benchmarks['progressive_carries_per_90_ema_20']} + 0.3 * take_ons_won_per_90_ema_20 / {benchmarks['take_ons_won_per_90_ema_20']} + 0.3 * fouls_drawn_per_90_ema_20 / {benchmarks['fouls_drawn_per_90_ema_20']} - 0.5 * (dispossessed_per_90_ema_20 + miscontrols_per_90_ema_20) / {benchmarks['dispossessed_per_90_ema_20+miscontrols_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("progression_form", f"0.4 * progressive_carries_per_90_ema_5 / {benchmarks['progressive_carries_per_90_ema_20']} + 0.3 * take_ons_won_per_90_ema_5 / {benchmarks['take_ons_won_per_90_ema_20']} + 0.3 * fouls_drawn_per_90_ema_5 / {benchmarks['fouls_drawn_per_90_ema_20']} - 0.5 * (dispossessed_per_90_ema_5 + miscontrols_per_90_ema_5) / {benchmarks['dispossessed_per_90_ema_20+miscontrols_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("progression_ability", f"0.4 * progressive_carries_per_90_ema_20 / {benchmarks['progressive_carries_per_90_ema_20']} + 0.3 * take_ons_won_per_90_ema_20 / {benchmarks['take_ons_won_per_90_ema_20']} + 0.3 * fouls_drawn_per_90_ema_20 / {benchmarks['fouls_drawn_per_90_ema_20']} - 0.5 * (dispossessed_per_90_ema_20 + miscontrols_per_90_ema_20) / {benchmarks['dispossessed_per_90_ema_20+miscontrols_per_90_ema_20']}", decimals=4)
 
-        FormulaDeriver(df).process("defense_form", f"0.3 * tackles_won_per_90_adj_ema_5 / {benchmarks['tackles_won_per_90_adj_ema_20']} + 0.3 * interceptions_per_90_adj_ema_5 / {benchmarks['interceptions_per_90_adj_ema_20']} + 0.3 * ball_recoveries_per_90_adj_ema_5 / {benchmarks['ball_recoveries_per_90_adj_ema_20']} + 0.1 * blocks_per_90_adj_ema_5 / {benchmarks['blocks_per_90_adj_ema_20']} - 0.5 * challenges_lost_per_90_adj_ema_5 / {benchmarks['challenges_lost_per_90_adj_ema_20']}", decimals=4)
-        FormulaDeriver(df).process("defense_ability", f"0.3 * tackles_won_per_90_adj_ema_20 / {benchmarks['tackles_won_per_90_adj_ema_20']} + 0.3 * interceptions_per_90_adj_ema_20 / {benchmarks['interceptions_per_90_adj_ema_20']} + 0.3 * ball_recoveries_per_90_adj_ema_20 / {benchmarks['ball_recoveries_per_90_adj_ema_20']} + 0.1 * blocks_per_90_adj_ema_20 / {benchmarks['blocks_per_90_adj_ema_20']} - 0.5 * challenges_lost_per_90_adj_ema_20 / {benchmarks['challenges_lost_per_90_adj_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("defense_form", f"0.3 * tackles_won_per_90_adj_ema_5 / {benchmarks['tackles_won_per_90_adj_ema_20']} + 0.3 * interceptions_per_90_adj_ema_5 / {benchmarks['interceptions_per_90_adj_ema_20']} + 0.3 * ball_recoveries_per_90_adj_ema_5 / {benchmarks['ball_recoveries_per_90_adj_ema_20']} + 0.1 * blocks_per_90_adj_ema_5 / {benchmarks['blocks_per_90_adj_ema_20']} - 0.5 * challenges_lost_per_90_adj_ema_5 / {benchmarks['challenges_lost_per_90_adj_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("defense_ability", f"0.3 * tackles_won_per_90_adj_ema_20 / {benchmarks['tackles_won_per_90_adj_ema_20']} + 0.3 * interceptions_per_90_adj_ema_20 / {benchmarks['interceptions_per_90_adj_ema_20']} + 0.3 * ball_recoveries_per_90_adj_ema_20 / {benchmarks['ball_recoveries_per_90_adj_ema_20']} + 0.1 * blocks_per_90_adj_ema_20 / {benchmarks['blocks_per_90_adj_ema_20']} - 0.5 * challenges_lost_per_90_adj_ema_20 / {benchmarks['challenges_lost_per_90_adj_ema_20']}", decimals=4)
 
-        FormulaDeriver(df).process("aerial_form", f"0.6 * aerials_won_per_90_ema_5 / {benchmarks['aerials_won_per_90_ema_20']} + 0.4 * aerials_won_per_90_ema_5 / (aerials_won_per_90_ema_5 + aerials_lost_per_90_ema_5 + {EPSILON}) / {benchmarks['aerials_lost_per_90_ema_20/(aerials_won_per_90_ema_20+aerials_lost_per_90_ema_20)']}", decimals=4)
-        FormulaDeriver(df).process("aerial_ability", f"0.6 * aerials_won_per_90_ema_20 / {benchmarks['aerials_won_per_90_ema_20']} + 0.4 * aerials_won_per_90_ema_20 / (aerials_won_per_90_ema_20 + aerials_lost_per_90_ema_20 + {EPSILON}) / {benchmarks['aerials_lost_per_90_ema_20/(aerials_won_per_90_ema_20+aerials_lost_per_90_ema_20)']}", decimals=4)
+        FormulaDeriver(df).derive("aerial_form", f"0.6 * aerials_won_per_90_ema_5 / {benchmarks['aerials_won_per_90_ema_20']} + 0.4 * aerials_won_per_90_ema_5 / (aerials_won_per_90_ema_5 + aerials_lost_per_90_ema_5 + {EPSILON}) / {benchmarks['aerials_lost_per_90_ema_20/(aerials_won_per_90_ema_20+aerials_lost_per_90_ema_20)']}", decimals=4)
+        FormulaDeriver(df).derive("aerial_ability", f"0.6 * aerials_won_per_90_ema_20 / {benchmarks['aerials_won_per_90_ema_20']} + 0.4 * aerials_won_per_90_ema_20 / (aerials_won_per_90_ema_20 + aerials_lost_per_90_ema_20 + {EPSILON}) / {benchmarks['aerials_lost_per_90_ema_20/(aerials_won_per_90_ema_20+aerials_lost_per_90_ema_20)']}", decimals=4)
 
         if not required_features:
             required_features = [
@@ -330,9 +330,9 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         )
 
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
-        DefaultImputer(df).process("gk_def_actions_outside_pen_area", 0)
+        DefaultImputer(df).impute("gk_def_actions_outside_pen_area", 0)
 
-        PerTimeDeriver(df).process([
+        PerTimeDeriver(df).derive([
             "gk_goals_against",
             "gk_psxg",
             "gk_crosses",
@@ -341,7 +341,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         ], decimals=1)
 
         deriver = PlayerTimeSeriesDeriver(df)
-        deriver.process_rest_days(decimals=2)
+        deriver.derive_rest_days(decimals=2)
         valid_features = [
             "gk_goals_against_per_90",
             "gk_psxg_per_90",
@@ -349,8 +349,8 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
             "gk_crosses_stopped_per_90",
             "gk_def_actions_outside_pen_area_per_90"
         ]
-        deriver.process_ema_batch(valid_features, decimals=1)
-        deriver.process_ema_batch(valid_features, decimals=1, span=20)
+        deriver.derive_ema_batch(valid_features, decimals=1)
+        deriver.derive_ema_batch(valid_features, decimals=1, span=20)
 
         df = deriver.df
         df_for_benchmark = df.copy()
@@ -358,8 +358,8 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         df_for_benchmark = FeatureSelector(df_for_benchmark).filter_rows("gk_psxg_per_90_ema_5")
         benchmarks = GoalkeeperFeatureBenchmark(df_for_benchmark).calculate()
 
-        FormulaDeriver(df).process("gk_form", f"0.6 * (gk_psxg_per_90_ema_5 - gk_goals_against_per_90_ema_5) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_5 / (gk_crosses_per_90_ema_5 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_5 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
-        FormulaDeriver(df).process("gk_ability", f"0.6 * (gk_psxg_per_90_ema_20 - gk_goals_against_per_90_ema_20) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_20 / (gk_crosses_per_90_ema_20 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_20 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("gk_form", f"0.6 * (gk_psxg_per_90_ema_5 - gk_goals_against_per_90_ema_5) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_5 / (gk_crosses_per_90_ema_5 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_5 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
+        FormulaDeriver(df).derive("gk_ability", f"0.6 * (gk_psxg_per_90_ema_20 - gk_goals_against_per_90_ema_20) / {benchmarks['gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20']} + 0.2 * (gk_crosses_stopped_per_90_ema_20 / (gk_crosses_per_90_ema_20 + {EPSILON})) / {benchmarks['gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20']} + 0.2 * gk_def_actions_outside_pen_area_per_90_ema_20 / {benchmarks['gk_def_actions_outside_pen_area_per_90_ema_20']}", decimals=4)
 
         if not required_features:
             required_features = [
