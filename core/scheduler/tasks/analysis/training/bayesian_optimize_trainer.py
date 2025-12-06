@@ -83,8 +83,10 @@ class BayesianOptimizeTrainer(BaseTask):
             self.logger.warning("Training stopped gracefully by user request")
             return None
 
-        self.logger.info(f'best score: {bayes_search.best_score_}')
-        self.logger.info(f'best_params: {bayes_search.best_params_}')
+        self.logger.info("\n--- Bayesian Optimization Results ---")
+        self.logger.info(f"Sample dataset: {self.data_file}")
+        self.logger.info(f'Best score: {bayes_search.best_score_}')
+        self.logger.info(f'Best params: {bayes_search.best_params_}')
         return bayes_search
 
     def analyze_predictions_on_test_set(
@@ -107,6 +109,7 @@ class BayesianOptimizeTrainer(BaseTask):
         results_df[proba_cols] = pd.DataFrame(y_pred_proba, index=results_df.index, columns=proba_cols)
 
         self.logger.info("\n--- Independent Test Set Prediction Analysis (Last 20% Data) ---")
+        self.logger.info(f"Sample dataset: {self.data_file}")
         self.logger.info(f"Overall Test Set Accuracy: {results_df['is_correct'].mean():.4f}")
         self.logger.info("\n**Prediction Accuracy by Actual Result Category:**")
         class_names = {0: "Home Loss", 1: "Draw", 2: "Home Win"}
