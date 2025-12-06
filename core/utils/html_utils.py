@@ -93,6 +93,9 @@ def extract_player_code_from_cell(cell) -> Optional[str]:
 def extract_player_code_from_url(url) -> Optional[str]:
     return extract_text(url, r"/en/players/([a-zA-Z0-9]+)/")
 
+def normalize_season_range(season: str) -> str:
+    return f"{int(season)}-{int(season)+1}"
+
 def normalize_club_name(name: str) -> tuple[str, str]:
     parts = name.split()
 
