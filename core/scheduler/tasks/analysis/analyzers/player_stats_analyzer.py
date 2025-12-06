@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from typing import Any, Dict, List, Optional
 from core.store.postgres.models import (
@@ -6,16 +7,36 @@ from core.store.postgres.models import (
 from ..feature_engineering import (
     FeatureSelector,
     FormulaDeriver,
-    PerTimeDeriver,
+    TimeScaleDeriver,
     DefaultImputer,
-    PlayerTimeSeriesDeriver,
-    PossessionAdjustedDeriver
+    PlayerTimeSeriesDeriver
 )
 from ..feature_engineering import OutfieldFeatureBenchmark, GoalkeeperFeatureBenchmark
 from .base_analyzer import BaseAnalyzer
-from ..feature_engineering.constants import EPSILON, POSITION_COL, PRIMARY_POSITION_COL
+from ..feature_engineering.constants import (
+    EPSILON, POSITION_COL, PRIMARY_POSITION_COL,
+    TEAM_CODE_COL, HOME_CODE_COL, AWAY_CODE_COL,
+    HOME_POSSESSION_COL, AWAY_POSSESSION_COL
+)
 
 class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
+    def _adjust_by_possession(self, df: pd.DataFrame, features: List[str], decimals: int = 2) -> pd.DataFrame:
+        opponent_possession = pd.Series(
+            np.where(
+                df[TEAM_CODE_COL] == df[HOME_CODE_COL],
+                df[AWAY_POSSESSION_COL],
+                df[HOME_POSSESSION_COL]
+            ),
+            index=df.index
+        )
+
+        for feature in features:
+            derived_feature = f"{feature}_adj"
+            df[derived_feature] = np.round(df[feature] * 50.0 / opponent_possession, decimals)
+
+        self.logger.info(f"Created {len(features)} possession-adjusted features")
+        return df
+
     def query_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
         with self.postgresql_manager.get_session(self.site.get_namespace()) as session:
             query = session.query(
@@ -42,7 +63,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
                     "match_code": fixture.code,
                     "season": fixture.season,
                     "comp_name": fixture.comp_name,
-                    "kickoff_time": fixture.kickoff_time.isoformat() if fixture.kickoff_time else None,
+                    "kickoff_time": fixture.kickoff_time,
                     "venue": fixture.venue,
                     "home_team": fixture.home_team,
                     "home_code": fixture.home_code,
@@ -103,7 +124,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         FormulaDeriver(df).derive("non_penalty_goals", "goals-penalties_made")
 
-        PerTimeDeriver(df).derive([
+        TimeScaleDeriver(df).derive([
             "non_penalty_goals",
             "shots",
             "shots_on_target",
@@ -127,7 +148,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             "aerials_lost"
         ], decimals=1)
 
-        PossessionAdjustedDeriver(df).derive([
+        df = self._adjust_by_possession(df, [
             "tackles_per_90",
             "tackles_won_per_90",
             "interceptions_per_90",
@@ -198,56 +219,9 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
                 "team_code",
                 "player_name",
                 "rest_days",
-                # "position",
                 "primary_position",
                 "is_starter",
                 "minutes",
-                # "golas",
-                # "penalties_made",
-                # "non_penalty_goals",
-                # "npxg",
-                # "non_penalty_goals_per_90_ema_5",
-                # "npxg_per_90_ema_5",
-                # "goals_per_90_ema_20",
-                # "shots_per_90_ema_5",
-                # "shots_per_90_ema_20",
-                # "shots_on_target_per_90_ema_5",
-                # "shots_on_target_per_90_ema_20",
-                # "npxg_per_90_ema_20",
-                # "xg_assist_per_90_ema_5",
-                # "xg_assist_per_90_ema_20",
-                # "shot_creating_actions_per_90_ema_5",
-                # "shot_creating_actions_per_90_ema_20",
-                # "progressive_passes_per_90_ema_5",
-                # "progressive_passes_per_90_ema_20",
-                # "key_passes_per_90_ema_5",
-                # "key_passes_per_90_ema_20",
-                # "progressive_carries_per_90_ema_5",
-                # "progressive_carries_per_90_ema_20",
-                # "take_ons_won_per_90_ema_5",
-                # "take_ons_won_per_90_ema_20",
-                # "fouls_drawn_per_90_ema_5",
-                # "fouls_drawn_per_90_ema_20",
-                # "dispossessed_per_90_ema_5",
-                # "dispossessed_per_90_ema_20",
-                # "miscontrols_per_90_ema_5",
-                # "miscontrols_per_90_ema_20",
-                # "tackles_per_90_adj_ema_5",
-                # "tackles_per_90_adj_ema_20",
-                # "tackles_won_per_90_adj_ema_5",
-                # "tackles_won_per_90_adj_ema_20",
-                # "blocks_per_90_adj_ema_5",
-                # "blocks_per_90_adj_ema_20",
-                # "interceptions_per_90_adj_ema_5",
-                # "interceptions_per_90_adj_ema_20",
-                # "ball_recoveries_per_90_adj_ema_5",
-                # "ball_recoveries_per_90_adj_ema_20",
-                # "challenges_lost_per_90_adj_ema_5",
-                # "challenges_lost_per_90_adj_ema_20",
-                # "aerials_won_per_90_ema_5",
-                # "aerials_won_per_90_ema_20",
-                # "aerials_lost_per_90_ema_5",
-                # "aerials_lost_per_90_ema_20",
                 "finishing_form",
                 "finishing_ability",
                 "creativity_form",
@@ -257,7 +231,53 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
                 "defense_form",
                 "defense_ability",
                 "aerial_form",
-                "aerial_ability"
+                "aerial_ability",
+                "golas",
+                "penalties_made",
+                "non_penalty_goals",
+                "npxg",
+                "non_penalty_goals_per_90_ema_5",
+                "npxg_per_90_ema_5",
+                "goals_per_90_ema_20",
+                "shots_per_90_ema_5",
+                "shots_per_90_ema_20",
+                "shots_on_target_per_90_ema_5",
+                "shots_on_target_per_90_ema_20",
+                "npxg_per_90_ema_20",
+                "xg_assist_per_90_ema_5",
+                "xg_assist_per_90_ema_20",
+                "shot_creating_actions_per_90_ema_5",
+                "shot_creating_actions_per_90_ema_20",
+                "progressive_passes_per_90_ema_5",
+                "progressive_passes_per_90_ema_20",
+                "key_passes_per_90_ema_5",
+                "key_passes_per_90_ema_20",
+                "progressive_carries_per_90_ema_5",
+                "progressive_carries_per_90_ema_20",
+                "take_ons_won_per_90_ema_5",
+                "take_ons_won_per_90_ema_20",
+                "fouls_drawn_per_90_ema_5",
+                "fouls_drawn_per_90_ema_20",
+                "dispossessed_per_90_ema_5",
+                "dispossessed_per_90_ema_20",
+                "miscontrols_per_90_ema_5",
+                "miscontrols_per_90_ema_20",
+                "tackles_per_90_adj_ema_5",
+                "tackles_per_90_adj_ema_20",
+                "tackles_won_per_90_adj_ema_5",
+                "tackles_won_per_90_adj_ema_20",
+                "blocks_per_90_adj_ema_5",
+                "blocks_per_90_adj_ema_20",
+                "interceptions_per_90_adj_ema_5",
+                "interceptions_per_90_adj_ema_20",
+                "ball_recoveries_per_90_adj_ema_5",
+                "ball_recoveries_per_90_adj_ema_20",
+                "challenges_lost_per_90_adj_ema_5",
+                "challenges_lost_per_90_adj_ema_20",
+                "aerials_won_per_90_ema_5",
+                "aerials_won_per_90_ema_20",
+                "aerials_lost_per_90_ema_5",
+                "aerials_lost_per_90_ema_20"
             ]
         return FeatureSelector(df).select_columns(required_features)
 
@@ -288,7 +308,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
                     "match_code": fixture.code,
                     "season": fixture.season,
                     "comp_name": fixture.comp_name,
-                    "kickoff_time": fixture.kickoff_time.isoformat() if fixture.kickoff_time else None,
+                    "kickoff_time": fixture.kickoff_time,
                     "venue": fixture.venue,
                     "home_team": fixture.home_team,
                     "home_code": fixture.home_code,
@@ -332,7 +352,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         DefaultImputer(df).impute("gk_def_actions_outside_pen_area", 0)
 
-        PerTimeDeriver(df).derive([
+        TimeScaleDeriver(df).derive([
             "gk_goals_against",
             "gk_psxg",
             "gk_crosses",
@@ -377,16 +397,16 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
                 "is_starter",
                 "minutes",
                 "gk_form",
-                "gk_ability"
-                # "gk_goals_against_per_90_ema_5",
-                # "gk_goals_against_per_90_ema_20",
-                # "gk_psxg_per_90_ema_5",
-                # "gk_psxg_per_90_ema_20",
-                # "gk_crosses_per_90_ema_5",
-                # "gk_crosses_per_90_ema_20",
-                # "gk_crosses_stopped_per_90_ema_5",
-                # "gk_crosses_stopped_per_90_ema_20",
-                # "gk_def_actions_outside_pen_area_per_90_ema_5",
-                # "gk_def_actions_outside_pen_area_per_90_ema_20"
+                "gk_ability",
+                "gk_goals_against_per_90_ema_5",
+                "gk_goals_against_per_90_ema_20",
+                "gk_psxg_per_90_ema_5",
+                "gk_psxg_per_90_ema_20",
+                "gk_crosses_per_90_ema_5",
+                "gk_crosses_per_90_ema_20",
+                "gk_crosses_stopped_per_90_ema_5",
+                "gk_crosses_stopped_per_90_ema_20",
+                "gk_def_actions_outside_pen_area_per_90_ema_5",
+                "gk_def_actions_outside_pen_area_per_90_ema_20"
             ]
         return FeatureSelector(df).select_columns(required_features)
