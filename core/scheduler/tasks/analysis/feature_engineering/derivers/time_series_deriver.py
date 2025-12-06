@@ -70,6 +70,9 @@ class TimeSeriesDeriver(BaseDeriver):
         super().__init__(df)
         self._create_view()
 
+    def get_result(self) -> pd.DataFrame:
+        return self.df
+
     def derive_rest_days(
         self,
         decimals: Optional[int] = None,
@@ -124,8 +127,16 @@ class TimeSeriesDeriver(BaseDeriver):
         pass
 
 class TeamTimeSeriesDeriver(TimeSeriesDeriver):
+    def get_result(self) -> pd.DataFrame:
+        if FIXTURE_CODE_COL in self.df.index.names:
+            if FIXTURE_CODE_COL in self.df.columns:
+                return self.df.reset_index(drop=True)
+            else:
+                return self.df.reset_index()
+        return self.df.copy()
+
     def _create_view(self) -> None:
-        self.df = self.df.set_index(FIXTURE_CODE_COL, drop=False)
+        self.df = self.df.set_index(FIXTURE_CODE_COL, drop=True)
 
         kickoff_time_series = pd.to_datetime(self.df[KICKOFF_TIME_COL])
         home_code_series = self.df[HOME_CODE_COL].astype("category")
@@ -208,8 +219,8 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
         }, index=self.df.index)
         grouped = h2h_points.groupby('code_pair')
 
-        historical_avg_points_min = grouped['min_points'].transform(lambda x: x.expanding().mean().shift(1).fillna(0))
-        historical_avg_points_max = grouped['max_points'].transform(lambda x: x.expanding().mean().shift(1).fillna(0))
+        historical_avg_points_min = grouped['min_points'].transform(lambda x: x.expanding().mean().shift(1))
+        historical_avg_points_max = grouped['max_points'].transform(lambda x: x.expanding().mean().shift(1))
         if decimals is not None:
             historical_avg_points_min = historical_avg_points_min.round(decimals)
             historical_avg_points_max = historical_avg_points_max.round(decimals)
@@ -283,12 +294,11 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
         self.df[away_home_points_ema_col] = away_team_rows[points_ema_at_home_col]
         self.df[away_away_points_ema_col] = away_team_rows[points_ema_at_away_col]
 
-        self.df[home_home_dependency_col] = (
-            self.df[home_home_points_ema_col] - self.df[home_away_points_ema_col]
-        )
-        self.df[away_home_dependency_col] = (
-            self.df[away_home_points_ema_col] - self.df[away_away_points_ema_col]
-        )
+        self.df[home_home_dependency_col] = self.df[home_home_points_ema_col] - self.df[home_away_points_ema_col]
+        self.df[away_home_dependency_col] = self.df[away_home_points_ema_col] - self.df[away_away_points_ema_col]
+        if decimals is not None:
+            self.df[home_home_dependency_col] = self.df[home_home_dependency_col].round(decimals)
+            self.df[away_home_dependency_col] = self.df[away_home_dependency_col].round(decimals)
 
         self.logger.info(f"Created {home_home_points_ema_col}, {home_away_points_ema_col}, {away_home_points_ema_col}, {away_away_points_ema_col}, {home_home_dependency_col}, {away_home_dependency_col}")
 
