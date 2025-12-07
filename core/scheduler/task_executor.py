@@ -30,10 +30,10 @@ class TaskExecutor(Thread, Singleton):
                     if task.is_async:
                         thread_pool.submit(task.execute)
                         tasks.append(task)
-                        self.logger.info(f"Execute async task: {task.id} {task.name}")
+                        self.logger.info(f"Execute task: {task.id} {task.name}")
                     else:
                         task.execute()
-                        self.logger.info(f"Execute sync task: {task.id} {task.name}")
+                        self.logger.info(f"Execute task: {task.id} {task.name}")
             except Exception as e:
                 self.logger.error(f"Error in TaskManager thread: {e}")
             finally:
