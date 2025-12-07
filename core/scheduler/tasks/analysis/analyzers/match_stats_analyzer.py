@@ -120,7 +120,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     REQUIRED_FEATURES = [
         "kickoff_time", "comp_name", "match_code", "page_url", "match_report",
         "home_team", "home_code", "away_team", "away_code","home_point",
-        "home_elo_rating", "away_elo_rating", "home_net_advantage", "home_elo_expectancy", "match_balance",
+        "home_elo_rating", "away_elo_rating", "elo_rating_diff", "home_net_advantage", "home_elo_expectancy", "match_balance",
         "home_rest_days", "away_rest_days", "rest_days_diff",
         "home_h2h_points", "away_h2h_points", "h2h_points_diff",
         "home_home_points_ema_5", "home_away_points_ema_5", "home_home_dependency_5",
