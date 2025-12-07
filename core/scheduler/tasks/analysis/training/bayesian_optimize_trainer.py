@@ -27,7 +27,8 @@ class BayesianOptimizeTrainer(BaseTask):
         test_size=0.2,
         iter_count=300,
         num_class=3,
-        random_state=1
+        random_state=1,
+        sample_weight: Optional[pd.Series] = None
     ) -> BayesSearchCV:
         search_spaces = {
             'max_depth': Integer(6, 14),
@@ -82,7 +83,7 @@ class BayesianOptimizeTrainer(BaseTask):
             X_train,
             y_train,
             callback=[on_step],
-            sample_weight=compute_sample_weight('balanced', y=y_train)
+            sample_weight=sample_weight
         )
 
         if self.should_stop():
