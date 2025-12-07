@@ -1,16 +1,24 @@
-import asyncio
 from typing import Optional, Dict, Any
 from core.scheduler.task_executor import TaskExecutor
 from core.server.services.base_service import BaseService
-from core.scheduler.tasks.base_task import AsyncTask
+from core.scheduler.tasks.base_task import BaseTask, AsyncTask
 from core.registry import Registry
 from core.store.postgres.models import Site
+
 
 class SiteService(BaseService):
     def __init__(self):
         super().__init__()
-        self.tasks = {}
-        self._lock = asyncio.Lock()
+        self.tasks: Dict[str, BaseTask] = {}
+
+    def _cleanup_task(self, name: str) -> Optional[BaseTask]:
+        task = self.tasks.pop(name, None)
+        if not task:
+            self.logger.warning(f"Task {name} not found")
+            return None
+
+        self.logger.info(f"Task {name} cleaned up")
+        return task
 
     def get_site(self, site_name: str) -> Site:
         with self.db.get_session() as session:
@@ -46,26 +54,28 @@ class SiteService(BaseService):
 
 
     async def start_sync(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
-        async with self._lock:
-            name = f"sync.{site_name}.{resource}"
-            if name in self.tasks:
-                return ""
+        _ = self.loop
 
-            site = self.get_site(site_name)
-            task = Registry.get(name, site, self.db, payload)
-            self.tasks[name] = task
-            return TaskExecutor.get_instance().submit_task(AsyncTask(task))
+        name = f"sync.{site_name}.{resource}"
+        if name in self.tasks:
+            return ""
 
+        site = self.get_site(site_name)
+        task = Registry.get(name, site, self.db, payload)
+        task.on_complete = lambda: self.run_in_loop(lambda: self._cleanup_task(name))
+        self.tasks[name] = task
+
+        return TaskExecutor.get_instance().submit_task(AsyncTask(task))
 
     async def stop_sync(self, site_name: str, resource: str) -> str:
-        async with self._lock:
-            name = f"sync.{site_name}.{resource}"
-            task = self.tasks.pop(name, None)
-            if not task:
-                return ""
+        name = f"sync.{site_name}.{resource}"
+        task = self.tasks.get(name, None)
+        if not task:
+            self.logger.warning(f"Task {name} not found")
+            return ""
 
-            task.cancel()
-            return task.id
+        task.cancel()
+        return task.id
 
     async def start_analysis(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
         site = self.get_site(site_name)

@@ -8,7 +8,7 @@ class TrainingController(BaseController):
         super().__init__()
         self.training_service = TrainingService()
         self.router.post("/training/{model}", response_model=str)(self.start_training)
-        self.router.delete("/training/{model}", response_model=str)(self.stop_training)
+        self.router.delete("/training/{model}/{task_id}", response_model=str)(self.stop_training)
 
     async def start_training(self, model: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
         try:
@@ -19,11 +19,11 @@ class TrainingController(BaseController):
             self.logger.error(f"Failed to start training: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to start training: {str(e)}")
 
-    async def stop_training(self, model: str) -> str:
+    async def stop_training(self, model: str, task_id: str) -> str:
         try:
-            return await self.training_service.stop_training(model)
+            return await self.training_service.stop_training(model, task_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            self.logger.error(f"Failed to stop training {model}: {e}")
+            self.logger.error(f"Failed to stop training {model} {task_id}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to stop training: {str(e)}")

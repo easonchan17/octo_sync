@@ -59,6 +59,7 @@ class Pipeline(BaseTask):
     def __init__(self, *tasks: BaseTask) -> None:
         super().__init__()
         self.tasks: List[BaseTask] = list(tasks)
+        self.on_complete: callable = None
 
     def cancel(self) -> None:
         for task in self.tasks:
@@ -72,6 +73,9 @@ class Pipeline(BaseTask):
             self.logger.info(f"Executing task {i+1}/{len(self.tasks)}: {task.name}")
             task.execute(*args, **kwargs)
             self.logger.info(f"Task {task.name} completed")
+
+        if self.on_complete:
+            self.on_complete()
 
     def __str__(self) -> str:
         task_names = [task.name for task in self.tasks]
