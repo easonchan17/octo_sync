@@ -7,6 +7,7 @@ from core.utils.pandas_utils import load_dataframe
 from sklearn.model_selection import TimeSeriesSplit
 from core.scheduler.tasks.base_task import BaseTask
 from .xgboost_classifier import XGBoostClassifier
+from sklearn.utils.class_weight import compute_sample_weight
 
 class BayesianOptimizeTrainer(BaseTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
@@ -29,13 +30,13 @@ class BayesianOptimizeTrainer(BaseTask):
         random_state=1
     ) -> BayesSearchCV:
         search_spaces = {
-            'max_depth': Integer(4, 12),
-            'learning_rate': Real(0.01, 0.2, prior='log-uniform'),
+            'max_depth': Integer(6, 14),
+            'learning_rate': Real(0.01, 0.15, prior='log-uniform'),
             'n_estimators': Integer(500, 3000),
             'min_child_weight': Integer(1, 20),
-            'gamma': Real(0, 0.5),
-            'subsample': Real(0.5, 1.0),
-            'colsample_bytree': Real(0.5, 1.0),
+            'gamma': Real(0, 0.2),
+            'subsample': Real(0.5, 0.9),
+            'colsample_bytree': Real(0.5, 0.9),
             'reg_alpha': Real(1e-5, 10, prior='log-uniform'),
             'reg_lambda': Real(1e-5, 10, prior='log-uniform')
         }
@@ -77,7 +78,12 @@ class BayesianOptimizeTrainer(BaseTask):
             self.logger.info(f'    Params: {current_params_dict}')
             return False
 
-        bayes_search.fit(X_train, y_train, callback=[on_step])
+        bayes_search.fit(
+            X_train,
+            y_train,
+            callback=[on_step],
+            sample_weight=compute_sample_weight('balanced', y=y_train)
+        )
 
         if self.should_stop():
             self.logger.warning("Training stopped gracefully by user request")
