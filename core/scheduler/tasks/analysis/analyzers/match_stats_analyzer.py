@@ -13,7 +13,8 @@ from ..feature_engineering import (
     FeatureSelector,
     MeanImputer,
     FormulaDeriver,
-    TeamTimeSeriesDeriver
+    TeamTimeSeriesDeriver,
+    EloRatingDeriver
 )
 from ..feature_engineering.constants import (
     HOME_CODE_COL, HOME_TEAM_COL, SITE_HOST, PAGE_URL_TEMPLATE,
@@ -119,6 +120,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     REQUIRED_FEATURES = [
         "kickoff_time", "comp_name", "match_code", "page_url", "match_report",
         "home_team", "home_code", "away_team", "away_code","home_point",
+        "home_elo_rating", "away_elo_rating", "home_net_advantage", "home_elo_expectancy", "match_balance",
         "home_rest_days", "away_rest_days", "rest_days_diff",
         "home_h2h_points", "away_h2h_points", "h2h_points_diff",
         "home_home_points_ema_5", "home_away_points_ema_5", "home_home_dependency_5",
@@ -465,6 +467,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         for feature in self.EMA_BASED_FEATURES:
             deriver.derive_ema(feature, decimals=4, min_periods=2)
         df = deriver.get_result()
+
+        EloRatingDeriver(df).derive(decimals=4)
 
         for feature in self.NOT_NONE_FEATURES:
             df = FeatureSelector(df).filter_rows(feature)

@@ -8,7 +8,8 @@ from .derivers import (
     TimeScaleDeriver,
     TimeSeriesDeriver,
     TeamTimeSeriesDeriver,
-    PlayerTimeSeriesDeriver
+    PlayerTimeSeriesDeriver,
+    EloRatingDeriver
 )
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     'TimeScaleDeriver',
     'TimeSeriesDeriver',
     'TeamTimeSeriesDeriver',
-    'PlayerTimeSeriesDeriver'
+    'PlayerTimeSeriesDeriver',
+    'EloRatingDeriver'
 ]
