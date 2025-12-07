@@ -29,15 +29,15 @@ class BayesianOptimizeTrainer(BaseTask):
         random_state=1
     ) -> BayesSearchCV:
         search_spaces = {
-            'max_depth': Integer(3, 8),
-            'learning_rate': Real(0.005, 0.1, prior='log-uniform'),
-            'n_estimators': Integer(300, 2000),
-            'subsample': Real(0.6, 0.95),
-            'colsample_bytree': Real(0.6, 0.95),
-            'reg_alpha': Real(0.1, 10),
-            'reg_lambda': Real(1, 10),
-            'min_child_weight': Integer(5, 50),
-            'gamma': Real(0, 5)
+            'max_depth': Integer(4, 12),
+            'learning_rate': Real(0.01, 0.2, prior='log-uniform'),
+            'n_estimators': Integer(500, 3000),
+            'min_child_weight': Integer(1, 20),
+            'gamma': Real(0, 0.5),
+            'subsample': Real(0.5, 1.0),
+            'colsample_bytree': Real(0.5, 1.0),
+            'reg_alpha': Real(1e-5, 10, prior='log-uniform'),
+            'reg_lambda': Real(1e-5, 10, prior='log-uniform')
         }
 
         xgb_model = XGBoostClassifier(
