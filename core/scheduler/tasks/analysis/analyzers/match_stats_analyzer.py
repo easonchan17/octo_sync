@@ -438,7 +438,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     def do_feature_engineering(
         self,
         stats: List[Dict[str, Any]],
-        required_features: Optional[List[str]] = None
+        options: Dict[str, Any]
     ) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
         df = FeatureSelector(df).filter_rows(
@@ -470,7 +470,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             deriver.derive_ema(feature, decimals=4, min_periods=2)
         df = deriver.get_result()
 
-        EloRatingDeriver(df).derive(decimals=4)
+        elo_options = options.get("elo_options", {})
+        EloRatingDeriver(df, **elo_options).derive(decimals=4)
 
         for feature in self.NOT_NONE_FEATURES:
             df = FeatureSelector(df).filter_rows(feature)
@@ -492,4 +493,5 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         ), axis=1)
         df[MATCH_REPORT_COL] = df[MATCH_REPORT_COL].apply(lambda uri: urljoin(SITE_HOST, uri))
 
-        return FeatureSelector(df).select_columns(required_features or self.REQUIRED_FEATURES)
+        required_features = options.get("required_features", self.REQUIRED_FEATURES)
+        return FeatureSelector(df).select_columns(required_features)
