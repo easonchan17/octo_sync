@@ -24,7 +24,7 @@ class BaseAnalyzer:
                 return None
 
             self.logger.info(f"Data queried for comp_code={comp_code}, seasons={min_season}-{max_season}")
-            df = self.do_feature_engineering(stats, self.payload.get("required_features"))
+            df = self.do_feature_engineering(stats, options=self.payload)
             self.logger.info(f"Data feature engineering completed")
             return df
         except Exception as e:
@@ -39,6 +39,6 @@ class BaseAnalyzer:
     def do_feature_engineering(
         self,
         stats: List[Dict[str, Any]],
-        required_features: Optional[List[str]] = None
+        options: Dict[str, Any]
     ) -> Optional[pd.DataFrame]:
         pass

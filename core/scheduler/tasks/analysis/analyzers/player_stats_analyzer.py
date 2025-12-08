@@ -184,7 +184,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
     def do_feature_engineering(
         self,
         stats: List[Dict[str, Any]],
-        required_features: Optional[List[str]] = None
+        options: Dict[str, Any]
     ) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
         df = FeatureSelector(df).filter_rows(
@@ -222,7 +222,8 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             FormulaDeriver(df).derive(f"{name}_form", form_formula, decimals=4)
             FormulaDeriver(df).derive(f"{name}_ability", ability_formula, decimals=4)
 
-        return FeatureSelector(df).select_columns(required_features or self.REQUIRED_FEATURES)
+        required_features = options.get("required_features", self.REQUIRED_FEATURES)
+        return FeatureSelector(df).select_columns(required_features)
 
 
 class GoalkeeperStatsAnalyzer(BaseAnalyzer):
@@ -314,7 +315,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
     def do_feature_engineering(
         self,
         stats: List[Dict[str, Any]],
-        required_features: Optional[List[str]] = None
+        options: Dict[str, Any]
     ) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
         df = FeatureSelector(df).filter_rows(
@@ -344,4 +345,5 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
             FormulaDeriver(df).derive(f"{name}_form", form_formula, decimals=4)
             FormulaDeriver(df).derive(f"{name}_ability", ability_formula, decimals=4)
 
-        return FeatureSelector(df).select_columns(required_features or self.REQUIRED_FEATURES)
+        required_features = options.get("required_features", self.REQUIRED_FEATURES)
+        return FeatureSelector(df).select_columns(required_features)

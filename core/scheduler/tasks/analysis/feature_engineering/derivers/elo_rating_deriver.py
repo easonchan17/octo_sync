@@ -26,6 +26,7 @@ class EloRatingDeriver(BaseDeriver):
         self.ratings = {}
         self.last_season = {}
         self.historical_game_counts = {}
+        self.logger.info(f"EloRatingDeriver initialized with k_factor={k_factor}, home_advantage={home_advantage}, reversion_rate={reversion_rate}")
 
     def _get_rating(self, team_code: str) -> float:
         return self.ratings.get(team_code, self.base_rating)
