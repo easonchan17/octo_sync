@@ -18,6 +18,7 @@ class BayesianOptimizeTrainer(BaseTask):
         self.num_class = payload.get('num_class', 3)
         self.early_stopping_rounds = payload.get('early_stopping_rounds', 50)
         self.random_state = payload.get('random_state', 1)
+        self.balanced = payload.get('balanced', False)
 
     def bayesian_optimization(
         self,
@@ -152,6 +153,9 @@ class BayesianOptimizeTrainer(BaseTask):
             self.logger.info("\n--- Top 20 Feature Importances ---")
             self.logger.info(imps.head(20))
 
+            self.logger.info(f"\n--- Total Feature Importances ---")
+            self.logger.info(imps.to_string())
+
     def execute(self, *args, **kwargs) -> None:
         output_path = self.config_manager.get_config("features.path")
         output_path = Path(output_path)
@@ -191,6 +195,13 @@ class BayesianOptimizeTrainer(BaseTask):
         X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
+        sample_weight = None
+        if self.balanced:
+            sample_weight = pd.Series(
+                compute_sample_weight('balanced', y=y_train),
+                index=y_train.index
+            )
+
         bayes_search = self.bayesian_optimization(
             pd.DataFrame(X_train, columns=X_train.columns, index=X_train.index),
             y_train,
@@ -198,7 +209,8 @@ class BayesianOptimizeTrainer(BaseTask):
             test_size=self.test_size,
             iter_count=self.iter_count,
             num_class=self.num_class,
-            random_state=self.random_state
+            random_state=self.random_state,
+            sample_weight=sample_weight
         )
 
         if not bayes_search:
