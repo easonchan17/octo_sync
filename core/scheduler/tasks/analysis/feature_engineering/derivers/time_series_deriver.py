@@ -65,6 +65,24 @@ def _lag_calculator(
         lagged_values = lagged_values.fillna(default_value)
     return lagged_values
 
+
+def _rolling_sum_calculator(
+    df: pd.DataFrame,
+    group_col: str,
+    unified_col: str,
+    default_value: Optional[float] = None,
+    window: int = 5,
+    min_periods: int = 1
+) -> pd.Series:
+    rolling_sum = df.groupby(
+        group_col, observed=True, group_keys=False
+    )[unified_col].transform(
+        lambda group: group.rolling(window=window, min_periods=min_periods).sum().shift(1)
+    )
+    if default_value is not None:
+        rolling_sum = rolling_sum.fillna(default_value)
+    return rolling_sum
+
 class TimeSeriesDeriver(BaseDeriver):
     def __init__(self, df: pd.DataFrame) -> None:
         super().__init__(df)
@@ -119,6 +137,28 @@ class TimeSeriesDeriver(BaseDeriver):
             derived_col=derived_col,
             unified_col=feature,
             calculator=_lag_calculator,
+            decimals=decimals,
+            default_value=default_value
+        )
+
+    def derive_rolling_sum(
+        self,
+        feature: str,
+        decimals: Optional[int] = None,
+        default_value: Optional[Any] = None,
+        window: int = 5,
+        min_periods: int = 1
+    ) -> None:
+        derived_col = f"{feature}_sum_{window}"
+        calculator = lambda df, group_col, unified_col, default_value: (
+            _rolling_sum_calculator(
+                df, group_col, unified_col, default_value, window, min_periods
+            )
+        )
+        self.derive(
+            derived_col=derived_col,
+            unified_col=feature,
+            calculator=calculator,
             decimals=decimals,
             default_value=default_value
         )
@@ -227,11 +267,11 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
 
         home_col = "home_h2h_points"
         away_col = "away_h2h_points"
-        diff_col = "h2h_points_diff"
+        # diff_col = "h2h_points_diff"
         self.df[home_col] = np.where(is_home_min, historical_avg_points_min, historical_avg_points_max)
         self.df[away_col] = np.where(is_home_min, historical_avg_points_max, historical_avg_points_min)
-        self.df[diff_col] = self.df[home_col] - self.df[away_col]
-        self.logger.info(f"Created {home_col}, {away_col}, {diff_col}")
+        # self.df[diff_col] = self.df[home_col] - self.df[away_col]
+        self.logger.info(f"Created {home_col}, {away_col}")
 
     def derive_venue_performance(
         self,
@@ -301,7 +341,6 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
             self.df[away_home_dependency_col] = self.df[away_home_dependency_col].round(decimals)
 
         self.logger.info(f"Created {home_home_points_ema_col}, {home_away_points_ema_col}, {away_home_points_ema_col}, {away_away_points_ema_col}, {home_home_dependency_col}, {away_home_dependency_col}")
-
 
 
 class PlayerTimeSeriesDeriver(TimeSeriesDeriver):
