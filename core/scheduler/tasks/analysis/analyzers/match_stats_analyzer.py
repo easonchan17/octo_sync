@@ -17,7 +17,7 @@ from ..feature_engineering import (
     EloRatingDeriver
 )
 from ..feature_engineering.constants import (
-    HOME_CODE_COL, HOME_TEAM_COL, SITE_HOST, PAGE_URL_TEMPLATE,
+    HOME_CODE_COL, HOME_TEAM_COL, POINT_COL, SITE_HOST, PAGE_URL_TEMPLATE,
     PAGE_URL_COL, MATCH_REPORT_COL, SEASON_COL,
     HOME_VENUE, AWAY_VENUE, HOME_GF_COL, AWAY_GF_COL,
     HOME_POINT_COL, AWAY_POINT_COL, XG_COL, NOTES_COL
@@ -99,7 +99,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     ]
 
     HOME_AWAY_DIFF_FEATURES = [
-        "rest_days", "xg_ema_5", "possession_ema_5",
+        "rest_days", "xg_ema_5", "possession_ema_5", "point_sum_5","h2h_points",
         "sca_passes_dead_ema_5", "sca_take_ons_ema_5", "passes_ema_5",
         "passes_progressive_ema_5", "passes_progressive_distance_ema_5", "passes_long_ema_5",
         "xg_assist_ema_5", "pass_xa_ema_5", "passes_into_penalty_area_ema_5",
@@ -119,9 +119,10 @@ class MatchStatsAnalyzer(BaseAnalyzer):
 
     REQUIRED_FEATURES = [
         "kickoff_time", "comp_name", "match_code", "page_url", "match_report",
-        "home_team", "home_code", "away_team", "away_code","home_point",
+        "home_team", "home_code", "away_team", "away_code", "home_point",
         "home_elo_rating", "away_elo_rating", "elo_rating_diff", "home_net_advantage", "home_elo_expectancy", "match_balance",
         "home_rest_days", "away_rest_days", "rest_days_diff",
+        "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
         "home_h2h_points", "away_h2h_points", "h2h_points_diff",
         "home_home_points_ema_5", "home_away_points_ema_5", "home_home_dependency_5",
         "away_home_points_ema_5", "away_away_points_ema_5", "away_home_dependency_5",
@@ -462,6 +463,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         deriver = TeamTimeSeriesDeriver(df)
         deriver.derive_rest_days(decimals=2)
         deriver.derive_lagged(XG_COL, decimals=1)
+        deriver.derive_rolling_sum(POINT_COL, default_value=0, window=5, min_periods=1)
         deriver.derive_h2h_points(decimals=2)
         deriver.derive_venue_performance(decimals=2, min_periods=2)
         for feature in self.EMA_BASED_FEATURES:
