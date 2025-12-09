@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.interceptor import TaskType
-from core.store.postgres.models.fbref.match_status import MatchSyncFlag
+from core.store.postgres.models.fbref.match_sync_state import MatchSyncFlag
 from core.store.postgres.models.fbref.fixture import Fixture
 from core.scheduler.synchronizers.fbref.player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
