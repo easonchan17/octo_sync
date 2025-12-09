@@ -2,7 +2,7 @@ from typing import List, Any, Tuple
 from sqlalchemy import func, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
-    PlayerMatchStats, Site, MatchStatus, MatchSyncFlag, Fixture
+    PlayerMatchStats, Site, MatchSyncState, MatchSyncFlag, Fixture
 )
 from ..base_synchronizer import BaseSynchronizer
 
@@ -25,8 +25,8 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                 Fixture.season,
                 Fixture.match_report
             ).outerjoin(
-                MatchStatus,
-                MatchStatus.code == Fixture.code
+                MatchSyncState,
+                MatchSyncState.code == Fixture.code
             ).filter(
                 Fixture.status == 1,
                 or_(
@@ -35,8 +35,8 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                 ),
                 Fixture.season.between(min_season, max_season),
                 or_(
-                    MatchStatus.code.is_(None),
-                    (MatchStatus.sync_flags.op('&')(sync_flag)) != sync_flag
+                    MatchSyncState.code.is_(None),
+                    (MatchSyncState.sync_flags.op('&')(sync_flag)) != sync_flag
                 )
             )
             return query.all()
@@ -159,14 +159,14 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync player match stats for match {match_tag} from {site.name} completed. upserted: {upserted_count}")
 
-            insert_flag_stmt = insert(MatchStatus).values(
+            insert_flag_stmt = insert(MatchSyncState).values(
                 code=fixture.code,
                 sync_flags=MatchSyncFlag.PLAYER_STATS.value
             )
             insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
                 index_elements=['code'],
                 set_={
-                    'sync_flags': MatchStatus.sync_flags.op('|')(MatchSyncFlag.PLAYER_STATS.value),
+                    'sync_flags': MatchSyncState.sync_flags.op('|')(MatchSyncFlag.PLAYER_STATS.value),
                     'update_at': func.now()
                 }
             )

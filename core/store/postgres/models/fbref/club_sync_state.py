@@ -12,12 +12,12 @@ class ClubSyncFlag(IntFlag):
     SHOOTING = 16
     GOAL_KEEPING = 32
 
-class ClubStatus(Base, StatusMixin, DictMixin):
-    __tablename__ = 'club_status'
+class ClubSyncState(Base, StatusMixin, DictMixin):
+    __tablename__ = 'club_sync_state'
     __table_args__ = (
-        Index('idx_club_status_create_at', 'create_at'),
-        Index('idx_club_status_update_at', 'update_at'),
-        Index('idx_club_status_code_season', 'code', 'season', unique=True),
+        Index('idx_club_sync_state_create_at', 'create_at'),
+        Index('idx_club_sync_state_update_at', 'update_at'),
+        Index('idx_club_sync_state_code_season', 'code', 'season', unique=True),
         {'schema': '{schema}'}
     )
 
