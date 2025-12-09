@@ -4,7 +4,7 @@ from core.scheduler.tasks.base_task import BaseTask
 from core.utils.html_utils import normalize_club_name
 from core.browser.interceptor import TaskType
 from core.store.postgres.models.fbref.club import Club
-from core.store.postgres.models.fbref.club_status import ClubSyncFlag
+from core.store.postgres.models.fbref.club_sync_state import ClubSyncFlag
 from core.scheduler.synchronizers.fbref.shooting_synchronizer import ShootingSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 

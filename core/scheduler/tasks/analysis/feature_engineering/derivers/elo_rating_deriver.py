@@ -12,9 +12,9 @@ class EloRatingDeriver(BaseDeriver):
         self,
         df: pd.DataFrame,
         base_rating=1500,
-        k_factor=30,
+        k_factor=20, # or 30
         home_advantage=100,
-        reversion_rate=0.35,
+        reversion_rate=0.25,
         min_game_for_stability=10
     ) -> None:
         super().__init__(df)

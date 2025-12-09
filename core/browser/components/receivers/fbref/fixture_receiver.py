@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Any, Optional
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
-from core.store.postgres.models.fbref.fixture import Fixture
+from core.store.postgres.models.fbref.fixture import Fixture, MatchStatus
 from core.utils.html_utils import (
     get_text, get_float, get_number,
     is_table_header, extract_comp_code_from_cell,
@@ -50,6 +50,29 @@ class HtmlFixture:
         self.opp_formation = opp_formation
         self.notes = notes
         self.match_report = match_report
+
+    def get_match_status(self) -> int:
+        if not self.notes:
+            return MatchStatus.FINISHED.value
+
+        notes_lower = self.notes.lower()
+
+        if "match cancelled" in notes_lower:
+            return MatchStatus.CANCELLED.value
+
+        if "match postponed" in notes_lower:
+            return MatchStatus.POSTPONED.value
+
+        if "penalty kicks" in notes_lower:
+            return MatchStatus.FINISHED_PEN.value
+
+        if "required extra time" in notes_lower:
+            return MatchStatus.FINISHED_AET.value
+
+        if "match awarded to" in notes_lower:
+            return MatchStatus.CANCELLED.value
+
+        return MatchStatus.FINISHED.value
 
     def as_db_model(self, club_name: str, club_code: str, season: int) -> Fixture:
         venue = self.venue
@@ -119,6 +142,7 @@ class HtmlFixture:
             away_possession=away_possession,
             home_formation=home_formation,
             away_formation=away_formation,
+            match_status=self.get_match_status(),
             notes=self.notes,
             match_report=self.match_report or ""
         )
@@ -169,9 +193,6 @@ class FixtureReceiver(BaseReceiver):
             opp_formation = row.find("td", {"data-stat": "opp_formation"})
             notes = row.find("td", {"data-stat": "notes"})
             match_report = row.find("td", {"data-stat": "match_report"})
-            # if is_match_cancelled(notes) or is_match_postponed(notes):
-            #     self.logger.warning(f"Match is cancelled or postponed")
-            #     continue
 
             html_fixture = HtmlFixture(
                 kickoff_time=kickoff_utc_time,

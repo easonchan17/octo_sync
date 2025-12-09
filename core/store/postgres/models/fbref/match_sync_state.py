@@ -6,12 +6,12 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class MatchSyncFlag(IntFlag):
     PLAYER_STATS = 1
 
-class MatchStatus(Base, StatusMixin, DictMixin):
-    __tablename__ = 'match_status'
+class MatchSyncState(Base, StatusMixin, DictMixin):
+    __tablename__ = 'match_sync_state'
     __table_args__ = (
-        Index('idx_match_status_create_at', 'create_at'),
-        Index('idx_match_status_update_at', 'update_at'),
-        Index('idx_match_status_code', 'code', unique=True),
+        Index('idx_match_sync_state_create_at', 'create_at'),
+        Index('idx_match_sync_state_update_at', 'update_at'),
+        Index('idx_match_sync_state_code', 'code', unique=True),
         {'schema': '{schema}'}
     )
 

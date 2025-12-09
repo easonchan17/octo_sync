@@ -2,7 +2,7 @@ from typing import List
 from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
-    GoalKeeping, Site, Club, ClubStatus, ClubSyncFlag
+    GoalKeeping, Site, Club, ClubSyncState, ClubSyncFlag
 )
 from ..base_synchronizer import BaseSynchronizer
 
@@ -57,7 +57,7 @@ class GoalKeepingSynchronizer(BaseSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {club.name} {season_range} goal keepings from {site.name} completed. upserted: {upserted_count}")
 
-            insert_flag_stmt = insert(ClubStatus).values(
+            insert_flag_stmt = insert(ClubSyncState).values(
                 code=club.code,
                 season=season,
                 sync_flags=ClubSyncFlag.GOAL_KEEPING.value
@@ -65,7 +65,7 @@ class GoalKeepingSynchronizer(BaseSynchronizer):
             insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
                 index_elements=['code', 'season'],
                 set_={
-                    'sync_flags': ClubStatus.sync_flags.op('|')(ClubSyncFlag.GOAL_KEEPING.value),
+                    'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.GOAL_KEEPING.value),
                     'update_at': func.now()
                 }
             )

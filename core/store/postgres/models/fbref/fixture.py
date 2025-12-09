@@ -1,6 +1,24 @@
+from enum import IntEnum
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float, Text
 from ..base_model import Base, StatusMixin, DictMixin, Status
+
+class MatchStatus(IntEnum):
+    SCHEDULED = 0
+    TIMED = 1
+
+    FIRST_HALF = 10
+    HALFTIME = 11
+    SECOND_HALF = 12
+    EXTRA_TIME = 13
+    PENALTY = 14
+
+    FINISHED = 20
+    FINISHED_AET = 21
+    FINISHED_PEN = 22
+
+    POSTPONED = 30
+    CANCELLED = 31
 
 class Fixture(Base, StatusMixin, DictMixin):
     __tablename__ = 'fixtures'
@@ -45,7 +63,8 @@ class Fixture(Base, StatusMixin, DictMixin):
     home_formation = Column(String(16), nullable=True)
     away_formation = Column(String(16), nullable=True)
 
-    match_report = Column[str](String(512), nullable=False)
+    match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
+    match_report = Column(String(512), nullable=False)
     notes = Column(Text, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)

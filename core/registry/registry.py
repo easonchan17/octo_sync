@@ -30,8 +30,8 @@ from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.store.postgres.models import (
     Site, Category, SubCategory, Brand, SubCategoryBrand, Product,
-    Country, Club, Competition, Fixture, ClubStatus, GoalAndShotCreation, Passing,
-    DefensiveAction, Shooting, GoalKeeping,GlobalState, PlayerMatchStats, MatchStatus
+    Country, Club, Competition, Fixture, ClubSyncState, GoalAndShotCreation, Passing,
+    DefensiveAction, Shooting, GoalKeeping,GlobalState, PlayerMatchStats, MatchSyncState
 )
 
 class Registry:
@@ -112,7 +112,7 @@ def create_sync_fbref_fixtures_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, Fixture, ClubStatus],
+        [GlobalState, Country, Club, Fixture, ClubSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -129,7 +129,7 @@ def create_sync_fbref_gca_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, GoalAndShotCreation, ClubStatus],
+        [GlobalState, Country, Club, GoalAndShotCreation, ClubSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -146,7 +146,7 @@ def create_sync_fbref_passing_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, Passing, ClubStatus],
+        [GlobalState, Country, Club, Passing, ClubSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -163,7 +163,7 @@ def create_sync_fbref_defensive_actions_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, DefensiveAction, ClubStatus],
+        [GlobalState, Country, Club, DefensiveAction, ClubSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -180,7 +180,7 @@ def create_sync_fbref_shooting_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, Shooting, ClubStatus],
+        [GlobalState, Country, Club, Shooting, ClubSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -197,7 +197,7 @@ def create_sync_fbref_goalkeeping_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, GoalKeeping, ClubStatus],
+        [GlobalState, Country, Club, GoalKeeping, ClubSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -215,7 +215,7 @@ def create_sync_fbref_player_match_stats_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [Club, PlayerMatchStats, MatchStatus],
+        [Club, PlayerMatchStats, MatchSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -231,7 +231,7 @@ def create_sync_fbref_batch_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, Competition, ClubStatus,
+        [GlobalState, Country, Club, Competition, ClubSyncState,
          Fixture, GoalAndShotCreation, Passing,
          DefensiveAction, Shooting, GoalKeeping],
         site.get_namespace()

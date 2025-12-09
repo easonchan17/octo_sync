@@ -2,7 +2,7 @@ from typing import List, Any
 from sqlalchemy import func, update, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
-    Fixture, Site, Club, ClubStatus, ClubSyncFlag
+    Fixture, Site, Club, ClubSyncState, ClubSyncFlag
 )
 from ..base_synchronizer import BaseSynchronizer
 
@@ -16,7 +16,7 @@ class FixtureSynchronizer(BaseSynchronizer):
         fixture_dict = self.to_dict(
             fixtures,
             ['season', 'comp_name', 'comp_code', 'kickoff_time', 'code', 'round', 'venue', 'home_team', 'home_code', 'away_team', 'away_code',
-             'home_gf', 'away_gf', 'home_xg', 'away_xg', 'home_possession', 'away_possession', 'home_formation', 'away_formation', 'notes', 'match_report'],
+             'home_gf', 'away_gf', 'home_xg', 'away_xg', 'home_possession', 'away_possession', 'home_formation', 'away_formation', 'match_status', 'notes', 'match_report'],
             ['code']
         )
 
@@ -43,6 +43,7 @@ class FixtureSynchronizer(BaseSynchronizer):
                     'away_possession': insert_stmt.excluded.away_possession,
                     'home_formation': insert_stmt.excluded.home_formation,
                     'away_formation': insert_stmt.excluded.away_formation,
+                    'match_status': insert_stmt.excluded.match_status,
                     'notes': insert_stmt.excluded.notes,
                     'match_report': insert_stmt.excluded.match_report,
                     'update_at': func.now()
@@ -67,6 +68,7 @@ class FixtureSynchronizer(BaseSynchronizer):
                         Fixture.away_possession != insert_stmt.excluded.away_possession,
                         Fixture.home_formation != insert_stmt.excluded.home_formation,
                         Fixture.away_formation != insert_stmt.excluded.away_formation,
+                        Fixture.match_status != insert_stmt.excluded.match_status,
                         Fixture.notes != insert_stmt.excluded.notes,
                         Fixture.match_report != insert_stmt.excluded.match_report
                     )
@@ -76,7 +78,7 @@ class FixtureSynchronizer(BaseSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {club.name} {season_range} fixtures from {site.name} completed. upserted: {upserted_count}")
 
-            insert_flag_stmt = insert(ClubStatus).values(
+            insert_flag_stmt = insert(ClubSyncState).values(
                 code=club.code,
                 season=season,
                 sync_flags=ClubSyncFlag.FIXTURE.value
@@ -84,7 +86,7 @@ class FixtureSynchronizer(BaseSynchronizer):
             insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
                 index_elements=['code', 'season'],
                 set_={
-                    'sync_flags': ClubStatus.sync_flags.op('|')(ClubSyncFlag.FIXTURE.value),
+                    'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.FIXTURE.value),
                     'update_at': func.now()
                 }
             )
