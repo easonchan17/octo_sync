@@ -18,7 +18,8 @@ from core.scheduler.tasks.analysis.feature_engineering.constants import (
     AERIAL_MAX_POSITIONS,
     AERIAL_AVG_POSITIONS,
     IMPUTATION_QUANTILE,
-    EPSILON
+    EPSILON,
+    DEFAULT_DECIMALS
 )
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.pandas_utils import save_dataframe
@@ -61,23 +62,23 @@ class MatchStatsAggregator(BaseTask):
         ('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg'),
         ('home_defense_form', 'home_defense_form_reg + home_aerial_form_max + home_gk_form'),
         ('away_defense_form', 'away_defense_form_reg + away_aerial_form_max + away_gk_form'),
-        ('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form', 4),
-        ('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form', 4),
-        ('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form', 4),
+        ('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form'),
+        ('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form'),
+        ('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form'),
         ('home_attack_ability', 'home_finish_ability_reg + home_creativity_ability_reg + home_progression_ability_reg'),
         ('away_attack_ability', 'away_finish_ability_reg + away_creativity_ability_reg + away_progression_ability_reg'),
         ('home_defense_ability', 'home_defense_ability_reg + home_aerial_ability_max + home_gk_ability'),
         ('away_defense_ability', 'away_defense_ability_reg + away_aerial_ability_max + away_gk_ability'),
-        ('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability', 4),
-        ('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability', 4),
-        ('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability', 4),
-        ('draw_proxy', f'1/(abs(net_ability)+{EPSILON})', 4),
-        ('home_attack_form_over_ability', 'home_attack_form - home_attack_ability', 4),
-        ('away_attack_form_over_ability', 'away_attack_form - away_attack_ability', 4),
-        ('home_defense_form_over_ability', 'home_defense_form - home_defense_ability', 4),
-        ('away_defense_form_over_ability', 'away_defense_form - away_defense_ability', 4),
-        ('home_finish_vs_away_gk_ability', 'home_finish_ability_reg - away_gk_ability', 4),
-        ('away_finish_vs_home_gk_ability', 'away_finish_ability_reg - home_gk_ability', 4),
+        ('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability'),
+        ('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability'),
+        ('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability'),
+        ('draw_proxy', f'1/(abs(net_ability)+{EPSILON})'),
+        ('home_attack_form_over_ability', 'home_attack_form - home_attack_ability'),
+        ('away_attack_form_over_ability', 'away_attack_form - away_attack_ability'),
+        ('home_defense_form_over_ability', 'home_defense_form - home_defense_ability'),
+        ('away_defense_form_over_ability', 'away_defense_form - away_defense_ability'),
+        ('home_finish_vs_away_gk_ability', 'home_finish_ability_reg - away_gk_ability'),
+        ('away_finish_vs_home_gk_ability', 'away_finish_ability_reg - home_gk_ability'),
         ('home_total_luck', 'home_attack_form_over_ability + home_defense_form_over_ability'),
         ('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability'),
     ]
@@ -173,11 +174,11 @@ class MatchStatsAggregator(BaseTask):
         outfield_stats_map = {}
         for feature in self.OUTFIELD_FEATURES:
             quantile_by_position = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(IMPUTATION_QUANTILE)
-            outfield_stats_map[feature] = quantile_by_position.to_dict()
+            outfield_stats_map[feature] = quantile_by_position.round(DEFAULT_DECIMALS).to_dict()
 
         gk_stats_map = {}
         for feature in self.GK_FEATURES:
-            gk_stats_map[feature] = gk_starters[feature].quantile(IMPUTATION_QUANTILE)
+            gk_stats_map[feature] = round(float(gk_starters[feature].quantile(IMPUTATION_QUANTILE)), DEFAULT_DECIMALS)
 
         for feature in self.OUTFIELD_FEATURES:
             fill_values = outfield_starters[PRIMARY_POSITION_COL].map(outfield_stats_map[feature])
@@ -191,12 +192,10 @@ class MatchStatsAggregator(BaseTask):
         for feature in self.HOME_AWAY_DIFF_FEATURES:
             name = f'{feature}_diff'
             formula = f"home_{feature} - away_{feature}"
-            FormulaDeriver(match_stats_df).derive(name, formula, decimals=4)
+            FormulaDeriver(match_stats_df).derive(name, formula)
 
-        for item in self.FORMULA_BASED_FEATURES:
-            feature, formula = item[0], item[1]
-            decimals = item[2] if len(item) > 2 else 4
-            FormulaDeriver(match_stats_df).derive(feature, formula, decimals=decimals)
+        for feature, formula in self.FORMULA_BASED_FEATURES:
+            FormulaDeriver(match_stats_df).derive(feature, formula)
 
         return match_stats_df
 
@@ -215,7 +214,7 @@ class MatchStatsAggregator(BaseTask):
                 outfield_starters[tmp_col] = outfield_starters[feature].where(mask, fill_value)
                 agg_rules[tmp_col] = agg_func
 
-        team_stats = outfield_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).agg(agg_rules).round(4).reset_index()
+        team_stats = outfield_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).agg(agg_rules).round(DEFAULT_DECIMALS).reset_index()
         gk_stats = gk_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL])[self.GK_FEATURES].first().reset_index()
 
         rename_dict = {

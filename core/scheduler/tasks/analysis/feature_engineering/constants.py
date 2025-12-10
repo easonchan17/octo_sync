@@ -37,6 +37,8 @@ AWAY_VENUE = "away"
 EPSILON = 1e-6
 IMPUTATION_QUANTILE = 0.05
 
+DEFAULT_DECIMALS = 4
+
 SITE_HOST = "https://fbref.com"
 PAGE_URL_TEMPLATE = SITE_HOST + "/en/squads/{club_code}/{season}/matchlogs/all_comps/schedule/{club_name}-Scores-and-Fixtures-All-Competitions"
 

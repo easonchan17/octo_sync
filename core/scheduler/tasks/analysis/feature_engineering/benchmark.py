@@ -1,12 +1,13 @@
 import json
 import numpy as np
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Optional
 from .context import FeatureContext
 from .constants import (
     PRIMARY_POSITION_COL,
     POSITION_COL,
     EPSILON,
+    DEFAULT_DECIMALS,
     OUTFIELD_POSITIONS,
     GK_POSITIONS,
     OUTFIELD_FEATURE_POSITION_MAPPING,
@@ -40,7 +41,7 @@ class FeatureBenchmark(FeatureContext):
             self.logger.warning(error_msg)
 
 
-    def calculate(self, quantile: float = 0.98, decimals: int = 4) -> Dict[str, float]:
+    def calculate(self, quantile: float = 0.98, decimals: Optional[int] = DEFAULT_DECIMALS) -> Dict[str, float]:
         features = self.feature_position_mapping.keys()
         for feature in features:
             if feature not in self.df.columns:

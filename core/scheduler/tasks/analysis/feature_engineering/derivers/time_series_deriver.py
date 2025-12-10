@@ -15,7 +15,8 @@ from ..constants import (
     AWAY_POINT_COL,
     ORIGINAL_INDEX_COL,
     PLAYER_CODE_COL,
-    POINT_COL
+    POINT_COL,
+    DEFAULT_DECIMALS
 )
 
 
@@ -93,7 +94,7 @@ class TimeSeriesDeriver(BaseDeriver):
 
     def derive_rest_days(
         self,
-        decimals: Optional[int] = None,
+        decimals: Optional[int] = DEFAULT_DECIMALS,
         default_value: Optional[Any] = None
     ) -> None:
         self.derive(
@@ -107,7 +108,7 @@ class TimeSeriesDeriver(BaseDeriver):
     def derive_ema(
         self,
         feature: str,
-        decimals: Optional[int] = None,
+        decimals: Optional[int] = DEFAULT_DECIMALS,
         default_value: Optional[Any] = None,
         span: int = 5,
         min_periods: int = 5
@@ -129,7 +130,7 @@ class TimeSeriesDeriver(BaseDeriver):
     def derive_lagged(
         self,
         feature: str,
-        decimals: Optional[int] = None,
+        decimals: Optional[int] = DEFAULT_DECIMALS,
         default_value: Optional[Any] = None
     ) -> None:
         derived_col = f"{feature}_lagged"
@@ -144,7 +145,7 @@ class TimeSeriesDeriver(BaseDeriver):
     def derive_rolling_sum(
         self,
         feature: str,
-        decimals: Optional[int] = None,
+        decimals: Optional[int] = DEFAULT_DECIMALS,
         default_value: Optional[Any] = None,
         window: int = 5,
         min_periods: int = 1
@@ -203,7 +204,7 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
         derived_col: str,
         unified_col: str,
         calculator: Callable[[pd.DataFrame, str, str, Any], pd.Series],
-        decimals: Optional[int] = None,
+        decimals: Optional[int] = DEFAULT_DECIMALS,
         default_value: Optional[Any] = None
     ) -> None:
         self.ensure_column_does_not_exist(derived_col)
@@ -238,7 +239,7 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
         self.df[f"home_{derived_col}"] = self.team_fixtures[self.team_fixtures[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)[derived_col]
         self.df[f"away_{derived_col}"] = self.team_fixtures[~self.team_fixtures[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)[derived_col]
 
-    def derive_h2h_points(self, decimals: Optional[int] = None) -> None:
+    def derive_h2h_points(self, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
         self.ensure_column_exists(HOME_CODE_COL)
         self.ensure_column_exists(AWAY_CODE_COL)
         self.ensure_column_exists(HOME_POINT_COL)
@@ -275,7 +276,7 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
 
     def derive_venue_performance(
         self,
-        decimals: Optional[int] = None,
+        decimals: Optional[int] = DEFAULT_DECIMALS,
         span: int = 5,
         min_periods: int = 5,
     ) -> None:
@@ -349,7 +350,7 @@ class PlayerTimeSeriesDeriver(TimeSeriesDeriver):
         derived_col: str,
         unified_col: str,
         calculator: Callable[[pd.DataFrame, str, str, Any], pd.Series],
-        decimals: Optional[int] = None,
+        decimals: Optional[int] = DEFAULT_DECIMALS,
         default_value: Optional[Any] = None
     ) -> None:
         self.ensure_column_does_not_exist(derived_col)

@@ -1,11 +1,15 @@
 import pandas as pd
 from pathlib import Path
+from datetime import datetime
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
+from sqlalchemy.dialects.postgresql import insert
 from core.utils.pandas_utils import load_dataframe
 from sklearn.model_selection import TimeSeriesSplit
 from core.scheduler.tasks.base_task import BaseTask
+from core.store.postgres.models import TrainingRecord
+from core.store.postgres.postgresql_manager import PostgreSQLManager
 from .xgboost_classifier import XGBoostClassifier
 from sklearn.utils.class_weight import compute_sample_weight
 
@@ -19,6 +23,8 @@ class BayesianOptimizeTrainer(BaseTask):
         self.early_stopping_rounds = payload.get('early_stopping_rounds', 50)
         self.random_state = payload.get('random_state', 1)
         self.balanced = payload.get('balanced', False)
+        self.postgresql_manager = PostgreSQLManager.get_instance()
+        self.schema_name = payload.get('schema_name', 'public')
 
     def bayesian_optimization(
         self,
@@ -156,6 +162,54 @@ class BayesianOptimizeTrainer(BaseTask):
             self.logger.info(f"\n--- Total Feature Importances ---")
             self.logger.info(imps.to_string())
 
+    def save_model_artifact(self, best_estimator_model) -> Tuple[str, str]:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_version = f"xgboost_{timestamp}"
+        model_dir = Path("artifacts/models") / timestamp
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        model_path = model_dir / "xgboost_model.json"
+
+        booster = best_estimator_model.model.get_booster()
+        booster.save_model(str(model_path))
+
+        absolute_path = str(model_path.resolve())
+        self.logger.info(f"Model saved to: {absolute_path}")
+        return absolute_path, model_version
+
+    def save_training_record(
+        self,
+        bayes_search: BayesSearchCV,
+        X_test: pd.DataFrame,
+        y_test: pd.Series,
+        feature_names: pd.Index,
+        model_path: str,
+        model_version: str
+    ) -> int:
+        best_model = bayes_search.best_estimator_.model
+        y_pred = best_model.predict(X_test)
+        test_accuracy = (y_pred == y_test.values).mean()
+
+        record = TrainingRecord(
+            model_version=model_version,
+            model_type="XGBoost",
+            model_path=model_path,
+            dataset_name=self.data_file,
+            feature_names=feature_names.tolist(),
+            best_params=dict(bayes_search.best_params_),
+            best_score=float(bayes_search.best_score_),
+            test_accuracy=float(test_accuracy),
+            is_production=False
+        )
+
+        with self.postgresql_manager.get_session(self.schema_name) as session:
+            session.add(record)
+            session.flush()
+            record_id = record.id
+
+        self.logger.info(f"Training record saved. Record ID: {record_id}")
+        return record_id
+
     def execute(self, *args, **kwargs) -> None:
         output_path = self.config_manager.get_config("features.path")
         output_path = Path(output_path)
@@ -186,9 +240,6 @@ class BayesianOptimizeTrainer(BaseTask):
         if missing_columns:
             self.logger.warning(f"Columns not found in DataFrame (skipped): {missing_columns}")
 
-
-        # with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.width', None):
-        #     self.logger.info("\n%s", X.head())
         self.logger.info(X.head())
 
         split_idx = int(len(X) * (1 - self.test_size))
@@ -216,6 +267,20 @@ class BayesianOptimizeTrainer(BaseTask):
         if not bayes_search:
             self.logger.warning("No model found, skipping prediction analysis")
             return
+
+        best_model = bayes_search.best_estimator_
+        model_path, model_version = self.save_model_artifact(best_model)
+
+        record_id = self.save_training_record(
+            bayes_search,
+            pd.DataFrame(X_test, columns=X_test.columns, index=X_test.index),
+            y_test,
+            X.columns,
+            model_path,
+            model_version
+        )
+
+        self.logger.info(f"Model saved. Record ID: {record_id}")
 
         self.analyze_predictions_on_test_set(
             pd.DataFrame(X_test, columns=X_test.columns, index=X_test.index),
