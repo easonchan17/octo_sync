@@ -4,7 +4,7 @@ from typing import Optional
 from .base_deriver import BaseDeriver
 from ..constants import (
     HOME_CODE_COL, AWAY_CODE_COL, SEASON_COL,
-    HOME_GF_COL, AWAY_GF_COL
+    HOME_GF_COL, AWAY_GF_COL, DEFAULT_DECIMALS
 )
 
 class EloRatingDeriver(BaseDeriver):
@@ -81,7 +81,7 @@ class EloRatingDeriver(BaseDeriver):
         new_rating = old_rating * (1 - reg_rate) + self.base_rating * reg_rate
         self.ratings[team_code] = new_rating
 
-    def derive(self, decimals: Optional[int] = None) -> None:
+    def derive(self, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
         df = self.df
         size = len(df)
 

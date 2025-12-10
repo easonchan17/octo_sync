@@ -1,13 +1,14 @@
 import pandas as pd
 from typing import Optional
 from .base_deriver import BaseDeriver
+from ..constants import DEFAULT_DECIMALS
 
 class FormulaDeriver(BaseDeriver):
     def derive(
         self,
         feature: str,
         formula: str,
-        decimals: Optional[int] = None
+        decimals: Optional[int] = DEFAULT_DECIMALS
     ) -> None:
         self.ensure_column_does_not_exist(feature)
 

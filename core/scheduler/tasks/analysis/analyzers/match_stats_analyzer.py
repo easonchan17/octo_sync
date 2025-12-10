@@ -20,7 +20,8 @@ from ..feature_engineering.constants import (
     HOME_CODE_COL, HOME_TEAM_COL, POINT_COL, SITE_HOST, PAGE_URL_TEMPLATE,
     PAGE_URL_COL, MATCH_REPORT_COL, SEASON_COL,
     HOME_VENUE, AWAY_VENUE, HOME_GF_COL, AWAY_GF_COL,
-    HOME_POINT_COL, AWAY_POINT_COL, XG_COL, NOTES_COL
+    HOME_POINT_COL, AWAY_POINT_COL, XG_COL, NOTES_COL,
+    DEFAULT_DECIMALS
 )
 from .base_analyzer import BaseAnalyzer
 
@@ -52,50 +53,50 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     ]
 
     FORMULA_BASED_FEATURES = [
-        ("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5", 4),
-        ("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5", 4),
-        ("home_field_tilt_ema_5", "home_passes_into_final_third_ema_5 / (home_passes_into_final_third_ema_5 + away_passes_into_final_third_ema_5)", 4),
-        ("away_field_tilt_ema_5", "1 - home_field_tilt_ema_5", 4),
+        ("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5"),
+        ("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5"),
+        ("home_field_tilt_ema_5", "home_passes_into_final_third_ema_5 / (home_passes_into_final_third_ema_5 + away_passes_into_final_third_ema_5)"),
+        ("away_field_tilt_ema_5", "1 - home_field_tilt_ema_5"),
         ("home_safe_control_ema_5", "home_possession_ema_5 - home_field_tilt_ema_5"),
         ("away_safe_control_ema_5", "away_possession_ema_5 - away_field_tilt_ema_5"),
-        ("home_long_passes_acc_ema_5", "home_passes_completed_long_ema_5 / home_passes_long_ema_5", 4),
-        ("away_long_passes_acc_ema_5", "away_passes_completed_long_ema_5 / away_passes_long_ema_5", 4),
-        ("home_long_passes_share_ema_5", "home_passes_long_ema_5 / home_passes_ema_5", 4),
-        ("away_long_passes_share_ema_5", "away_passes_long_ema_5 / away_passes_ema_5", 4),
-        ("home_box_penetration_ratio_ema_5", "home_passes_into_penalty_area_ema_5 / home_passes_into_final_third_ema_5", 4),
-        ("away_box_penetration_ratio_ema_5", "away_passes_into_penalty_area_ema_5 / away_passes_into_final_third_ema_5", 4),
-        ("home_creativity_share_ema_5", "home_pass_xa_ema_5 / home_xg_ema_5", 4),
-        ("away_creativity_share_ema_5", "away_pass_xa_ema_5 / away_xg_ema_5", 4),
-        ("home_final_third_entry_share_ema_5", "home_passes_into_final_third_ema_5 / home_passes_ema_5", 4),
-        ("away_final_third_entry_share_ema_5", "away_passes_into_final_third_ema_5 / away_passes_ema_5", 4),
-        ("home_passes_progressive_rate_ema_5", "home_passes_progressive_ema_5 / home_passes_ema_5", 4),
-        ("away_passes_progressive_rate_ema_5", "away_passes_progressive_ema_5 / away_passes_ema_5", 4),
-        ("home_passes_progressive_share_ema_5", "home_passes_progressive_distance_ema_5 / home_passes_total_distance_ema_5", 4),
-        ("away_passes_progressive_share_ema_5", "away_passes_progressive_distance_ema_5 / away_passes_total_distance_ema_5", 4),
-        ("home_shots_acc_ratio_ema_5", "home_shots_on_target_ema_5 / home_shots_ema_5", 4),
-        ("away_shots_acc_ratio_ema_5", "away_shots_on_target_ema_5 / away_shots_ema_5", 4),
-        ("home_shots_conversion_ratio_ema_5", "home_gf_ema_5 / home_shots_ema_5", 4),
-        ("away_shots_conversion_ratio_ema_5", "away_gf_ema_5 / away_shots_ema_5", 4),
-        ("home_goal_to_xg_ema_5", "home_gf_ema_5 / home_xg_ema_5", 4),
-        ("away_goal_to_xg_ema_5", "away_gf_ema_5 / away_xg_ema_5", 4),
+        ("home_long_passes_acc_ema_5", "home_passes_completed_long_ema_5 / home_passes_long_ema_5"),
+        ("away_long_passes_acc_ema_5", "away_passes_completed_long_ema_5 / away_passes_long_ema_5"),
+        ("home_long_passes_share_ema_5", "home_passes_long_ema_5 / home_passes_ema_5"),
+        ("away_long_passes_share_ema_5", "away_passes_long_ema_5 / away_passes_ema_5"),
+        ("home_box_penetration_ratio_ema_5", "home_passes_into_penalty_area_ema_5 / home_passes_into_final_third_ema_5"),
+        ("away_box_penetration_ratio_ema_5", "away_passes_into_penalty_area_ema_5 / away_passes_into_final_third_ema_5"),
+        ("home_creativity_share_ema_5", "home_pass_xa_ema_5 / home_xg_ema_5"),
+        ("away_creativity_share_ema_5", "away_pass_xa_ema_5 / away_xg_ema_5"),
+        ("home_final_third_entry_share_ema_5", "home_passes_into_final_third_ema_5 / home_passes_ema_5"),
+        ("away_final_third_entry_share_ema_5", "away_passes_into_final_third_ema_5 / away_passes_ema_5"),
+        ("home_passes_progressive_rate_ema_5", "home_passes_progressive_ema_5 / home_passes_ema_5"),
+        ("away_passes_progressive_rate_ema_5", "away_passes_progressive_ema_5 / away_passes_ema_5"),
+        ("home_passes_progressive_share_ema_5", "home_passes_progressive_distance_ema_5 / home_passes_total_distance_ema_5"),
+        ("away_passes_progressive_share_ema_5", "away_passes_progressive_distance_ema_5 / away_passes_total_distance_ema_5"),
+        ("home_shots_acc_ratio_ema_5", "home_shots_on_target_ema_5 / home_shots_ema_5"),
+        ("away_shots_acc_ratio_ema_5", "away_shots_on_target_ema_5 / away_shots_ema_5"),
+        ("home_shots_conversion_ratio_ema_5", "home_gf_ema_5 / home_shots_ema_5"),
+        ("away_shots_conversion_ratio_ema_5", "away_gf_ema_5 / away_shots_ema_5"),
+        ("home_goal_to_xg_ema_5", "home_gf_ema_5 / home_xg_ema_5"),
+        ("away_goal_to_xg_ema_5", "away_gf_ema_5 / away_xg_ema_5"),
         ("home_gsaa_ema_5", "home_gk_psxg_ema_5 - away_gf_ema_5"),
         ("away_gsaa_ema_5", "away_gk_psxg_ema_5 - home_gf_ema_5"),
-        ("home_tackles_success_ratio_ema_5", "home_tackles_won_ema_5 / home_tackles_ema_5", 4),
-        ("away_tackles_success_ratio_ema_5", "away_tackles_won_ema_5 / away_tackles_ema_5", 4),
-        ("home_challenges_success_ratio_ema_5", "(home_challenges_ema_5-home_challenges_lost_ema_5) / home_challenges_ema_5", 4),
-        ("away_challenges_success_ratio_ema_5", "(away_challenges_ema_5-away_challenges_lost_ema_5) / away_challenges_ema_5", 4),
-        ("home_high_press_ratio_ema_5", "home_tackles_att_third_ema_5 / home_tackles_ema_5", 4),
-        ("away_high_press_ratio_ema_5", "away_tackles_att_third_ema_5 / away_tackles_ema_5", 4),
+        ("home_tackles_success_ratio_ema_5", "home_tackles_won_ema_5 / home_tackles_ema_5"),
+        ("away_tackles_success_ratio_ema_5", "away_tackles_won_ema_5 / away_tackles_ema_5"),
+        ("home_challenges_success_ratio_ema_5", "(home_challenges_ema_5-home_challenges_lost_ema_5) / home_challenges_ema_5"),
+        ("away_challenges_success_ratio_ema_5", "(away_challenges_ema_5-away_challenges_lost_ema_5) / away_challenges_ema_5"),
+        ("home_high_press_ratio_ema_5", "home_tackles_att_third_ema_5 / home_tackles_ema_5"),
+        ("away_high_press_ratio_ema_5", "away_tackles_att_third_ema_5 / away_tackles_ema_5"),
         ("home_disruption_volume_ema_5", "home_blocks_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5"),
         ("away_disruption_volume_ema_5", "away_blocks_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5"),
-        ("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5)", 4),
-        ("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5)", 4),
-        ("home_gk_crosses_stopped_ratio_ema_5", "home_gk_crosses_stopped_ema_5 / home_gk_crosses_ema_5", 4),
-        ("away_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ema_5 / away_gk_crosses_ema_5", 4),
-        ("home_set_piece_sca_ratio_ema_5", "home_sca_passes_dead_ema_5 / home_sca_ema_5", 4),
-        ("away_set_piece_sca_ratio_ema_5", "away_sca_passes_dead_ema_5 / away_sca_ema_5", 4),
-        ("home_take_on_sca_ratio_ema_5", "home_sca_take_ons_ema_5 / home_sca_ema_5", 4),
-        ("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5", 4)
+        ("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5)"),
+        ("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5)"),
+        ("home_gk_crosses_stopped_ratio_ema_5", "home_gk_crosses_stopped_ema_5 / home_gk_crosses_ema_5"),
+        ("away_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ema_5 / away_gk_crosses_ema_5"),
+        ("home_set_piece_sca_ratio_ema_5", "home_sca_passes_dead_ema_5 / home_sca_ema_5"),
+        ("away_set_piece_sca_ratio_ema_5", "away_sca_passes_dead_ema_5 / away_sca_ema_5"),
+        ("home_take_on_sca_ratio_ema_5", "home_sca_take_ons_ema_5 / home_sca_ema_5"),
+        ("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5")
     ]
 
     HOME_AWAY_DIFF_FEATURES = [
@@ -446,8 +447,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             lambda x: x.str.startswith(("Match Postponed", "Match Cancelled", "Match awarded to"), na=False)
         )
 
-        MeanImputer(df).impute("home_average_shot_distance", 1)
-        MeanImputer(df).impute("away_average_shot_distance", 1)
+        MeanImputer(df).impute("home_average_shot_distance")
+        MeanImputer(df).impute("away_average_shot_distance")
 
         df[HOME_POINT_COL] = np.select(
             [df[HOME_GF_COL] > df[AWAY_GF_COL], df[HOME_GF_COL] == df[AWAY_GF_COL]],
@@ -461,30 +462,28 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         )
 
         deriver = TeamTimeSeriesDeriver(df)
-        deriver.derive_rest_days(decimals=2)
-        deriver.derive_lagged(XG_COL, decimals=1)
+        deriver.derive_rest_days()
+        deriver.derive_lagged(XG_COL)
         deriver.derive_rolling_sum(POINT_COL, default_value=0, window=5, min_periods=1)
-        deriver.derive_h2h_points(decimals=2)
-        deriver.derive_venue_performance(decimals=2, min_periods=2)
+        deriver.derive_h2h_points()
+        deriver.derive_venue_performance(min_periods=2)
         for feature in self.EMA_BASED_FEATURES:
-            deriver.derive_ema(feature, decimals=4, min_periods=2)
+            deriver.derive_ema(feature, min_periods=2)
         df = deriver.get_result()
 
         elo_options = options.get("elo_options", {})
-        EloRatingDeriver(df, **elo_options).derive(decimals=4)
+        EloRatingDeriver(df, **elo_options).derive()
 
         for feature in self.NOT_NONE_FEATURES:
             df = FeatureSelector(df).filter_rows(feature)
 
-        for item in self.FORMULA_BASED_FEATURES:
-            feature, formula = item[0], item[1]
-            decimals = item[2] if len(item) > 2 else 4
-            FormulaDeriver(df).derive(feature, formula, decimals)
+        for feature, formula in self.FORMULA_BASED_FEATURES:
+            FormulaDeriver(df).derive(feature, formula)
 
         for feature in self.HOME_AWAY_DIFF_FEATURES:
             name = f"{feature}_diff"
             formula = f"{HOME_VENUE}_{feature} - {AWAY_VENUE}_{feature}"
-            FormulaDeriver(df).derive(name, formula, decimals=4)
+            FormulaDeriver(df).derive(name, formula)
 
         df[PAGE_URL_COL] = df.apply(lambda row: PAGE_URL_TEMPLATE.format(
             season=normalize_season_range(row[SEASON_COL]),
