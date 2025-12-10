@@ -93,6 +93,20 @@ def extract_player_code_from_cell(cell) -> Optional[str]:
 def extract_player_code_from_url(url) -> Optional[str]:
     return extract_text(url, r"/en/players/([a-zA-Z0-9]+)/")
 
+def extract_season_from_cell(cell) -> Optional[int]:
+    text = get_text(cell)
+    if not text:
+        return None
+
+    if text.isdigit():
+        return int(text)
+
+    match = re.match(r'^(\d{4})-\d{4}$', text)
+    if match:
+        return int(match.group(1))
+
+    return None
+
 def normalize_season_range(season: str) -> str:
     return f"{int(season)}-{int(season)+1}"
 

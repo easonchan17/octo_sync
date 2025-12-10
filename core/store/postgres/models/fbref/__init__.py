@@ -2,6 +2,7 @@ from .club import Club
 from .club_sync_state import ClubSyncState, ClubSyncFlag
 from .competition import Competition
 from .country import Country
+from .country_sync_state import CountrySyncState, CountrySyncFlag
 from .defensive_action import DefensiveAction
 from .fixture import Fixture, MatchStatus
 from .goal_and_shot_creation import GoalAndShotCreation
@@ -18,6 +19,8 @@ __all__ = [
     'ClubSyncFlag',
     'Competition',
     'Country',
+    'CountrySyncState',
+    'CountrySyncFlag',
     'DefensiveAction',
     'Fixture',
     'MatchStatus',
