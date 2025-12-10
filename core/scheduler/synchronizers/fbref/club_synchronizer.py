@@ -1,8 +1,9 @@
 from typing import List, Any
-from sqlalchemy import func, update, or_
+from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
-    Country, Club, Site, Status, ClubSyncState
+    Country, Club, Site, Status, ClubSyncState,
+    CountrySyncState, CountrySyncFlag
 )
 from ..base_synchronizer import BaseSynchronizer
 
@@ -46,9 +47,16 @@ class ClubSynchronizer(BaseSynchronizer):
             return session.query(
                 Country.name,
                 Country.code
+            ).outerjoin(
+                CountrySyncState,
+                CountrySyncState.code == Country.code
             ).filter(
-                Country.status.op('&')(Status.SYNCED.value) == 0,
-                Country.club_count > 0
+                Country.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value,
+                Country.club_count > 0,
+                or_(
+                    CountrySyncState.code.is_(None),
+                    (CountrySyncState.sync_flags.op('&')(CountrySyncFlag.CLUBS.value)) != CountrySyncFlag.CLUBS.value
+                )
             ).all()
 
     def sync(self, site: Site, country: Country, clubs: List[Club]) -> None:
@@ -84,8 +92,28 @@ class ClubSynchronizer(BaseSynchronizer):
                         Club.country_code != insert_stmt.excluded.country_code,
                         Club.comp_name != insert_stmt.excluded.comp_name,
                         Club.comp_code != insert_stmt.excluded.comp_code,
-                        Club.min_season != insert_stmt.excluded.min_season,
-                        Club.max_season != insert_stmt.excluded.max_season
+                        or_(
+                            Club.min_season != insert_stmt.excluded.min_season,
+                            and_(
+                                Club.min_season.is_(None),
+                                insert_stmt.excluded.min_season.isnot(None)
+                            ),
+                            and_(
+                                Club.min_season.isnot(None),
+                                insert_stmt.excluded.min_season.is_(None)
+                            )
+                        ),
+                        or_(
+                            Club.max_season != insert_stmt.excluded.max_season,
+                            and_(
+                                Club.max_season.is_(None),
+                                insert_stmt.excluded.max_season.isnot(None)
+                            ),
+                            and_(
+                                Club.max_season.isnot(None),
+                                insert_stmt.excluded.max_season.is_(None)
+                            )
+                        )
                     )
                 )
             )
@@ -93,14 +121,16 @@ class ClubSynchronizer(BaseSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {site.name} {country.name} clubs completed. upserted: {upserted_count}")
 
-            update_stmt = (
-                update(Country)
-                .where(
-                    Country.code == country.code
-                )
-                .values(
-                    status=Country.status.op('|')(Status.SYNCED.value)
-                )
+            insert_flag_stmt = insert(CountrySyncState).values(
+                code=country.code,
+                sync_flags=CountrySyncFlag.CLUBS.value
             )
-            session.execute(update_stmt)
+            insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
+                index_elements=['code'],
+                set_={
+                    'sync_flags': CountrySyncState.sync_flags.op('|')(CountrySyncFlag.CLUBS.value),
+                    'update_at': func.now()
+                }
+            )
+            session.execute(insert_flag_stmt)
             self.logger.info(f"Mark {site.name} {country.name} clubs as synced")

@@ -3,7 +3,8 @@ from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.competition import Competition
 from core.utils.html_utils import (
-    get_text, extract_text, get_number, is_table_header, extract_comp_code_from_cell
+    get_text, get_number, is_table_header,
+    extract_comp_code_from_cell, extract_season_from_cell
 )
 
 class CompetitionReceiver(BaseReceiver):
@@ -37,8 +38,8 @@ class CompetitionReceiver(BaseReceiver):
                     code=extract_comp_code_from_cell(league_name),
                     gender=get_text(gender),
                     governing_body=get_text(governing_body),
-                    min_season=get_number(min_season),
-                    max_season=get_number(max_season)
+                    min_season=extract_season_from_cell(min_season),
+                    max_season=extract_season_from_cell(max_season)
                 )
                 competitions.append(competition)
 

@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.club import Club
 from core.utils.html_utils import (
-    get_text, extract_number,
+    get_text, extract_season_from_cell,
     is_table_header, extract_comp_code_from_cell,
     extract_club_code_from_cell
 )
@@ -41,8 +41,8 @@ class ClubReceiver(BaseReceiver):
                 gender=get_text(gender),
                 comp_name=get_text(comp),
                 comp_code=extract_comp_code_from_cell(comp),
-                min_season=extract_number(get_text(min_season), r"(\d{4})-(\d{4})"),
-                max_season=extract_number(get_text(max_season), r"(\d{4})-(\d{4})")
+                min_season=extract_season_from_cell(min_season),
+                max_season=extract_season_from_cell(max_season)
             )
             clubs.append(club)
 

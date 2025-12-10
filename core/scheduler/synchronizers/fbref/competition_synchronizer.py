@@ -1,5 +1,5 @@
 from typing import List
-from sqlalchemy import func, update, or_
+from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
     Competition, Site, GlobalState
@@ -48,8 +48,28 @@ class CompetitionSynchronizer(BaseSynchronizer):
                     or_(
                         Competition.name != insert_stmt.excluded.name,
                         Competition.governing_body != insert_stmt.excluded.governing_body,
-                        Competition.min_season != insert_stmt.excluded.min_season,
-                        Competition.max_season != insert_stmt.excluded.max_season
+                        or_(
+                            Competition.min_season != insert_stmt.excluded.min_season,
+                            and_(
+                                Competition.min_season.is_(None),
+                                insert_stmt.excluded.min_season.isnot(None)
+                            ),
+                            and_(
+                                Competition.min_season.isnot(None),
+                                insert_stmt.excluded.min_season.is_(None)
+                            )
+                        ),
+                        or_(
+                            Competition.max_season != insert_stmt.excluded.max_season,
+                            and_(
+                                Competition.max_season.is_(None),
+                                insert_stmt.excluded.max_season.isnot(None)
+                            ),
+                            and_(
+                                Competition.max_season.isnot(None),
+                                insert_stmt.excluded.max_season.is_(None)
+                            )
+                        )
                     )
                 )
             )
