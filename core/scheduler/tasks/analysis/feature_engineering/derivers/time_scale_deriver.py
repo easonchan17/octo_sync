@@ -1,6 +1,6 @@
 from typing import List, Optional
 from .base_deriver import BaseDeriver
-from ..constants import MINUTES_PLAYED_COL
+from ..constants import MINUTES_PLAYED_COL, DEFAULT_DECIMALS
 
 class TimeScaleDeriver(BaseDeriver):
     def derive(
@@ -8,7 +8,7 @@ class TimeScaleDeriver(BaseDeriver):
         features: List[str],
         unit_minutes: int = 90,
         min_minutes: int = 30,
-        decimals: Optional[int] = None
+        decimals: Optional[int] = DEFAULT_DECIMALS
     ) -> None:
         if not features:
             raise ValueError("Features list cannot be empty")

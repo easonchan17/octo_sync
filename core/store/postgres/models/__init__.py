@@ -28,6 +28,7 @@ from .fbref import (
     Shooting,
     GlobalState
 )
+from .training_record import TrainingRecord
 
 __all__ = [
     'Base',
@@ -57,5 +58,6 @@ __all__ = [
     'Passing',
     'PlayerMatchStats',
     'Shooting',
-    'GlobalState'
+    'GlobalState',
+    'TrainingRecord'
 ]

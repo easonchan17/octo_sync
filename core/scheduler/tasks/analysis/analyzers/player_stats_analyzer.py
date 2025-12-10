@@ -193,34 +193,30 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         )
 
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
-        FormulaDeriver(df).derive("non_penalty_goals", "goals - penalties_made", decimals=4)
-
-        TimeScaleDeriver(df).derive(self.TIME_SCALE_BASED_FEATURES, decimals=1)
-
-        opponent_possession = np.where(
+        FormulaDeriver(df).derive("non_penalty_goals", "goals - penalties_made")
+        TimeScaleDeriver(df).derive(self.TIME_SCALE_BASED_FEATURES)
+        df["opponent_possession"] = np.where(
             df[TEAM_CODE_COL] == df[HOME_CODE_COL],
             df[AWAY_POSSESSION_COL],
             df[HOME_POSSESSION_COL]
         )
+
         for feature in self.POSSESSION_ADJ_BASED_FEATURES:
-            df[f"{feature}_adj"] = np.round(df[feature] * 50.0 / opponent_possession, 2)
+            FormulaDeriver(df).derive(f"{feature}_adj", f"{feature} * 50.0 / opponent_possession")
 
         deriver = PlayerTimeSeriesDeriver(df)
-        deriver.derive_rest_days(decimals=2)
+        deriver.derive_rest_days()
         for feature in self.EMA_BASED_FEATURES:
-            deriver.derive_ema(feature, decimals=4, min_periods=2)
-            deriver.derive_ema(feature, decimals=4, span=20, min_periods=2)
+            deriver.derive_ema(feature, min_periods=2)
+            deriver.derive_ema(feature, span=20, min_periods=2)
 
         df = deriver.df
-        # for feature in self.NOT_NONE_FEATURES:
-        #     df = FeatureSelector(df).filter_rows(feature)
-
         benchmarks = OutfieldFeatureBenchmark(df).calculate()
         for name, template in self.ABILITY_FORMULAS.items():
             form_formula = template.format(s=5, epsilon=EPSILON).format(**benchmarks)
             ability_formula = template.format(s=20, epsilon=EPSILON).format(**benchmarks)
-            FormulaDeriver(df).derive(f"{name}_form", form_formula, decimals=4)
-            FormulaDeriver(df).derive(f"{name}_ability", ability_formula, decimals=4)
+            FormulaDeriver(df).derive(f"{name}_form", form_formula)
+            FormulaDeriver(df).derive(f"{name}_ability", ability_formula)
 
         required_features = options.get("required_features", self.REQUIRED_FEATURES)
         return FeatureSelector(df).select_columns(required_features)
@@ -326,24 +322,21 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         DefaultImputer(df).impute("gk_def_actions_outside_pen_area", 0)
 
-        TimeScaleDeriver(df).derive(self.TIME_SCALE_BASED_FEATURES, decimals=1)
+        TimeScaleDeriver(df).derive(self.TIME_SCALE_BASED_FEATURES)
 
         deriver = PlayerTimeSeriesDeriver(df)
-        deriver.derive_rest_days(decimals=2)
+        deriver.derive_rest_days()
         for feature in self.EMA_BASED_FEATURES:
-            deriver.derive_ema(feature, decimals=1, min_periods=2)
-            deriver.derive_ema(feature, decimals=1, span=20, min_periods=2)
+            deriver.derive_ema(feature, min_periods=2)
+            deriver.derive_ema(feature, span=20, min_periods=2)
 
         df = deriver.df.reset_index()
-        # for feature in self.NOT_NONE_FEATURES:
-        #     df = FeatureSelector(df).filter_rows(feature)
-
         benchmarks = GoalkeeperFeatureBenchmark(df).calculate()
         for name, template in self.ABILITY_FORMULAS.items():
             form_formula = template.format(s=5, epsilon=EPSILON).format(**benchmarks)
             ability_formula = template.format(s=20, epsilon=EPSILON).format(**benchmarks)
-            FormulaDeriver(df).derive(f"{name}_form", form_formula, decimals=4)
-            FormulaDeriver(df).derive(f"{name}_ability", ability_formula, decimals=4)
+            FormulaDeriver(df).derive(f"{name}_form", form_formula)
+            FormulaDeriver(df).derive(f"{name}_ability", ability_formula)
 
         required_features = options.get("required_features", self.REQUIRED_FEATURES)
         return FeatureSelector(df).select_columns(required_features)

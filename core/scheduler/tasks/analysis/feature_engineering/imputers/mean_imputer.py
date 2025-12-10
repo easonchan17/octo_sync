@@ -1,9 +1,10 @@
 import pandas as pd
 from typing import Optional
 from .base_imputer import BaseImputer
+from ..constants import DEFAULT_DECIMALS
 
 class MeanImputer(BaseImputer):
-    def impute(self, feature: str, decimals: Optional[int] = 0) -> None:
+    def impute(self, feature: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
         null_mask = self.get_null_mask(feature)
         if not null_mask.any():
             return
