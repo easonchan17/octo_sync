@@ -2,7 +2,8 @@ from typing import List, Any, Tuple
 from sqlalchemy import func, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
-    PlayerMatchStats, Site, MatchSyncState, MatchSyncFlag, Fixture
+    PlayerMatchStats, Site, MatchSyncState,
+    MatchSyncFlag, Fixture, Status
 )
 from ..base_synchronizer import BaseSynchronizer
 
@@ -28,7 +29,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                 MatchSyncState,
                 MatchSyncState.code == Fixture.code
             ).filter(
-                Fixture.status == 1,
+                Fixture.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value,
                 or_(
                     Fixture.home_code.in_(club_codes),
                     Fixture.away_code.in_(club_codes)
