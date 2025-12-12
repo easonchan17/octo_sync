@@ -104,7 +104,7 @@ models:
     objective: multi:softprob
     eval_metric: mlogloss
     tree_method: hist
-    test_size: 0.1
+    eval_set_size: 0.1
     num_class: 3
     target_names:
       - Home Loss
@@ -118,8 +118,8 @@ trainers:
     search_spaces:
       max_depth:
         type: Integer
-        low: 6
-        high: 14
+        low: 3
+        high: 10
       learning_rate:
         type: Real
         low: 0.01
@@ -136,7 +136,7 @@ trainers:
       gamma:
         type: Real
         low: 0
-        high: 0.2
+        high: 5.0
       subsample:
         type: Real
         low: 0.5
@@ -155,12 +155,12 @@ trainers:
         low: 1.0e-5
         high: 10
         prior: log-uniform
-    n_iter: 300
+    n_iter: 100
     test_size: 0.2
     cv:
       n_splits: 5
-      type: 'TimeSeriesSplit'
-    scoring: 'accuracy'
+      type: TimeSeriesSplit
+    scoring: neg_log_loss
     balanced: false
     random_state: 1
   artifact:
