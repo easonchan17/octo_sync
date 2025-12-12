@@ -50,11 +50,11 @@ class WinballTrainerConfig:
     @cached_property
     def search_spaces(self) -> Dict[str, Any]:
         defaults = {
-            'max_depth': {'type': 'Integer', 'low': 6, 'high': 14},
+            'max_depth': {'type': 'Integer', 'low': 3, 'high': 10},
             'learning_rate': {'type': 'Real', 'low': 0.01, 'high': 0.15, 'prior': 'log-uniform'},
             'n_estimators': {'type': 'Integer', 'low': 500, 'high': 3000},
             'min_child_weight': {'type': 'Integer', 'low': 1, 'high': 20},
-            'gamma': {'type': 'Real', 'low': 0, 'high': 0.2},
+            'gamma': {'type': 'Real', 'low': 0, 'high': 5.0},
             'subsample': {'type': 'Real', 'low': 0.5, 'high': 0.9},
             'colsample_bytree': {'type': 'Real', 'low': 0.5, 'high': 0.9},
             'reg_alpha': {'type': 'Real', 'low': 1e-5, 'high': 10, 'prior': 'log-uniform'},
@@ -109,8 +109,8 @@ class WinballTrainerConfig:
     @cached_property
     def bayes_search_params(self) -> Dict[str, Any]:
         return {
-            'n_iter': self._get_param('n_iter', 'trainers.bayes_search_cv.n_iter', 300),
-            'scoring': self._get_param('scoring', 'trainers.bayes_search_cv.scoring', 'accuracy'),
+            'n_iter': self._get_param('n_iter', 'trainers.bayes_search_cv.n_iter', 100),
+            'scoring': self._get_param('scoring', 'trainers.bayes_search_cv.scoring', 'neg_log_loss'),
             'random_state': self._get_param('random_state', 'trainers.bayes_search_cv.random_state', 1),
             'n_jobs': 1,
             'verbose': 0
