@@ -21,7 +21,7 @@ from ..feature_engineering.constants import (
     PAGE_URL_COL, MATCH_REPORT_COL, SEASON_COL,
     HOME_VENUE, AWAY_VENUE, HOME_GF_COL, AWAY_GF_COL,
     HOME_POINT_COL, AWAY_POINT_COL, XG_COL, NOTES_COL,
-    DEFAULT_DECIMALS
+    TARGET_COL
 )
 from .base_analyzer import BaseAnalyzer
 
@@ -120,7 +120,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
 
     REQUIRED_FEATURES = [
         "kickoff_time", "comp_name", "match_code", "page_url", "match_report",
-        "home_team", "home_code", "away_team", "away_code", "home_point",
+        "home_team", "home_code", "away_team", "away_code", "home_point", "target",
         "home_elo_rating", "away_elo_rating", "elo_rating_diff", "home_net_advantage", "home_elo_expectancy", "match_balance",
         "home_rest_days", "away_rest_days", "rest_days_diff",
         "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
@@ -460,6 +460,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             [0, 1],
             default=3
         )
+        df[TARGET_COL] = np.where(df[HOME_POINT_COL] == 3, 2, df[HOME_POINT_COL])
 
         deriver = TeamTimeSeriesDeriver(df)
         deriver.derive_rest_days()

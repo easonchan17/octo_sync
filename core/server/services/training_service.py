@@ -32,7 +32,7 @@ class TrainingService(BaseService):
         if name not in self.tasks:
             self.tasks[name] = {}
 
-        task = Registry.get(name, None, None, payload)
+        task = Registry.get(name, None, self.db, payload)
         task.on_complete = lambda: self.run_in_loop(lambda: self._cleanup_task(name, task.id))
         self.tasks[name][task.id] = task
 
