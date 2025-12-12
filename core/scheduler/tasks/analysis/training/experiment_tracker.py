@@ -7,7 +7,7 @@ from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import TrainingRecord
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from sklearn.metrics import classification_report, confusion_matrix, log_loss
-from core.scheduler.tasks.analysis.training.xgboost_classifier import XGBoostClassifier
+from core.scheduler.tasks.analysis.models.xgboost_classifier import XGBoostClassifier
 
 class ExperimentTracker:
     def __init__(self, config: Any) -> None:
@@ -22,7 +22,7 @@ class ExperimentTracker:
         top_n_features: int
     ) -> None:
         self.logger.info("\n" + "-" * 50)
-        self.logger.info(f"🌟 TOP {top_n_features} FEATURE IMPORTANCE")
+        self.logger.info(f"TOP {top_n_features} FEATURE IMPORTANCE")
         self.logger.info("-" * 50)
         feat_imp_df = pd.DataFrame({
             'Feature': feature_names,
@@ -79,10 +79,10 @@ class ExperimentTracker:
         target_names = self.config.target_names
 
         self.logger.info("\n" + "="*50)
-        self.logger.info("📊 MODEL OPTIMIZATION REPORT")
+        self.logger.info("MODEL OPTIMIZATION REPORT")
         self.logger.info("="*50)
 
-        self.logger.info(f"Dataset  : {self.config.data_file}")
+        self.logger.info(f"Dataset  : {self.config.dataset_name}")
         self.logger.info(f"Best CV Loss: {train_log_loss: .4f} (Lower is better)")
         self.logger.info(f"Test Set Loss : {test_log_loss:.4f} (Lower is better)")
         self.logger.info(f"Train Set Acc: {train_accuracy:.4f} (Higher is better)")
@@ -90,14 +90,14 @@ class ExperimentTracker:
 
         gap = test_log_loss - train_log_loss
         if gap > 0.05:
-            self.logger.warning(f"⚠️  Potential Overfitting detected! (Log Loss Gap: {gap:.4f})")
+            self.logger.warning(f"Potential Overfitting detected! (Log Loss Gap: {gap:.4f})")
 
         self.logger.info("\n" + "-" * 50)
         self.logger.info("📈 DETAILED CLASSIFICATION REPORT")
         self.logger.info("-" * 50)
 
         report_dict = classification_report(
-            y_test, y_pred_test, target_names=target_names, output_dict=True
+            y_test, y_pred_test, target_names=target_names, output_dict=True, zero_division=0.0
         )
         report_df = pd.DataFrame(report_dict).transpose()
         self.logger.info(f"\n{report_df.round(4).to_string()}")
@@ -124,12 +124,11 @@ class ExperimentTracker:
         return float(test_accuracy)
 
     def save_model(self, estimator: XGBoostClassifier) -> Tuple[str, str]:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        class_name = estimator.__class__.__name__.lower()
-        model_version = f"{class_name}_{timestamp}"
-
-        base_dir = Path(self.config.model_artifact_base_dir) / class_name
+        base_dir = self.config.model_dir / self.config.model_family
         base_dir.mkdir(parents=True, exist_ok=True)
+
+        inst_version = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_version = f"{self.config.model_version}_{inst_version}"
 
         file_name = f"{model_version}.json"
         model_path = base_dir / file_name
@@ -137,10 +136,10 @@ class ExperimentTracker:
         booster = estimator.model.get_booster()
         booster.save_model(str(model_path))
 
-        abs_path = str(model_path.resolve())
-        self.logger.info(f"Model artifact saved to: {abs_path}")
+        model_path = str(model_path)
+        self.logger.info(f"Model artifact saved to: {model_path}")
 
-        return abs_path, model_version
+        return model_path, model_version
 
     def save_metadata(
         self,
@@ -152,13 +151,13 @@ class ExperimentTracker:
     ) -> int:
         try:
             record = TrainingRecord(
-                training_config=self.config.xgb_init_params,
-                search_spaces=self.config.search_spaces_dict,
+                training_config=self.config.model_params,
+                search_spaces=self.config.hyperparameter_space_config,
                 model_path=model_path,
                 model_version=model_version,
-                model_type=bayes_search.best_estimator_.__class__.__name__.lower(),
+                model_type=self.config.model_type,
                 feature_names=feature_names,
-                dataset_name=self.config.data_file,
+                dataset_name=self.config.dataset_name,
                 best_params=dict(bayes_search.best_params_),
                 best_score=float(bayes_search.best_score_),
                 test_accuracy=float(test_accuracy)

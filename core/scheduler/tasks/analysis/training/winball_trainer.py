@@ -5,7 +5,7 @@ from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
 from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.scheduler.tasks.analysis.feature_engineering.constants import TARGET_COL
-from core.scheduler.tasks.analysis.training.xgboost_classifier import XGBoostClassifier
+from core.scheduler.tasks.analysis.models.xgboost_classifier import XGBoostClassifier
 from core.scheduler.tasks.analysis.training.experiment_tracker import ExperimentTracker
 from core.scheduler.tasks.analysis.training.winball_trainer_config import WinballTrainerConfig
 
@@ -25,12 +25,16 @@ class WinballTrainer(BaseTask):
         return [on_step]
 
     def _load_dataset(self) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
-        df = load_dataframe(self.config.dataset_base_dir / self.config.data_file)
+        dataset_name = self.config.dataset_name
+        if dataset_name is None:
+            raise ValueError("Dataset name is required")
+
+        df = load_dataframe(self.config.dataset_dir / dataset_name)
         y = df[TARGET_COL].copy()
         X = df.drop(columns=[TARGET_COL], axis=1)
         self.logger.info(X.head())
 
-        split_idx = int(len(X) * (1 - self.config.test_size))
+        split_idx = int(len(X) * (1 - self.config.test_set_size))
         X_train, X_test = X.iloc[:split_idx].copy(), X.iloc[split_idx:].copy()
         y_train, y_test = y.iloc[:split_idx].copy(), y.iloc[split_idx:].copy()
 
@@ -38,14 +42,14 @@ class WinballTrainer(BaseTask):
 
     def execute(self, *args, **kwargs) -> None:
         try:
-            model_wrapper = XGBoostClassifier(**self.config.xgb_init_params)
-            search_spaces = self.config.search_spaces
+            model_wrapper = XGBoostClassifier(**self.config.model_params)
+            search_spaces = self.config.hyperparameter_space
 
             bayes_search = BayesSearchCV(
                 estimator=model_wrapper,
                 search_spaces=search_spaces,
                 cv=self.config.cv,
-                **self.config.bayes_search_params
+                **self.config.optimizer_params
             )
 
             X_train, y_train, X_test, y_test = self._load_dataset()

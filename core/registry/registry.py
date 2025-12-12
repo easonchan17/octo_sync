@@ -20,7 +20,7 @@ from core.scheduler.tasks.sync.fbref import (
 )
 from core.scheduler.tasks.analysis.analyzers import MatchStatsAggregator
 from core.scheduler.tasks.analysis.training.winball_trainer import WinballTrainer
-from core.scheduler.tasks.analysis.training.xgboost_classifier import XGBoostClassifier
+from core.scheduler.tasks.analysis.models.xgboost_classifier import XGBoostClassifier
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.store.postgres.models import (
