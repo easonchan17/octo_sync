@@ -10,11 +10,11 @@ __pycache__/
 
 docker/data/
 output/
-!output/
-!output/features/
-!output/features/aggregated_stats_*
 plugins/
 tests/
-configs/
+artifacts/*
+!artifacts/dataset/
+artifacts/dataset/*
+!artifacts/dataset/aggregated_stats_for_training_*
 
 README.md

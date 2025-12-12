@@ -1,3 +1,5 @@
+TARGET_COL           = "target"
+
 SEASON_COL           = "season"
 KICKOFF_TIME_COL     = "kickoff_time"
 FIXTURE_CODE_COL     = "match_code"

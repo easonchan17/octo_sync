@@ -1,6 +1,5 @@
-from typing import Optional, Dict, Any
-
-from numpy import size
+from typing import Optional, Dict, Any, override
+from core.config.config_manager import ConfigManager
 from core.scheduler.tasks.sync.zcy import (
     SyncBrand,
     SyncCategory,
@@ -19,19 +18,15 @@ from core.scheduler.tasks.sync.fbref import (
     SyncShooting,
     SyncPlayerMatchStats
 )
-from core.scheduler.tasks.analysis.analyzers import (
-    MatchStatsAnalyzer,
-    OutfieldPlayerStatsAnalyzer,
-    GoalkeeperStatsAnalyzer,
-    MatchStatsAggregator
-)
-from core.scheduler.tasks.analysis.training.bayesian_optimize_trainer import BayesianOptimizeTrainer
+from core.scheduler.tasks.analysis.analyzers import MatchStatsAggregator
+from core.scheduler.tasks.analysis.training.winball_trainer import WinballTrainer
+from core.scheduler.tasks.analysis.training.xgboost_classifier import XGBoostClassifier
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.store.postgres.models import (
     Site, Category, SubCategory, Brand, SubCategoryBrand, Product,
     Country, Club, Competition, Fixture, ClubSyncState, CountrySyncState, GoalAndShotCreation, Passing,
-    DefensiveAction, Shooting, GoalKeeping,GlobalState, PlayerMatchStats, MatchSyncState
+    DefensiveAction, Shooting, GoalKeeping,GlobalState, PlayerMatchStats, MatchSyncState, TrainingRecord
 )
 
 class Registry:
@@ -325,11 +320,14 @@ def create_analysis_fbref_match_stats_task(
     )
 
 @Registry.register('training.winball')
-def create_training_bayesian_optimization_task(
+def create_training_winball_task(
     site: Site,
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
+    db.create_tables(
+        [TrainingRecord]
+    )
     return Pipeline(
-        BayesianOptimizeTrainer(payload)
+        WinballTrainer(site, payload)
     )
