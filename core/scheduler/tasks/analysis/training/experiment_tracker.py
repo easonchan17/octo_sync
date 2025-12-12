@@ -15,6 +15,46 @@ class ExperimentTracker:
         self.postgresql_manager = PostgreSQLManager.get_instance()
         self.config = config
 
+    def _log_feature_importance(
+        self,
+        feature_importances: Any,
+        feature_names: Any,
+        top_n_features: int
+    ) -> None:
+        self.logger.info("\n" + "-" * 50)
+        self.logger.info(f"🌟 TOP {top_n_features} FEATURE IMPORTANCE")
+        self.logger.info("-" * 50)
+        feat_imp_df = pd.DataFrame({
+            'Feature': feature_names,
+            'Importance': feature_importances
+        }).sort_values(by='Importance', ascending=False)
+
+        feat_imp_df['Cumul(%)'] = feat_imp_df['Importance'].cumsum() * 100
+
+        top_features_str = feat_imp_df.head(top_n_features).to_string(
+            index=False,
+            formatters={
+                'Importance': '{:.4f}'.format,
+                'Cumul(%)': '{:.1f}%'.format
+            }
+        )
+        self.logger.info(f"\n{top_features_str}")
+
+        total_feats = len(feature_names)
+        if total_feats > top_n_features:
+            self.logger.info(f"\n... (Showing top {top_n_features} of {total_feats} features)")
+
+    def log_optimization_step(self, res: Any) -> bool:
+        current_accuracy = -res.func_vals[-1]
+        current_params_list = res.x_iters[-1]
+        current_params_dict = dict(zip(res.space.dimension_names, current_params_list))
+
+        iteration = len(res.x_iters)
+        self.logger.info(f'[Iteration {iteration} finished]')
+        self.logger.info(f'    Current CV Accuracy: {current_accuracy:.4f}')
+        self.logger.info(f'    Params: {current_params_dict}')
+        return False
+
     def track_analysis(
         self,
         X: pd.DataFrame,
@@ -79,47 +119,6 @@ class ExperimentTracker:
 
         self.logger.info("="*50 + "\n")
         return float(test_score)
-
-    def log_optimization_step(self, res: Any) -> bool:
-        current_accuracy = -res.func_vals[-1]
-        current_params_list = res.x_iters[-1]
-        current_params_dict = dict(zip(res.space.dimension_names, current_params_list))
-
-        iteration = len(res.x_iters)
-        self.logger.info(f'[Iteration {iteration} finished]')
-        self.logger.info(f'    Current CV Accuracy: {current_accuracy:.4f}')
-        self.logger.info(f'    Params: {current_params_dict}')
-        return False
-
-    def _log_feature_importance(
-        self,
-        feature_importances: Any,
-        feature_names: Any,
-        top_n_features: int
-    ) -> None:
-        self.logger.info("\n" + "-" * 50)
-        self.logger.info(f"🌟 TOP {top_n_features} FEATURE IMPORTANCE")
-        self.logger.info("-" * 50)
-        feat_imp_df = pd.DataFrame({
-            'Feature': feature_names,
-            'Importance': feature_importances
-        }).sort_values(by='Importance', ascending=False)
-
-        feat_imp_df['Cumul(%)'] = feat_imp_df['Importance'].cumsum() * 100
-
-        top_features_str = feat_imp_df.head(top_n_features).to_string(
-            index=False,
-            formatters={
-                'Importance': '{:.4f}'.format,
-                'Cumul(%)': '{:.1f}%'.format
-            }
-        )
-        self.logger.info(f"\n{top_features_str}")
-
-        total_feats = len(feature_names)
-        if total_feats > top_n_features:
-            self.logger.info(f"\n... (Showing top {top_n_features} of {total_feats} features)")
-
 
     def save_model(self, estimator: XGBoostClassifier) -> Tuple[str, str]:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
