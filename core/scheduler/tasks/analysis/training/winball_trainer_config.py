@@ -10,18 +10,41 @@ from core.config.config_manager import ConfigManager
 from sklearn.utils.class_weight import compute_sample_weight
 
 class WinballTrainerConfig:
+    MODEL_FAMILY = "winball"
+    MODEL_TYPE = "xgboost"
+
+    MAJOR_VERSION = 0
+    MINOR_VERSION = 1
+    PATCH_VERSION = 0
+
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self.config_manager = ConfigManager.get_instance()
         self.payload = payload or {}
 
-    def _get_param(self, payload_key: Optional[str], config_key: str, default: Optional[Any] = None) -> Any:
+    def _get_param(self, payload_key: Optional[str] = None, config_key: Optional[str] = None, default: Optional[Any] = None) -> Any:
         if payload_key is not None and payload_key in self.payload:
             return self.payload[payload_key]
-        return self.config_manager.get_config(config_key, default=default)
+
+        if config_key is not None:
+            return self.config_manager.get_config(config_key, default=default)
+
+        return default
 
     @cached_property
-    def xgb_init_params(self) -> Dict[str, Any]:
+    def model_version(self) -> str:
+        return f"{self.MODEL_FAMILY}_v{self.MAJOR_VERSION}.{self.MINOR_VERSION}.{self.PATCH_VERSION}"
+
+    @property
+    def model_family(self) -> str:
+        return self.MODEL_FAMILY
+
+    @property
+    def model_type(self) -> str:
+        return self.MODEL_TYPE
+
+    @cached_property
+    def model_params(self) -> Dict[str, Any]:
         defaults = {
             'early_stopping_rounds': 100,
             'objective': 'multi:softprob',
@@ -40,15 +63,7 @@ class WinballTrainerConfig:
         return params
 
     @cached_property
-    def eval_set_size(self) -> float:
-        return self._get_param('eval_set_size', 'models.xgboost.eval_set_size', 0.1)
-
-    @cached_property
-    def test_size(self) -> float:
-        return self._get_param('test_size', 'trainers.bayes_search_cv.test_size', 0.2)
-
-    @cached_property
-    def search_spaces(self) -> Dict[str, Any]:
+    def hyperparameter_space(self) -> Dict[str, Any]:
         defaults = {
             'max_depth': {'type': 'Integer', 'low': 3, 'high': 10},
             'learning_rate': {'type': 'Real', 'low': 0.01, 'high': 0.15, 'prior': 'log-uniform'},
@@ -76,10 +91,10 @@ class WinballTrainerConfig:
         return spaces
 
     @cached_property
-    def search_spaces_dict(self) -> Dict[str, Any]:
+    def hyperparameter_space_config(self) -> Dict[str, Any]:
         search_spaces_config = {}
 
-        for name, space in self.search_spaces.items():
+        for name, space in self.hyperparameter_space.items():
             if isinstance(space, Integer):
                 search_spaces_config[name] = {
                     'type': 'Integer',
@@ -107,7 +122,7 @@ class WinballTrainerConfig:
         return None
 
     @cached_property
-    def bayes_search_params(self) -> Dict[str, Any]:
+    def optimizer_params(self) -> Dict[str, Any]:
         return {
             'n_iter': self._get_param('n_iter', 'trainers.bayes_search_cv.n_iter', 100),
             'scoring': self._get_param('scoring', 'trainers.bayes_search_cv.scoring', 'neg_log_loss'),
@@ -117,21 +132,30 @@ class WinballTrainerConfig:
         }
 
     @cached_property
+    def eval_set_size(self) -> float:
+        return self._get_param('eval_set_size', 'models.xgboost.eval_set_size', 0.1)
+
+    @cached_property
+    def test_set_size(self) -> float:
+        return self._get_param('test_set_size', 'trainers.bayes_search_cv.test_set_size', 0.2)
+
+
+    @cached_property
     def target_names(self) -> List[str]:
         defaults = ['Home Loss', 'Draw', 'Home Win']
         return self._get_param('target_names', 'models.xgboost.target_names', defaults)
 
     @cached_property
-    def dataset_base_dir(self) -> Path:
-        return Path(self._get_param(None, 'trainers.artifact.dataset'))
+    def dataset_name(self) -> Optional[str]:
+        return self._get_param(payload_key='dataset_name')
 
     @cached_property
-    def data_file(self) -> str:
-        return self._get_param('data_file', 'trainers.artifact.data_file', '')
+    def dataset_dir(self) -> Path:
+        return Path(self._get_param(config_key='trainers.artifact.dataset'))
 
     @cached_property
-    def model_artifact_base_dir(self) -> str:
-        return self._get_param(None, 'trainers.artifact.model')
+    def model_dir(self) -> Path:
+        return Path(self._get_param(config_key='trainers.artifact.model'))
 
     def build_sample_weight(self, y_train: pd.Series) -> Optional[pd.Series]:
         is_balanced = self._get_param('balanced', 'trainers.bayes_search_cv.balanced', False)

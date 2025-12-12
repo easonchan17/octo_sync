@@ -70,3 +70,10 @@ class XGBoostClassifier(ClassifierMixin, BaseEstimator):
 
         n_class = self.xgb_params.get('num_class', 3)
         return np.arange(n_class)
+
+    @property
+    def feature_importances_(self) -> np.ndarray:
+        if self.model is not None:
+            return self.model.feature_importances_
+
+        raise ValueError("Model not fitted")
