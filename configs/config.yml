@@ -1,0 +1,168 @@
+logger:
+  level: info
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    - kind: console
+    - kind: file
+      path: "output/logs/octopus.log"
+      max_size: 10485760
+      backup_count: 5
+
+thread_pool:
+  max_workers: 10
+
+browser:
+  headless: true
+  channel:  "chrome"
+  timeout: 300
+  page_delay: 3
+  retry_count: 3
+  page_pool_size: 5
+
+interceptor:
+  zcy:
+    category:
+      url: "https://www.zcygov.cn/"
+      rules:
+        - pattern: "https://www.zcygov.cn/front/index/home/category/tree"
+          receiver: "core.browser.components.receivers.zcy.CategoryReceiver"
+    sub_category:
+      url_template: "https://www.zcygov.cn/eevees/search?fcid={cid}&holdParam=false&utm=luban.luban-PC-194.161-market-menubar-pc.{salt}.3146d9e0834e11f0a492c702f45b45cf"
+      rules:
+        - pattern: "https://www.zcygov.cn/front/index/search/search"
+          receiver: "core.browser.components.receivers.zcy.SubCategoryReceiver"
+    brand:
+      url_template: "https://www.zcygov.cn/eevees/search?fcid={scid}&holdParam=false&utm=luban.luban-PC-194.161-market-menubar-pc.{salt}.3146d9e0834e11f0a492c702f45b45cf"
+      rules:
+        - pattern: "https://www.zcygov.cn/front/index/search/search"
+          receiver: "core.browser.components.receivers.zcy.BrandReceiver"
+    product:
+      page_size: 100
+      max_page_no: 10
+      sort: "0_0_0_0_0_0_0_2"
+      url_template: "https://www.zcygov.cn/eevees/search?fcid={scid}&holdParam=false&utm=luban.luban-PC-194.161-market-menubar-pc.{salt}.3146d9e0834e11f0a492c702f45b45cf"
+      rules:
+        - pattern: "https://www.zcygov.cn/front/index/search/search"
+          sender: "core.browser.components.senders.zcy.SearchProductSender"
+          receiver: "core.browser.components.receivers.zcy.ProductReceiver"
+    product_detail:
+      url_template: "https://www.zcygov.cn/items/{item_id}"
+      rules:
+        - pattern: "https://www.zcygov.cn/front/detail/item/.*"
+          receiver: "core.browser.components.receivers.zcy.ProductDetailReceiver"
+  fbref:
+    countries:
+      url: "https://fbref.com/en/countries/"
+      html_handler: "core.browser.components.receivers.fbref.CountryReceiver"
+    competitions:
+      url: "https://fbref.com/en/comps/"
+      html_handler: "core.browser.components.receivers.fbref.CompetitionReceiver"
+    clubs:
+      url_template: "https://fbref.com/en/country/clubs/{country_code}/{country_name}-Football-Clubs"
+      html_handler: "core.browser.components.receivers.fbref.ClubReceiver"
+    fixtures:
+      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/schedule/{club_name}-Scores-and-Fixtures-All-Competitions"
+      html_handler: "core.browser.components.receivers.fbref.FixtureReceiver"
+    gca:
+      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/gca/{club_name}-Match-Logs-All-Competitions"
+      html_handler: "core.browser.components.receivers.fbref.GoalAndShotCreationReceiver"
+    passing:
+      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/passing/{club_name}-Match-Logs-All-Competitions"
+      html_handler: "core.browser.components.receivers.fbref.PassingReceiver"
+    defensive_actions:
+      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/defense/{club_name}-Match-Logs-All-Competitions"
+      html_handler: "core.browser.components.receivers.fbref.DefensiveActionReceiver"
+    shooting:
+      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/shooting/{club_name}-Match-Logs-All-Competitions"
+      html_handler: "core.browser.components.receivers.fbref.ShootingReceiver"
+    goalkeeping:
+      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/keeper/{club_name}-Match-Logs-All-Competitions"
+      html_handler: "core.browser.components.receivers.fbref.GoalkeepingReceiver"
+    player_match_stats:
+      url_template: "https://fbref.com{match_report_url}"
+      html_handler: "core.browser.components.receivers.fbref.PlayerMatchStatsReceiver"
+
+http:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  db_host: "localhost"
+  db_port: 5432
+  db_name: "octopus"
+  db_user: "octopus"
+  db_password: "123456"
+  pool_config:
+    pool_size: 10
+    max_overflow: 5
+    pool_timeout: 30
+    pool_recycle: 300
+
+models:
+  xgboost:
+    early_stopping_rounds: 100
+    objective: multi:softprob
+    eval_metric: mlogloss
+    tree_method: hist
+    test_size: 0.1
+    num_class: 3
+    target_names:
+      - Home Loss
+      - Draw
+      - Home Win
+    random_state: 1
+    n_jobs: -1
+
+trainers:
+  bayes_search_cv:
+    search_spaces:
+      max_depth:
+        type: Integer
+        low: 6
+        high: 14
+      learning_rate:
+        type: Real
+        low: 0.01
+        high: 0.15
+        prior: log-uniform
+      n_estimators:
+        type: Integer
+        low: 500
+        high: 3000
+      min_child_weight:
+        type: Integer
+        low: 1
+        high: 20
+      gamma:
+        type: Real
+        low: 0
+        high: 0.2
+      subsample:
+        type: Real
+        low: 0.5
+        high: 0.9
+      colsample_bytree:
+        type: Real
+        low: 0.5
+        high: 0.9
+      reg_alpha:
+        type: Real
+        low: 1.0e-5
+        high: 10
+        prior: log-uniform
+      reg_lambda:
+        type: Real
+        low: 1.0e-5
+        high: 10
+        prior: log-uniform
+    n_iter: 300
+    test_size: 0.2
+    cv:
+      n_splits: 5
+      type: 'TimeSeriesSplit'
+    scoring: 'accuracy'
+    balanced: false
+    random_state: 1
+  artifact:
+    model: artifacts/models
+    dataset: artifacts/dataset

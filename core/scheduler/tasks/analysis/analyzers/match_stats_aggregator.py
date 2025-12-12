@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
+from core.scheduler.tasks.analysis.feature_engineering import FeatureSelector
 from core.scheduler.tasks.analysis.feature_engineering import FormulaDeriver
 from core.scheduler.tasks.analysis.feature_engineering.constants import (
     FIXTURE_CODE_COL,
@@ -83,6 +84,19 @@ class MatchStatsAggregator(BaseTask):
         ('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability'),
     ]
 
+    EXCLUDED_FEATURES = [
+        'kickoff_time',
+        'comp_name',
+        'match_code',
+        'page_url',
+        'match_report',
+        'home_team',
+        'home_code',
+        'away_team',
+        'away_code',
+        'home_point'
+    ]
+
     def __init__(self, site, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self.match_stats_analyzer = MatchStatsAnalyzer(site, payload)
@@ -103,10 +117,13 @@ class MatchStatsAggregator(BaseTask):
         comp_code = self.payload["comp_code"]
         min_season = self.payload["min_season"]
         max_season = self.payload["max_season"]
-        output_format = self.payload.get("format", "csv")
 
-        output_path = self.config_manager.get_config("features.path")
+        output_format = self.payload.get("format", "csv")
+        output_path = self.config_manager.get_config(
+            "trainers.artifact.dataset"
+        )
         output_path = self.check_output_path(output_path)
+
         try:
             match_stats_df = self.match_stats_analyzer.analyze()
             if match_stats_df is None or match_stats_df.empty:
@@ -135,7 +152,7 @@ class MatchStatsAggregator(BaseTask):
             save_dataframe(goalkeeper_stats_df, output_path/output_file)
             self.logger.info(f"Goalkeeper stats saved to: {str((output_path/output_file).resolve())}")
 
-            aggregated_df = self.aggregate(match_stats_df, outfield_player_stats_df, goalkeeper_stats_df)
+            aggregated_df, aggregated_df_for_training = self.aggregate(match_stats_df, outfield_player_stats_df, goalkeeper_stats_df)
             if aggregated_df is None or aggregated_df.empty:
                 self.logger.error("No aggregated stats data found")
                 return None
@@ -143,6 +160,10 @@ class MatchStatsAggregator(BaseTask):
             output_file = self.build_output_file("aggregated_stats", comp_code, min_season, max_season, output_format)
             save_dataframe(aggregated_df, output_path/output_file)
             self.logger.info(f"Aggregated stats saved to: {str((output_path/output_file).resolve())}")
+
+            output_file = self.build_output_file("aggregated_stats_for_training", comp_code, min_season, max_season, output_format)
+            save_dataframe(aggregated_df_for_training, output_path/output_file)
+            self.logger.info(f"Aggregated stats for training saved to: {str((output_path/output_file).resolve())}")
         except Exception as e:
             self.logger.error(f"Error aggregating stats: {e}", exc_info=True)
             return None
@@ -152,7 +173,7 @@ class MatchStatsAggregator(BaseTask):
         match_stats_df: pd.DataFrame,
         outfield_player_stats_df: pd.DataFrame,
         goalkeeper_stats_df: pd.DataFrame
-    ) -> pd.DataFrame:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         outfield_starters = outfield_player_stats_df[outfield_player_stats_df[IS_STARTER_COL] == True].copy()
         if outfield_starters.empty:
             raise ValueError("No outfield starters found")
@@ -197,7 +218,8 @@ class MatchStatsAggregator(BaseTask):
         for feature, formula in self.FORMULA_BASED_FEATURES:
             FormulaDeriver(match_stats_df).derive(feature, formula)
 
-        return match_stats_df
+        match_stats_df_for_training = FeatureSelector(match_stats_df).remove_columns(self.EXCLUDED_FEATURES)
+        return match_stats_df, match_stats_df_for_training
 
     def _aggregate_team_stats(
         self,

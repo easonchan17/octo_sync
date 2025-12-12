@@ -1,5 +1,5 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index, Float, Boolean, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Index, Float, JSON, Text
 from .base_model import Base, StatusMixin, DictMixin, Status
 
 class TrainingRecord(Base, StatusMixin, DictMixin):
@@ -11,22 +11,23 @@ class TrainingRecord(Base, StatusMixin, DictMixin):
         Index('idx_training_records_dataset_name', 'dataset_name'),
         Index('idx_training_records_best_score', 'best_score'),
         Index('idx_training_records_test_accuracy', 'test_accuracy'),
-        {'schema': '{schema}'}
+        {'schema': 'public'}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    model_version = Column(String(50), nullable=False, unique=True)
-    model_type = Column(String(50), nullable=False)
-    model_path = Column(String(512), nullable=False)
+    model_version = Column(String(256), nullable=False, unique=True)
+    model_type = Column(String(256), nullable=False)
+    model_path = Column(Text, nullable=False)
+    training_config = Column(JSON, nullable=False)
+    search_spaces = Column(JSON, nullable=False)
 
     dataset_name = Column(String(256), nullable=False)
     feature_names = Column(JSON, nullable=False)
 
-    best_params = Column(JSON, nullable=True)
-    best_score = Column(Float, nullable=True)
-    test_accuracy = Column(Float, nullable=True)
-    is_production = Column(Boolean, nullable=False, default=False)
+    best_params = Column(JSON, nullable=False)
+    best_score = Column(Float, nullable=False)
+    test_accuracy = Column(Float, nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     create_at = Column(DateTime, default=func.now())

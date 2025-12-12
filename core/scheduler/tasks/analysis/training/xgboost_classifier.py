@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, ClassifierMixin
 
-class XGBoostClassifier(BaseEstimator):
-    def __init__(self, test_size=0.2, **kwargs) -> None:
+class XGBoostClassifier(BaseEstimator, ClassifierMixin):
+    def __init__(self, eval_set_size: float = 0.1, **kwargs) -> None:
+        self.eval_set_size = eval_set_size
         self.xgb_params = kwargs
-        self.test_size = test_size
         self.model = None
 
     def fit(
@@ -17,8 +17,8 @@ class XGBoostClassifier(BaseEstimator):
         eval_set=None,
         **fit_params
     ) -> 'XGBoostClassifier':
-        if eval_set is None:
-            split_idx = int(len(X) * (1 - self.test_size))
+        if eval_set is None and self.eval_set_size > 0:
+            split_idx = int(len(X) * (1 - self.eval_set_size))
             X_train, X_val = X.iloc[:split_idx], X.iloc[split_idx:]
             y_train, y_val = y.iloc[:split_idx], y.iloc[split_idx:]
 
@@ -47,12 +47,22 @@ class XGBoostClassifier(BaseEstimator):
     def predict_proba(self, X) -> np.ndarray:
         return self.model.predict_proba(X)
 
-    def score(self, X, y) -> float:
-        return self.model.score(X, y)
-
     def get_params(self, deep=True) -> dict:
-        return {**self.xgb_params}
+        params = {
+            'eval_set_size': self.eval_set_size,
+            **self.xgb_params
+        }
+        return params
 
     def set_params(self, **params) -> 'XGBoostClassifier':
+        if 'eval_set_size' in params:
+            self.eval_set_size = params.pop('eval_set_size')
+
         self.xgb_params.update(params)
         return self
+
+    @property
+    def feature_importances_(self) -> np.ndarray:
+        if self.model is None:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
+        return self.model.feature_importances_
