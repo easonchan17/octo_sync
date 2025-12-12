@@ -61,6 +61,8 @@ class WinballTrainer(BaseTask):
                 return
 
             test_accuracy = self.tracker.track_analysis(
+                X_train,
+                y_train,
                 X_test,
                 y_test,
                 bayes_search

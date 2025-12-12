@@ -3,7 +3,9 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.base import BaseEstimator, ClassifierMixin
 
-class XGBoostClassifier(BaseEstimator, ClassifierMixin):
+class XGBoostClassifier(ClassifierMixin, BaseEstimator):
+    _estimator_type = 'classifier'
+
     def __init__(self, eval_set_size: float = 0.1, **kwargs) -> None:
         self.eval_set_size = eval_set_size
         self.xgb_params = kwargs
@@ -62,7 +64,9 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
         return self
 
     @property
-    def feature_importances_(self) -> np.ndarray:
-        if self.model is None:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
-        return self.model.feature_importances_
+    def classes_(self) -> np.ndarray:
+        if self.model is not None:
+            return self.model.classes_
+
+        n_class = self.xgb_params.get('num_class', 3)
+        return np.arange(n_class)

@@ -6,7 +6,7 @@ from typing import Any, List, Optional, Tuple
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import TrainingRecord
 from core.store.postgres.postgresql_manager import PostgreSQLManager
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, log_loss
 from core.scheduler.tasks.analysis.training.xgboost_classifier import XGBoostClassifier
 
 class ExperimentTracker:
@@ -45,29 +45,37 @@ class ExperimentTracker:
             self.logger.info(f"\n... (Showing top {top_n_features} of {total_feats} features)")
 
     def log_optimization_step(self, res: Any) -> bool:
-        current_accuracy = -res.func_vals[-1]
+        current_score = -res.func_vals[-1]
         current_params_list = res.x_iters[-1]
         current_params_dict = dict(zip(res.space.dimension_names, current_params_list))
 
         iteration = len(res.x_iters)
         self.logger.info(f'[Iteration {iteration} finished]')
-        self.logger.info(f'    Current CV Accuracy: {current_accuracy:.4f}')
+        self.logger.info(f'    Current CV Score: {current_score:.4f}')
         self.logger.info(f'    Params: {current_params_dict}')
         return False
 
     def track_analysis(
         self,
-        X: pd.DataFrame,
-        y: pd.Series,
+        X_train: pd.DataFrame,
+        y_train: pd.Series,
+        X_test: pd.DataFrame,
+        y_test: pd.Series,
         bayes_search: BayesSearchCV,
         top_n_features: Optional[int] = 20
     ) -> float:
         best_estimator = bayes_search.best_estimator_
-        y_pred = best_estimator.predict(X)
 
-        train_cv_score = bayes_search.best_score_
-        test_score = best_estimator.score(X, y)
+        y_pred_train = best_estimator.predict(X_train)
+        y_prob_train = best_estimator.predict_proba(X_train)
+        y_pred_test = best_estimator.predict(X_test)
+        y_prob_test = best_estimator.predict_proba(X_test)
 
+        train_log_loss = -bayes_search.best_score_
+        test_log_loss = log_loss(y_test, y_prob_test, labels=best_estimator.classes_)
+
+        train_accuracy = best_estimator.score(X_train, y_train)
+        test_accuracy = best_estimator.score(X_test, y_test)
         target_names = self.config.target_names
 
         self.logger.info("\n" + "="*50)
@@ -75,26 +83,21 @@ class ExperimentTracker:
         self.logger.info("="*50)
 
         self.logger.info(f"Dataset  : {self.config.data_file}")
-        self.logger.info(f"Best CV Score: {train_cv_score: .4f} (Validation on Train set)")
-        self.logger.info(f"Test Set Acc : {test_score:.4f} (Hold-out Test set)")
+        self.logger.info(f"Best CV Loss: {train_log_loss: .4f} (Lower is better)")
+        self.logger.info(f"Test Set Loss : {test_log_loss:.4f} (Lower is better)")
+        self.logger.info(f"Train Set Acc: {train_accuracy:.4f} (Higher is better)")
+        self.logger.info(f"Test Set Acc: {test_accuracy:.4f} (Higher is better)")
 
-        gap = train_cv_score - test_score
+        gap = test_log_loss - train_log_loss
         if gap > 0.05:
-            self.logger.warning(f"⚠️  Potential Overfitting detected! (Gap: {gap:.4f})")
-
-        self.logger.info("-" * 50)
-        self.logger.info("🔧 BEST HYPERPARAMETERS")
-        self.logger.info("-" * 50)
-
-        params_series = pd.Series(dict(bayes_search.best_params_))
-        self.logger.info(f"\n{params_series.to_string()}")
+            self.logger.warning(f"⚠️  Potential Overfitting detected! (Log Loss Gap: {gap:.4f})")
 
         self.logger.info("\n" + "-" * 50)
         self.logger.info("📈 DETAILED CLASSIFICATION REPORT")
         self.logger.info("-" * 50)
 
         report_dict = classification_report(
-            y, y_pred, target_names=target_names, output_dict=True
+            y_test, y_pred_test, target_names=target_names, output_dict=True
         )
         report_df = pd.DataFrame(report_dict).transpose()
         self.logger.info(f"\n{report_df.round(4).to_string()}")
@@ -103,7 +106,7 @@ class ExperimentTracker:
         self.logger.info("🔲 CONFUSION MATRIX (Actual vs Predicted)")
         self.logger.info("-" * 50)
 
-        cm = confusion_matrix(y, y_pred)
+        cm = confusion_matrix(y_test, y_pred_test)
         cm_df = pd.DataFrame(
             cm,
             index=[f"True {name}" for name in target_names],
@@ -113,12 +116,12 @@ class ExperimentTracker:
 
         self._log_feature_importance(
             best_estimator.feature_importances_,
-            X.columns.tolist(),
+            X_test.columns.tolist(),
             top_n_features
         )
 
         self.logger.info("="*50 + "\n")
-        return float(test_score)
+        return float(test_accuracy)
 
     def save_model(self, estimator: XGBoostClassifier) -> Tuple[str, str]:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
