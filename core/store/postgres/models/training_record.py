@@ -9,8 +9,8 @@ class TrainingRecord(Base, StatusMixin, DictMixin):
         Index('idx_training_records_update_at', 'update_at'),
         Index('idx_training_records_model_type', 'model_type'),
         Index('idx_training_records_dataset_name', 'dataset_name'),
-        Index('idx_training_records_best_score', 'best_score'),
-        Index('idx_training_records_test_accuracy', 'test_accuracy'),
+        Index('idx_training_records_train_score', 'train_score'),
+        Index('idx_training_records_test_score', 'test_score'),
         {'schema': 'public'}
     )
 
@@ -19,15 +19,15 @@ class TrainingRecord(Base, StatusMixin, DictMixin):
     model_version = Column(String(256), nullable=False, unique=True)
     model_type = Column(String(256), nullable=False)
     model_path = Column(Text, nullable=False)
-    training_config = Column(JSON, nullable=False)
-    search_spaces = Column(JSON, nullable=False)
 
     dataset_name = Column(String(256), nullable=False)
     feature_names = Column(JSON, nullable=False)
 
+    training_params = Column(JSON, nullable=False)
+
     best_params = Column(JSON, nullable=False)
-    best_score = Column(Float, nullable=False)
-    test_accuracy = Column(Float, nullable=False)
+    train_score = Column(Float, nullable=False)
+    test_score = Column(Float, nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     create_at = Column(DateTime, default=func.now())

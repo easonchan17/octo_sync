@@ -98,71 +98,47 @@ database:
     pool_timeout: 30
     pool_recycle: 300
 
-models:
-  xgboost:
-    early_stopping_rounds: 100
-    objective: multi:softprob
-    eval_metric: mlogloss
-    tree_method: hist
-    eval_set_size: 0.1
-    num_class: 3
-    target_names:
-      - Home Loss
-      - Draw
-      - Home Win
-    random_state: 1
-    n_jobs: -1
-
-trainers:
-  bayes_search_cv:
-    search_spaces:
-      max_depth:
-        type: Integer
-        low: 3
-        high: 10
-      learning_rate:
-        type: Real
-        low: 0.01
-        high: 0.15
-        prior: log-uniform
-      n_estimators:
-        type: Integer
-        low: 500
-        high: 3000
-      min_child_weight:
-        type: Integer
-        low: 1
-        high: 20
-      gamma:
-        type: Real
-        low: 0
-        high: 5.0
-      subsample:
-        type: Real
-        low: 0.5
-        high: 0.9
-      colsample_bytree:
-        type: Real
-        low: 0.5
-        high: 0.9
-      reg_alpha:
-        type: Real
-        low: 1.0e-5
-        high: 10
-        prior: log-uniform
-      reg_lambda:
-        type: Real
-        low: 1.0e-5
-        high: 10
-        prior: log-uniform
-    n_iter: 100
-    test_set_size: 0.2
-    cv:
-      n_splits: 5
-      type: TimeSeriesSplit
-    scoring: neg_log_loss
-    balanced: false
-    random_state: 1
+training:
   artifact:
     model: artifacts/models
     dataset: artifacts/dataset
+  tasks:
+    winball:
+      objective:
+        type: classification
+        target_col: "target"
+        target_names: ["Home Loss", "Draw", "Home Win"]
+        eval_set_size: 0.1
+        test_set_size: 0.2
+        balanced: false
+
+      model:
+        name: xgboost
+        params:
+          early_stopping_rounds: 100
+          objective: multi:softprob
+          eval_metric: mlogloss
+          tree_method: hist
+          num_class: 3
+          random_state: 1
+          n_jobs: -1
+
+      optimizer:
+        name: bayes_search_cv
+        params:
+          n_iter: 100
+          scoring: neg_log_loss
+          random_state: 1
+          n_jobs: 1
+          verbose: 0
+          cv: 5
+          search_spaces:
+            max_depth: { type: Integer, low: 3, high: 10 }
+            learning_rate: { type: Real, low: 0.01, high: 0.15, prior: log-uniform }
+            n_estimators: { type: Integer, low: 500, high: 3000 }
+            min_child_weight: { type: Integer, low: 1, high: 20 }
+            gamma: { type: Real, low: 0, high: 5.0 }
+            subsample: { type: Real, low: 0.5, high: 0.9 }
+            colsample_bytree: { type: Real, low: 0.5, high: 0.9 }
+            reg_alpha: { type: Real, low: 1.0e-5, high: 10, prior: log-uniform }
+            reg_lambda: { type: Real, low: 1.0e-5, high: 10, prior: log-uniform }

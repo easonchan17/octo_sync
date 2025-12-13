@@ -11,7 +11,7 @@ from ..base_synchronizer import BaseSynchronizer
 class BrandSynchronizer(BaseSynchronizer):
 
     def get_unsynced_sub_categories(self, site: Site) -> List[Any]:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             return session.query(
                 SubCategory.cid,
                 SubCategory.scid,
@@ -30,7 +30,7 @@ class BrandSynchronizer(BaseSynchronizer):
         brand_map_dict = self.to_dict(brands, ['scid', 'bid'], ['bid'])
         brand_detail_dict = self.to_dict(brands, ['bid', 'name', 'logo'], ['bid'])
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(Brand).values(list(brand_detail_dict.values()))
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['bid'],
