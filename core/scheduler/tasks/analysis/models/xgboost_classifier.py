@@ -21,22 +21,18 @@ class XGBoostClassifier(ClassifierMixin, BaseEstimator):
         eval_set: Optional[Tuple[pd.DataFrame, pd.Series]] = None,
         **fit_params
     ) -> 'XGBoostClassifier':
-        w_train = sample_weight
 
         if eval_set is None and self.eval_set_size > 0:
             split_idx = int(len(X) * (1 - self.eval_set_size))
             X_train, X_val = X.iloc[:split_idx], X.iloc[split_idx:]
             y_train, y_val = y.iloc[:split_idx], y.iloc[split_idx:]
-
             eval_set = [(X_val, y_val)]
-            fit_data = (X_train, y_train)
 
-            if sample_weight is not None:
-                w_train = sample_weight.iloc[:split_idx]
-                w_val = sample_weight.iloc[split_idx:]
-                eval_set = [(X_val, y_val, w_val)]
+            fit_data = (X_train, y_train)
+            w_train = sample_weight.iloc[:split_idx] if sample_weight is not None else None
         else:
             fit_data = (X, y)
+            w_train = sample_weight
 
         self.model = xgb.XGBClassifier(**self.params)
         self.model.fit(
