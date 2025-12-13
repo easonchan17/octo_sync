@@ -6,7 +6,7 @@ from core.store.postgres.postgresql_manager import PostgreSQLManager
 class BaseSynchronizer(ABC):
     def __init__(self) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
-        self.postgresql_manager = PostgreSQLManager.get_instance()
+        self.db = PostgreSQLManager.get_instance()
 
     def to_dict(self, items: List[Any], fields: List[str], key_fields: List[str]) -> dict[str, Any]:
         result = {}

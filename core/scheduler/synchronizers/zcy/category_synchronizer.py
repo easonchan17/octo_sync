@@ -14,7 +14,7 @@ class CategorySynchronizer(BaseSynchronizer):
 
         category_dict = self.to_dict(categories, ['cid', 'name'], ['cid'])
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(Category).values(list(category_dict.values()))
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['cid'],

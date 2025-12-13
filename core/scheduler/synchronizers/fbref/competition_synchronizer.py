@@ -11,7 +11,7 @@ class CompetitionSynchronizer(BaseSynchronizer):
     SYNCED_VALUE = '1'
 
     def is_synced(self, site: Site) -> bool:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             result = session.query(
                 GlobalState.value
             ).filter(
@@ -33,7 +33,7 @@ class CompetitionSynchronizer(BaseSynchronizer):
             ['code']
         )
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(Competition).values(list(competition_dict.values()))
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['code'],

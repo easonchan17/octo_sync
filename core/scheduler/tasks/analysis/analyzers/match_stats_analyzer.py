@@ -175,7 +175,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
     ]
 
     def query_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
-        with self.postgresql_manager.get_session(self.site.get_namespace()) as session:
+        with self.db.get_session(self.site.get_namespace()) as session:
             gca_home = aliased(GoalAndShotCreation)
             gca_away = aliased(GoalAndShotCreation)
             passing_home = aliased(Passing)

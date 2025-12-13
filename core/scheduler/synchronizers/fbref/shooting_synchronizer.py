@@ -20,7 +20,7 @@ class ShootingSynchronizer(BaseSynchronizer):
             ['match_code', 'team_code']
         )
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(Shooting).values(list(shooting_dict.values()))
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['match_code', 'team_code'],

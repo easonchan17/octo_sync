@@ -9,7 +9,7 @@ from ..base_synchronizer import BaseSynchronizer
 
 class ClubSynchronizer(BaseSynchronizer):
     def get_clubs(self, site: Site, comp_code: str, club_code: str) -> List[Any]:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             if club_code:
                 return session.query(
                     Club.name,
@@ -29,7 +29,7 @@ class ClubSynchronizer(BaseSynchronizer):
             return []
 
     def is_synced(self, site: Site, club_code: str, season: int, flag: int) -> bool:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             result = session.query(
                 ClubSyncState.sync_flags
             ).filter(
@@ -43,7 +43,7 @@ class ClubSynchronizer(BaseSynchronizer):
             return (result[0] & flag) == flag
 
     def get_unsynced_countries(self, site: Site) -> List[Any]:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             return session.query(
                 Country.name,
                 Country.code
@@ -71,7 +71,7 @@ class ClubSynchronizer(BaseSynchronizer):
             ['code']
         )
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(Club).values(list(club_dict.values()))
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['code'],
