@@ -9,7 +9,7 @@ from ..base_synchronizer import BaseSynchronizer
 class SubCategorySynchronizer(BaseSynchronizer):
 
     def get_unsynced_categories(self, site: Site) -> List[Any]:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             return session.query(
                 Category.cid,
                 Category.name
@@ -23,7 +23,7 @@ class SubCategorySynchronizer(BaseSynchronizer):
 
         sub_category_dict = self.to_dict(sub_categories, ['cid', 'scid', 'name'], ['scid'])
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(SubCategory).values(list(sub_category_dict.values()))
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['scid'],

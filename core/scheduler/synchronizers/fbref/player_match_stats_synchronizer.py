@@ -18,7 +18,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
     ) -> List[Tuple[str, str]]:
         club_codes = [club_code for _, club_code in clubs]
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
                 Fixture.code,
                 Fixture.home_team,
@@ -60,7 +60,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
             ['match_code', 'player_code']
         )
 
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(PlayerMatchStats).values(list(player_stats_dict.values()))
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['match_code', 'player_code'],

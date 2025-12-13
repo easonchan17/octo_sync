@@ -10,7 +10,7 @@ from ..base_synchronizer import BaseSynchronizer
 class ProductSynchronizer(BaseSynchronizer):
 
     def get_unsynced_sub_category_brands(self, site: Site) -> List[Any]:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             return session.query(
                 SubCategoryBrand.scid,
                 SubCategoryBrand.bid,
@@ -25,7 +25,7 @@ class ProductSynchronizer(BaseSynchronizer):
             ).all()
 
     def sync(self, site: Site, sub_category: SubCategory, brand: Brand, products: List[Product], mark_as_synced: bool) -> None:
-        with self.postgresql_manager.get_session(site.get_namespace()) as session:
+        with self.db.get_session(site.get_namespace()) as session:
             if products:
                 product_dict = self.to_dict(products, ['scid', 'bid', 'pid', 'name'], ['pid'])
                 insert_stmt = insert(Product).values(list(product_dict.values()))

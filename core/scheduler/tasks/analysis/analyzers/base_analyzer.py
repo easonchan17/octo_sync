@@ -9,7 +9,7 @@ class BaseAnalyzer:
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
         self.site = site
         self.payload = payload
-        self.postgresql_manager = PostgreSQLManager.get_instance()
+        self.db = PostgreSQLManager.get_instance()
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
 
     def analyze(self, *args, **kwargs) -> Optional[pd.DataFrame]:
