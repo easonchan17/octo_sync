@@ -5,6 +5,7 @@ from core.logger.logger_manager import LoggerManager
 from core.server.controllers.site_controller import SiteController
 from core.server.controllers.browser_controller import BrowserController
 from core.server.controllers.training_controller import TrainingController
+from core.server.controllers.inference_controller import InferenceController
 
 class WebApp:
     def __init__(self) -> None:
@@ -30,6 +31,9 @@ class WebApp:
 
         training_controller = TrainingController()
         self.app.include_router(training_controller.router, prefix="/api", tags=["training"])
+
+        inference_controller = InferenceController()
+        self.app.include_router(inference_controller.router, prefix="/api", tags=["inference"])
 
     def _setup_middleware(self) -> None:
         @self.app.middleware("http")

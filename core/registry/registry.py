@@ -27,6 +27,8 @@ from core.store.postgres.models import (
     Country, Club, Competition, Fixture, ClubSyncState, CountrySyncState, GoalAndShotCreation, Passing,
     DefensiveAction, Shooting, GoalKeeping,GlobalState, PlayerMatchStats, MatchSyncState, TrainingRecord
 )
+from core.scheduler.tasks.analysis.inference.base_predictor import BasePredictor
+from core.scheduler.tasks.analysis.inference.winball.winball_predictor import WinballPredictor
 
 class Registry:
     _registry = {}
@@ -42,9 +44,9 @@ class Registry:
     def get(
         cls,
         name: str,
-        site: Site,
-        db: PostgreSQLManager,
-        payload: Optional[Dict[str, Any]]
+        site: Optional[Site] = None,
+        db: Optional[PostgreSQLManager] = None,
+        payload: Optional[Dict[str, Any]] = None
     ) -> Any:
         if name not in cls._registry:
             raise ValueError(f"Name {name} not found in registry")
@@ -330,3 +332,12 @@ def create_training_winball_task(
     return Pipeline(
         WinballTrainer(site, payload)
     )
+
+#****************** model inference *******************#
+@Registry.register('inference.winball')
+def create_inference_winball_instance(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BasePredictor:
+    return WinballPredictor()

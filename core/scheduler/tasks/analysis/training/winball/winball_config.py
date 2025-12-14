@@ -1,8 +1,8 @@
 from functools import cached_property
 from typing import Dict, Any, Optional, List
-from core.scheduler.tasks.analysis.training.trainer_config import TrainerConfig
+from core.scheduler.tasks.analysis.training.base_trainer_config import BaseTrainerConfig
 
-class WinballConfig(TrainerConfig):
+class WinballConfig(BaseTrainerConfig):
     MODEL_FAMILY = "winball"
     MODEL_TYPE = "xgboost"
 
@@ -57,6 +57,13 @@ class WinballConfig(TrainerConfig):
         return self.get_param(
             payload_key='objective.balanced',
             config_key='training.tasks.winball.objective.balanced'
+        )
+
+    @cached_property
+    def scoring(self) -> str:
+        return self.get_param(
+            payload_key='optimizer.params.scoring',
+            config_key='training.tasks.winball.optimizer.params.scoring'
         )
 
     @cached_property

@@ -5,7 +5,7 @@ from sklearn.utils.class_weight import compute_sample_weight
 from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
 
-class Trainer(BaseTask):
+class BaseTrainer(BaseTask):
     def __init__(self) -> None:
         super().__init__()
         self.config = None
