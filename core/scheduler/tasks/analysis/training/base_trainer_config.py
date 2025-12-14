@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 from core.logger.logger_manager import LoggerManager
 from core.config.config_manager import ConfigManager
 
-class TrainerConfig(ABC):
+class BaseTrainerConfig(ABC):
     MODEL_FAMILY: str = ""
     MODEL_TYPE: str = ""
 

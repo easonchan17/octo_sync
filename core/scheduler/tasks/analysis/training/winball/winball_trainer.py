@@ -6,14 +6,14 @@ from core.scheduler.tasks.analysis.models.xgboost_classifier import XGBoostClass
 from sklearn.model_selection import TimeSeriesSplit
 from .winball_config import WinballConfig
 from skopt.space import Real, Integer
-from ..trainer import Trainer
-from ..tracker import Tracker
+from ..base_trainer import BaseTrainer
+from ..base_tracker import BaseTracker
 
-class WinballTrainer(Trainer):
+class WinballTrainer(BaseTrainer):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.config = WinballConfig(payload)
-        self.tracker = Tracker(self.config)
+        self.tracker = BaseTracker(self.config)
 
     def create_model(self) -> XGBoostClassifier:
         return XGBoostClassifier(
