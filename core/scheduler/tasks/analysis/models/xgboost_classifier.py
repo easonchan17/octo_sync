@@ -11,7 +11,21 @@ class XGBoostClassifier(ClassifierMixin, BaseEstimator):
     def __init__(self, eval_set_size: float = 0.1, **kwargs) -> None:
         self.eval_set_size = eval_set_size
         self.params = kwargs
-        self.model = None
+        self.model = xgb.XGBClassifier(**kwargs)
+        self.is_fitted_ = False
+
+    @classmethod
+    def load_from_file(
+        cls,
+        model_path: str,
+        eval_set_size: float = 0.1,
+        **model_params
+    ) -> 'XGBoostClassifier':
+        instance = cls(eval_set_size=eval_set_size, **model_params)
+        instance.model.load_model(model_path)
+        instance.is_fitted_ = True
+
+        return instance
 
     def fit(
         self,
@@ -34,7 +48,6 @@ class XGBoostClassifier(ClassifierMixin, BaseEstimator):
             fit_data = (X, y)
             w_train = sample_weight
 
-        self.model = xgb.XGBClassifier(**self.params)
         self.model.fit(
             *fit_data,
             eval_set=eval_set,
