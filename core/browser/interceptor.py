@@ -219,14 +219,21 @@ class Interceptor(Thread, Singleton):
         async def _http_request_handler(route, request) -> None:
             try:
                 http_rule = self._find_matching_rule(request.url, http_rules)
-                if not http_rule or not http_rule.sender:
-                    await route.continue_()
-                    return
 
-                sender = await ComponentFactory.create_inst(http_rule.sender)
-                await sender.process(route, request, query_params)
+                if http_rule and http_rule.sender:
+                    sender = await ComponentFactory.create_inst(http_rule.sender)
+                    overrides = await sender.process(route, request, query_params)
+
+                    if overrides and isinstance(overrides, dict):
+                        await route.continue_(**overrides)
+                        return
             except Exception as e:
                 self.logger.error(f"Failed to send request: {e}")
+
+            try:
+                await route.continue_()
+            except Exception as e:
+                self.logger.error(f"Failed to continue request: {e}")
 
         async def _http_response_handler(response) -> None:
             http_rule = self._find_matching_rule(response.url, http_rules)
