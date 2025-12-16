@@ -1,6 +1,6 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, Float, JSON, Text
-from .base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, StatusMixin, DictMixin, Status
 
 class TrainingRecord(Base, StatusMixin, DictMixin):
     __tablename__ = 'training_records'

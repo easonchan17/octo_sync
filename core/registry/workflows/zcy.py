@@ -1,0 +1,77 @@
+from typing import Optional, Dict, Any
+from core.registry.registry import Registry
+from core.scheduler.tasks.sync.zcy import (
+    SyncBrand,
+    SyncCategory,
+    SyncProduct,
+    SyncSubCategory
+)
+from core.store.postgres.models import (
+    Site, Category, SubCategory, Brand, SubCategoryBrand, Product
+)
+from core.scheduler.tasks.base_task import BaseTask, Pipeline
+from core.store.postgres.postgresql_manager import PostgreSQLManager
+
+@Registry.register('sync.zcy.category')
+def create_sync_zcy_category_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    db.create_schema(site.get_namespace())
+    db.create_tables(
+        [Category],
+        site.get_namespace()
+    )
+
+    return Pipeline(
+        SyncCategory(site)
+    )
+
+@Registry.register('sync.zcy.sub_category')
+def create_sync_zcy_sub_category_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    db.create_schema(site.get_namespace())
+    db.create_tables(
+        [Category, SubCategory],
+        site.get_namespace()
+    )
+
+    return Pipeline(
+        SyncSubCategory(site)
+    )
+
+@Registry.register('sync.zcy.brand')
+def create_sync_zcy_brand_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    db.create_schema(site.get_namespace())
+    db.create_tables(
+        [Category, SubCategory, Brand, SubCategoryBrand],
+        site.get_namespace()
+    )
+
+    return Pipeline(
+        SyncBrand(site)
+    )
+
+@Registry.register('sync.zcy.product')
+def create_sync_zcy_product_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    db.create_schema(site.get_namespace())
+    db.create_tables(
+        [SubCategory, Brand, SubCategoryBrand, Product],
+        site.get_namespace()
+    )
+
+    return Pipeline(
+        SyncProduct(site)
+    )

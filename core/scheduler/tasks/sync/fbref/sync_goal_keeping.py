@@ -2,8 +2,8 @@ from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.html_utils import normalize_club_name
-from core.browser.interceptor import TaskType
 from core.store.postgres.models.fbref.club import Club
+from core.browser.interceptor import TaskType, InterceptPolicyCreator
 from core.store.postgres.models.fbref.club_sync_state import ClubSyncFlag
 from core.scheduler.synchronizers.fbref.goal_keeping_synchronizer import GoalKeepingSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
@@ -20,7 +20,10 @@ class SyncGoalKeeping(BaseTask):
         config_prefix = f"interceptor.{self.site.name}.goalkeeping"
         page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
         default_timeout = self.config_manager.get_config("browser.timeout")
-        html_handler = self.config_manager.get_config(f"{config_prefix}.html_handler")
+        intercept_policy = self.config_manager.get_config(
+            f"{config_prefix}.rules",
+            converter=InterceptPolicyCreator()
+        )
 
         clubs = self.club_synchronizer.get_clubs(
             self.site,
@@ -58,7 +61,7 @@ class SyncGoalKeeping(BaseTask):
                     future = self.interceptor.submit_task(
                         TaskType.OPEN_PAGE,
                         url=page_url,
-                        html_handler=html_handler
+                        intercept_policy=intercept_policy
                     )
 
                     responses, _ = future.result(timeout=default_timeout*2)

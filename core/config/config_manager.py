@@ -12,7 +12,12 @@ class ConfigManager(Singleton):
     def load_config(self, config_file: str) -> None:
         self.config = self._load_config_file(config_file)
 
-    def get_config(self, keys: str, default: Optional[Any] = None, converter: Optional[Callable] = None) -> Any:
+    def get_config(
+        self,
+        keys: str,
+        default: Optional[Any] = None,
+        converter: Optional[Callable] = None
+    ) -> Any:
         assert self.config is not None, "Config not loaded"
 
         key_list = keys.split('.')
