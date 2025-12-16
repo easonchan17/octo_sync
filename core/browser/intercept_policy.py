@@ -40,7 +40,7 @@ class InterceptPolicy:
     def __init__(self) -> None:
         self.rules: Dict[InterceptType, List[InterceptRule]] = defaultdict(list)
         self.selector: Optional[str] = None
-        self.timeout: int = 300
+        self.timeout: int = 60
         self.page_delay: int = 3
         self.retry_count: int = 3
 

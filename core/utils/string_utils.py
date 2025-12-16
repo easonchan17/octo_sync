@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from urllib.parse import urlparse
 from typing import Optional
 
@@ -44,3 +45,11 @@ def clean_nul(value: str) -> str:
         return None
 
     return value.replace("\x00", "")
+
+def parse_utc_time(utc_time_str: Optional[str]) -> Optional[datetime]:
+    if not utc_time_str:
+        return None
+    try:
+        return datetime.fromisoformat(utc_time_str.replace('Z', '+00:00'))
+    except ValueError:
+        return None

@@ -13,16 +13,16 @@ class Fixture(Base, StatusMixin, DictMixin):
         Index('idx_fixtures_home_id', 'home_id'),
         Index('idx_fixtures_away_team', 'away_team'),
         Index('idx_fixtures_away_id', 'away_id'),
-        Index('idx_fixtures_comp_name', 'comp_name'),
-        Index('idx_fixtures_comp_id', 'comp_id'),
+        Index('idx_fixtures_league_name', 'league_name'),
+        Index('idx_fixtures_league_id', 'league_id'),
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}'}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_id = Column(String(32), nullable=False, unique=True)
-    comp_name = Column(String(100), nullable=False)
-    comp_id = Column(String(32), nullable=False)
+    league_name = Column(String(100), nullable=False)
+    league_id = Column(String(32), nullable=False)
 
     kickoff_time = Column(DateTime, nullable=False)
     round = Column(String(128), nullable=True)
