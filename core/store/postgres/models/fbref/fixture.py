@@ -5,18 +5,18 @@ from ..common import MatchStatus
 
 
 class Fixture(Base, StatusMixin, DictMixin):
-    __tablename__ = 'fixtures'
+    __tablename__ = 'history_fixtures'
     __table_args__ = (
-        Index('idx_fixtures_create_at', 'create_at'),
-        Index('idx_fixtures_update_at', 'update_at'),
-        Index('idx_fixtures_home_team', 'home_team'),
-        Index('idx_fixtures_home_code', 'home_code'),
-        Index('idx_fixtures_away_team', 'away_team'),
-        Index('idx_fixtures_away_code', 'away_code'),
-        Index('idx_fixtures_comp_name', 'comp_name'),
-        Index('idx_fixtures_comp_code', 'comp_code'),
-        Index('idx_fixtures_kickoff_time', 'kickoff_time'),
-        Index('idx_fixtures_season', 'season'),
+        Index('idx_history_fixtures_create_at', 'create_at'),
+        Index('idx_history_fixtures_update_at', 'update_at'),
+        Index('idx_history_fixtures_home_team', 'home_team'),
+        Index('idx_history_fixtures_home_code', 'home_code'),
+        Index('idx_history_fixtures_away_team', 'away_team'),
+        Index('idx_history_fixtures_away_code', 'away_code'),
+        Index('idx_history_fixtures_comp_name', 'comp_name'),
+        Index('idx_history_fixtures_comp_code', 'comp_code'),
+        Index('idx_history_fixtures_kickoff_time', 'kickoff_time'),
+        Index('idx_history_fixtures_season', 'season'),
         {'schema': '{schema}'}
     )
 
