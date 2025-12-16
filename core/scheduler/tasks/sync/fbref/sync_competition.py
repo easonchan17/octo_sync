@@ -1,6 +1,7 @@
 from core.store.postgres.models import Site
+from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
-from core.browser.interceptor import TaskType, InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicyCreator
 from core.scheduler.synchronizers.fbref.competition_synchronizer import CompetitionSynchronizer
 
 class SyncCompetition(BaseTask):

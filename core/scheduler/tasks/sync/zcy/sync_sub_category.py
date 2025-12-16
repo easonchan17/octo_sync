@@ -2,7 +2,8 @@ from core.store.postgres.models import (
     Site, Category
 )
 from core.scheduler.tasks.base_task import BaseTask
-from core.browser.interceptor import TaskType, InterceptPolicyCreator
+from core.browser.interceptor import TaskType
+from core.browser.intercept_policy import InterceptPolicyCreator
 from core.scheduler.synchronizers.zcy.sub_category_synchronizer import SubCategorySynchronizer
 
 class SyncSubCategory(BaseTask):

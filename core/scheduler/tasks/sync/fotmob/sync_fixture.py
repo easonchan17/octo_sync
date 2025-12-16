@@ -2,7 +2,8 @@ from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from datetime import datetime, date, timedelta
 from core.scheduler.tasks.base_task import BaseTask
-from core.browser.interceptor import TaskType, InterceptPolicyCreator
+from core.browser.interceptor import TaskType
+from core.browser.intercept_policy import InterceptPolicyCreator
 class SyncFixture(BaseTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
