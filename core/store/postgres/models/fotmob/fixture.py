@@ -20,17 +20,17 @@ class Fixture(Base, StatusMixin, DictMixin):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    match_id = Column(String(32), nullable=False, unique=True)
+    match_id = Column(Integer, nullable=False, unique=True)
     league_name = Column(String(100), nullable=False)
-    league_id = Column(String(32), nullable=False)
+    league_id = Column(Integer, nullable=False)
 
     kickoff_time = Column(DateTime, nullable=False)
     round = Column(String(128), nullable=True)
 
     home_team = Column(String(100), nullable=False)
-    home_id = Column(String(32), nullable=False)
+    home_id = Column(Integer, nullable=False)
     away_team = Column(String(100), nullable=False)
-    away_id = Column(String(32), nullable=False)
+    away_id = Column(Integer, nullable=False)
 
     home_score = Column(Integer, nullable=True)
     away_score = Column(Integer, nullable=True)
