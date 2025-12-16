@@ -3,13 +3,13 @@ from datetime import datetime, timezone
 from typing import List, Any, Optional
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
-from core.store.postgres.models.fbref.fixture import Fixture, MatchStatus
+from core.store.postgres.models.fbref.fixture import Fixture
+from core.store.postgres.models import MatchStatus
 from core.utils.html_utils import (
     get_text, get_float, get_number,
     is_table_header, extract_comp_code_from_cell,
-    extract_fixture_code_from_cell, is_match_cancelled,
-    is_match_postponed, extract_venue_time,
-    extract_club_code_from_cell, is_match_awarded
+    extract_fixture_code_from_cell, extract_venue_time,
+    extract_club_code_from_cell
 )
 
 class HtmlFixture:
@@ -146,7 +146,6 @@ class HtmlFixture:
             notes=self.notes,
             match_report=self.match_report or ""
         )
-
 
 class FixtureReceiver(BaseReceiver):
     async def process(self, page_content: Any) -> List[Fixture]:

@@ -1,9 +1,9 @@
 from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
-from core.browser.interceptor import TaskType
-from core.store.postgres.models.fbref.match_sync_state import MatchSyncFlag
 from core.store.postgres.models.fbref.fixture import Fixture
+from core.browser.interceptor import TaskType, InterceptPolicyCreator
+from core.store.postgres.models.fbref.match_sync_state import MatchSyncFlag
 from core.scheduler.synchronizers.fbref.player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 
@@ -19,7 +19,10 @@ class SyncPlayerMatchStats(BaseTask):
         config_prefix = f"interceptor.{self.site.name}.player_match_stats"
         page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
         default_timeout = self.config_manager.get_config("browser.timeout")
-        html_handler = self.config_manager.get_config(f"{config_prefix}.html_handler")
+        intercept_policy = self.config_manager.get_config(
+            f"{config_prefix}.rules",
+            converter=InterceptPolicyCreator()
+        )
 
         clubs = self.club_synchronizer.get_clubs(
             self.site,
@@ -53,7 +56,7 @@ class SyncPlayerMatchStats(BaseTask):
                 future = self.interceptor.submit_task(
                     TaskType.OPEN_PAGE,
                     url=page_url,
-                    html_handler=html_handler
+                    intercept_policy=intercept_policy
                 )
 
                 responses, _ = future.result(timeout=default_timeout*2)

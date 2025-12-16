@@ -15,7 +15,7 @@ class TaskExecutor(Thread, Singleton):
         return task.id
 
     def _run(self) -> None:
-        max_workers = ConfigManager.get_instance().get_config("thread_pool.max_workers", 10)
+        max_workers = ConfigManager.get_instance().get_config("task_thread_pool.max_workers", 10)
         thread_pool = ThreadPoolExecutor(max_workers=max_workers)
 
         tasks = []

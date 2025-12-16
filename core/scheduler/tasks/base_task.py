@@ -4,7 +4,7 @@ from typing import Any, List
 from abc import ABC, abstractmethod
 from core.logger.logger_manager import LoggerManager
 from core.config.config_manager import ConfigManager
-from core.browser.interceptor import Interceptor, InterceptRuleConverter
+from core.browser.interceptor import Interceptor
 
 class BaseTask(ABC):
     def __init__(self, name: str = None) -> None:
@@ -13,7 +13,6 @@ class BaseTask(ABC):
         self.logger = LoggerManager.get_instance().get_logger(self.name)
         self.config_manager = ConfigManager.get_instance()
         self.interceptor = Interceptor.get_instance()
-        self.interceptor_rule_converter = InterceptRuleConverter()
         self.cancel_event = Event()
 
     def cancel(self) -> None:

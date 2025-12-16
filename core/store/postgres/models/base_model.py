@@ -2,6 +2,7 @@ from enum import IntFlag
 from sqlalchemy.sql import func
 from sqlalchemy.orm import DeclarativeBase
 
+
 class Status(IntFlag):
     ACTIVE = 1
     DELETED = 2

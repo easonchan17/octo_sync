@@ -67,6 +67,17 @@ class BaseSender(ABC):
             self.logger.error(f"Failed to transform request: {e}")
             return None
 
+    def disable_cache(self, headers: Dict[str, Any]) -> Dict[str, Any]:
+        headers["Cache-Control"] = "no-cache, no-store"
+        headers["Pragma"] = "no-cache"
+
+        keys_to_remove = ["if-modified-since", "if-none-match"]
+        for key in keys_to_remove:
+            if key in headers:
+                del headers[key]
+
+        return {"headers": headers}
+
     @abstractmethod
     def process(self, request: Any, query_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         pass

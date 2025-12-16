@@ -84,5 +84,5 @@ class BaseReceiver(ABC):
         try:
             body.decode(encoding)
             return True
-        except:
+        except Exception:
             return False

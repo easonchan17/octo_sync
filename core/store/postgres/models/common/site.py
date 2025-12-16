@@ -1,6 +1,6 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Text, Index
-from .base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, StatusMixin, DictMixin, Status
 
 class Site(Base, StatusMixin, DictMixin):
     __tablename__ = 'sites'

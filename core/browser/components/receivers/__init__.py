@@ -16,6 +16,12 @@ from .fbref import (
     PassingReceiver,
     ShootingReceiver
 )
+from .pinnacle import (
+    OddsReceiver
+)
+from .fotmob import (
+    FixtureReceiver as FotmobFixtureReceiver
+)
 
 __all__ = [
     'BaseReceiver',
@@ -31,5 +37,7 @@ __all__ = [
     'GoalAndShotCreationReceiver',
     'GoalkeepingReceiver',
     'PassingReceiver',
-    'ShootingReceiver'
+    'ShootingReceiver',
+    'OddsReceiver',
+    'FotmobFixtureReceiver'
 ]

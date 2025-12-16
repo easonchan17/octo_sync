@@ -1,6 +1,6 @@
 # PostgreSQL models package
 from .base_model import Base, Status, StatusMixin, DictMixin
-from .site import Site
+from .common import Site, TrainingRecord, MatchStatus
 from .zcy import (
     Brand,
     Category,
@@ -18,7 +18,6 @@ from .fbref import (
     CountrySyncFlag,
     DefensiveAction,
     Fixture,
-    MatchStatus,
     GoalAndShotCreation,
     GoalKeeping,
     MatchSyncState,
@@ -28,7 +27,6 @@ from .fbref import (
     Shooting,
     GlobalState
 )
-from .training_record import TrainingRecord
 
 __all__ = [
     'Base',
