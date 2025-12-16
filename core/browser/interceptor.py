@@ -251,6 +251,11 @@ class Interceptor(Thread, Singleton):
 
             await self.cloudflare_handler.wait_for_verification(page_context, timeout)
 
+            elapsed_time = time.time() - start_time
+            remaining_time = policy.page_delay - elapsed_time
+            if remaining_time > 0:
+                await asyncio.sleep(remaining_time)
+
             end_time = time.time()
             self.logger.info(f"page loaded ({end_time - start_time}s): {url}")
 
