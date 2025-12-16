@@ -3,7 +3,8 @@ from core.store.postgres.models import (
 )
 from core.scheduler.tasks.base_task import BaseTask
 from core.scheduler.synchronizers.zcy.brand_synchronizer import BrandSynchronizer
-from core.browser.interceptor import TaskType, InterceptPolicyCreator
+from core.browser.interceptor import TaskType
+from core.browser.intercept_policy import InterceptPolicyCreator
 
 class SyncBrand(BaseTask):
     def __init__(self, site: Site) -> None:

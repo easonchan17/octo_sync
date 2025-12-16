@@ -11,7 +11,6 @@ class InterceptType(StrEnum):
     DOM = "dom"
     WS = "ws"
 
-
 class InterceptRule:
     def __init__(
         self,
@@ -21,7 +20,6 @@ class InterceptRule:
         sender: Optional[str] = None
     ) -> None:
         self.type = InterceptType(type)
-
         if not self.is_dom() and pattern is None:
             raise ValueError("pattern is required for non-dom intercept rules")
 
@@ -41,6 +39,22 @@ class InterceptRule:
 class InterceptPolicy:
     def __init__(self) -> None:
         self.rules: Dict[InterceptType, List[InterceptRule]] = defaultdict(list)
+        self.selector: Optional[str] = None
+        self.timeout: int = 300
+        self.page_delay: int = 3
+        self.retry_count: int = 3
+
+    def set_timeout(self, timeout: int) -> None:
+        self.timeout = timeout
+
+    def set_page_delay(self, page_delay: int) -> None:
+        self.page_delay = page_delay
+
+    def set_retry_count(self, retry_count: int) -> None:
+        self.retry_count = retry_count
+
+    def set_selector(self, selector: str) -> None:
+        self.selector = selector
 
     def add_rule(self, rule: InterceptRule) -> None:
         self.rules[rule.type].append(rule)
@@ -74,7 +88,7 @@ class InterceptPolicy:
         return None
 
     @classmethod
-    def from_rules(cls, rules: List[dict[str, Any]]) -> 'InterceptPolicy':
+    def from_rules(cls, rules: List[dict[str, Any]], selector: Optional[str] = None) -> 'InterceptPolicy':
         policy = cls()
         if not rules:
             return policy
@@ -86,9 +100,13 @@ class InterceptPolicy:
                 receiver=rule.get("receiver"),
                 sender=rule.get("sender"))
             )
+        policy.selector = selector
         return policy
 
 
 class InterceptPolicyCreator:
+    def __init__(self, selector: Optional[str] = None) -> None:
+        self.selector = selector
+
     def __call__(self, rules: List[dict[str, Any]]) -> InterceptPolicy:
-        return InterceptPolicy.from_rules(rules)
+        return InterceptPolicy.from_rules(rules, selector=self.selector)

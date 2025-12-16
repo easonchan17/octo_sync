@@ -3,7 +3,8 @@ from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.html_utils import normalize_club_name
 from core.store.postgres.models.fbref.club import Club
-from core.browser.interceptor import TaskType, InterceptPolicyCreator
+from core.browser.interceptor import TaskType
+from core.browser.intercept_policy import InterceptPolicyCreator
 from core.store.postgres.models.fbref.club_sync_state import ClubSyncFlag
 from core.scheduler.synchronizers.fbref.goal_and_shot_creation_synchronizer import GoalAndShotCreationSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
