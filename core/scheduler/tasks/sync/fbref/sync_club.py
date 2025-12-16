@@ -1,6 +1,7 @@
+from core.browser.interceptor import TaskType
 from core.store.postgres.models import Site, Country
 from core.scheduler.tasks.base_task import BaseTask
-from core.browser.interceptor import TaskType, InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicyCreator
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 
 class SyncClub(BaseTask):
