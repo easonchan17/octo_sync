@@ -1,10 +1,9 @@
 import importlib
 import asyncio
-from typing import Any, Type
+from typing import Any, Type, Optional
 
 class ComponentFactory:
     _instances: dict[str, Any] = {}
-    _lock = asyncio.Lock()
 
     @classmethod
     def _get_class(cls, class_path: str) -> Type[Any]:
@@ -19,18 +18,20 @@ class ComponentFactory:
             raise
 
     @classmethod
-    async def create_inst(cls, model: str) -> Any:
-        async with cls._lock:
-            if model in cls._instances:
-                return cls._instances[model]
+    def create_inst(cls, model: Optional[str]) -> Optional[Any]:
+        if model is None:
+            return None
 
-            creator = cls._get_class(model)
-            if not creator:
-                return None
+        if model in cls._instances:
+            return cls._instances[model]
 
-            try:
-                inst = creator()
-                cls._instances[model] = inst
-                return inst
-            except Exception as e:
-                raise
+        creator = cls._get_class(model)
+        if not creator:
+            return None
+
+        try:
+            inst = creator()
+            cls._instances[model] = inst
+            return inst
+        except Exception as e:
+            raise

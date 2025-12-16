@@ -1,7 +1,7 @@
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.scheduler.synchronizers.zcy.category_synchronizer import CategorySynchronizer
-from core.browser.interceptor import TaskType
+from core.browser.interceptor import TaskType, InterceptPolicyCreator
 
 class SyncCategory(BaseTask):
     def __init__(self, site: Site) -> None:
@@ -17,16 +17,16 @@ class SyncCategory(BaseTask):
         try:
             config_prefix = f"interceptor.{self.site.name}.category"
             page_url = self.config_manager.get_config(f"{config_prefix}.url")
-            intercept_rules = self.config_manager.get_config(
+            intercept_policy = self.config_manager.get_config(
                 f"{config_prefix}.rules",
-                converter=self.interceptor_rule_converter
+                converter=InterceptPolicyCreator()
             )
             default_timeout = self.config_manager.get_config("browser.timeout")
 
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
                 url=page_url,
-                http_rules=intercept_rules
+                intercept_policy=intercept_policy
             )
             responses, _ = future.result(timeout=default_timeout*2)
 

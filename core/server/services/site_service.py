@@ -2,9 +2,8 @@ from typing import Optional, Dict, Any
 from core.scheduler.task_executor import TaskExecutor
 from core.server.services.base_service import BaseService
 from core.scheduler.tasks.base_task import BaseTask, AsyncTask
-from core.registry import Registry
 from core.store.postgres.models import Site
-
+from core.registry import Registry
 
 class SiteService(BaseService):
     def __init__(self):
@@ -51,7 +50,6 @@ class SiteService(BaseService):
                 create_at=site.create_at,
                 update_at=site.update_at
             )
-
 
     async def start_sync(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
         _ = self.loop

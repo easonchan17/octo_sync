@@ -3,7 +3,7 @@ from core.store.postgres.models import (
 )
 from core.scheduler.tasks.base_task import BaseTask
 from core.scheduler.synchronizers.zcy.product_synchronizer import ProductSynchronizer
-from core.browser.interceptor import TaskType
+from core.browser.interceptor import TaskType, InterceptPolicyCreator
 
 class SyncProduct(BaseTask):
     def __init__(self, site: Site) -> None:
@@ -19,9 +19,9 @@ class SyncProduct(BaseTask):
 
         config_prefix = f"interceptor.{self.site.name}.product"
         page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
-        intercept_rules = self.config_manager.get_config(
+        intercept_policy = self.config_manager.get_config(
             f"{config_prefix}.rules",
-            converter=self.interceptor_rule_converter
+            converter=InterceptPolicyCreator()
         )
         max_page_no = self.config_manager.get_config(f"{config_prefix}.max_page_no")
         page_size = self.config_manager.get_config(f"{config_prefix}.page_size")
@@ -44,7 +44,7 @@ class SyncProduct(BaseTask):
                     future = self.interceptor.submit_task(
                         TaskType.OPEN_PAGE,
                         url=page_url,
-                        http_rules=intercept_rules,
+                        intercept_policy=intercept_policy,
                         query_params=query_params
                     )
                     responses, _ = future.result(timeout=default_timeout*2)

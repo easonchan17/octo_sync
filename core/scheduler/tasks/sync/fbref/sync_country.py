@@ -1,6 +1,6 @@
-from core.browser.interceptor import TaskType
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
+from core.browser.interceptor import TaskType, InterceptPolicyCreator
 from core.scheduler.synchronizers.fbref.country_synchronizer import CountrySynchronizer
 
 class SyncCountry(BaseTask):
@@ -18,13 +18,15 @@ class SyncCountry(BaseTask):
             config_prefix = f"interceptor.{self.site.name}.countries"
             page_url = self.config_manager.get_config(f"{config_prefix}.url")
             default_timeout = self.config_manager.get_config("browser.timeout")
-
-            html_handler = self.config_manager.get_config(f"{config_prefix}.html_handler")
+            intercept_policy = self.config_manager.get_config(
+                f"{config_prefix}.rules",
+                converter=InterceptPolicyCreator()
+            )
 
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
                 url=page_url,
-                html_handler=html_handler
+                intercept_policy=intercept_policy
             )
 
             responses, _ = future.result(timeout=default_timeout*2)
