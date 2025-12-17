@@ -192,13 +192,15 @@ class Interceptor(Thread, Singleton):
                 type=InterceptType.HTTP,
                 url=response.url
             )
-            if not http_rule or not http_rule.receiver:
+            if http_rule is None or http_rule.receiver is None:
                 return
 
             try:
                 parsed_data = await http_rule.receiver.process(response)
-                if parsed_data is not None:
-                    collected_datas.append(parsed_data)
+                if parsed_data is None:
+                    return
+
+                collected_datas.append(parsed_data)
             except Exception as e:
                 self.logger.error(f"Failed to process response from {response.url} {response.request.method} {http_rule.receiver}: {e}", exc_info=True)
 
@@ -230,10 +232,17 @@ class Interceptor(Thread, Singleton):
 
         async def _page_content_handler(page_context) -> None:
             dom_rule = policy.find_rule(type=InterceptType.DOM)
+            if dom_rule is None or dom_rule.receiver is None:
+                return
 
-            if dom_rule and dom_rule.receiver:
+            try:
                 parsed_data = await dom_rule.receiver.process(await page_context.content())
+                if parsed_data is None:
+                    return
+
                 collected_datas.append(parsed_data)
+            except Exception as e:
+                self.logger.error(f"Failed to process page content from {url} {dom_rule.receiver}: {e}", exc_info=True)
 
         async def _goto_page(page_context, policy: InterceptPolicy) -> None:
             self.logger.debug(f"Goto page {url}")
