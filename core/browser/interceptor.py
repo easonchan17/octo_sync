@@ -1,9 +1,11 @@
+import re
 import time
 import janus
 import asyncio
 from enum import Enum
 from core.utils.thread import Thread
 from concurrent.futures import Future
+from contextlib import AsyncExitStack
 from core.utils.singleton import Singleton
 from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
@@ -77,7 +79,7 @@ class Interceptor(Thread, Singleton):
                 task_type, future, payload = task_data
                 await self._process_task(task_type, future, payload)
 
-            await self.page_pool.cleanup()
+            self.logger.info(f"Page pool cleanup. Active pages remaining: {self.page_pool.get_count()}")
             self.page_pool = None
 
     async def _process_task(self, task_type: TaskType, future: Future, payload: dict[str, Any]) -> None:
@@ -93,14 +95,9 @@ class Interceptor(Thread, Singleton):
             self.task_queue.async_q.task_done()
             return
 
-        try:
-            result = await handler(payload)
-            future.set_result(result)
-        except Exception as e:
-            self.logger.error(f"Error executing task: {e}")
-            future.set_exception(e)
-        finally:
-            self.task_queue.async_q.task_done()
+        result = await handler(payload)
+        future.set_result(result)
+        self.task_queue.async_q.task_done()
 
     async def _handle_open_page(self, payload: dict[str, Any]) -> Tuple[Optional[List[Any]], None]:
         url = payload.get("url")
@@ -111,8 +108,8 @@ class Interceptor(Thread, Singleton):
         return (result, None)
 
     async def _handle_close_page(self, payload: dict[str, Any]) -> bool:
-        page = payload.get("page")
-        await self.page_pool.safe_close_page(page)
+        page_id = payload.get("page_id")
+        await self.page_pool.remove_resident_page(page_id)
         return True
 
     async def _open_page(
@@ -161,7 +158,6 @@ class Interceptor(Thread, Singleton):
     ) -> Tuple[bool, Optional[List[Any]]]:
         intercept_flag = False
         collected_datas: List[Any] = []
-        is_resident = policy.has_rules(InterceptType.WS)
 
         async def _http_request_handler(route, request) -> None:
             try:
@@ -175,10 +171,14 @@ class Interceptor(Thread, Singleton):
                     if overrides is not None:
                         await route.continue_(**overrides)
                         return
+
+
             except Exception as e:
                 self.logger.error(f"Failed to send request: {e}")
 
             try:
+                if policy.debug:
+                    self.logger.info(f"Continuing request without modification: {request.url}")
                 await route.continue_()
             except Exception as e:
                 self.logger.error(f"Failed to continue request: {e}")
@@ -193,6 +193,8 @@ class Interceptor(Thread, Singleton):
                 url=response.url
             )
             if http_rule is None or http_rule.receiver is None:
+                if policy.debug:
+                    self.logger.warning(f"No receiver found for HTTP rule: {response.url}")
                 return
 
             try:
@@ -245,71 +247,79 @@ class Interceptor(Thread, Singleton):
                 self.logger.error(f"Failed to process page content from {url} {dom_rule.receiver}: {e}", exc_info=True)
 
         async def _goto_page(page_context, policy: InterceptPolicy) -> None:
-            self.logger.debug(f"Goto page {url}")
             start_time = time.time()
 
-            selector = policy.selector
             timeout = policy.timeout
+            targets = policy.get_targets(InterceptType.HTTP)
 
-            await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
-            if selector is not None:
-                await page_context.wait_for_selector(selector, timeout=timeout*1000)
-            try:
-                await page_context.wait_for_load_state('networkidle', timeout=timeout*1000)
-            except Exception as e:
-                self.logger.error(f"Failed to wait for load state: {e}")
+            async with AsyncExitStack() as stack:
+                for target in targets:
+                    regex = re.compile(target)
+                    predicate = lambda r, t=regex: t.match(r.url) and r.status == 200
+                    await stack.enter_async_context(
+                        page_context.expect_response(predicate, timeout=timeout*1000)
+                    )
 
-            await self.cloudflare_handler.wait_for_verification(page_context, timeout)
+                await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
 
-            # elapsed_time = time.time() - start_time
-            # remaining_time = policy.page_delay - elapsed_time
-            # if remaining_time > 0:
-            #     await asyncio.sleep(remaining_time)
+            # try:
+            #     # await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
+
+            #     # if selector is not None:
+            #     #     await page_context.wait_for_selector(selector, timeout=timeout*1000)
+            #     # else: #TODO: need better way to ensure page is fully loaded
+            #     #     await page_context.wait_for_load_state('networkidle', timeout=timeout*1000)
+            # except Exception as e:
+            #     self.logger.error(f"Failed to wait for load state: {e}")
+
+            # await self.cloudflare_handler.wait_for_verification(page_context, timeout)
 
             end_time = time.time()
             self.logger.info(f"page loaded ({end_time - start_time}s): {url}")
 
-        async with self.page_pool.acquire(is_resident=is_resident) as page_context:
-            if page_context.page is None:
-                self.logger.error("Failed to get page (queue empty and max limit reached)")
-                return False, None
+        try:
+            async with self.page_pool.acquire(
+                is_resident=policy.has_rules(InterceptType.WS),
+                timeout=policy.timeout
+            ) as page_context:
+                try:
+                    if policy.has_rules(InterceptType.HTTP):
+                        if policy.has_senders(InterceptType.HTTP):
+                            await page_context.route("**/*", _http_request_handler)
 
-            try:
-                if policy.has_rules(InterceptType.HTTP):
-                    if policy.has_senders(InterceptType.HTTP):
-                        await page_context.route("**/*", _http_request_handler)
+                        if policy.has_receivers(InterceptType.HTTP):
+                            page_context.on("response", _http_response_handler)
 
-                    if policy.has_receivers(InterceptType.HTTP):
-                        page_context.on("response", _http_response_handler)
+                        self.logger.debug(f"Register http request and response handler for page: {url}")
 
-                    self.logger.debug(f"Register http request and response handler for page: {url}")
+                    if policy.has_rules(InterceptType.WS):
+                        page_context.on("websocket", _ws_connect_handler)
+                        collected_datas.append(page_context.id)
 
-                if policy.has_rules(InterceptType.WS):
-                    page_context.on("websocket", _ws_connect_handler)
-                    collected_datas.append(page_context.page)
+                        self.logger.debug(f"Register ws handler for page: {url}")
 
-                    self.logger.debug(f"Register ws handler for page: {url}")
+                    await _goto_page(page_context, policy)
 
-                await _goto_page(page_context, policy)
+                    if policy.has_rules(InterceptType.DOM):
+                        await _page_content_handler(page_context)
 
-                if policy.has_rules(InterceptType.DOM):
-                    await _page_content_handler(page_context)
+                    intercept_flag = True
+                except Exception as e:
+                    self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
+                finally:
+                    if policy.has_rules(InterceptType.HTTP):
+                        if policy.has_senders(InterceptType.HTTP):
+                            try:
+                                await page_context.unroute("**/*", _http_request_handler)
+                            except Exception:
+                                pass
 
-                intercept_flag = True
-            except Exception as e:
-                self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
-            finally:
-                if policy.has_rules(InterceptType.HTTP):
-                    if policy.has_senders(InterceptType.HTTP):
-                        try:
-                            await page_context.unroute("**/*", _http_request_handler)
-                        except Exception:
-                            pass
-
-                    if policy.has_receivers(InterceptType.HTTP):
-                        try:
-                            page_context.remove_listener("response", _http_response_handler)
-                        except Exception:
-                            pass
+                        if policy.has_receivers(InterceptType.HTTP):
+                            try:
+                                page_context.remove_listener("response", _http_response_handler)
+                            except Exception:
+                                pass
+        except asyncio.TimeoutError:
+            self.logger.error(f"Timeout while acquiring page for URL: {url}")
 
         return intercept_flag, collected_datas
