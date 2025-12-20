@@ -1,7 +1,7 @@
 from core.store.postgres.models import Site
 from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
-from core.browser.intercept_policy import InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicy
 from core.scheduler.synchronizers.fbref.competition_synchronizer import CompetitionSynchronizer
 
 class SyncCompetition(BaseTask):
@@ -16,23 +16,18 @@ class SyncCompetition(BaseTask):
             return
 
         try:
-            config_prefix = f"interceptor.{self.site.name}.competitions"
-            page_url = self.config_manager.get_config(f"{config_prefix}.url")
-            default_timeout = self.config_manager.get_config("browser.timeout")
-            intercept_policy = self.config_manager.get_config(
-                f"{config_prefix}.rules",
-                converter=InterceptPolicyCreator()
-            )
+            policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.competitions")
+            intercept_policy = InterceptPolicy.from_rules(policy_config)
 
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
-                url=page_url,
+                url=intercept_policy.url,
                 intercept_policy=intercept_policy
             )
 
-            responses, _ = future.result(timeout=default_timeout*2)
+            responses, _ = future.result(timeout=intercept_policy.timeout*2)
             if not responses:
-                self.logger.error(f"No response for {page_url}")
+                self.logger.error(f"No response for {intercept_policy.url}")
                 return
 
             competitions = responses[0]

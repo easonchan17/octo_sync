@@ -5,22 +5,20 @@ import asyncio
 from enum import Enum
 from core.utils.thread import Thread
 from concurrent.futures import Future
-from contextlib import AsyncExitStack
 from core.utils.singleton import Singleton
 from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, List, Optional, Any
-from core.utils.string_utils import is_valid_url
 from core.config.config_manager import ConfigManager
 from core.browser.cloudflare_handler import CloudflareHandler
+from core.utils.string_utils import is_valid_url
+from core.browser.intercept_monitor import InterceptMonitor
 from core.browser.intercept_policy import InterceptType, InterceptPolicy
-
 
 class TaskType(Enum):
     OPEN_PAGE = 1
     CLOSE_PAGE = 2
-
 
 class Interceptor(Thread, Singleton):
     def __init__(self) -> None:
@@ -112,6 +110,155 @@ class Interceptor(Thread, Singleton):
         await self.page_pool.remove_resident_page(page_id)
         return True
 
+    async def _register_handlers(
+        self,
+        page_context: Any,
+        policy: InterceptPolicy,
+        monitor: InterceptMonitor,
+        collected_datas: List[Any],
+        query_params: Optional[dict[str, Any]] = None
+    ) -> Tuple[Any, Any, Any]:
+
+        http_request_handler = None
+        http_response_handler = None
+        ws_connect_handler = None
+
+        if policy.has_rules(InterceptType.HTTP):
+            if policy.has_senders(InterceptType.HTTP):
+                async def _http_request_handler(route, request) -> None:
+                    try:
+                        rule = policy.find_rule(InterceptType.HTTP, request.url)
+                        if rule and rule.sender:
+                            overrides = await rule.sender.process(request, query_params)
+
+                            if overrides is not None:
+                                await route.continue_(**overrides)
+                                return
+                    except Exception as e:
+                        self.logger.error(f"Failed to send request: {e}")
+
+                    try:
+                        if policy.debug:
+                            self.logger.info(f"Continuing request without modification: {request.url}")
+                        await route.continue_()
+                    except Exception as e:
+                        self.logger.error(f"Failed to continue request: {e}")
+
+                await page_context.route("**/*", _http_request_handler)
+                http_request_handler = _http_request_handler
+
+            if policy.has_receivers(InterceptType.HTTP):
+                async def _http_response_handler(response) -> None:
+                    if not response.ok:
+                        if policy.debug:
+                            self.logger.info(f"Skipping non-OK response: {response.url} {response.status}")
+                        return
+
+                    http_rule = policy.find_rule(
+                        type=InterceptType.HTTP,
+                        url=response.url
+                    )
+                    if http_rule is None or http_rule.receiver is None:
+                        if policy.debug:
+                            self.logger.warning(f"No receiver found for HTTP rule: {response.url}")
+                        return
+
+                    try:
+                        parsed_data = await http_rule.receiver.process(response)
+                        if parsed_data is None:
+                            return
+
+                        collected_datas.append(parsed_data)
+                        monitor.mark_completed(response.url)
+                    except Exception as e:
+                        self.logger.error(f"Failed to process response from {response.url} {response.request.method} {http_rule.receiver}: {e}", exc_info=True)
+
+                page_context.on("response", _http_response_handler)
+                http_response_handler = _http_response_handler
+
+        if policy.has_rules(InterceptType.WS):
+            async def _ws_connect_handler(ws: WebSocket):
+                ws_rule = policy.find_rule(
+                    type=InterceptType.WS,
+                    url=ws.url
+                )
+                if not ws_rule or not ws_rule.receiver:
+                    return
+
+                async def _framereceived_handler(frame):
+                    try:
+                        await ws_rule.receiver.process(frame)
+                    except Exception as e:
+                        self.logger.error(f"Failed to process ws frame from {ws.url}: {e}")
+
+                async def _close_handler(code):
+                    self.logger.info(f"ws closed: {ws.url}, code {code}")
+
+                async def _error_handler(error):
+                    self.logger.error(f"ws error: {ws.url} {error}")
+
+                self.logger.info(f"ws opened: {ws.url}")
+
+                ws.on("close", _close_handler)
+                ws.on("error", _error_handler)
+                ws.on("framereceived", _framereceived_handler)
+
+            page_context.on("websocket", _ws_connect_handler)
+            collected_datas.append(page_context.id)
+            ws_connect_handler = _ws_connect_handler
+
+        return http_request_handler, http_response_handler, ws_connect_handler
+
+
+    async def _unregister_handlers(
+        page_context: Any,
+        http_request_handler: Optional[Any] = None,
+        http_response_handler: Optional[Any] = None,
+        ws_connect_handler: Optional[Any] = None
+    ) -> None:
+        if http_request_handler:
+            try:
+                await page_context.unroute("**/*", http_request_handler)
+            except Exception:
+                pass
+
+        if http_response_handler:
+            try:
+                page_context.remove_listener("response", http_response_handler)
+            except Exception:
+                pass
+
+        if ws_connect_handler:
+            try:
+                page_context.remove_listener("websocket", ws_connect_handler)
+            except Exception:
+                pass
+
+    async def _process_dom_content(
+        self,
+        page_context: Any,
+        policy: InterceptPolicy,
+        collected_datas: List[Any]
+    ) -> None:
+        if not policy.has_rules(InterceptType.DOM):
+            return
+
+        dom_rule = policy.find_rule(type=InterceptType.DOM)
+        if dom_rule is None or dom_rule.receiver is None:
+            if policy.debug:
+                self.logger.warning(f"No receiver found for DOM rule: {policy.url}")
+            return
+
+        try:
+            content = await page_context.content()
+            parsed_data = await dom_rule.receiver.process(content)
+            if parsed_data is None:
+                return
+
+            collected_datas.append(parsed_data)
+        except Exception as e:
+            self.logger.error(f"Failed to process page content from {policy.url} {dom_rule.receiver}: {e}", exc_info=True)
+
     async def _open_page(
         self,
         url: str,
@@ -159,166 +306,42 @@ class Interceptor(Thread, Singleton):
         intercept_flag = False
         collected_datas: List[Any] = []
 
-        async def _http_request_handler(route, request) -> None:
-            try:
-                http_rule = policy.find_rule(
-                    type=InterceptType.HTTP,
-                    url=request.url
-                )
-
-                if http_rule and http_rule.sender:
-                    overrides = await http_rule.sender.process(request, query_params)
-                    if overrides is not None:
-                        await route.continue_(**overrides)
-                        return
-
-
-            except Exception as e:
-                self.logger.error(f"Failed to send request: {e}")
-
-            try:
-                if policy.debug:
-                    self.logger.info(f"Continuing request without modification: {request.url}")
-                await route.continue_()
-            except Exception as e:
-                self.logger.error(f"Failed to continue request: {e}")
-
-        async def _http_response_handler(response) -> None:
-            if not response.ok:
-                self.logger.warning(f"Skipping non-OK response: {response.url} {response.status}")
-                return
-
-            http_rule = policy.find_rule(
-                type=InterceptType.HTTP,
-                url=response.url
-            )
-            if http_rule is None or http_rule.receiver is None:
-                if policy.debug:
-                    self.logger.warning(f"No receiver found for HTTP rule: {response.url}")
-                return
-
-            try:
-                parsed_data = await http_rule.receiver.process(response)
-                if parsed_data is None:
-                    return
-
-                collected_datas.append(parsed_data)
-            except Exception as e:
-                self.logger.error(f"Failed to process response from {response.url} {response.request.method} {http_rule.receiver}: {e}", exc_info=True)
-
-        async def _ws_connect_handler(ws: WebSocket):
-            ws_rule = policy.find_rule(
-                type=InterceptType.WS,
-                url=ws.url
-            )
-            if not ws_rule or not ws_rule.receiver:
-                return
-
-            async def _framereceived_handler(frame):
-                try:
-                    await ws_rule.receiver.process(frame)
-                except Exception as e:
-                    self.logger.error(f"Failed to process ws frame from {ws.url}: {e}")
-
-            async def _close_handler(code):
-                self.logger.info(f"ws closed: {ws.url}, code {code}")
-
-            async def _error_handler(error):
-                self.logger.error(f"ws error: {ws.url} {error}")
-
-            self.logger.info(f"ws opened: {ws.url}")
-
-            ws.on("close", _close_handler)
-            ws.on("error", _error_handler)
-            ws.on("framereceived", _framereceived_handler)
-
-        async def _page_content_handler(page_context) -> None:
-            dom_rule = policy.find_rule(type=InterceptType.DOM)
-            if dom_rule is None or dom_rule.receiver is None:
-                return
-
-            try:
-                parsed_data = await dom_rule.receiver.process(await page_context.content())
-                if parsed_data is None:
-                    return
-
-                collected_datas.append(parsed_data)
-            except Exception as e:
-                self.logger.error(f"Failed to process page content from {url} {dom_rule.receiver}: {e}", exc_info=True)
-
-        async def _goto_page(page_context, policy: InterceptPolicy) -> None:
-            start_time = time.time()
-
-            timeout = policy.timeout
-            targets = policy.get_targets(InterceptType.HTTP)
-
-            async with AsyncExitStack() as stack:
-                for target in targets:
-                    regex = re.compile(target)
-                    predicate = lambda r, t=regex: t.match(r.url) and r.status == 200
-                    await stack.enter_async_context(
-                        page_context.expect_response(predicate, timeout=timeout*1000)
-                    )
-
-                await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
-
-            # try:
-            #     # await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
-
-            #     # if selector is not None:
-            #     #     await page_context.wait_for_selector(selector, timeout=timeout*1000)
-            #     # else: #TODO: need better way to ensure page is fully loaded
-            #     #     await page_context.wait_for_load_state('networkidle', timeout=timeout*1000)
-            # except Exception as e:
-            #     self.logger.error(f"Failed to wait for load state: {e}")
-
-            # await self.cloudflare_handler.wait_for_verification(page_context, timeout)
-
-            end_time = time.time()
-            self.logger.info(f"page loaded ({end_time - start_time}s): {url}")
+        is_resident = policy.has_rules(InterceptType.WS)
+        timeout = policy.timeout
 
         try:
-            async with self.page_pool.acquire(
-                is_resident=policy.has_rules(InterceptType.WS),
-                timeout=policy.timeout
-            ) as page_context:
+            async with self.page_pool.acquire(is_resident, timeout) as page_context:
                 try:
-                    if policy.has_rules(InterceptType.HTTP):
-                        if policy.has_senders(InterceptType.HTTP):
-                            await page_context.route("**/*", _http_request_handler)
+                    monitor = InterceptMonitor(policy, InterceptType.HTTP)
 
-                        if policy.has_receivers(InterceptType.HTTP):
-                            page_context.on("response", _http_response_handler)
+                    (
+                        http_request_handler,
+                        http_response_handler,
+                        _
+                    ) = await self._register_handlers(
+                        page_context,
+                        policy,
+                        monitor,
+                        collected_datas,
+                        query_params
+                    )
 
-                        self.logger.debug(f"Register http request and response handler for page: {url}")
+                    await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
+                    self.logger.info(f"Page loaded: {url}")
 
-                    if policy.has_rules(InterceptType.WS):
-                        page_context.on("websocket", _ws_connect_handler)
-                        collected_datas.append(page_context.id)
-
-                        self.logger.debug(f"Register ws handler for page: {url}")
-
-                    await _goto_page(page_context, policy)
-
-                    if policy.has_rules(InterceptType.DOM):
-                        await _page_content_handler(page_context)
+                    await self._process_dom_content(page_context, policy, collected_datas)
+                    await monitor.wait(timeout)
 
                     intercept_flag = True
                 except Exception as e:
                     self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
                 finally:
-                    if policy.has_rules(InterceptType.HTTP):
-                        if policy.has_senders(InterceptType.HTTP):
-                            try:
-                                await page_context.unroute("**/*", _http_request_handler)
-                            except Exception:
-                                pass
+                    await self._unregister_handlers(
+                        page_context,
+                        http_request_handler,
+                        http_response_handler
+                    )
 
-                        if policy.has_receivers(InterceptType.HTTP):
-                            try:
-                                page_context.remove_listener("response", _http_response_handler)
-                            except Exception:
-                                pass
         except asyncio.TimeoutError:
             self.logger.error(f"Timeout while acquiring page for URL: {url}")
 

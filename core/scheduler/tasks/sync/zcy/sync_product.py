@@ -4,7 +4,7 @@ from core.store.postgres.models import (
 from core.scheduler.tasks.base_task import BaseTask
 from core.scheduler.synchronizers.zcy.product_synchronizer import ProductSynchronizer
 from core.browser.interceptor import TaskType
-from core.browser.intercept_policy import InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicy
 
 class SyncProduct(BaseTask):
     def __init__(self, site: Site) -> None:
@@ -19,22 +19,18 @@ class SyncProduct(BaseTask):
             return
 
         config_prefix = f"interceptor.{self.site.name}.product"
-        page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
-        intercept_policy = self.config_manager.get_config(
-            f"{config_prefix}.rules",
-            converter=InterceptPolicyCreator()
-        )
+        policy_config = self.config_manager.get_config(config_prefix)
+        intercept_policy = InterceptPolicy.from_rules(policy_config)
         max_page_no = self.config_manager.get_config(f"{config_prefix}.max_page_no")
         page_size = self.config_manager.get_config(f"{config_prefix}.page_size")
         sort = self.config_manager.get_config(f"{config_prefix}.sort")
-        default_timeout = self.config_manager.get_config("browser.timeout")
 
         for idx, (scid, bid, sub_category_name, brand_name) in enumerate(sub_category_brands):
             page_no = 1
             mark_as_synced = False
             while not self.should_stop() and not mark_as_synced:
                 try:
-                    page_url = page_url_template.format(scid=scid, salt=idx+1)
+                    page_url = intercept_policy.url.format(scid=scid, salt=idx+1)
                     query_params = {
                         "bids": f"{bid}",
                         "sort": sort,
@@ -48,7 +44,7 @@ class SyncProduct(BaseTask):
                         intercept_policy=intercept_policy,
                         query_params=query_params
                     )
-                    responses, _ = future.result(timeout=default_timeout*2)
+                    responses, _ = future.result(timeout=intercept_policy.timeout*2)
 
                     # Task will be retried based on the following reasons:
                     # 1. page load timeout

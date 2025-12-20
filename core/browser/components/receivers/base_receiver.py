@@ -21,18 +21,18 @@ class BaseReceiver(ABC):
         pass
 
     async def decode_json_body(self, response: Any) -> Optional[Any]:
-        mime_type, body = await self._decode_body(response)
-        if mime_type != 'application/json':
-            self.logger.error(f"Failed to parse json from {mime_type}")
-            return None
-
-        if not body:
-            return None
-
         try:
+            mime_type, body = await self._decode_body(response)
+            if mime_type != 'application/json':
+                self.logger.error(f"Failed to parse json from {mime_type}")
+                return None
+
+            if not body:
+                return None
+
             return json.loads(body)
         except Exception as e:
-            self.logger.error(f"Failed to decode body to json: {e} {body}")
+            self.logger.error(f"Failed to decode body to json: {e}")
             return None
 
     async def _decode_body(self, response: Any) -> tuple[str, str]:
