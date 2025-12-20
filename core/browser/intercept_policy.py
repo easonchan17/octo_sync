@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Any
 from core.utils.string_utils import normalize_url
 from core.browser.components.component_factory import ComponentFactory
 
-
 class InterceptType(StrEnum):
     HTTP = "http"
     DOM = "dom"
@@ -40,21 +39,11 @@ class InterceptPolicy:
     def __init__(self) -> None:
         self.rules: Dict[InterceptType, List[InterceptRule]] = defaultdict(list)
         self.selector: Optional[str] = None
-        self.timeout: int = 60
-        self.page_delay: int = 3
-        self.retry_count: int = 3
-
-    def set_timeout(self, timeout: int) -> None:
-        self.timeout = timeout
-
-    def set_page_delay(self, page_delay: int) -> None:
-        self.page_delay = page_delay
-
-    def set_retry_count(self, retry_count: int) -> None:
-        self.retry_count = retry_count
-
-    def set_selector(self, selector: str) -> None:
-        self.selector = selector
+        self.timeout: Optional[int] = None
+        self.page_delay: Optional[int] = None
+        self.retry_count: Optional[int] = None
+        self.debug: Optional[bool] = False
+        self.url: Optional[str] = None
 
     def add_rule(self, rule: InterceptRule) -> None:
         self.rules[rule.type].append(rule)
@@ -82,17 +71,33 @@ class InterceptPolicy:
 
         normalized_url = normalize_url(url)
         for rule in rules:
-            if re.match(rule.pattern, normalized_url):
+            if re.search(rule.pattern, normalized_url):
                 return rule
 
         return None
 
-    @classmethod
-    def from_rules(cls, rules: List[dict[str, Any]], selector: Optional[str] = None) -> 'InterceptPolicy':
-        policy = cls()
-        if not rules:
-            return policy
+    def get_url_patterns(self, type: InterceptType) -> List[str]:
+        patterns = []
+        for rule in self.rules[type]:
+            if rule.pattern:
+                patterns.append(rule.pattern)
+        return patterns
 
+    @classmethod
+    def from_rules(cls, policy_config: Optional[Dict[str, Any]] = None) -> 'InterceptPolicy':
+        if not policy_config:
+            return None
+
+        rules = policy_config.get("rules", [])
+        selector = policy_config.get("selector", None)
+        debug = policy_config.get("debug", False)
+        timeout = policy_config.get("timeout", 60)
+        page_delay = policy_config.get("page_delay", 3)
+        retry_count = policy_config.get("retry_count", 3)
+        url_template = policy_config.get("url_template")
+        url = policy_config.get("url")
+
+        policy = cls()
         for rule in rules:
             policy.add_rule(InterceptRule(
                 type=rule.get("type"),
@@ -101,12 +106,9 @@ class InterceptPolicy:
                 sender=rule.get("sender"))
             )
         policy.selector = selector
+        policy.debug = debug
+        policy.timeout = timeout
+        policy.page_delay = page_delay
+        policy.retry_count = retry_count
+        policy.url = url_template or url
         return policy
-
-
-class InterceptPolicyCreator:
-    def __init__(self, selector: Optional[str] = None) -> None:
-        self.selector = selector
-
-    def __call__(self, rules: List[dict[str, Any]]) -> InterceptPolicy:
-        return InterceptPolicy.from_rules(rules, selector=self.selector)

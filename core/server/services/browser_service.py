@@ -11,8 +11,6 @@ class BrowserService(BaseService):
             raise ValueError("Page pool is not initialized")
 
         return PagePoolStatus(
-            total_created=page_pool.get_created_count(),
-            available_in_pool=page_pool.get_available_count(),
-            max_size=page_pool.get_max_size(),
-            in_use=page_pool.get_created_count() - page_pool.get_available_count()
+            capacity=page_pool.get_capacity(),
+            count=page_pool.get_count(),
         )

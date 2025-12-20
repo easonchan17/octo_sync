@@ -4,7 +4,7 @@ from core.store.postgres.models import (
 from core.scheduler.tasks.base_task import BaseTask
 from core.scheduler.synchronizers.zcy.brand_synchronizer import BrandSynchronizer
 from core.browser.interceptor import TaskType
-from core.browser.intercept_policy import InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicy
 
 class SyncBrand(BaseTask):
     def __init__(self, site: Site) -> None:
@@ -18,27 +18,21 @@ class SyncBrand(BaseTask):
             self.logger.info(f"No sub categories to sync for {self.site.name}")
             return
 
-        config_prefix = f"interceptor.{self.site.name}.brand"
-        page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
-        intercept_policy = self.config_manager.get_config(
-            f"{config_prefix}.rules",
-            converter=InterceptPolicyCreator()
-        )
-
-        default_timeout = self.config_manager.get_config("browser.timeout")
+        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.brand")
+        intercept_policy = InterceptPolicy.from_rules(policy_config)
 
         for idx, (cid, scid, name, category_name) in enumerate(sub_categories):
             if self.should_stop():
                 break
 
             try:
-                page_url = page_url_template.format(scid=scid, salt=idx+1)
+                page_url = intercept_policy.url.format(scid=scid, salt=idx+1)
                 future = self.interceptor.submit_task(
                     TaskType.OPEN_PAGE,
                     url=page_url,
                     intercept_policy=intercept_policy
                 )
-                responses, _ = future.result(timeout=default_timeout*2)
+                responses, _ = future.result(timeout=intercept_policy.timeout*2)
 
                 if not responses:
                     self.logger.error(f"No response for {self.site.name}-{category_name}-{name}: {page_url}")

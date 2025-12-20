@@ -3,7 +3,7 @@ from core.store.postgres.models import Site
 from datetime import datetime, date, timedelta
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.interceptor import TaskType
-from core.browser.intercept_policy import InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicy
 from core.scheduler.synchronizers.fotmob.fixture_synchronizer import FixtureSynchronizer
 
 
@@ -15,14 +15,8 @@ class SyncFixture(BaseTask):
         self.synchronizer = FixtureSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        config_prefix = f"interceptor.{self.site.name}.fixtures"
-        page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
-        default_timeout = self.config_manager.get_config("browser.timeout")
-
-        intercept_policy = self.config_manager.get_config(
-            f"{config_prefix}.rules",
-            converter=InterceptPolicyCreator()
-        )
+        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.fixtures")
+        intercept_policy = InterceptPolicy.from_rules(policy_config)
 
         DATE_FORMAT = "%Y%m%d"
         today = date.today().strftime(DATE_FORMAT)
@@ -32,12 +26,14 @@ class SyncFixture(BaseTask):
         start_date = datetime.strptime(from_date, DATE_FORMAT).date()
         end_date = datetime.strptime(to_date, DATE_FORMAT).date()
 
+        fixtures = []
+
         current_date = start_date
         while current_date <= end_date:
             if self.should_stop():
-                return
+                break
 
-            page_url = page_url_template.format(date=current_date.strftime(DATE_FORMAT))
+            page_url = intercept_policy.url.format(date=current_date.strftime(DATE_FORMAT))
 
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
@@ -45,12 +41,12 @@ class SyncFixture(BaseTask):
                 intercept_policy=intercept_policy
             )
 
-            responses, _ = future.result(timeout=default_timeout * 2)
+            responses, _ = future.result(timeout=intercept_policy.timeout * 2)
             if not responses:
                 self.logger.error(f"No response for {page_url}")
-                return
+                break
 
-            fixtures = responses[0]
-            self.synchronizer.sync(self.site, fixtures)
-
+            fixtures.extend(responses[0] or [])
             current_date += timedelta(days=1)
+
+        self.synchronizer.sync(self.site, fixtures)

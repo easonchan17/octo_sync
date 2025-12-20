@@ -14,9 +14,6 @@ task_thread_pool:
 browser:
   headless: false
   channel:  "chrome"
-  timeout: 300
-  page_delay: 3
-  retry_count: 3
   page_pool_size: 5
 
 interceptor:
@@ -109,6 +106,7 @@ interceptor:
   fotmob:
     fixtures:
       url_template: "https://www.fotmob.com/?date={date}"
+      # debug: true
       rules:
         - type: http
           pattern: "https://www.fotmob.com/api/data/matches"
@@ -116,10 +114,14 @@ interceptor:
           receiver: "core.browser.components.receivers.fotmob.FixtureReceiver"
   pinnacle:
     odds:
-      url_template: "https://www.pinnacle.com/en/soccer/{country_name}-{comp_name}/matchups/#all"
+      url_template: "https://www.pinnacle.com/en/soccer/{country_name}-{league_name}/matchups/#all"
+      # debug: true
       rules:
         - type: http
-          pattern: ".*"
+          pattern: "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/matchups"
+          receiver: "core.browser.components.receivers.pinnacle.MatchupReceiver"
+        - type: http
+          pattern: "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/markets/straight"
           receiver: "core.browser.components.receivers.pinnacle.OddsReceiver"
 http:
   host: "0.0.0.0"
