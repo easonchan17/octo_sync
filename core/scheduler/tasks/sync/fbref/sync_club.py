@@ -1,7 +1,7 @@
 from core.browser.interceptor import TaskType
 from core.store.postgres.models import Site, Country
 from core.scheduler.tasks.base_task import BaseTask
-from core.browser.intercept_policy import InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicy
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 
 class SyncClub(BaseTask):
@@ -16,24 +16,19 @@ class SyncClub(BaseTask):
             self.logger.info(f"No countries to sync from {self.site.name}")
             return
 
-        config_prefix = f"interceptor.{self.site.name}.clubs"
-        page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
-        default_timeout = self.config_manager.get_config("browser.timeout")
-        intercept_policy = self.config_manager.get_config(
-            f"{config_prefix}.rules",
-            converter=InterceptPolicyCreator()
-        )
+        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.clubs")
+        intercept_policy = InterceptPolicy.from_rules(policy_config)
 
         for country_name, country_code in countries:
             try:
-                page_url = page_url_template.format(country_code=country_code, country_name=country_name)
+                page_url = intercept_policy.url.format(country_code=country_code, country_name=country_name)
                 future = self.interceptor.submit_task(
                     TaskType.OPEN_PAGE,
                     url=page_url,
                     intercept_policy=intercept_policy
                 )
 
-                responses, _ = future.result(timeout=default_timeout*2)
+                responses, _ = future.result(timeout=intercept_policy.timeout*2)
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
                     return

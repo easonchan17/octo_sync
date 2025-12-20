@@ -3,7 +3,6 @@ from typing import Any
 from bs4 import BeautifulSoup
 from core.logger.logger_manager import LoggerManager
 
-
 class CloudflareHandler:
     DOMAIN = "https://challenges.cloudflare.com"
 

@@ -1,5 +1,4 @@
 import importlib
-import asyncio
 from typing import Any, Type, Optional
 
 class ComponentFactory:
@@ -25,13 +24,14 @@ class ComponentFactory:
         if model in cls._instances:
             return cls._instances[model]
 
-        creator = cls._get_class(model)
-        if not creator:
-            return None
-
         try:
+            creator = cls._get_class(model)
+            if not creator:
+                return None
+
             inst = creator()
             cls._instances[model] = inst
             return inst
         except Exception as e:
-            raise
+            print(f"Error creating instance for {model}: {e}")
+            return None

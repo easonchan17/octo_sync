@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.interceptor import TaskType
-from core.browser.intercept_policy import InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicy
 
 class SyncOdds(BaseTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
@@ -11,17 +11,22 @@ class SyncOdds(BaseTask):
         self.payload = payload or {}
 
     def execute(self, *args, **kwargs) -> None:
-        config_prefix = f"interceptor.pinnacle.fixtures"
-        page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
-        default_timeout = self.config_manager.get_config("browser.timeout")
+        country_name = self.payload.get("country_name") or ""
+        league_name = self.payload.get("league_name") or ""
 
-        page_url = page_url_template.format(
-            country_name="england",
-            comp_name="premier-league"
-        )
-        intercept_policy = self.config_manager.get_config(
-            f"{config_prefix}.rules",
-            converter=InterceptPolicyCreator()
+        country_name = country_name.strip().lower()
+        league_name = league_name.strip().lower()
+
+        if not country_name or not league_name:
+            self.logger.error("Country name and league name are required")
+            return
+
+        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.odds")
+        intercept_policy = InterceptPolicy.from_rules(policy_config)
+
+        page_url = intercept_policy.url.format(
+            country_name=country_name,
+            league_name=league_name
         )
 
         future = self.interceptor.submit_task(
@@ -30,7 +35,15 @@ class SyncOdds(BaseTask):
             intercept_policy=intercept_policy
         )
 
-        responses, _ = future.result(timeout=default_timeout*2)
+        responses, _ = future.result(timeout=intercept_policy.timeout*2)
         if not responses:
             self.logger.error(f"No response for {page_url}")
             return
+
+        matches = responses[0]
+        if not matches:
+            self.logger.error(f"No matches for {page_url}")
+            return
+
+        self.logger.info(f"Intercepted odds from {self.site.name}: {len(matches)}")
+        # self.synchronizer.sync(self.site, matches)

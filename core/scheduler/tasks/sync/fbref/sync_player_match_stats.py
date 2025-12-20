@@ -3,7 +3,7 @@ from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.store.postgres.models.fbref.fixture import Fixture
 from core.browser.interceptor import TaskType
-from core.browser.intercept_policy import InterceptPolicyCreator
+from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.match_sync_state import MatchSyncFlag
 from core.scheduler.synchronizers.fbref.player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
@@ -17,13 +17,8 @@ class SyncPlayerMatchStats(BaseTask):
         self.club_synchronizer = ClubSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        config_prefix = f"interceptor.{self.site.name}.player_match_stats"
-        page_url_template = self.config_manager.get_config(f"{config_prefix}.url_template")
-        default_timeout = self.config_manager.get_config("browser.timeout")
-        intercept_policy = self.config_manager.get_config(
-            f"{config_prefix}.rules",
-            converter=InterceptPolicyCreator()
-        )
+        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.player_match_stats")
+        intercept_policy = InterceptPolicy.from_rules(policy_config)
 
         clubs = self.club_synchronizer.get_clubs(
             self.site,
@@ -53,14 +48,14 @@ class SyncPlayerMatchStats(BaseTask):
                 continue
 
             try:
-                page_url = page_url_template.format(match_report_url=match_report_url)
+                page_url = intercept_policy.url.format(match_report_url=match_report_url)
                 future = self.interceptor.submit_task(
                     TaskType.OPEN_PAGE,
                     url=page_url,
                     intercept_policy=intercept_policy
                 )
 
-                responses, _ = future.result(timeout=default_timeout*2)
+                responses, _ = future.result(timeout=intercept_policy.timeout*2)
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
                     return
