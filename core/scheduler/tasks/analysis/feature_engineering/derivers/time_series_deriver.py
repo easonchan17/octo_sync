@@ -7,7 +7,7 @@ from ..constants import (
     KICKOFF_TIME_COL,
     REST_DAYS_COL,
     IS_HOME_COL,
-    FIXTURE_CODE_COL,
+    MATCH_CODE_COL,
     TEAM_CODE_COL,
     HOME_CODE_COL,
     AWAY_CODE_COL,
@@ -169,15 +169,15 @@ class TimeSeriesDeriver(BaseDeriver):
 
 class TeamTimeSeriesDeriver(TimeSeriesDeriver):
     def get_result(self) -> pd.DataFrame:
-        if FIXTURE_CODE_COL in self.df.index.names:
-            if FIXTURE_CODE_COL in self.df.columns:
+        if MATCH_CODE_COL in self.df.index.names:
+            if MATCH_CODE_COL in self.df.columns:
                 return self.df.reset_index(drop=True)
             else:
                 return self.df.reset_index()
         return self.df.copy()
 
     def _create_view(self) -> None:
-        self.df = self.df.set_index(FIXTURE_CODE_COL, drop=True)
+        self.df = self.df.set_index(MATCH_CODE_COL, drop=True)
 
         kickoff_time_series = pd.to_datetime(self.df[KICKOFF_TIME_COL])
         home_code_series = self.df[HOME_CODE_COL].astype("category")

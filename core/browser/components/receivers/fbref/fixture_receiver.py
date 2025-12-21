@@ -8,7 +8,7 @@ from core.store.postgres.models import MatchStatus
 from core.utils.html_utils import (
     get_text, get_float, get_number,
     is_table_header, extract_comp_code_from_cell,
-    extract_fixture_code_from_cell, extract_venue_time,
+    extract_match_code_from_cell, extract_venue_time,
     extract_club_code_from_cell
 )
 
@@ -195,7 +195,7 @@ class FixtureReceiver(BaseReceiver):
 
             html_fixture = HtmlFixture(
                 kickoff_time=kickoff_utc_time,
-                code=extract_fixture_code_from_cell(date),
+                code=extract_match_code_from_cell(date),
                 comp_name=get_text(comp),
                 comp_code=extract_comp_code_from_cell(comp),
                 round=get_text(round),

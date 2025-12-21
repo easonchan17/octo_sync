@@ -6,7 +6,7 @@ from core.store.postgres.models.fbref.shooting import Shooting
 from core.utils.html_utils import (
     get_text, get_number, get_float,
     is_table_header,
-    extract_fixture_code_from_cell,
+    extract_match_code_from_cell,
     extract_venue_time,
     extract_club_code_from_cell,
     extract_club_code_from_url
@@ -59,7 +59,7 @@ class ShootingReceiver(BaseReceiver):
                 npxg = row.find("td", {"data-stat": "npxg"})
 
                 shooting = Shooting(
-                    match_code=extract_fixture_code_from_cell(date),
+                    match_code=extract_match_code_from_cell(date),
                     team_code=extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     goals=get_number(goals),
                     shots=get_number(shots),

@@ -6,6 +6,7 @@ from core.server.controllers.site_controller import SiteController
 from core.server.controllers.browser_controller import BrowserController
 from core.server.controllers.training_controller import TrainingController
 from core.server.controllers.inference_controller import InferenceController
+from core.server.controllers.fixture_controller import FixtureController
 
 class WebApp:
     def __init__(self) -> None:
@@ -34,6 +35,9 @@ class WebApp:
 
         inference_controller = InferenceController()
         self.app.include_router(inference_controller.router, prefix="/api", tags=["inference"])
+
+        fixture_controller = FixtureController()
+        self.app.include_router(fixture_controller.router, prefix="/api", tags=["fixtures"])
 
     def _setup_middleware(self) -> None:
         @self.app.middleware("http")

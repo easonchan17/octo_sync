@@ -7,7 +7,7 @@ from core.store.postgres.models.fbref.passing import Passing
 from core.utils.html_utils import (
     get_text, get_number,
     is_table_header,
-    extract_fixture_code_from_cell,
+    extract_match_code_from_cell,
     get_float, extract_venue_time,
     extract_club_code_from_cell
 )
@@ -71,7 +71,7 @@ class PassingReceiver(BaseReceiver):
                 progressive_passes = row.find("td", {"data-stat": "progressive_passes"})                    # Progressive passes, moving the ball more than 10 yards forward
 
                 passing = Passing(
-                    match_code=extract_fixture_code_from_cell(date),
+                    match_code=extract_match_code_from_cell(date),
                     team_code=extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     passes_completed=get_number(passes_completed),
                     passes=get_number(passes),

@@ -4,9 +4,8 @@ from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.defensive_action import DefensiveAction
 from core.utils.html_utils import (
-    get_text, get_number,
-    is_table_header,
-    extract_fixture_code_from_cell,
+    get_number,is_table_header,
+    extract_match_code_from_cell,
     get_float, extract_venue_time,
     extract_club_code_from_cell
 )
@@ -63,7 +62,7 @@ class DefensiveActionReceiver(BaseReceiver):
                 errors_shot = row.find("td", {"data-stat": "errors"})
 
                 defensive_action = DefensiveAction(
-                    match_code=extract_fixture_code_from_cell(date),
+                    match_code=extract_match_code_from_cell(date),
                     team_code=extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     tackles=get_number(tackles),
                     tackles_won=get_number(tackles_won),

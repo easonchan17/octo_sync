@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Tuple
 from core.scheduler.tasks.analysis.feature_engineering import FeatureSelector
 from core.scheduler.tasks.analysis.feature_engineering import FormulaDeriver
 from core.scheduler.tasks.analysis.feature_engineering.constants import (
-    FIXTURE_CODE_COL,
+    MATCH_CODE_COL,
     TEAM_CODE_COL,
     HOME_CODE_COL,
     AWAY_CODE_COL,
@@ -178,7 +178,7 @@ class MatchStatsAggregator(BaseTask):
         if outfield_starters.empty:
             raise ValueError("No outfield starters found")
 
-        outfield_count = outfield_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).size()
+        outfield_count = outfield_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL]).size()
         if (outfield_count != 10).any():
             raise ValueError("Outfield starters count is not 10")
 
@@ -187,7 +187,7 @@ class MatchStatsAggregator(BaseTask):
         if gk_starters.empty:
             raise ValueError("No goalkeeper starters found")
 
-        gk_count = gk_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).size()
+        gk_count = gk_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL]).size()
         if (gk_count != 1).any():
             raise ValueError("Goalkeeper starters count is not 1")
 
@@ -236,35 +236,35 @@ class MatchStatsAggregator(BaseTask):
                 outfield_starters[tmp_col] = outfield_starters[feature].where(mask, fill_value)
                 agg_rules[tmp_col] = agg_func
 
-        team_stats = outfield_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL]).agg(agg_rules).round(DEFAULT_DECIMALS).reset_index()
-        gk_stats = gk_starters.groupby([FIXTURE_CODE_COL, TEAM_CODE_COL])[self.GK_FEATURES].first().reset_index()
+        team_stats = outfield_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL]).agg(agg_rules).round(DEFAULT_DECIMALS).reset_index()
+        gk_stats = gk_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL])[self.GK_FEATURES].first().reset_index()
 
         rename_dict = {
             col: col.replace('_reg_tmp', '_reg').replace('_max_tmp', '_max').replace('_avg_tmp', '_avg')
             for col in team_stats.columns if '_tmp' in col
         }
         team_stats = team_stats.rename(columns=rename_dict)
-        team_stats = team_stats.merge(gk_stats, on=[FIXTURE_CODE_COL, TEAM_CODE_COL], how='inner')
+        team_stats = team_stats.merge(gk_stats, on=[MATCH_CODE_COL, TEAM_CODE_COL], how='inner')
 
         home_stats = team_stats.copy()
         home_stats.columns = [
-            f"home_{col}" if col not in [FIXTURE_CODE_COL, TEAM_CODE_COL] else col for col in home_stats.columns
+            f"home_{col}" if col not in [MATCH_CODE_COL, TEAM_CODE_COL] else col for col in home_stats.columns
         ]
         match_stats_df = match_stats_df.merge(
             home_stats,
-            left_on=[FIXTURE_CODE_COL, HOME_CODE_COL],
-            right_on=[FIXTURE_CODE_COL, TEAM_CODE_COL],
+            left_on=[MATCH_CODE_COL, HOME_CODE_COL],
+            right_on=[MATCH_CODE_COL, TEAM_CODE_COL],
             how='inner'
         ).drop(columns=[TEAM_CODE_COL])
 
         away_stats = team_stats.copy()
         away_stats.columns = [
-            f"away_{col}" if col not in [FIXTURE_CODE_COL, TEAM_CODE_COL] else col for col in away_stats.columns
+            f"away_{col}" if col not in [MATCH_CODE_COL, TEAM_CODE_COL] else col for col in away_stats.columns
         ]
         match_stats_df = match_stats_df.merge(
             away_stats,
-            left_on=[FIXTURE_CODE_COL, AWAY_CODE_COL],
-            right_on=[FIXTURE_CODE_COL, TEAM_CODE_COL],
+            left_on=[MATCH_CODE_COL, AWAY_CODE_COL],
+            right_on=[MATCH_CODE_COL, TEAM_CODE_COL],
             how='inner'
         ).drop(columns=[TEAM_CODE_COL])
 

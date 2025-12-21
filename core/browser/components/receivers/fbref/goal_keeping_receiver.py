@@ -6,7 +6,7 @@ from core.store.postgres.models.fbref.goal_keeping import GoalKeeping
 from core.utils.html_utils import (
     get_text, get_number,
     is_table_header,
-    extract_fixture_code_from_cell,
+    extract_match_code_from_cell,
     get_float, extract_venue_time,
     extract_club_code_from_cell
 )
@@ -58,7 +58,7 @@ class GoalkeepingReceiver(BaseReceiver):
                 gk_avg_distance_def_actions = row.find("td", {"data-stat": "gk_avg_distance_def_actions"})
 
                 goal_keeping = GoalKeeping(
-                    match_code=extract_fixture_code_from_cell(date),
+                    match_code=extract_match_code_from_cell(date),
                     team_code=extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     shots_on_target_against=get_number(gk_shots_on_target_against),
                     saves=get_number(gk_saves),

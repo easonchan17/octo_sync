@@ -79,11 +79,11 @@ def extract_club_code_from_cell(cell) -> Optional[str]:
 def extract_club_code_from_url(url) -> Optional[str]:
     return extract_text(url, r"/en/squads/([a-zA-Z0-9]+)/")
 
-def extract_fixture_code_from_cell(cell) -> Optional[str]:
+def extract_match_code_from_cell(cell) -> Optional[str]:
     url = cell.find("a").get("href") if cell and cell.find("a") else None
-    return extract_fixture_code_from_url(url)
+    return extract_match_code_from_url(url)
 
-def extract_fixture_code_from_url(url) -> Optional[str]:
+def extract_match_code_from_url(url) -> Optional[str]:
     return extract_text(url, r"/en/matches/([a-zA-Z0-9]+)")
 
 def extract_player_code_from_cell(cell) -> Optional[str]:

@@ -29,7 +29,7 @@ class SyncPlayerMatchStats(BaseTask):
         min_season = self.payload.get("min_season")
         max_season = self.payload.get("max_season")
 
-        fixtures = self.synchronizer.get_unsynced_fixtures(
+        fixtures = self.synchronizer.get_unsynced_matches(
             self.site,
             clubs,
             min_season,
