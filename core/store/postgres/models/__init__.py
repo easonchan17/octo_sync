@@ -27,6 +27,11 @@ from .fbref import (
     Shooting,
     GlobalState
 )
+from .pinnacle import (
+    Match,
+    Moneyline,
+    Spread
+)
 
 __all__ = [
     'Base',
@@ -57,5 +62,8 @@ __all__ = [
     'PlayerMatchStats',
     'Shooting',
     'GlobalState',
-    'TrainingRecord'
+    'TrainingRecord',
+    'Match',
+    'Moneyline',
+    'Spread'
 ]

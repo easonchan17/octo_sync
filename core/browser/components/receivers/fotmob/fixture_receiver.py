@@ -1,6 +1,5 @@
 from typing import Any, Optional, List
 from urllib.parse import urlparse, parse_qs
-from core.utils.string_utils import parse_utc_time
 from core.store.postgres.models.fotmob.fixture import Fixture
 from ..base_receiver import BaseReceiver
 
@@ -28,13 +27,18 @@ class FixtureReceiver(BaseReceiver):
             for match in matches:
                 home = match.get('home', {})
                 away = match.get('away', {})
+
                 status = match.get('status', {})
+                utctime = status.get('utcTime')
+                if not utctime:
+                    self.logger.warning(f"Skipping match without utcTime: {match}")
+                    continue
 
                 fixture = Fixture(
                     match_id=match.get('id'),
                     league_id=league_id,
                     league_name=league_name,
-                    kickoff_time=parse_utc_time(status.get('utcTime')),
+                    kickoff_time=utctime,
                     round=match.get('tournamentStage'),
                     home_team=home.get('longName') or home.get('name'),
                     home_id=home.get('id'),
