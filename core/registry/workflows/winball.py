@@ -31,7 +31,6 @@ def create_winball_training_task(
         WinballTrainer(site, payload)
     )
 
-
 @Registry.register('winball.inference')
 def create_winball_inference_instance(
     site: Site,

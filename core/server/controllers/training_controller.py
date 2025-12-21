@@ -7,9 +7,9 @@ class TrainingController(BaseController):
     def __init__(self) -> None:
         super().__init__()
         self.training_service = TrainingService()
-        self.router.post("/ml/{model}/{site_name}/samples", response_model=str)(self.create_samples)
-        self.router.post("/ml/{model}/training", response_model=str)(self.start_training)
-        self.router.delete("/ml/{model}/training/{task_id}", response_model=str)(self.stop_training)
+        self.router.post("/models/{model}/sites/{site_name}/samples", response_model=str)(self.create_samples)
+        self.router.post("/models/{model}/trainings", response_model=str)(self.start_training)
+        self.router.delete("/models/{model}/trainings/{task_id}", response_model=str)(self.stop_training)
 
     async def create_samples(self, model: str, site_name: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
         try:
