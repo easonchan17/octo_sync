@@ -10,9 +10,9 @@ class SiteController(BaseController):
         self.site_service = SiteService()
         self.router.post("/sites", response_model=SiteResponse, status_code=201)(self.add_site)
         self.router.get("/sites/{site_name}", response_model=SiteResponse)(self.get_site)
-        self.router.post("/sites/{site_name}/sync/{resource}", response_model=str)(self.start_sync)
-        self.router.delete("/sites/{site_name}/sync/{resource}", response_model=str)(self.stop_sync)
-        self.router.post("/sites/{site_name}/maintenance/{resource}", response_model=str)(self.start_maintenance)
+        self.router.post("/sites/{site_name}/syncs/{resource}", response_model=str)(self.start_sync)
+        self.router.delete("/sites/{site_name}/syncs/{resource}", response_model=str)(self.stop_sync)
+        self.router.post("/sites/{site_name}/maintenance/team-mapping", response_model=str)(self.resolve_teams)
 
     async def get_site(self, site_name: str) -> SiteResponse:
         try:
@@ -64,11 +64,11 @@ class SiteController(BaseController):
             self.logger.error(f"Failed to stop sync for site {site_name}, resource {resource}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to stop sync: {str(e)}")
 
-    async def start_maintenance(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
+    async def resolve_teams(self, site_name: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
         try:
-            return await self.site_service.start_maintenance(site_name, resource, payload)
+            return await self.site_service.resolve_teams(site_name, payload)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            self.logger.error(f"Failed to start maintenance for site {site_name}, resource {resource}: {e}")
+            self.logger.error(f"Failed to resolve teams for site {site_name}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to start maintenance: {str(e)}")
