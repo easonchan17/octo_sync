@@ -4,7 +4,7 @@ from .competition import Competition
 from .country import Country
 from .country_sync_state import CountrySyncState, CountrySyncFlag
 from .defensive_action import DefensiveAction
-from .fixture import Fixture
+from .match_result import MatchResult
 from .goal_and_shot_creation import GoalAndShotCreation
 from .goal_keeping import GoalKeeping
 from .match_sync_state import MatchSyncState, MatchSyncFlag
@@ -22,7 +22,7 @@ __all__ = [
     'CountrySyncState',
     'CountrySyncFlag',
     'DefensiveAction',
-    'Fixture',
+    'MatchResult',
     'GoalAndShotCreation',
     'GoalKeeping',
     'MatchSyncState',

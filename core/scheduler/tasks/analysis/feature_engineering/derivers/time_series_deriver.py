@@ -183,21 +183,21 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
         home_code_series = self.df[HOME_CODE_COL].astype("category")
         away_code_series = self.df[AWAY_CODE_COL].astype("category")
 
-        home_fixtures = pd.DataFrame({
+        home_match_results = pd.DataFrame({
             KICKOFF_TIME_COL: kickoff_time_series,
             TEAM_CODE_COL: home_code_series,
             IS_HOME_COL: True,
             ORIGINAL_INDEX_COL: self.df.index
         })
-        away_fixtures = pd.DataFrame({
+        away_match_results = pd.DataFrame({
             KICKOFF_TIME_COL: kickoff_time_series,
             TEAM_CODE_COL: away_code_series,
             IS_HOME_COL: False,
             ORIGINAL_INDEX_COL: self.df.index
         })
 
-        team_fixtures = pd.concat([home_fixtures, away_fixtures], ignore_index=True)
-        self.team_fixtures = team_fixtures.sort_values([TEAM_CODE_COL, KICKOFF_TIME_COL]).reset_index(drop=True)
+        team_match_results = pd.concat([home_match_results, away_match_results], ignore_index=True)
+        self.team_match_results = team_match_results.sort_values([TEAM_CODE_COL, KICKOFF_TIME_COL]).reset_index(drop=True)
 
     def derive(
         self,
@@ -214,30 +214,30 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
             home_raw_col = f"home_{unified_col}"
             away_raw_col = f"away_{unified_col}"
 
-            if home_raw_col not in self.team_fixtures.columns or away_raw_col not in self.team_fixtures.columns:
+            if home_raw_col not in self.team_match_results.columns or away_raw_col not in self.team_match_results.columns:
                 self.ensure_column_exists(home_raw_col)
                 self.ensure_column_exists(away_raw_col)
 
-                self.team_fixtures = self.team_fixtures.merge(
+                self.team_match_results = self.team_match_results.merge(
                     self.df[[home_raw_col, away_raw_col]].copy(),
                     left_on=ORIGINAL_INDEX_COL,
                     right_index=True,
                     how='left'
                 )
 
-            self.team_fixtures[unified_col] = np.where(
-                self.team_fixtures[IS_HOME_COL],
-                self.team_fixtures[home_raw_col],
-                self.team_fixtures[away_raw_col]
+            self.team_match_results[unified_col] = np.where(
+                self.team_match_results[IS_HOME_COL],
+                self.team_match_results[home_raw_col],
+                self.team_match_results[away_raw_col]
             )
 
-        calculated_series = calculator(self.team_fixtures, TEAM_CODE_COL, unified_col, default_value)
+        calculated_series = calculator(self.team_match_results, TEAM_CODE_COL, unified_col, default_value)
         if decimals is not None:
             calculated_series = calculated_series.round(decimals)
 
-        self.team_fixtures[derived_col] = calculated_series
-        self.df[f"home_{derived_col}"] = self.team_fixtures[self.team_fixtures[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)[derived_col]
-        self.df[f"away_{derived_col}"] = self.team_fixtures[~self.team_fixtures[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)[derived_col]
+        self.team_match_results[derived_col] = calculated_series
+        self.df[f"home_{derived_col}"] = self.team_match_results[self.team_match_results[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)[derived_col]
+        self.df[f"away_{derived_col}"] = self.team_match_results[~self.team_match_results[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)[derived_col]
 
     def derive_h2h_points(self, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
         self.ensure_column_exists(HOME_CODE_COL)
@@ -283,19 +283,19 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
         self.ensure_column_exists(HOME_POINT_COL)
         self.ensure_column_exists(AWAY_POINT_COL)
 
-        self.team_fixtures[POINT_COL] = np.where(
-            self.team_fixtures[IS_HOME_COL],
-            self.df.loc[self.team_fixtures[ORIGINAL_INDEX_COL], HOME_POINT_COL].values,
-            self.df.loc[self.team_fixtures[ORIGINAL_INDEX_COL], AWAY_POINT_COL].values
+        self.team_match_results[POINT_COL] = np.where(
+            self.team_match_results[IS_HOME_COL],
+            self.df.loc[self.team_match_results[ORIGINAL_INDEX_COL], HOME_POINT_COL].values,
+            self.df.loc[self.team_match_results[ORIGINAL_INDEX_COL], AWAY_POINT_COL].values
         )
 
         def calc_venue_points_ema(is_home: bool) -> pd.Series:
-            venue_points = self.team_fixtures[POINT_COL].where(
-                self.team_fixtures[IS_HOME_COL] == is_home,
+            venue_points = self.team_match_results[POINT_COL].where(
+                self.team_match_results[IS_HOME_COL] == is_home,
                 np.nan
             )
 
-            return self.team_fixtures.assign(_temp=venue_points).groupby(
+            return self.team_match_results.assign(_temp=venue_points).groupby(
                 TEAM_CODE_COL,
                 observed=True,
                 group_keys=False
@@ -317,11 +317,11 @@ class TeamTimeSeriesDeriver(TimeSeriesDeriver):
 
         points_ema_at_home_col = f"points_ema_at_home"
         points_ema_at_away_col = f"points_ema_at_away"
-        self.team_fixtures[points_ema_at_home_col] = points_ema_at_home
-        self.team_fixtures[points_ema_at_away_col] = points_ema_at_away
+        self.team_match_results[points_ema_at_home_col] = points_ema_at_home
+        self.team_match_results[points_ema_at_away_col] = points_ema_at_away
 
-        home_team_rows = self.team_fixtures[self.team_fixtures[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)
-        away_team_rows = self.team_fixtures[~self.team_fixtures[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)
+        home_team_rows = self.team_match_results[self.team_match_results[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)
+        away_team_rows = self.team_match_results[~self.team_match_results[IS_HOME_COL]].set_index(ORIGINAL_INDEX_COL)
 
         home_home_points_ema_col = f"home_home_points_ema_{span}"
         home_away_points_ema_col = f"home_away_points_ema_{span}"

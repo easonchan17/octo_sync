@@ -5,7 +5,7 @@ from core.scheduler.tasks.sync.fbref import (
     SyncCompetition,
     SyncCountry,
     SyncDefensiveAction,
-    SyncFixture,
+    SyncMatchResult,
     SyncGoalAndShotCreation,
     SyncGoalKeeping,
     SyncPassing,
@@ -13,8 +13,8 @@ from core.scheduler.tasks.sync.fbref import (
     SyncPlayerMatchStats
 )
 from core.store.postgres.models import (
-    Site, Country, Club, Competition, Fixture,
-    ClubSyncState, CountrySyncState,GoalAndShotCreation,
+    Site, Country, Club, Competition, MatchResult,
+    ClubSyncState, CountrySyncState, GoalAndShotCreation,
     Passing, DefensiveAction, Shooting, GoalKeeping,
     GlobalState, PlayerMatchStats, MatchSyncState
 )
@@ -67,21 +67,21 @@ def create_sync_fbref_clubs_task(
         SyncClub(site)
     )
 
-@Registry.register('sync.fbref.fixtures')
-def create_sync_fbref_fixtures_task(
+@Registry.register('sync.fbref.match_results')
+def create_sync_fbref_match_results_task(
     site: Site,
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, Fixture, ClubSyncState],
+        [GlobalState, Country, Club, CountrySyncState, MatchResult, ClubSyncState],
         site.get_namespace()
     )
     return Pipeline(
         SyncCountry(site),
         SyncClub(site),
-        SyncFixture(site, payload)
+        SyncMatchResult(site, payload)
     )
 
 @Registry.register('sync.fbref.gca')
@@ -194,7 +194,7 @@ def create_sync_fbref_batch_task(
     db.create_schema(site.get_namespace())
     db.create_tables(
         [GlobalState, Country, Club, CountrySyncState, Competition, ClubSyncState,
-         Fixture, GoalAndShotCreation, Passing,
+         MatchResult, GoalAndShotCreation, Passing,
          DefensiveAction, Shooting, GoalKeeping],
         site.get_namespace()
     )
@@ -202,7 +202,7 @@ def create_sync_fbref_batch_task(
         SyncCompetition(site),
         SyncCountry(site),
         SyncClub(site),
-        SyncFixture(site, payload),
+        SyncMatchResult(site, payload),
         SyncGoalAndShotCreation(site, payload),
         SyncPassing(site, payload),
         SyncDefensiveAction(site, payload),

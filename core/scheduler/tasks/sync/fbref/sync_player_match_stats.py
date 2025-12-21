@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
-from core.store.postgres.models.fbref.fixture import Fixture
+from core.store.postgres.models.fbref.match_result import MatchResult
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.match_sync_state import MatchSyncFlag
@@ -29,7 +29,7 @@ class SyncPlayerMatchStats(BaseTask):
         min_season = self.payload.get("min_season")
         max_season = self.payload.get("max_season")
 
-        fixtures = self.synchronizer.get_unsynced_matches(
+        matches = self.synchronizer.get_unsynced_matches(
             self.site,
             clubs,
             min_season,
@@ -37,7 +37,7 @@ class SyncPlayerMatchStats(BaseTask):
             MatchSyncFlag.PLAYER_STATS.value
         )
 
-        for match_code, home_team, away_team, season, match_report_url in fixtures:
+        for match_code, home_team, away_team, season, match_report_url in matches:
             if self.should_stop():
                 return
 
@@ -72,7 +72,7 @@ class SyncPlayerMatchStats(BaseTask):
                 self.logger.debug(f"Intercepted player match stats for match {match_tag} from {self.site.name}: {len(player_stats)} players")
                 self.synchronizer.sync(
                     self.site,
-                    Fixture(code=match_code, home_team=home_team, away_team=away_team, season=season),
+                    MatchResult(match_code=match_code, home_team=home_team, away_team=away_team, season=season),
                     player_stats
                 )
 

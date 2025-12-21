@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Any, Optional
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
-from core.store.postgres.models.fbref.fixture import Fixture
+from core.store.postgres.models.fbref.match_result import MatchResult
 from core.store.postgres.models import MatchStatus
 from core.utils.html_utils import (
     get_text, get_float, get_number,
@@ -12,11 +12,11 @@ from core.utils.html_utils import (
     extract_club_code_from_cell
 )
 
-class HtmlFixture:
+class HtmlMatchResult:
     def __init__(
         self,
         kickoff_time: datetime,
-        code: str,
+        match_code: str,
         comp_name: str,
         comp_code: str,
         round: str,
@@ -34,7 +34,7 @@ class HtmlFixture:
         match_report: Optional[str] = None
     ):
         self.kickoff_time = kickoff_time
-        self.code = code
+        self.match_code = match_code
         self.comp_name = comp_name
         self.comp_code = comp_code
         self.round = round
@@ -74,7 +74,7 @@ class HtmlFixture:
 
         return MatchStatus.FINISHED.value
 
-    def as_db_model(self, club_name: str, club_code: str, season: int) -> Fixture:
+    def as_db_model(self, club_name: str, club_code: str, season: int) -> MatchResult:
         venue = self.venue
         if venue == "Home":
             venue = None
@@ -122,10 +122,10 @@ class HtmlFixture:
             away_formation = self.opp_formation
 
 
-        return Fixture(
+        return MatchResult(
             season=season,
             kickoff_time=self.kickoff_time,
-            code=self.code,
+            match_code=self.match_code,
             comp_name=self.comp_name,
             comp_code=self.comp_code,
             round=self.round,
@@ -147,21 +147,21 @@ class HtmlFixture:
             match_report=self.match_report or ""
         )
 
-class FixtureReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[Fixture]:
+class MatchResultReceiver(BaseReceiver):
+    async def process(self, page_content: Any) -> List[MatchResult]:
         soup = BeautifulSoup(page_content, 'html.parser')
 
-        fixture_table = soup.find("table", id="matchlogs_for")
-        if not fixture_table:
-            self.logger.error(f"Fixture table not found in the page content: {page_content}")
+        result_table = soup.find("table", id="matchlogs_for")
+        if not result_table:
+            self.logger.error(f"Match result table not found in the page content: {page_content}")
             return []
 
-        table_body = fixture_table.find("tbody")
+        table_body = result_table.find("tbody")
         if not table_body:
-            self.logger.error("Fixture table body not found in the page content")
+            self.logger.error("Match result table body not found in the page content")
             return []
 
-        html_fixtures = []
+        html_results = []
         rows = table_body.find_all("tr")
         for row in rows:
             if is_table_header(row):
@@ -193,9 +193,9 @@ class FixtureReceiver(BaseReceiver):
             notes = row.find("td", {"data-stat": "notes"})
             match_report = row.find("td", {"data-stat": "match_report"})
 
-            html_fixture = HtmlFixture(
+            html_result = HtmlMatchResult(
                 kickoff_time=kickoff_utc_time,
-                code=extract_match_code_from_cell(date),
+                match_code=extract_match_code_from_cell(date),
                 comp_name=get_text(comp),
                 comp_code=extract_comp_code_from_cell(comp),
                 round=get_text(round),
@@ -213,9 +213,9 @@ class FixtureReceiver(BaseReceiver):
                 match_report = match_report.find("a").get("href")
             )
 
-            if not html_fixture.code:
-                self.logger.error(f"Processing fixture row: {row}")
+            if not html_result.match_code:
+                self.logger.error(f"Processing match result row: {row}")
 
-            html_fixtures.append(html_fixture)
+            html_results.append(html_result)
 
-        return html_fixtures
+        return html_results
