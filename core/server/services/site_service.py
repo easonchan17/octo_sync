@@ -81,3 +81,10 @@ class SiteService(BaseService):
         name = f"analysis.{site_name}.{resource}"
         task = Registry.get(name, site, self.db, payload)
         return TaskExecutor.get_instance().submit_task(AsyncTask(task))
+
+    async def start_maintenance(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
+        site = self.get_site(site_name)
+
+        name = f"maintenance.{resource}"
+        task = Registry.get(name, site, self.db, payload)
+        return TaskExecutor.get_instance().submit_task(AsyncTask(task))

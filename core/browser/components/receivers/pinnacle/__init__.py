@@ -1,7 +1,7 @@
 from .odds_receiver import OddsReceiver
-from .matchup_receiver import MatchupReceiver
+from .match_receiver import MatchReceiver
 
 __all__ = [
     'OddsReceiver',
-    'MatchupReceiver'
+    'MatchReceiver'
 ]
