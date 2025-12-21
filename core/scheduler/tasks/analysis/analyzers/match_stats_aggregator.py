@@ -120,7 +120,7 @@ class MatchStatsAggregator(BaseTask):
 
         output_format = self.payload.get("format", "csv")
         output_path = self.config_manager.get_config(
-            "trainers.artifact.dataset"
+            "training.artifact.dataset"
         )
         output_path = self.check_output_path(output_path)
 
