@@ -2,7 +2,7 @@ TARGET_COL           = "target"
 
 SEASON_COL           = "season"
 KICKOFF_TIME_COL     = "kickoff_time"
-FIXTURE_CODE_COL     = "match_code"
+MATCH_CODE_COL     = "match_code"
 REST_DAYS_COL        = "rest_days"
 IS_HOME_COL          = "is_home"
 ORIGINAL_INDEX_COL   = "original_index"

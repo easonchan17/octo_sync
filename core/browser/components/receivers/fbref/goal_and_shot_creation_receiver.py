@@ -6,7 +6,7 @@ from core.store.postgres.models.fbref.goal_and_shot_creation import GoalAndShotC
 from core.utils.html_utils import (
     get_text, get_number,
     is_table_header,
-    extract_fixture_code_from_cell,
+    extract_match_code_from_cell,
     extract_venue_time,
     extract_club_code_from_cell
 )
@@ -62,7 +62,7 @@ class GoalAndShotCreationReceiver(BaseReceiver):
                 gca_defense = row.find("td", {"data-stat": "gca_defense"})
 
                 goal_and_shot_creation = GoalAndShotCreation(
-                    match_code = extract_fixture_code_from_cell(date),
+                    match_code = extract_match_code_from_cell(date),
                     team_code = extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     shot_creating_actions = get_number(sca),
                     sca_passes_live = get_number(sca_passes_live),
