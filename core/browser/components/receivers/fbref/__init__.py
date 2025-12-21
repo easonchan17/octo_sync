@@ -2,7 +2,7 @@ from .club_receiver import ClubReceiver
 from .competition_receiver import CompetitionReceiver
 from .country_receiver import CountryReceiver
 from .defensive_action_receiver import DefensiveActionReceiver
-from .fixture_receiver import FixtureReceiver
+from .match_result_receiver import MatchResultReceiver
 from .goal_and_shot_creation_receiver import GoalAndShotCreationReceiver
 from .goal_keeping_receiver import GoalkeepingReceiver
 from .passing_receiver import PassingReceiver
@@ -14,7 +14,7 @@ __all__ = [
     'CompetitionReceiver',
     'CountryReceiver',
     'DefensiveActionReceiver',
-    'FixtureReceiver',
+    'MatchResultReceiver',
     'GoalAndShotCreationReceiver',
     'GoalkeepingReceiver',
     'PassingReceiver',

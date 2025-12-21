@@ -6,7 +6,7 @@ from sqlalchemy.orm import aliased
 from typing import Any, Dict, List, Optional
 from core.utils.html_utils import normalize_club_name, normalize_season_range
 from core.store.postgres.models import (
-    Fixture, GoalAndShotCreation, Passing, Shooting,
+    MatchResult, GoalAndShotCreation, Passing, Shooting,
     DefensiveAction, GoalKeeping
 )
 from ..feature_engineering import (
@@ -188,7 +188,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             goalkeeping_away = aliased(GoalKeeping)
 
             query = session.query(
-                Fixture,
+                MatchResult,
                 gca_home,
                 gca_away,
                 passing_home,
@@ -202,74 +202,74 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             ).outerjoin(
                 gca_home,
                 and_(
-                    Fixture.code == gca_home.match_code,
-                    Fixture.home_code == gca_home.team_code
+                    MatchResult.match_code == gca_home.match_code,
+                    MatchResult.home_code == gca_home.team_code
                 )
             ).outerjoin(
                 gca_away,
                 and_(
-                    Fixture.code == gca_away.match_code,
-                    Fixture.away_code == gca_away.team_code
+                    MatchResult.match_code == gca_away.match_code,
+                    MatchResult.away_code == gca_away.team_code
                 )
             ).outerjoin(
                 passing_home,
                 and_(
-                    Fixture.code == passing_home.match_code,
-                    Fixture.home_code == passing_home.team_code
+                    MatchResult.match_code == passing_home.match_code,
+                    MatchResult.home_code == passing_home.team_code
                 )
             ).outerjoin(
                 passing_away,
                 and_(
-                    Fixture.code == passing_away.match_code,
-                    Fixture.away_code == passing_away.team_code
+                    MatchResult.match_code == passing_away.match_code,
+                    MatchResult.away_code == passing_away.team_code
                 )
             ).outerjoin(
                 shooting_home,
                 and_(
-                    Fixture.code == shooting_home.match_code,
-                    Fixture.home_code == shooting_home.team_code
+                    MatchResult.match_code == shooting_home.match_code,
+                    MatchResult.home_code == shooting_home.team_code
                 )
             ).outerjoin(
                 shooting_away,
                 and_(
-                    Fixture.code == shooting_away.match_code,
-                    Fixture.away_code == shooting_away.team_code
+                    MatchResult.match_code == shooting_away.match_code,
+                    MatchResult.away_code == shooting_away.team_code
                 )
             ).outerjoin(
                 defensive_home,
                 and_(
-                    Fixture.code == defensive_home.match_code,
-                    Fixture.home_code == defensive_home.team_code
+                    MatchResult.match_code == defensive_home.match_code,
+                    MatchResult.home_code == defensive_home.team_code
                 )
             ).outerjoin(
                 defensive_away,
                 and_(
-                    Fixture.code == defensive_away.match_code,
-                    Fixture.away_code == defensive_away.team_code
+                    MatchResult.match_code == defensive_away.match_code,
+                    MatchResult.away_code == defensive_away.team_code
                 )
             ).outerjoin(
                 goalkeeping_home,
                 and_(
-                    Fixture.code == goalkeeping_home.match_code,
-                    Fixture.home_code == goalkeeping_home.team_code
+                    MatchResult.match_code == goalkeeping_home.match_code,
+                    MatchResult.home_code == goalkeeping_home.team_code
                 )
             ).outerjoin(
                 goalkeeping_away,
                 and_(
-                    Fixture.code == goalkeeping_away.match_code,
-                    Fixture.away_code == goalkeeping_away.team_code
+                    MatchResult.match_code == goalkeeping_away.match_code,
+                    MatchResult.away_code == goalkeeping_away.team_code
                 )
             ).filter(
-                Fixture.comp_code == comp_code,
-                Fixture.season >= min_season,
-                Fixture.season <= max_season
-            ).order_by(Fixture.kickoff_time)
+                MatchResult.comp_code == comp_code,
+                MatchResult.season >= min_season,
+                MatchResult.season <= max_season
+            ).order_by(MatchResult.kickoff_time)
 
             results = query.all()
 
             data = []
             for row in results:
-                fixture = row[0]
+                match_result = row[0]
                 gca_home_obj = row[1]
                 gca_away_obj = row[2]
                 passing_home_obj = row[3]
@@ -282,25 +282,25 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                 goalkeeping_away_obj = row[10]
 
                 record = {
-                    "match_code": fixture.code,
-                    "match_report": fixture.match_report,
-                    "season": fixture.season,
-                    "comp_name": fixture.comp_name,
-                    "comp_code": fixture.comp_code,
-                    "kickoff_time": fixture.kickoff_time,
-                    "round": fixture.round,
-                    "venue": fixture.venue,
-                    "home_team": fixture.home_team,
-                    "home_code": fixture.home_code,
-                    "away_team": fixture.away_team,
-                    "away_code": fixture.away_code,
-                    "home_gf": fixture.home_gf,
-                    "away_gf": fixture.away_gf,
-                    "home_xg": fixture.home_xg,
-                    "away_xg": fixture.away_xg,
-                    "home_possession": fixture.home_possession,
-                    "away_possession": fixture.away_possession,
-                    "notes": fixture.notes
+                    "match_code": match_result.match_code,
+                    "match_report": match_result.match_report,
+                    "season": match_result.season,
+                    "comp_name": match_result.comp_name,
+                    "comp_code": match_result.comp_code,
+                    "kickoff_time": match_result.kickoff_time,
+                    "round": match_result.round,
+                    "venue": match_result.venue,
+                    "home_team": match_result.home_team,
+                    "home_code": match_result.home_code,
+                    "away_team": match_result.away_team,
+                    "away_code": match_result.away_code,
+                    "home_gf": match_result.home_gf,
+                    "away_gf": match_result.away_gf,
+                    "home_xg": match_result.home_xg,
+                    "away_xg": match_result.away_xg,
+                    "home_possession": match_result.home_possession,
+                    "away_possession": match_result.away_possession,
+                    "notes": match_result.notes
                 }
 
                 if gca_home_obj:

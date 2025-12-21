@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Any, Dict, List, Optional
 from core.store.postgres.models import (
-    Fixture, PlayerMatchStats
+    MatchResult, PlayerMatchStats
 )
 from ..feature_engineering import (
     FeatureSelector,
@@ -116,37 +116,37 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         with self.db.get_session(self.site.get_namespace()) as session:
             query = session.query(
                 PlayerMatchStats,
-                Fixture
+                MatchResult
             ).join(
-                Fixture,
-                PlayerMatchStats.match_code == Fixture.code
+                MatchResult,
+                PlayerMatchStats.match_code == MatchResult.match_code
             ).filter(
-                Fixture.comp_code == comp_code,
-                Fixture.season >= min_season,
-                Fixture.season <= max_season,
+                MatchResult.comp_code == comp_code,
+                MatchResult.season >= min_season,
+                MatchResult.season <= max_season,
                 ~PlayerMatchStats.position.like('GK%')
-            ).order_by(Fixture.kickoff_time, PlayerMatchStats.player_code)
+            ).order_by(MatchResult.kickoff_time, PlayerMatchStats.player_code)
 
             results = query.all()
 
             data = []
             for row in results:
                 player_stat = row[0]
-                fixture = row[1]
+                match_result = row[1]
 
                 record = {
-                    "match_code": fixture.code,
-                    "season": fixture.season,
-                    "comp_name": fixture.comp_name,
-                    "kickoff_time": fixture.kickoff_time,
-                    "venue": fixture.venue,
-                    "home_team": fixture.home_team,
-                    "home_code": fixture.home_code,
-                    "away_team": fixture.away_team,
-                    "away_code": fixture.away_code,
-                    "home_possession": fixture.home_possession,
-                    "away_possession": fixture.away_possession,
-                    "notes": fixture.notes,
+                    "match_code": match_result.match_code,
+                    "season": match_result.season,
+                    "comp_name": match_result.comp_name,
+                    "kickoff_time": match_result.kickoff_time,
+                    "venue": match_result.venue,
+                    "home_team": match_result.home_team,
+                    "home_code": match_result.home_code,
+                    "away_team": match_result.away_team,
+                    "away_code": match_result.away_code,
+                    "home_possession": match_result.home_possession,
+                    "away_possession": match_result.away_possession,
+                    "notes": match_result.notes,
                     "player_code": player_stat.player_code,
                     "team_code": player_stat.team_code,
                     "player_name": player_stat.player_name,
@@ -260,37 +260,37 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         with self.db.get_session(self.site.get_namespace()) as session:
             query = session.query(
                 PlayerMatchStats,
-                Fixture
+                MatchResult
             ).join(
-                Fixture,
-                PlayerMatchStats.match_code == Fixture.code
+                MatchResult,
+                PlayerMatchStats.match_code == MatchResult.match_code
             ).filter(
-                Fixture.comp_code == comp_code,
-                Fixture.season >= min_season,
-                Fixture.season <= max_season,
+                MatchResult.comp_code == comp_code,
+                MatchResult.season >= min_season,
+                MatchResult.season <= max_season,
                 PlayerMatchStats.position.like('GK%')
-            ).order_by(Fixture.kickoff_time, PlayerMatchStats.player_code)
+            ).order_by(MatchResult.kickoff_time, PlayerMatchStats.player_code)
 
             results = query.all()
 
             data = []
             for row in results:
                 player_stat = row[0]
-                fixture = row[1]
+                match_result = row[1]
 
                 record = {
-                    "match_code": fixture.code,
-                    "season": fixture.season,
-                    "comp_name": fixture.comp_name,
-                    "kickoff_time": fixture.kickoff_time,
-                    "venue": fixture.venue,
-                    "home_team": fixture.home_team,
-                    "home_code": fixture.home_code,
-                    "away_team": fixture.away_team,
-                    "away_code": fixture.away_code,
-                    "home_possession": fixture.home_possession,
-                    "away_possession": fixture.away_possession,
-                    "notes": fixture.notes,
+                    "match_code": match_result.match_code,
+                    "season": match_result.season,
+                    "comp_name": match_result.comp_name,
+                    "kickoff_time": match_result.kickoff_time,
+                    "venue": match_result.venue,
+                    "home_team": match_result.home_team,
+                    "home_code": match_result.home_code,
+                    "away_team": match_result.away_team,
+                    "away_code": match_result.away_code,
+                    "home_possession": match_result.home_possession,
+                    "away_possession": match_result.away_possession,
+                    "notes": match_result.notes,
                     "player_code": player_stat.player_code,
                     "team_code": player_stat.team_code,
                     "player_name": player_stat.player_name,

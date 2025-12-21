@@ -2,7 +2,7 @@ from .sync_club import SyncClub
 from .sync_competition import SyncCompetition
 from .sync_country import SyncCountry
 from .sync_defensive_action import SyncDefensiveAction
-from .sync_fixture import SyncFixture
+from .sync_match_result import SyncMatchResult
 from .sync_goal_and_shot_creation import SyncGoalAndShotCreation
 from .sync_goal_keeping import SyncGoalKeeping
 from .sync_passing import SyncPassing
@@ -14,7 +14,7 @@ __all__ = [
     'SyncCompetition',
     'SyncCountry',
     'SyncDefensiveAction',
-    'SyncFixture',
+    'SyncMatchResult',
     'SyncGoalAndShotCreation',
     'SyncGoalKeeping',
     'SyncPassing',
