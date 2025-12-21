@@ -4,24 +4,24 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 from ..common import MatchStatus
 
 
-class Fixture(Base, StatusMixin, DictMixin):
-    __tablename__ = 'history_fixtures'
+class MatchResult(Base, StatusMixin, DictMixin):
+    __tablename__ = 'match_results'
     __table_args__ = (
-        Index('idx_history_fixtures_create_at', 'create_at'),
-        Index('idx_history_fixtures_update_at', 'update_at'),
-        Index('idx_history_fixtures_home_team', 'home_team'),
-        Index('idx_history_fixtures_home_code', 'home_code'),
-        Index('idx_history_fixtures_away_team', 'away_team'),
-        Index('idx_history_fixtures_away_code', 'away_code'),
-        Index('idx_history_fixtures_comp_name', 'comp_name'),
-        Index('idx_history_fixtures_comp_code', 'comp_code'),
-        Index('idx_history_fixtures_kickoff_time', 'kickoff_time'),
-        Index('idx_history_fixtures_season', 'season'),
+        Index('idx_match_results_create_at', 'create_at'),
+        Index('idx_match_results_update_at', 'update_at'),
+        Index('idx_match_results_home_team', 'home_team'),
+        Index('idx_match_results_home_code', 'home_code'),
+        Index('idx_match_results_away_team', 'away_team'),
+        Index('idx_match_results_away_code', 'away_code'),
+        Index('idx_match_results_comp_name', 'comp_name'),
+        Index('idx_match_results_comp_code', 'comp_code'),
+        Index('idx_match_results_kickoff_time', 'kickoff_time'),
+        Index('idx_match_results_season', 'season'),
         {'schema': '{schema}'}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    code = Column(CHAR(8), nullable=False, unique=True)
+    match_code = Column(CHAR(8), nullable=False, unique=True)
     season = Column(Integer, nullable=False)
     comp_name = Column(String(100), nullable=False)
     comp_code = Column(String(8), nullable=False)

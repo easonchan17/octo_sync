@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Index, BigInteger
 from ..base_model import Base, StatusMixin, DictMixin, Status
 
 class ClubSyncFlag(IntFlag):
-    FIXTURE = 1
+    MATCH_RESULT = 1
     GCA = 2
     PASSING = 4
     DEFENSIVE_ACTION = 8

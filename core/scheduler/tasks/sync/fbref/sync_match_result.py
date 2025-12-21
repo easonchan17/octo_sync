@@ -7,18 +7,18 @@ from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.club_sync_state import ClubSyncFlag
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
-from core.scheduler.synchronizers.fbref.fixture_synchronizer import FixtureSynchronizer
+from core.scheduler.synchronizers.fbref.match_result_synchronizer import MatchResultSynchronizer
 
-class SyncFixture(BaseTask):
+class SyncMatchResult(BaseTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self.site = site
         self.payload = payload
-        self.synchronizer = FixtureSynchronizer()
+        self.synchronizer = MatchResultSynchronizer()
         self.club_synchronizer = ClubSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.fixtures")
+        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.match_results")
         intercept_policy = InterceptPolicy.from_rules(policy_config)
 
         clubs = self.club_synchronizer.get_clubs(
@@ -42,9 +42,9 @@ class SyncFixture(BaseTask):
                     self.site,
                     club_code,
                     season,
-                    ClubSyncFlag.FIXTURE.value
+                    ClubSyncFlag.MATCH_RESULT.value
                 ):
-                    self.logger.warning(f"{club_name} {season_range} fixtures already syncd from {self.site.name}")
+                    self.logger.warning(f"{club_name} {season_range} match results already synced from {self.site.name}")
                     continue
 
                 try:
@@ -64,22 +64,22 @@ class SyncFixture(BaseTask):
                         self.logger.error(f"No response for {page_url}")
                         return
 
-                    html_fixtures = responses[0]
-                    if not html_fixtures:
-                        self.logger.warning(f"No fixtures for {page_url}")
+                    html_results = responses[0]
+                    if not html_results:
+                        self.logger.warning(f"No match results for {page_url}")
                         continue
 
-                    fixtures = []
-                    for html_fixture in html_fixtures:
-                        fixtures.append(html_fixture.as_db_model(club_name, club_code, season))
+                    results = []
+                    for html_result in html_results:
+                        results.append(html_result.as_db_model(club_name, club_code, season))
 
-                    self.logger.debug(f"Intercepted {club_name} {season_range} fixtures from {self.site.name}: {fixtures}")
+                    self.logger.debug(f"Intercepted {club_name} {season_range} match results from {self.site.name}: {results}")
                     self.synchronizer.sync(
                         self.site,
                         Club(name=club_name, code=club_code),
                         season,
-                        fixtures
+                        results
                     )
 
                 except Exception as e:
-                    self.logger.error(f"Failed to sync {club_name} {season_range} fixtures from {self.site.name}: {e}")
+                    self.logger.error(f"Failed to sync {club_name} {season_range} match results from {self.site.name}: {e}")

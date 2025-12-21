@@ -68,11 +68,11 @@ interceptor:
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.ClubReceiver"
-    fixtures:
+    match_results:
       url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/schedule/{club_name}-Scores-and-Fixtures-All-Competitions"
       rules:
         - type: dom
-          receiver: "core.browser.components.receivers.fbref.FixtureReceiver"
+          receiver: "core.browser.components.receivers.fbref.MatchResultReceiver"
     gca:
       url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/gca/{club_name}-Match-Logs-All-Competitions"
       rules:

@@ -3,7 +3,7 @@ from sqlalchemy import func, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
     PlayerMatchStats, Site, MatchSyncState,
-    MatchSyncFlag, Fixture, Status
+    MatchSyncFlag, MatchResult, Status
 )
 from ..base_synchronizer import BaseSynchronizer
 
@@ -20,30 +20,30 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
 
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
-                Fixture.code,
-                Fixture.home_team,
-                Fixture.away_team,
-                Fixture.season,
-                Fixture.match_report
+                MatchResult.match_code,
+                MatchResult.home_team,
+                MatchResult.away_team,
+                MatchResult.season,
+                MatchResult.match_report
             ).outerjoin(
                 MatchSyncState,
-                MatchSyncState.code == Fixture.code
+                MatchSyncState.match_code == MatchResult.match_code
             ).filter(
-                Fixture.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value,
+                MatchResult.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value,
                 or_(
-                    Fixture.home_code.in_(club_codes),
-                    Fixture.away_code.in_(club_codes)
+                    MatchResult.home_code.in_(club_codes),
+                    MatchResult.away_code.in_(club_codes)
                 ),
-                Fixture.season.between(min_season, max_season),
+                MatchResult.season.between(min_season, max_season),
                 or_(
-                    MatchSyncState.code.is_(None),
+                    MatchSyncState.match_code.is_(None),
                     (MatchSyncState.sync_flags.op('&')(sync_flag)) != sync_flag
                 )
             )
             return query.all()
 
-    def sync(self, site: Site, fixture: Fixture, player_stats: List[PlayerMatchStats]) -> None:
-        match_tag = f"{fixture.season} {fixture.home_team} vs {fixture.away_team}"
+    def sync(self, site: Site, match_result: MatchResult, player_stats: List[PlayerMatchStats]) -> None:
+        match_tag = f"{match_result.season} {match_result.home_team} vs {match_result.away_team}"
 
         if not player_stats:
             self.logger.warning(f"No player match stats to sync for match {match_tag} from {site.name}")
@@ -161,11 +161,11 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
             self.logger.info(f"Sync player match stats for match {match_tag} from {site.name} completed. upserted: {upserted_count}")
 
             insert_flag_stmt = insert(MatchSyncState).values(
-                code=fixture.code,
+                match_code=match_result.match_code,
                 sync_flags=MatchSyncFlag.PLAYER_STATS.value
             )
             insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
-                index_elements=['code'],
+                index_elements=['match_code'],
                 set_={
                     'sync_flags': MatchSyncState.sync_flags.op('|')(MatchSyncFlag.PLAYER_STATS.value),
                     'update_at': func.now()
