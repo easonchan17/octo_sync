@@ -8,7 +8,7 @@ from core.store.postgres.models import (
 from ..base_synchronizer import BaseSynchronizer
 
 class PlayerMatchStatsSynchronizer(BaseSynchronizer):
-    def get_unsynced_fixtures(
+    def get_unsynced_matches(
         self,
         site: Site,
         clubs: List[Tuple[str, str]],
