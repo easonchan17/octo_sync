@@ -1,36 +1,39 @@
-from typing import Any, Optional, List, Dict
-from urllib.parse import urlparse, parse_qs
-from core.store.postgres.models.pinnacle.odds import Odds
+import json
+from typing import Any, Optional, Dict
 from ..base_receiver import BaseReceiver
 
+ALLOWED_TYPES = {'moneyline', 'spread'}
+
 class OddsReceiver(BaseReceiver):
-    async def process(self, response: Any) -> Optional[Dict[int, dict]]:
+    async def process(self, response: Any) -> Optional[Dict[str, Any]]:
         json_data = await self.decode_json_body(response)
         if not json_data:
             self.logger.error(f"Failed to decode json body: {response}")
             return None
 
-        matches: Dict[int, dict] = {}
+        # self.logger.info(f"Raw odds:\n{json.dumps(json_data, indent=2)}")
 
-        for market in json_data:
-            is_alternate = market.get('isAlternate', False)
-            if is_alternate:
-                continue
+        match_odds: Dict[str, Any] = {}
 
-            status = market.get('status', 'open')
-            if status != 'open':
-                continue
+        for item in json_data:
+            if item.get('period') != 0: continue
+            if item.get('status') != 'open': continue
+            if item.get('isAlternate', False): continue
 
-            match_id = market.get('matchupId')
-            if match_id not in matches:
-                matches[match_id] = {}
+            odds_type = item.get('type')
+            if odds_type not in ALLOWED_TYPES: continue
 
-            type = market.get('type')
-            if type not in matches[match_id]:
-                matches[match_id][type] = []
+            match_id = item.get('matchupId')
+            if not match_id: continue
 
-            prices = market.get('prices', [])
-            matches[match_id][type].append(prices)
+            if odds_type not in match_odds:
+                match_odds[odds_type] = {}
 
-        self.logger.info(f"Parsed odds for {len(matches)} matchups")
-        return matches
+            prices = item.get('prices', [])
+            match_odds[odds_type][match_id] = {
+                'period': 0,
+                'isAlternate': False,
+                'prices': prices
+            }
+
+        return {'type': 'odds', 'data': match_odds}

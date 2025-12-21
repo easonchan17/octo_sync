@@ -1,5 +1,5 @@
-from .odds import Odds
+from .match import Match
+from .moneyline import Moneyline
+from .spread import Spread
 
-__all__ = [
-    'Odds'
-]
+__all__ = ['Match', 'Moneyline', 'Spread']
