@@ -8,8 +8,8 @@ from core.scheduler.tasks.analysis.inference.base_predictor import BasePredictor
 from core.scheduler.tasks.analysis.inference.winball.winball_predictor import WinballPredictor
 from core.scheduler.tasks.analysis.analyzers.match_stats_aggregator import MatchStatsAggregator
 
-@Registry.register('analysis.winball.match_stats')
-def create_analysis_fbref_match_stats_task(
+@Registry.register('winball.fbref.samples')
+def create_winball_fbref_samples_task(
     site: Site,
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
@@ -18,9 +18,8 @@ def create_analysis_fbref_match_stats_task(
         MatchStatsAggregator(site, payload)
     )
 
-
-@Registry.register('training.winball')
-def create_training_winball_task(
+@Registry.register('winball.training')
+def create_winball_training_task(
     site: Site,
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
@@ -33,8 +32,8 @@ def create_training_winball_task(
     )
 
 
-@Registry.register('inference.winball')
-def create_inference_winball_instance(
+@Registry.register('winball.inference')
+def create_winball_inference_instance(
     site: Site,
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]

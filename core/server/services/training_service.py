@@ -4,7 +4,6 @@ from core.scheduler.task_executor import TaskExecutor
 from core.server.services.base_service import BaseService
 from core.registry import Registry
 
-
 class TrainingService(BaseService):
     def __init__(self):
         super().__init__()
@@ -28,7 +27,7 @@ class TrainingService(BaseService):
 
     async def start_training(self, model: str, payload: Dict[str, Any]) -> str:
         _ = self.loop
-        name = f"training.{model}"
+        name = f"{model}.training"
         if name not in self.tasks:
             self.tasks[name] = {}
 
@@ -39,7 +38,7 @@ class TrainingService(BaseService):
         return TaskExecutor.get_instance().submit_task(AsyncTask(task))
 
     async def stop_training(self, model: str, task_id: str) -> str:
-        name = f"training.{model}"
+        name = f"{model}.training"
         task = self.tasks.get(name, {}).get(task_id, None)
         if not task:
             self.logger.warning(f"Task {name} {task_id} not found")
@@ -47,3 +46,10 @@ class TrainingService(BaseService):
 
         task.cancel()
         return task_id
+
+    async def create_samples(self, model: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
+        site = self.get_site(site_name)
+
+        name = f"{model}.{site_name}.samples"
+        task = Registry.get(name, site, self.db, payload)
+        return TaskExecutor.get_instance().submit_task(AsyncTask(task))

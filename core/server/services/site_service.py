@@ -19,24 +19,6 @@ class SiteService(BaseService):
         self.logger.info(f"Task {name} cleaned up")
         return task
 
-    def get_site(self, site_name: str) -> Site:
-        with self.db.get_session() as session:
-            site = session.query(Site).filter(
-                Site.name == site_name
-            ).first()
-
-            if not site:
-                raise ValueError(f"Site with name '{site_name}' not found")
-
-            return Site(
-                id=site.id,
-                name=site.name,
-                url=site.url,
-                status=site.status,
-                create_at=site.create_at,
-                update_at=site.update_at
-            )
-
     def create_site(self, site_name: str, url: str) -> Site:
         self.db.create_tables([Site])
         with self.db.get_session() as session:
@@ -74,13 +56,6 @@ class SiteService(BaseService):
 
         task.cancel()
         return task.id
-
-    async def start_analysis(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
-        site = self.get_site(site_name)
-
-        name = f"analysis.{site_name}.{resource}"
-        task = Registry.get(name, site, self.db, payload)
-        return TaskExecutor.get_instance().submit_task(AsyncTask(task))
 
     async def start_maintenance(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
         site = self.get_site(site_name)
