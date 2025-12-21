@@ -57,9 +57,9 @@ class SiteService(BaseService):
         task.cancel()
         return task.id
 
-    async def start_maintenance(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
+    async def resolve_teams(self, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
         site = self.get_site(site_name)
 
-        name = f"maintenance.{resource}"
+        name = "maintenance.team-mapping"
         task = Registry.get(name, site, self.db, payload)
         return TaskExecutor.get_instance().submit_task(AsyncTask(task))

@@ -6,8 +6,8 @@ from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.store.postgres.models.common.team_mapping import TeamMapping
 from core.scheduler.tasks.maintenance.resolve_team import ResolveTeam
 
-@Registry.register('maintenance.resolve_team')
-def create_resolve_team_task(
+@Registry.register('maintenance.team-mapping')
+def create_team_mapping_task(
     site: Site,
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
