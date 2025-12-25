@@ -4,7 +4,7 @@ from core.scheduler.tasks.base_task import BaseTask
 from core.store.postgres.models.fbref.match_result import MatchResult
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
-from core.store.postgres.models.fbref.match_sync_state import MatchSyncFlag
+from core.store.postgres.models.fbref.player_stats_sync_state import PlayerStatsSyncFlag
 from core.scheduler.synchronizers.fbref.player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 
@@ -34,7 +34,7 @@ class SyncPlayerMatchStats(BaseTask):
             clubs,
             min_season,
             max_season,
-            MatchSyncFlag.PLAYER_STATS.value
+            PlayerStatsSyncFlag.PLAYER_STATS.value
         )
 
         for match_code, home_team, away_team, season, match_report_url in matches:

@@ -5,7 +5,7 @@ from core.utils.html_utils import normalize_club_name
 from core.store.postgres.models.fbref.club import Club
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
-from core.store.postgres.models.fbref.club_sync_state import ClubSyncFlag
+from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
 from core.scheduler.synchronizers.fbref.defensive_action_synchronizer import DefensiveActionSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 
@@ -42,7 +42,7 @@ class SyncDefensiveAction(BaseTask):
                     self.site,
                     club_code,
                     season,
-                    ClubSyncFlag.DEFENSIVE_ACTION.value
+                    MatchStatsSyncFlag.DEFENSIVE_ACTION.value
                 ):
                     self.logger.warning(f"{club_name} {season_range} defensive actions already syncd from {self.site.name}")
                     continue

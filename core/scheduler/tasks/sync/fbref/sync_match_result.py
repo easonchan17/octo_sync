@@ -5,7 +5,7 @@ from core.utils.html_utils import normalize_club_name
 from core.store.postgres.models.fbref.club import Club
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
-from core.store.postgres.models.fbref.club_sync_state import ClubSyncFlag
+from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 from core.scheduler.synchronizers.fbref.match_result_synchronizer import MatchResultSynchronizer
 
@@ -42,7 +42,7 @@ class SyncMatchResult(BaseTask):
                     self.site,
                     club_code,
                     season,
-                    ClubSyncFlag.MATCH_RESULT.value
+                    MatchStatsSyncFlag.MATCH_RESULT.value
                 ):
                     self.logger.warning(f"{club_name} {season_range} match results already synced from {self.site.name}")
                     continue
