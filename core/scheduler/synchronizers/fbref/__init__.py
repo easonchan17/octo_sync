@@ -8,6 +8,7 @@ from .goal_keeping_synchronizer import GoalKeepingSynchronizer
 from .passing_synchronizer import PassingSynchronizer
 from .player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
 from .shooting_synchronizer import ShootingSynchronizer
+from .market_odds_synchronizer import MarketOddsSynchronizer
 
 __all__ = [
     'ClubSynchronizer',
@@ -19,5 +20,6 @@ __all__ = [
     'GoalKeepingSynchronizer',
     'PassingSynchronizer',
     'PlayerMatchStatsSynchronizer',
-    'ShootingSynchronizer'
+    'ShootingSynchronizer',
+    'MarketOddsSynchronizer'
 ]

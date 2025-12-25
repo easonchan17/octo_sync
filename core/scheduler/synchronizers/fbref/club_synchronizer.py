@@ -83,7 +83,7 @@ class ClubSynchronizer(BaseSynchronizer):
                     'comp_code': insert_stmt.excluded.comp_code,
                     'min_season': insert_stmt.excluded.min_season,
                     'max_season': insert_stmt.excluded.max_season,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -129,7 +129,7 @@ class ClubSynchronizer(BaseSynchronizer):
                 index_elements=['code'],
                 set_={
                     'sync_flags': CountrySyncState.sync_flags.op('|')(CountrySyncFlag.CLUBS.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

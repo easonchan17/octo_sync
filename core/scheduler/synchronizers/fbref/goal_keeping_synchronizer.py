@@ -36,7 +36,7 @@ class GoalKeepingSynchronizer(BaseSynchronizer):
                     'crosses_stopped_pct': insert_stmt.excluded.crosses_stopped_pct,
                     'def_actions_outside_pen_area': insert_stmt.excluded.def_actions_outside_pen_area,
                     'avg_distance_def_actions': insert_stmt.excluded.avg_distance_def_actions,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -66,7 +66,7 @@ class GoalKeepingSynchronizer(BaseSynchronizer):
                 index_elements=['code', 'season'],
                 set_={
                     'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.GOAL_KEEPING.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

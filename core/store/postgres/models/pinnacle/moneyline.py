@@ -6,8 +6,8 @@ class Moneyline(Base, StatusMixin, DictMixin):
     __tablename__ = 'pinnacle_moneyline'
     __table_args__ = (
         Index('idx_pinnacle_moneyline_match_id', 'match_id'),
-        Index('idx_pinnacle_moneyline_create_at', 'create_at'),
-        Index('idx_pinnacle_moneyline_update_at', 'update_at'),
+        Index('idx_pinnacle_moneyline_created_at', 'created_at'),
+        Index('idx_pinnacle_moneyline_updated_at', 'updated_at'),
         {'schema': '{schema}'}
     )
 
@@ -25,5 +25,5 @@ class Moneyline(Base, StatusMixin, DictMixin):
     away_odds = Column(Numeric(7, 3), nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

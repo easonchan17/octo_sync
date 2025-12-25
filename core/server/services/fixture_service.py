@@ -59,6 +59,6 @@ class FixtureService(BaseService):
             away_xg=f.away_xg,
             match_status=f.match_status,
             status=f.status,
-            create_at=f.create_at,
-            update_at=f.update_at
+            created_at=f.created_at,
+            updated_at=f.updated_at
         )

@@ -35,7 +35,7 @@ class FixtureSynchronizer(BaseSynchronizer):
                     'home_score': insert_stmt.excluded.home_score,
                     'away_score': insert_stmt.excluded.away_score,
                     'match_status': insert_stmt.excluded.match_status,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(

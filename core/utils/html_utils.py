@@ -153,4 +153,4 @@ def extract_venue_time(cell) -> Optional[str]:
     if not venue_time:
         return None
 
-    return venue_time.get("data-venue-epoch")
+    return venue_time.get("data-venue-time")

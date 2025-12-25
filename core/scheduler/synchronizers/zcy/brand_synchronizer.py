@@ -37,7 +37,7 @@ class BrandSynchronizer(BaseSynchronizer):
                 set_={
                     'name': insert_stmt.excluded.name,
                     'logo': insert_stmt.excluded.logo,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(

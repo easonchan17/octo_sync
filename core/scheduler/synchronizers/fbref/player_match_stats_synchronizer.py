@@ -97,7 +97,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                     'gk_crosses': insert_stmt.excluded.gk_crosses,
                     'gk_crosses_stopped': insert_stmt.excluded.gk_crosses_stopped,
                     'gk_def_actions_outside_pen_area': insert_stmt.excluded.gk_def_actions_outside_pen_area,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -168,7 +168,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                 index_elements=['match_code'],
                 set_={
                     'sync_flags': MatchSyncState.sync_flags.op('|')(MatchSyncFlag.PLAYER_STATS.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

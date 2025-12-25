@@ -42,7 +42,7 @@ class CompetitionSynchronizer(BaseSynchronizer):
                     'governing_body': insert_stmt.excluded.governing_body,
                     'min_season': insert_stmt.excluded.min_season,
                     'max_season': insert_stmt.excluded.max_season,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -85,7 +85,7 @@ class CompetitionSynchronizer(BaseSynchronizer):
                 index_elements=['key'],
                 set_={
                     'value': self.SYNCED_VALUE,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     GlobalState.value != self.SYNCED_VALUE

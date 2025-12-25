@@ -46,7 +46,7 @@ class MatchResultSynchronizer(BaseSynchronizer):
                     'match_status': insert_stmt.excluded.match_status,
                     'notes': insert_stmt.excluded.notes,
                     'match_report': insert_stmt.excluded.match_report,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -87,7 +87,7 @@ class MatchResultSynchronizer(BaseSynchronizer):
                 index_elements=['code', 'season'],
                 set_={
                     'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.MATCH_RESULT.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

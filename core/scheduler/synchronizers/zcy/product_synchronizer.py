@@ -35,7 +35,7 @@ class ProductSynchronizer(BaseSynchronizer):
                         'scid': insert_stmt.excluded.scid,
                         'bid': insert_stmt.excluded.bid,
                         'name': insert_stmt.excluded.name,
-                        'update_at': func.now()
+                        'updated_at': func.now()
                     },
                     where=(
                         or_(

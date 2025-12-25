@@ -7,8 +7,8 @@ from ..common import MatchStatus
 class MatchResult(Base, StatusMixin, DictMixin):
     __tablename__ = 'match_results'
     __table_args__ = (
-        Index('idx_match_results_create_at', 'create_at'),
-        Index('idx_match_results_update_at', 'update_at'),
+        Index('idx_match_results_created_at', 'created_at'),
+        Index('idx_match_results_updated_at', 'updated_at'),
         Index('idx_match_results_home_team', 'home_team'),
         Index('idx_match_results_home_code', 'home_code'),
         Index('idx_match_results_away_team', 'away_team'),
@@ -26,7 +26,7 @@ class MatchResult(Base, StatusMixin, DictMixin):
     comp_name = Column(String(100), nullable=False)
     comp_code = Column(String(8), nullable=False)
 
-    kickoff_time = Column(DateTime, nullable=False)
+    kickoff_time = Column(DateTime(timezone=True), nullable=False)
     round = Column(String(128), nullable=False)
     venue = Column(String(16), nullable=True)
 
@@ -52,5 +52,9 @@ class MatchResult(Base, StatusMixin, DictMixin):
     notes = Column(Text, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+
+    def __repr__(self) -> str:
+        return f"<MatchResult {self.match_code} {self.kickoff_time} {self.home_team} {self.away_team}>"

@@ -41,7 +41,7 @@ class CountrySynchronizer(BaseSynchronizer):
                     'name': insert_stmt.excluded.name,
                     'player_count': insert_stmt.excluded.player_count,
                     'club_count': insert_stmt.excluded.club_count,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -63,7 +63,7 @@ class CountrySynchronizer(BaseSynchronizer):
                 index_elements=['key'],
                 set_={
                     'value': self.SYNCED_VALUE,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     GlobalState.value != self.SYNCED_VALUE
