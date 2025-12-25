@@ -35,7 +35,7 @@ class ShootingSynchronizer(BaseSynchronizer):
                     'penalties_attempted': insert_stmt.excluded.penalties_attempted,
                     'xg': insert_stmt.excluded.xg,
                     'npxg': insert_stmt.excluded.npxg,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -65,7 +65,7 @@ class ShootingSynchronizer(BaseSynchronizer):
                 index_elements=['code', 'season'],
                 set_={
                     'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.SHOOTING.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

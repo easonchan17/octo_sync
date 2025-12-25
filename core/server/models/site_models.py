@@ -10,8 +10,8 @@ class SiteCreate(SiteBase):
 
 class SiteResponse(SiteBase):
     id: int
-    create_at: datetime
-    update_at: datetime
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

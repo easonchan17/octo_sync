@@ -32,12 +32,3 @@ class BaseService:
 
             session.expunge(site)
             return site
-
-            # return Site(
-            #     id=site.id,
-            #     name=site.name,
-            #     url=site.url,
-            #     status=site.status,
-            #     create_at=site.create_at,
-            #     update_at=site.update_at
-            # )

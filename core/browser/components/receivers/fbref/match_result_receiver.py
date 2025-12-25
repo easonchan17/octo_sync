@@ -1,4 +1,4 @@
-
+import time
 from datetime import datetime, timezone
 from typing import List, Any, Optional
 from bs4 import BeautifulSoup
@@ -172,10 +172,9 @@ class MatchResultReceiver(BaseReceiver):
                 self.logger.warning(f"No venue epoch")
                 continue
 
-            kickoff_utc_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
-            now_utc_time = datetime.now(timezone.utc)
-            if kickoff_utc_time > now_utc_time:
-                self.logger.warning(f"{kickoff_utc_time} > {now_utc_time}")
+            now = int(time.time())
+            if int(venue_epoch) > now:
+                self.logger.warning(f"Skipping match result for future match: {venue_epoch} > {now}")
                 continue
 
             date = row.find("th", {"data-stat": "date"})
@@ -192,9 +191,10 @@ class MatchResultReceiver(BaseReceiver):
             opp_formation = row.find("td", {"data-stat": "opp_formation"})
             notes = row.find("td", {"data-stat": "notes"})
             match_report = row.find("td", {"data-stat": "match_report"})
+            kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 
             html_result = HtmlMatchResult(
-                kickoff_time=kickoff_utc_time,
+                kickoff_time=kickoff_time,
                 match_code=extract_match_code_from_cell(date),
                 comp_name=get_text(comp),
                 comp_code=extract_comp_code_from_cell(comp),

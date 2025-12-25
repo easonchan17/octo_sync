@@ -20,7 +20,7 @@ class CategorySynchronizer(BaseSynchronizer):
                 index_elements=['cid'],
                 set_={
                     'name': insert_stmt.excluded.name,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     Category.name != insert_stmt.excluded.name

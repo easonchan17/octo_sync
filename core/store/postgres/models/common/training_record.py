@@ -5,8 +5,8 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class TrainingRecord(Base, StatusMixin, DictMixin):
     __tablename__ = 'training_records'
     __table_args__ = (
-        Index('idx_training_records_create_at', 'create_at'),
-        Index('idx_training_records_update_at', 'update_at'),
+        Index('idx_training_records_created_at', 'created_at'),
+        Index('idx_training_records_updated_at', 'updated_at'),
         Index('idx_training_records_model_type', 'model_type'),
         Index('idx_training_records_dataset_name', 'dataset_name'),
         Index('idx_training_records_train_score', 'train_score'),
@@ -30,5 +30,5 @@ class TrainingRecord(Base, StatusMixin, DictMixin):
     test_score = Column(Float, nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

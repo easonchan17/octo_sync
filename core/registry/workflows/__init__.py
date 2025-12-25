@@ -3,7 +3,6 @@ from . import zcy
 from . import winball
 from . import pinnacle
 from . import fotmob
-from . import maintenance
 
 __all__ = [
     'fbref',
@@ -11,5 +10,4 @@ __all__ = [
     'winball',
     'pinnacle',
     'fotmob',
-    'maintenance',
 ]

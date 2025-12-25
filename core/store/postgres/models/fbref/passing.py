@@ -6,8 +6,8 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class Passing(Base, StatusMixin, DictMixin):
     __tablename__ = 'passing'
     __table_args__ = (
-        Index('idx_passing_create_at', 'create_at'),
-        Index('idx_passing_update_at', 'update_at'),
+        Index('idx_passing_created_at', 'created_at'),
+        Index('idx_passing_updated_at', 'updated_at'),
         Index('idx_passing_match_team', 'match_code', 'team_code', unique=True),
         {'schema': '{schema}'}
     )
@@ -45,5 +45,5 @@ class Passing(Base, StatusMixin, DictMixin):
     progressive_passes = Column(Integer, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

@@ -7,8 +7,8 @@ from ..common import MatchStatus
 class Fixture(Base, StatusMixin, DictMixin):
     __tablename__ = 'fixtures'
     __table_args__ = (
-        Index('idx_fixtures_create_at', 'create_at'),
-        Index('idx_fixtures_update_at', 'update_at'),
+        Index('idx_fixtures_created_at', 'created_at'),
+        Index('idx_fixtures_updated_at', 'updated_at'),
         Index('idx_fixtures_home_team', 'home_team'),
         Index('idx_fixtures_home_id', 'home_id'),
         Index('idx_fixtures_away_team', 'away_team'),
@@ -24,7 +24,7 @@ class Fixture(Base, StatusMixin, DictMixin):
     league_name = Column(String(100), nullable=False)
     league_id = Column(Integer, nullable=False)
 
-    kickoff_time = Column(DateTime, nullable=False)
+    kickoff_time = Column(DateTime(timezone=True), nullable=False)
     round = Column(String(128), nullable=True)
 
     home_team = Column(String(100), nullable=False)
@@ -41,5 +41,5 @@ class Fixture(Base, StatusMixin, DictMixin):
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

@@ -15,8 +15,8 @@ class ClubSyncFlag(IntFlag):
 class ClubSyncState(Base, StatusMixin, DictMixin):
     __tablename__ = 'club_sync_state'
     __table_args__ = (
-        Index('idx_club_sync_state_create_at', 'create_at'),
-        Index('idx_club_sync_state_update_at', 'update_at'),
+        Index('idx_club_sync_state_created_at', 'created_at'),
+        Index('idx_club_sync_state_updated_at', 'updated_at'),
         Index('idx_club_sync_state_code_season', 'code', 'season', unique=True),
         {'schema': '{schema}'}
     )
@@ -27,5 +27,5 @@ class ClubSyncState(Base, StatusMixin, DictMixin):
     sync_flags = Column(BigInteger, nullable=False, default=0)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

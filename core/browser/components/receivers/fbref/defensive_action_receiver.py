@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+import time
 from typing import List, Any
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
@@ -37,10 +37,9 @@ class DefensiveActionReceiver(BaseReceiver):
                     self.logger.error(f"No venue epoch: {row}")
                     continue
 
-                kickoff_utc_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
-                now_utc_time = datetime.now(timezone.utc)
-                if kickoff_utc_time > now_utc_time:
-                    self.logger.warning(f"{kickoff_utc_time} > {now_utc_time}")
+                now = int(time.time())
+                if int(venue_epoch) > now:
+                    self.logger.warning(f"Skipping defensive action for future match: {venue_epoch} > {now}")
                     continue
 
                 date = row.find("th", {"data-stat": "date"})

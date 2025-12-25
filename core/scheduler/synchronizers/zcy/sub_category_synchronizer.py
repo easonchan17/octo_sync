@@ -29,7 +29,7 @@ class SubCategorySynchronizer(BaseSynchronizer):
                 index_elements=['scid'],
                 set_={
                     'name': insert_stmt.excluded.name,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     SubCategory.name != insert_stmt.excluded.name
