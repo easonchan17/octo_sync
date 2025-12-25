@@ -5,7 +5,7 @@ from core.utils.html_utils import normalize_club_name
 from core.store.postgres.models.fbref.club import Club
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
-from core.store.postgres.models.fbref.club_sync_state import ClubSyncFlag
+from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
 from core.scheduler.synchronizers.fbref.goal_and_shot_creation_synchronizer import GoalAndShotCreationSynchronizer
 from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
 
@@ -43,7 +43,7 @@ class SyncGoalAndShotCreation(BaseTask):
                     self.site,
                     club_code,
                     season,
-                    ClubSyncFlag.GCA.value
+                    MatchStatsSyncFlag.GCA.value
                 ):
                     self.logger.warning(f"{club_name} {season_range} goal and shot creation already syncd from {self.site.name}")
                     continue

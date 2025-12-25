@@ -2,7 +2,7 @@ from typing import List, Any
 from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
-    Country, Club, Site, Status, ClubSyncState,
+    Country, Club, Site, Status, MatchStatsSyncState,
     CountrySyncState, CountrySyncFlag
 )
 from ..base_synchronizer import BaseSynchronizer
@@ -31,10 +31,10 @@ class ClubSynchronizer(BaseSynchronizer):
     def is_synced(self, site: Site, club_code: str, season: int, flag: int) -> bool:
         with self.db.get_session(site.get_namespace()) as session:
             result = session.query(
-                ClubSyncState.sync_flags
+                MatchStatsSyncState.sync_flags
             ).filter(
-                ClubSyncState.code == club_code,
-                ClubSyncState.season == season
+                MatchStatsSyncState.team_code == club_code,
+                MatchStatsSyncState.season == season
             ).first()
 
             if not result:
