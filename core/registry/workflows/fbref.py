@@ -10,13 +10,14 @@ from core.scheduler.tasks.sync.fbref import (
     SyncGoalKeeping,
     SyncPassing,
     SyncShooting,
-    SyncPlayerMatchStats
+    SyncPlayerMatchStats,
+    IngestMarketOdds
 )
 from core.store.postgres.models import (
     Site, Country, Club, Competition, MatchResult,
     ClubSyncState, CountrySyncState, GoalAndShotCreation,
     Passing, DefensiveAction, Shooting, GoalKeeping,
-    GlobalState, PlayerMatchStats, MatchSyncState
+    GlobalState, PlayerMatchStats, MatchSyncState, MarketOdds
 )
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
@@ -209,4 +210,19 @@ def create_sync_fbref_batch_task(
         SyncShooting(site, payload),
         SyncGoalKeeping(site, payload),
         SyncPlayerMatchStats(site, payload)
+    )
+
+@Registry.register('sync.fbref.market_odds')
+def create_sync_fbref_market_odds_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    db.create_schema(site.get_namespace())
+    db.create_tables(
+        [MarketOdds],
+        site.get_namespace()
+    )
+    return Pipeline(
+        IngestMarketOdds(site, payload)
     )

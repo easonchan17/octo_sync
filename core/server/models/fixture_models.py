@@ -19,8 +19,8 @@ class FixtureResponse(BaseModel):
     home_xg: Optional[float] = None
     away_xg: Optional[float] = None
     match_status: int
-    create_at: datetime
-    update_at: datetime
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

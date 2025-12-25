@@ -6,8 +6,8 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class DefensiveAction(Base, StatusMixin, DictMixin):
     __tablename__ = 'defensive_actions'
     __table_args__ = (
-        Index('idx_defensive_actions_create_at', 'create_at'),
-        Index('idx_defensive_actions_update_at', 'update_at'),
+        Index('idx_defensive_actions_created_at', 'created_at'),
+        Index('idx_defensive_actions_updated_at', 'updated_at'),
         Index('idx_defensive_actions_match_team', 'match_code', 'team_code', unique=True),
         {'schema': '{schema}'}
     )
@@ -36,5 +36,5 @@ class DefensiveAction(Base, StatusMixin, DictMixin):
     errors_shot = Column(Integer, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

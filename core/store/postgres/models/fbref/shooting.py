@@ -5,8 +5,8 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class Shooting(Base, StatusMixin, DictMixin):
     __tablename__ = 'shooting'
     __table_args__ = (
-        Index('idx_shooting_create_at', 'create_at'),
-        Index('idx_shooting_update_at', 'update_at'),
+        Index('idx_shooting_created_at', 'created_at'),
+        Index('idx_shooting_updated_at', 'updated_at'),
         Index('idx_shooting_match_team', 'match_code', 'team_code', unique=True),
         {'schema': '{schema}'}
     )
@@ -29,5 +29,5 @@ class Shooting(Base, StatusMixin, DictMixin):
     npxg = Column(Float, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

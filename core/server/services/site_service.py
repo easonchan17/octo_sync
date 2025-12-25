@@ -29,8 +29,8 @@ class SiteService(BaseService):
                 id=site.id,
                 name=site.name,
                 url=site.url,
-                create_at=site.create_at,
-                update_at=site.update_at
+                created_at=site.created_at,
+                updated_at=site.updated_at
             )
 
     async def start_sync(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
@@ -56,10 +56,3 @@ class SiteService(BaseService):
 
         task.cancel()
         return task.id
-
-    async def resolve_teams(self, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
-        site = self.get_site(site_name)
-
-        name = "maintenance.team-mapping"
-        task = Registry.get(name, site, self.db, payload)
-        return TaskExecutor.get_instance().submit_task(AsyncTask(task))

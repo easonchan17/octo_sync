@@ -6,8 +6,8 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class GoalAndShotCreation(Base, StatusMixin, DictMixin):
     __tablename__ = 'gca'
     __table_args__ = (
-        Index('idx_gca_create_at', 'create_at'),
-        Index('idx_gca_update_at', 'update_at'),
+        Index('idx_gca_created_at', 'created_at'),
+        Index('idx_gca_updated_at', 'updated_at'),
         Index('idx_gca_match_team', 'match_code', 'team_code', unique=True),
         {'schema': '{schema}'}
     )
@@ -33,5 +33,5 @@ class GoalAndShotCreation(Base, StatusMixin, DictMixin):
     gca_defense = Column(Integer, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

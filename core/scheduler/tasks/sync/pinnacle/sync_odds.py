@@ -4,6 +4,7 @@ from core.browser.interceptor import TaskType
 from typing import Any, Dict, Optional, List, Tuple
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
+from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from core.scheduler.synchronizers.pinnacle.match_synchronizer import MatchSynchronizer
 from core.scheduler.synchronizers.pinnacle.moneyline_synchronizer import MoneylineSynchronizer
 from core.scheduler.synchronizers.pinnacle.spread_synchronizer import SpreadSynchronizer
@@ -16,6 +17,7 @@ class SyncOdds(BaseTask):
         self.match_synchronizer = MatchSynchronizer()
         self.moneyline_synchronizer = MoneylineSynchronizer()
         self.spread_synchronizer = SpreadSynchronizer()
+        self.team_resolver = TeamResolver()
 
     def execute(self, *args, **kwargs) -> None:
         country_name = self.payload.get("country_name") or ""
@@ -51,15 +53,10 @@ class SyncOdds(BaseTask):
             match_records, moneyline_records, spread_records = self._clean_and_build(responses)
 
             self.match_synchronizer.sync(self.site, match_records)
-            self.logger.info(f"Synced {len(match_records)} matches from {self.site.name}")
-
             self.moneyline_synchronizer.sync(self.site, moneyline_records)
-            self.logger.info(f"Synced {len(moneyline_records)} moneyline records from {self.site.name}")
-
             self.spread_synchronizer.sync(self.site, spread_records)
-            self.logger.info(f"Synced {len(spread_records)} spread records from {self.site.name}")
         except Exception as e:
-            self.logger.error(f"Failed to sync odds from {self.site.name}: {e}")
+            self.logger.error(f"Failed to sync odds from {self.site.name}: {e}", exc_info=True)
 
     def _clean_and_build(self, responses: List[Any]) -> Tuple[List[Any], List[Any], List[Any]]:
         matches: Dict[str, Any] = {}
@@ -83,6 +80,13 @@ class SyncOdds(BaseTask):
         for match_id, match_data in matches.items():
             match_id = int(match_id)
             match_records.append(self._build_match_record(match_id, match_data))
+
+        match_records.sort(key=lambda x: x['kickoff_time'])
+        target_matches = self.match_synchronizer.get_target_matches(
+            match_records[0]['league_id'],
+            match_records[0]['kickoff_time']
+        )
+        self.team_resolver.resolve(match_records, target_matches)
 
         for odds_type, match_odds in odds.items():
             for match_id, odds_data in match_odds.items():

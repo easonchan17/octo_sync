@@ -12,6 +12,8 @@ from .passing import Passing
 from .player_match_stats import PlayerMatchStats
 from .shooting import Shooting
 from .global_state import GlobalState
+from .market_odds import MarketOdds
+from .team import Team
 
 __all__ = [
     'Club',
@@ -30,5 +32,7 @@ __all__ = [
     'Passing',
     'PlayerMatchStats',
     'Shooting',
-    'GlobalState'
+    'GlobalState',
+    'MarketOdds',
+    'Team'
 ]

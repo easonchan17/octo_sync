@@ -7,8 +7,8 @@ class Spread(Base, StatusMixin, DictMixin):
     __tablename__ = 'pinnacle_spreads'
     __table_args__ = (
         Index('idx_pinnacle_spreads_match_id', 'match_id'),
-        Index('idx_pinnacle_spreads_create_at', 'create_at'),
-        Index('idx_pinnacle_spreads_update_at', 'update_at'),
+        Index('idx_pinnacle_spreads_created_at', 'created_at'),
+        Index('idx_pinnacle_spreads_updated_at', 'updated_at'),
         {'schema': '{schema}'}
     )
 
@@ -27,5 +27,5 @@ class Spread(Base, StatusMixin, DictMixin):
     is_alternate = Column(Boolean, nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

@@ -41,7 +41,7 @@ class DefensiveActionSynchronizer(BaseSynchronizer):
                     'interceptions': insert_stmt.excluded.interceptions,
                     'clearances': insert_stmt.excluded.clearances,
                     'errors_shot': insert_stmt.excluded.errors_shot,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -76,7 +76,7 @@ class DefensiveActionSynchronizer(BaseSynchronizer):
                 index_elements=['code', 'season'],
                 set_={
                     'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.DEFENSIVE_ACTION.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

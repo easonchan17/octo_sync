@@ -40,7 +40,7 @@ class GoalAndShotCreationSynchronizer(BaseSynchronizer):
                     'gca_shots': insert_stmt.excluded.gca_shots,
                     'gca_fouled': insert_stmt.excluded.gca_fouled,
                     'gca_defense': insert_stmt.excluded.gca_defense,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -74,7 +74,7 @@ class GoalAndShotCreationSynchronizer(BaseSynchronizer):
                 index_elements=['code', 'season'],
                 set_={
                     'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.GCA.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

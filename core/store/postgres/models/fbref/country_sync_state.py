@@ -9,8 +9,8 @@ class CountrySyncFlag(IntFlag):
 class CountrySyncState(Base, StatusMixin, DictMixin):
     __tablename__ = 'country_sync_state'
     __table_args__ = (
-        Index('idx_country_sync_state_create_at', 'create_at'),
-        Index('idx_country_sync_state_update_at', 'update_at'),
+        Index('idx_country_sync_state_created_at', 'created_at'),
+        Index('idx_country_sync_state_updated_at', 'updated_at'),
         Index('idx_country_sync_state_code', 'code', unique=True),
         {'schema': '{schema}'}
     )
@@ -20,5 +20,5 @@ class CountrySyncState(Base, StatusMixin, DictMixin):
     sync_flags = Column(BigInteger, nullable=False, default=0)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

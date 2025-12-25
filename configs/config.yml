@@ -68,6 +68,11 @@ interceptor:
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.ClubReceiver"
+    clubs:
+      url_template: "https://fbref.com/en/comps/{comp_code}/{season}/{season}-Premier-League-Stats"
+      rules:
+        - type: dom
+          receiver: "core.browser.components.receivers.fbref.ClubReceiver"
     match_results:
       url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/schedule/{club_name}-Scores-and-Fixtures-All-Competitions"
       rules:
@@ -123,6 +128,7 @@ interceptor:
         - type: http
           pattern: "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/markets/straight"
           receiver: "core.browser.components.receivers.pinnacle.OddsReceiver"
+
 http:
   host: "0.0.0.0"
   port: 8080

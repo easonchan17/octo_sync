@@ -5,8 +5,8 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class PlayerMatchStats(Base, StatusMixin, DictMixin):
     __tablename__ = 'player_match_stats'
     __table_args__ = (
-        Index('idx_player_match_stats_create_at', 'create_at'),
-        Index('idx_player_match_stats_update_at', 'update_at'),
+        Index('idx_player_match_stats_created_at', 'created_at'),
+        Index('idx_player_match_stats_updated_at', 'updated_at'),
         Index('idx_player_match_stats_match_player', 'match_code', 'player_code', unique=True),
         Index('idx_player_match_stats_team_code', 'team_code'),
         {'schema': '{schema}'}
@@ -55,5 +55,5 @@ class PlayerMatchStats(Base, StatusMixin, DictMixin):
     gk_def_actions_outside_pen_area = Column(Integer, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

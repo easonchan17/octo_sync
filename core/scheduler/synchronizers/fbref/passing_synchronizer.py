@@ -49,7 +49,7 @@ class PassingSynchronizer(BaseSynchronizer):
                     'passes_into_penalty_area': insert_stmt.excluded.passes_into_penalty_area,
                     'crosses_into_penalty_area': insert_stmt.excluded.crosses_into_penalty_area,
                     'progressive_passes': insert_stmt.excluded.progressive_passes,
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 },
                 where=(
                     or_(
@@ -91,7 +91,7 @@ class PassingSynchronizer(BaseSynchronizer):
                 index_elements=['code', 'season'],
                 set_={
                     'sync_flags': ClubSyncState.sync_flags.op('|')(ClubSyncFlag.PASSING.value),
-                    'update_at': func.now()
+                    'updated_at': func.now()
                 }
             )
             session.execute(insert_flag_stmt)

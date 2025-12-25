@@ -20,27 +20,27 @@ class StatusMixin:
 
     def mark_active(self) -> None:
         self.status |= Status.ACTIVE
-        self.update_at = func.now()
+        self.updated_at = func.now()
 
     def mark_synced(self) -> None:
         self.status |= Status.SYNCED
-        self.update_at = func.now()
+        self.updated_at = func.now()
 
     def mark_deleted(self) -> None:
         self.status |= Status.DELETED
-        self.update_at = func.now()
+        self.updated_at = func.now()
 
     def clear_active(self) -> None:
         self.status &= ~Status.ACTIVE
-        self.update_at = func.now()
+        self.updated_at = func.now()
 
     def clear_synced(self) -> None:
         self.status &= ~Status.SYNCED
-        self.update_at = func.now()
+        self.updated_at = func.now()
 
     def clear_deleted(self) -> None:
         self.status &= ~Status.DELETED
-        self.update_at = func.now()
+        self.updated_at = func.now()
 
 class DictMixin:
     def to_dict(self) -> dict:

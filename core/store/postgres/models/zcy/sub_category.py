@@ -7,8 +7,8 @@ class SubCategory(Base, StatusMixin, DictMixin):
     __tablename__ = 'sub_categories'
     __table_args__ = (
         Index('idx_sub_categories_cid', 'cid'),
-        Index('idx_sub_categories_create_at', 'create_at'),
-        Index('idx_sub_categories_update_at', 'update_at'),
+        Index('idx_sub_categories_created_at', 'created_at'),
+        Index('idx_sub_categories_updated_at', 'updated_at'),
         {'schema': '{schema}'}
     )
 
@@ -17,8 +17,8 @@ class SubCategory(Base, StatusMixin, DictMixin):
     scid = Column(Integer, nullable=False, unique=True)
     name = Column(String(100), nullable=False, unique=True)
     status = Column(Integer, default=Status.ACTIVE.value)
-    create_at = Column(DateTime, default=func.now())
-    update_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     category = relationship("Category", back_populates="sub_categories")
     brands = relationship("SubCategoryBrand", back_populates="sub_category", cascade="all, delete-orphan")
