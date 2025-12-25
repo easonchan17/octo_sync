@@ -6,6 +6,8 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 class MarketOdds(Base, StatusMixin, DictMixin):
     __tablename__ = 'market_odds'
     __table_args__ = (
+        Index('idx_market_odds_created_at', 'created_at'),
+        Index('idx_market_odds_updated_at', 'updated_at'),
         Index('idx_market_odds_kickoff_time', 'kickoff_time'),
         Index('idx_market_odds_home_team', 'home_team'),
         Index('idx_market_odds_away_team', 'away_team'),
