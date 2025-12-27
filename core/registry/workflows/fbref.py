@@ -1,10 +1,7 @@
 from typing import Optional, Dict, Any
 from core.registry.registry import Registry
 from core.scheduler.tasks.sync.fbref import (
-    SyncClub,
     SyncCompTeam,
-    SyncCompetition,
-    SyncCountry,
     SyncDefensiveAction,
     SyncMatchResult,
     SyncGoalAndShotCreation,
@@ -15,60 +12,14 @@ from core.scheduler.tasks.sync.fbref import (
     IngestMarketOdds
 )
 from core.store.postgres.models import (
-    Site, Country, Club, Competition, MatchResult,
-    MatchStatsSyncState, CountrySyncState, GoalAndShotCreation,
+    Site, MatchResult,
+    MatchStatsSyncState, GoalAndShotCreation,
     Passing, DefensiveAction, Shooting, GoalKeeping,
     GlobalState, PlayerMatchStats, PlayerStatsSyncState, MarketOdds,
     CompTeam, CompTeamSyncState
 )
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
-
-@Registry.register('sync.fbref.countries')
-def create_sync_fbref_countries_task(
-    site: Site,
-    db: PostgreSQLManager,
-    payload: Optional[Dict[str, Any]]
-) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, Country],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncCountry(site)
-    )
-
-@Registry.register('sync.fbref.competitions')
-def create_sync_fbref_competitions_task(
-    site: Site,
-    db: PostgreSQLManager,
-    payload: Optional[Dict[str, Any]]
-) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, Competition],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncCompetition(site)
-    )
-
-@Registry.register('sync.fbref.clubs')
-def create_sync_fbref_clubs_task(
-    site: Site,
-    db: PostgreSQLManager,
-    payload: Optional[Dict[str, Any]]
-) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncCountry(site),
-        SyncClub(site)
-    )
 
 @Registry.register('sync.fbref.comp_teams')
 def create_sync_fbref_comp_teams_task(
@@ -93,12 +44,10 @@ def create_sync_fbref_match_results_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, MatchResult, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompTeamSyncState, MatchResult, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
-        SyncCountry(site),
-        SyncClub(site),
         SyncMatchResult(site, payload)
     )
 
@@ -110,12 +59,10 @@ def create_sync_fbref_gca_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, GoalAndShotCreation, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompTeamSyncState, GoalAndShotCreation, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
-        SyncCountry(site),
-        SyncClub(site),
         SyncGoalAndShotCreation(site, payload)
     )
 
@@ -127,12 +74,10 @@ def create_sync_fbref_passing_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, Passing, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompTeamSyncState, Passing, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
-        SyncCountry(site),
-        SyncClub(site),
         SyncPassing(site, payload)
     )
 
@@ -144,12 +89,10 @@ def create_sync_fbref_defensive_actions_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, DefensiveAction, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompTeamSyncState, DefensiveAction, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
-        SyncCountry(site),
-        SyncClub(site),
         SyncDefensiveAction(site, payload)
     )
 
@@ -161,12 +104,10 @@ def create_sync_fbref_shooting_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, Shooting, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompTeamSyncState, Shooting, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
-        SyncCountry(site),
-        SyncClub(site),
         SyncShooting(site, payload)
     )
 
@@ -178,12 +119,10 @@ def create_sync_fbref_goalkeeping_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, GoalKeeping, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompTeamSyncState, GoalKeeping, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
-        SyncCountry(site),
-        SyncClub(site),
         SyncGoalKeeping(site, payload)
     )
 
@@ -196,7 +135,7 @@ def create_sync_fbref_player_match_stats_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [Club, PlayerMatchStats, PlayerStatsSyncState],
+        [MatchResult, PlayerMatchStats, PlayerStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -211,15 +150,13 @@ def create_sync_fbref_batch_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, Country, Club, CountrySyncState, Competition, MatchStatsSyncState,
+        [GlobalState, CompTeam, CompTeamSyncState, MatchStatsSyncState,
          MatchResult, GoalAndShotCreation, Passing,
-         DefensiveAction, Shooting, GoalKeeping],
+         DefensiveAction, Shooting, GoalKeeping, PlayerMatchStats, PlayerStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
-        SyncCompetition(site),
-        SyncCountry(site),
-        SyncClub(site),
+        SyncCompTeam(site, payload),
         SyncMatchResult(site, payload),
         SyncGoalAndShotCreation(site, payload),
         SyncPassing(site, payload),

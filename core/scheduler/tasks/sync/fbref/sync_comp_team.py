@@ -28,7 +28,7 @@ class SyncCompTeam(BaseTask):
         )
 
         if not targets:
-            self.logger.warning(f"No unsynced seasons found for {comp_name}")
+            self.logger.warning(f"No sync targets found for {comp_name}({comp_code}) from {min_season} to {max_season}")
             return
 
         comp_name_with_dash = comp_name.replace(" ", "-")

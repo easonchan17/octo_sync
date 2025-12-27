@@ -488,8 +488,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
 
         df[PAGE_URL_COL] = df.apply(lambda row: PAGE_URL_TEMPLATE.format(
             season=normalize_season_range(row[SEASON_COL]),
-            club_code=row[HOME_CODE_COL],
-            club_name=normalize_team_name(row[HOME_TEAM_COL])[1]
+            team_code=row[HOME_CODE_COL],
+            team_name=normalize_team_name(row[HOME_TEAM_COL])[1]
         ), axis=1)
         df[MATCH_REPORT_COL] = df[MATCH_REPORT_COL].apply(lambda uri: urljoin(SITE_HOST, uri))
 

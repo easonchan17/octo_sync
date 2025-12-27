@@ -36,8 +36,8 @@ class IngestMarketOdds(BaseTask):
         self.synchronizer = MarketOddsSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        league_id = self.payload.get("league_id")
-        if not league_id:
+        comp_code = self.payload.get("comp_code")
+        if not comp_code:
             self.logger.error("League ID is required")
             return
 
@@ -67,7 +67,7 @@ class IngestMarketOdds(BaseTask):
             match_records.sort(key=lambda x: x['kickoff_time'])
 
             target_matches = self.synchronizer.get_target_matches(
-                league_id,
+                comp_code,
                 match_records[0]['kickoff_time']
             )
             self.team_resolver.resolve(match_records, target_matches)

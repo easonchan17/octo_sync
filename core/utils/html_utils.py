@@ -44,27 +44,6 @@ def combine_date_time(date_str: str, time_str: str) -> Optional[datetime]:
 
     return datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
 
-# def infer_local_time(
-#     venue_date: str,
-#     venue_time: str,
-#     venue_epoch: str,
-#     local_tz_offset:int = 8
-# ) -> Optional[datetime]:
-#     venue_datetime=combine_date_time(venue_date, venue_time)
-#     venue_utc_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
-#     venue_tz_offset = venue_datetime - venue_utc_time.replace(tzinfo=None)
-
-#     venue_datetime_aware = venue_datetime.replace(tzinfo=timezone(venue_tz_offset))
-#     local_datetime_aware = venue_datetime_aware.astimezone(timezone(timedelta(hours=local_tz_offset)))
-#     return local_datetime_aware
-
-def extract_country_code_from_cell(cell) -> Optional[str]:
-    url = cell.find("a").get("href") if cell and cell.find("a") else None
-    return extract_country_code_from_url(url)
-
-def extract_country_code_from_url(url) -> Optional[str]:
-    return extract_text(url, r"/en/country/([a-zA-Z0-9]+)/")
-
 def extract_comp_code_from_cell(cell) -> Optional[str]:
     url = cell.find("a").get("href") if cell and cell.find("a") else None
     return extract_comp_code_from_url(url)
@@ -141,7 +120,7 @@ def is_match_awarded(cell) -> bool:
     text = get_text(cell)
     return text.startswith("Match awarded to")
 
-def extract_venue_time(cell) -> Optional[str]:
+def extract_venue_epoch(cell) -> Optional[str]:
     if not cell:
         return None
 
@@ -153,4 +132,4 @@ def extract_venue_time(cell) -> Optional[str]:
     if not venue_time:
         return None
 
-    return venue_time.get("data-venue-time")
+    return venue_time.get("data-venue-epoch")
