@@ -2,10 +2,10 @@ from typing import List
 from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Passing, Site, MatchStatsSyncFlag
-from .match_stats_synchronizer import MatchStatsSynchronizer
+from .team_level_synchronizer import TeamLevelSynchronizer
 
 
-class PassingSynchronizer(MatchStatsSynchronizer):
+class PassingSynchronizer(TeamLevelSynchronizer):
     def sync(self, site: Site, team_name: str, team_code: str, season: int, passings: List[Passing]) -> None:
         season_range = f"{season}-{season+1}"
         if not passings:

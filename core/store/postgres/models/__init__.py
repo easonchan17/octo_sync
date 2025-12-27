@@ -10,8 +10,8 @@ from .zcy import (
 )
 from .fbref import (
     CompTeam,
-    CompTeamSyncState,
-    CompTeamSyncFlag,
+    CompSyncState,
+    CompSyncFlag,
     MatchStatsSyncState,
     MatchStatsSyncFlag,
     DefensiveAction,
@@ -44,8 +44,8 @@ __all__ = [
     'SubCategory',
     'SubCategoryBrand',
     'CompTeam',
-    'CompTeamSyncState',
-    'CompTeamSyncFlag',
+    'CompSyncState',
+    'CompSyncFlag',
     'MatchStatsSyncState',
     'MatchStatsSyncFlag',
     'DefensiveAction',

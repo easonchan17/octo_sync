@@ -1,5 +1,5 @@
 from .match_stats_sync_state import MatchStatsSyncState, MatchStatsSyncFlag
-from .comp_team_sync_state import CompTeamSyncState, CompTeamSyncFlag
+from .comp_sync_state import CompSyncState, CompSyncFlag
 from .defensive_action import DefensiveAction
 from .match_result import MatchResult
 from .goal_and_shot_creation import GoalAndShotCreation
@@ -15,8 +15,8 @@ from .comp_team import CompTeam
 __all__ = [
     'MatchStatsSyncState',
     'MatchStatsSyncFlag',
-    'CompTeamSyncState',
-    'CompTeamSyncFlag',
+    'CompSyncState',
+    'CompSyncFlag',
     'DefensiveAction',
     'MatchResult',
     'GoalAndShotCreation',
