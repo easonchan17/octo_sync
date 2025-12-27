@@ -8,7 +8,7 @@ from core.utils.html_utils import (
     is_table_header,
     extract_match_code_from_cell,
     get_float, extract_venue_time,
-    extract_club_code_from_cell
+    extract_team_code_from_cell
 )
 
 class GoalkeepingReceiver(BaseReceiver):
@@ -59,7 +59,7 @@ class GoalkeepingReceiver(BaseReceiver):
 
                 goal_keeping = GoalKeeping(
                     match_code=extract_match_code_from_cell(date),
-                    team_code=extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
+                    team_code=extract_team_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     shots_on_target_against=get_number(gk_shots_on_target_against),
                     saves=get_number(gk_saves),
                     save_pct=get_float(gk_save_pct),

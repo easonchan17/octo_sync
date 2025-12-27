@@ -1,4 +1,5 @@
 from .sync_club import SyncClub
+from .sync_comp_team import SyncCompTeam
 from .sync_competition import SyncCompetition
 from .sync_country import SyncCountry
 from .sync_defensive_action import SyncDefensiveAction
@@ -12,6 +13,7 @@ from .ingest_market_odds import IngestMarketOdds
 
 __all__ = [
     'SyncClub',
+    'SyncCompTeam',
     'SyncCompetition',
     'SyncCountry',
     'SyncDefensiveAction',

@@ -8,8 +8,8 @@ from core.utils.html_utils import (
     is_table_header,
     extract_match_code_from_cell,
     extract_venue_time,
-    extract_club_code_from_cell,
-    extract_club_code_from_url
+    extract_team_code_from_cell,
+    extract_team_code_from_url
 )
 
 class ShootingReceiver(BaseReceiver):
@@ -60,7 +60,7 @@ class ShootingReceiver(BaseReceiver):
 
                 shooting = Shooting(
                     match_code=extract_match_code_from_cell(date),
-                    team_code=extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
+                    team_code=extract_team_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     goals=get_number(goals),
                     shots=get_number(shots),
                     shots_on_target=get_number(shots_on_target),

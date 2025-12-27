@@ -4,7 +4,7 @@ from sqlalchemy import and_
 from urllib.parse import urljoin
 from sqlalchemy.orm import aliased
 from typing import Any, Dict, List, Optional
-from core.utils.html_utils import normalize_club_name, normalize_season_range
+from core.utils.html_utils import normalize_team_name, normalize_season_range
 from core.store.postgres.models import (
     MatchResult, GoalAndShotCreation, Passing, Shooting,
     DefensiveAction, GoalKeeping
@@ -489,7 +489,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         df[PAGE_URL_COL] = df.apply(lambda row: PAGE_URL_TEMPLATE.format(
             season=normalize_season_range(row[SEASON_COL]),
             club_code=row[HOME_CODE_COL],
-            club_name=normalize_club_name(row[HOME_TEAM_COL])[1]
+            club_name=normalize_team_name(row[HOME_TEAM_COL])[1]
         ), axis=1)
         df[MATCH_REPORT_COL] = df[MATCH_REPORT_COL].apply(lambda uri: urljoin(SITE_HOST, uri))
 

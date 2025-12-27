@@ -1,4 +1,4 @@
-from typing import List, Any, Tuple
+from typing import List, Any, Optional
 from sqlalchemy import func, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
@@ -8,15 +8,17 @@ from core.store.postgres.models import (
 from ..base_synchronizer import BaseSynchronizer
 
 class PlayerMatchStatsSynchronizer(BaseSynchronizer):
-    def get_unsynced_matches(
+    def get_sync_targets(
         self,
         site: Site,
-        clubs: List[Tuple[str, str]],
         min_season: int,
         max_season: int,
-        sync_flag: int
-    ) -> List[Tuple[str, str]]:
-        club_codes = [club_code for _, club_code in clubs]
+        sync_flag: int,
+        comp_code: Optional[str] = None,
+        team_code: Optional[str] = None
+    ) -> List[Any]:
+        if not comp_code and not team_code:
+            raise ValueError("Either comp_code or team_code must be provided")
 
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
@@ -30,20 +32,27 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                 PlayerStatsSyncState.match_code == MatchResult.match_code
             ).filter(
                 MatchResult.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value,
-                or_(
-                    MatchResult.home_code.in_(club_codes),
-                    MatchResult.away_code.in_(club_codes)
-                ),
                 MatchResult.season.between(min_season, max_season),
                 or_(
                     PlayerStatsSyncState.match_code.is_(None),
                     (PlayerStatsSyncState.sync_flags.op('&')(sync_flag)) != sync_flag
                 )
             )
-            return query.all()
 
-    def sync(self, site: Site, match_result: MatchResult, player_stats: List[PlayerMatchStats]) -> None:
-        match_tag = f"{match_result.season} {match_result.home_team} vs {match_result.away_team}"
+            if comp_code:
+                query = query.filter(MatchResult.comp_code == comp_code)
+            if team_code:
+                query = query.filter(
+                    or_(
+                        MatchResult.home_code == team_code,
+                        MatchResult.away_code == team_code
+                    )
+                )
+
+            return query.order_by(MatchResult.season, MatchResult.kickoff_time).all()
+
+    def sync(self, site: Site, match_code: str, home_team: str, away_team: str, season: int, player_stats: List[PlayerMatchStats]) -> None:
+        match_tag = f"{season} {home_team} vs {away_team}"
 
         if not player_stats:
             self.logger.warning(f"No player match stats to sync for match {match_tag} from {site.name}")
@@ -161,7 +170,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
             self.logger.info(f"Sync player match stats for match {match_tag} from {site.name} completed. upserted: {upserted_count}")
 
             insert_flag_stmt = insert(PlayerStatsSyncState).values(
-                match_code=match_result.match_code,
+                match_code=match_code,
                 sync_flags=PlayerStatsSyncFlag.PLAYER_STATS.value
             )
             insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(

@@ -7,7 +7,7 @@ from core.utils.html_utils import (
     get_number,is_table_header,
     extract_match_code_from_cell,
     get_float, extract_venue_time,
-    extract_club_code_from_cell
+    extract_team_code_from_cell
 )
 
 class DefensiveActionReceiver(BaseReceiver):
@@ -62,7 +62,7 @@ class DefensiveActionReceiver(BaseReceiver):
 
                 defensive_action = DefensiveAction(
                     match_code=extract_match_code_from_cell(date),
-                    team_code=extract_club_code_from_cell(opponent) if id == "matchlogs_against" else None,
+                    team_code=extract_team_code_from_cell(opponent) if id == "matchlogs_against" else None,
                     tackles=get_number(tackles),
                     tackles_won=get_number(tackles_won),
                     tackles_def_third=get_number(tackles_def_third),
