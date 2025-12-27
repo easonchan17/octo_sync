@@ -36,7 +36,7 @@ class PagePool:
             def _safe_release(*args) -> None:
                 if self._semaphore._value < self._capacity:
                     self._semaphore.release()
-                self.logger.info("Released semaphore")
+                # self.logger.info("Released semaphore")
 
             page = await self._context.new_page()
             page.on("close", _safe_release)

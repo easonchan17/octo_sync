@@ -6,14 +6,13 @@ from .zcy import (
     SubCategoryReceiver
 )
 from .fbref import (
-    ClubReceiver,
-    CompetitionReceiver,
-    CountryReceiver,
+    CompTeamReceiver,
     DefensiveActionReceiver,
     MatchResultReceiver,
     GoalAndShotCreationReceiver,
     GoalkeepingReceiver,
     PassingReceiver,
+    PlayerMatchStatsReceiver,
     ShootingReceiver
 )
 from .pinnacle import (
@@ -29,14 +28,13 @@ __all__ = [
     'CategoryReceiver',
     'ProductReceiver',
     'SubCategoryReceiver',
-    'ClubReceiver',
-    'CompetitionReceiver',
-    'CountryReceiver',
+    'CompTeamReceiver',
     'DefensiveActionReceiver',
     'MatchResultReceiver',
     'GoalAndShotCreationReceiver',
     'GoalkeepingReceiver',
     'PassingReceiver',
+    'PlayerMatchStatsReceiver',
     'ShootingReceiver',
     'OddsReceiver',
     'FixtureReceiver'

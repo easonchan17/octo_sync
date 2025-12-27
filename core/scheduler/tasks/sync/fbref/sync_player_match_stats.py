@@ -33,7 +33,7 @@ class SyncPlayerMatchStats(BaseTask):
         )
 
         if not targets:
-            self.logger.warning(f"No unsynced matches found for {comp_code or team_code}")
+            self.logger.warning(f"No sync targets found for comp_code: {comp_code}, team_code: {team_code} from {min_season} to {max_season}")
             return
 
         for match_code, home_team, away_team, season, match_report_url in targets:
