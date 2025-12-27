@@ -9,14 +9,14 @@ from core.scheduler.tasks.sync.fbref import (
     SyncPassing,
     SyncShooting,
     SyncPlayerMatchStats,
-    IngestMarketOdds
+    SyncMarketOdds
 )
 from core.store.postgres.models import (
     Site, MatchResult,
     MatchStatsSyncState, GoalAndShotCreation,
     Passing, DefensiveAction, Shooting, GoalKeeping,
     GlobalState, PlayerMatchStats, PlayerStatsSyncState, MarketOdds,
-    CompTeam, CompTeamSyncState
+    CompTeam, CompSyncState
 )
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
@@ -29,7 +29,7 @@ def create_sync_fbref_comp_teams_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState],
+        [GlobalState, CompTeam, CompSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -44,7 +44,7 @@ def create_sync_fbref_match_results_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState, MatchResult, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompSyncState, MatchResult, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -59,7 +59,7 @@ def create_sync_fbref_gca_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState, GoalAndShotCreation, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompSyncState, GoalAndShotCreation, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -74,7 +74,7 @@ def create_sync_fbref_passing_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState, Passing, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompSyncState, Passing, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -89,7 +89,7 @@ def create_sync_fbref_defensive_actions_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState, DefensiveAction, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompSyncState, DefensiveAction, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -104,7 +104,7 @@ def create_sync_fbref_shooting_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState, Shooting, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompSyncState, Shooting, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
@@ -119,13 +119,12 @@ def create_sync_fbref_goalkeeping_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState, GoalKeeping, MatchStatsSyncState],
+        [GlobalState, CompTeam, CompSyncState, GoalKeeping, MatchStatsSyncState],
         site.get_namespace()
     )
     return Pipeline(
         SyncGoalKeeping(site, payload)
     )
-
 
 @Registry.register('sync.fbref.player_match_stats')
 def create_sync_fbref_player_match_stats_task(
@@ -142,6 +141,21 @@ def create_sync_fbref_player_match_stats_task(
         SyncPlayerMatchStats(site, payload)
     )
 
+@Registry.register('sync.fbref.market_odds')
+def create_sync_fbref_market_odds_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    db.create_schema(site.get_namespace())
+    db.create_tables(
+        [CompSyncState, MarketOdds],
+        site.get_namespace()
+    )
+    return Pipeline(
+        SyncMarketOdds(site, payload)
+    )
+
 @Registry.register('sync.fbref.batch')
 def create_sync_fbref_batch_task(
     site: Site,
@@ -150,7 +164,7 @@ def create_sync_fbref_batch_task(
 ) -> BaseTask:
     db.create_schema(site.get_namespace())
     db.create_tables(
-        [GlobalState, CompTeam, CompTeamSyncState, MatchStatsSyncState,
+        [GlobalState, CompTeam, CompSyncState, MatchStatsSyncState,
          MatchResult, GoalAndShotCreation, Passing,
          DefensiveAction, Shooting, GoalKeeping, PlayerMatchStats, PlayerStatsSyncState],
         site.get_namespace()
@@ -163,20 +177,6 @@ def create_sync_fbref_batch_task(
         SyncDefensiveAction(site, payload),
         SyncShooting(site, payload),
         SyncGoalKeeping(site, payload),
-        SyncPlayerMatchStats(site, payload)
-    )
-
-@Registry.register('sync.fbref.market_odds')
-def create_sync_fbref_market_odds_task(
-    site: Site,
-    db: PostgreSQLManager,
-    payload: Optional[Dict[str, Any]]
-) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [MarketOdds],
-        site.get_namespace()
-    )
-    return Pipeline(
-        IngestMarketOdds(site, payload)
+        SyncPlayerMatchStats(site, payload),
+        SyncMarketOdds(site, payload)
     )

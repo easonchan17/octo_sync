@@ -3,15 +3,16 @@ from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, DateTime, Index, CHAR, BigInteger
 from ..base_model import Base, StatusMixin, DictMixin, Status
 
-class CompTeamSyncFlag(IntFlag):
+class CompSyncFlag(IntFlag):
     TEAMS = 1
+    MARKET_ODDS = 2
 
-class CompTeamSyncState(Base, StatusMixin, DictMixin):
-    __tablename__ = 'comp_team_sync_state'
+class CompSyncState(Base, StatusMixin, DictMixin):
+    __tablename__ = 'comp_sync_state'
     __table_args__ = (
-        Index('idx_comp_team_sync_state_created_at', 'created_at'),
-        Index('idx_comp_team_sync_state_updated_at', 'updated_at'),
-        Index('idx_comp_team_sync_state_season_comp_code', 'season', 'comp_code', unique=True),
+        Index('idx_comp_sync_state_created_at', 'created_at'),
+        Index('idx_comp_sync_state_updated_at', 'updated_at'),
+        Index('idx_comp_sync_state_season_comp_code', 'season', 'comp_code', unique=True),
         {'schema': '{schema}'}
     )
 

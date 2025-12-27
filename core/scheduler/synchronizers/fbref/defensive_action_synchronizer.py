@@ -2,10 +2,10 @@ from typing import List
 from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import DefensiveAction, Site, MatchStatsSyncFlag
-from .match_stats_synchronizer import MatchStatsSynchronizer
+from .team_level_synchronizer import TeamLevelSynchronizer
 
 
-class DefensiveActionSynchronizer(MatchStatsSynchronizer):
+class DefensiveActionSynchronizer(TeamLevelSynchronizer):
     def sync(self, site: Site, team_name: str, team_code: str, season: int, defensive_actions: List[DefensiveAction]) -> None:
         season_range = f"{season}-{season+1}"
         if not defensive_actions:
