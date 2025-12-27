@@ -1,16 +1,15 @@
-from typing import List, Any
-from sqlalchemy import func, update, or_
+from typing import List
+from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models import (
-    DefensiveAction, Site, Status, Club, MatchStatsSyncState, MatchStatsSyncFlag
-)
-from ..base_synchronizer import BaseSynchronizer
+from core.store.postgres.models import DefensiveAction, Site, MatchStatsSyncFlag
+from .match_stats_synchronizer import MatchStatsSynchronizer
 
-class DefensiveActionSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, club: Club, season: int, defensive_actions: List[DefensiveAction]) -> None:
+
+class DefensiveActionSynchronizer(MatchStatsSynchronizer):
+    def sync(self, site: Site, team_name: str, team_code: str, season: int, defensive_actions: List[DefensiveAction]) -> None:
         season_range = f"{season}-{season+1}"
         if not defensive_actions:
-            self.logger.warning(f"No {club.name} {season_range} defensive actions to sync from {site.name}")
+            self.logger.warning(f"No {team_name} {season_range} defensive actions to sync from {site.name}")
             return
 
         defensive_action_dict = self.to_dict(
@@ -65,19 +64,7 @@ class DefensiveActionSynchronizer(BaseSynchronizer):
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
-            self.logger.info(f"Sync {club.name} {season_range} defensive actions from {site.name} completed. upserted: {upserted_count}")
+            self.logger.info(f"Sync {team_name} {season_range} defensive actions from {site.name} completed. upserted: {upserted_count}")
 
-            insert_flag_stmt = insert(MatchStatsSyncState).values(
-                team_code=club.code,
-                season=season,
-                sync_flags=MatchStatsSyncFlag.DEFENSIVE_ACTION.value
-            )
-            insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
-                index_elements=['team_code', 'season'],
-                set_={
-                    'sync_flags': MatchStatsSyncState.sync_flags.op('|')(MatchStatsSyncFlag.DEFENSIVE_ACTION.value),
-                    'updated_at': func.now()
-                }
-            )
-            session.execute(insert_flag_stmt)
-            self.logger.info(f"Mark {site.name} {club.name} {season_range} defensive actions as synced")
+            self.add_sync_flag(session, team_code, season, MatchStatsSyncFlag.DEFENSIVE_ACTION.value)
+            self.logger.info(f"Mark {site.name} {team_name} {season_range} defensive actions as synced")

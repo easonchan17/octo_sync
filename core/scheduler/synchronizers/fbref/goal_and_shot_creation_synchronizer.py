@@ -1,16 +1,15 @@
-from typing import List, Any
-from sqlalchemy import func, update, or_
+from typing import List
+from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models import (
-    GoalAndShotCreation, Site, Status, Club, MatchStatsSyncState, MatchStatsSyncFlag
-)
-from ..base_synchronizer import BaseSynchronizer
+from core.store.postgres.models import GoalAndShotCreation, Site, MatchStatsSyncFlag
+from .match_stats_synchronizer import MatchStatsSynchronizer
 
-class GoalAndShotCreationSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, club: Club, season: int, goal_and_shot_creations: List[GoalAndShotCreation]) -> None:
+
+class GoalAndShotCreationSynchronizer(MatchStatsSynchronizer):
+    def sync(self, site: Site, team_name: str, team_code: str, season: int, goal_and_shot_creations: List[GoalAndShotCreation]) -> None:
         season_range = f"{season}-{season+1}"
         if not goal_and_shot_creations:
-            self.logger.warning(f"No {club.name} {season_range} goal and shot creations to sync from {site.name}")
+            self.logger.warning(f"No {team_name} {season_range} goal and shot creations to sync from {site.name}")
             return
 
         goal_and_shot_creation_dict = self.to_dict(
@@ -63,19 +62,7 @@ class GoalAndShotCreationSynchronizer(BaseSynchronizer):
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
-            self.logger.info(f"Sync {club.name} {season_range} goal and shot creations from {site.name} completed. upserted: {upserted_count}")
+            self.logger.info(f"Sync {team_name} {season_range} goal and shot creations from {site.name} completed. upserted: {upserted_count}")
 
-            insert_flag_stmt = insert(MatchStatsSyncState).values(
-                team_code=club.code,
-                season=season,
-                sync_flags=MatchStatsSyncFlag.GCA.value
-            )
-            insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
-                index_elements=['team_code', 'season'],
-                set_={
-                    'sync_flags': MatchStatsSyncState.sync_flags.op('|')(MatchStatsSyncFlag.GCA.value),
-                    'updated_at': func.now()
-                }
-            )
-            session.execute(insert_flag_stmt)
-            self.logger.info(f"Mark {site.name} {club.name} {season_range} goal and shot creations as synced")
+            self.add_sync_flag(session, team_code, season, MatchStatsSyncFlag.GCA.value)
+            self.logger.info(f"Mark {site.name} {team_name} {season_range} goal and shot creations as synced")

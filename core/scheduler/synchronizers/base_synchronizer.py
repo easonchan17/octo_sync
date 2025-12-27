@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Dict
 from abc import ABC, abstractmethod
 from core.store.postgres.models import Site
 from core.logger.logger_manager import LoggerManager
@@ -16,7 +16,7 @@ class BaseSynchronizer(ABC):
                 session.expunge(site)
             return site
 
-    def to_dict(self, items: List[Any], fields: List[str], key_fields: List[str]) -> dict[str, Any]:
+    def to_dict(self, items: List[Any], fields: List[str], key_fields: List[str]) -> Dict[str, Any]:
         result = {}
         num_key_fields = len(key_fields)
         for item in items:

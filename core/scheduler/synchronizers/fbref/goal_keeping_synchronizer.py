@@ -1,16 +1,15 @@
 from typing import List
 from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models import (
-    GoalKeeping, Site, Club, MatchStatsSyncState, MatchStatsSyncFlag
-)
-from ..base_synchronizer import BaseSynchronizer
+from core.store.postgres.models import GoalKeeping, Site, MatchStatsSyncFlag
+from .match_stats_synchronizer import MatchStatsSynchronizer
 
-class GoalKeepingSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, club: Club, season: int, goal_keepings: List[GoalKeeping]) -> None:
+
+class GoalKeepingSynchronizer(MatchStatsSynchronizer):
+    def sync(self, site: Site, team_name: str, team_code: str, season: int, goal_keepings: List[GoalKeeping]) -> None:
         season_range = f"{season}-{season+1}"
         if not goal_keepings:
-            self.logger.warning(f"No {club.name} {season_range} goal keepings to sync from {site.name}")
+            self.logger.warning(f"No {team_name} {season_range} goal keepings to sync from {site.name}")
             return
 
         goal_keeping_dict = self.to_dict(
@@ -55,19 +54,7 @@ class GoalKeepingSynchronizer(BaseSynchronizer):
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
-            self.logger.info(f"Sync {club.name} {season_range} goal keepings from {site.name} completed. upserted: {upserted_count}")
+            self.logger.info(f"Sync {team_name} {season_range} goal keepings from {site.name} completed. upserted: {upserted_count}")
 
-            insert_flag_stmt = insert(MatchStatsSyncState).values(
-                team_code=club.code,
-                season=season,
-                sync_flags=MatchStatsSyncFlag.GOAL_KEEPING.value
-            )
-            insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
-                index_elements=['team_code', 'season'],
-                set_={
-                    'sync_flags': MatchStatsSyncState.sync_flags.op('|')(MatchStatsSyncFlag.GOAL_KEEPING.value),
-                    'updated_at': func.now()
-                }
-            )
-            session.execute(insert_flag_stmt)
-            self.logger.info(f"Mark {site.name} {club.name} {season_range} goal keepings as synced")
+            self.add_sync_flag(session, team_code, season, MatchStatsSyncFlag.GOAL_KEEPING.value)
+            self.logger.info(f"Mark {site.name} {team_name} {season_range} goal keepings as synced")

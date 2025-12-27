@@ -1,16 +1,14 @@
-from typing import List, Any
-from sqlalchemy import func, update, or_
+from typing import List
+from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models import (
-    MatchResult, Site, Club, MatchStatsSyncState, MatchStatsSyncFlag
-)
-from ..base_synchronizer import BaseSynchronizer
+from core.store.postgres.models import MatchResult, Site, MatchStatsSyncFlag
+from .match_stats_synchronizer import MatchStatsSynchronizer
 
-class MatchResultSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, club: Club, season: int, results: List[MatchResult]) -> None:
+class MatchResultSynchronizer(MatchStatsSynchronizer):
+    def sync(self, site: Site, team_name: str, team_code: str, season: int, results: List[MatchResult]) -> None:
         season_range = f"{season}-{season+1}"
         if not results:
-            self.logger.warning(f"No {club.name} {season_range} match results to sync from {site.name}")
+            self.logger.warning(f"No {team_name} {season_range} match results to sync from {site.name}")
             return
 
         result_dict = self.to_dict(
@@ -76,19 +74,7 @@ class MatchResultSynchronizer(BaseSynchronizer):
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
-            self.logger.info(f"Sync {club.name} {season_range} match results from {site.name} completed. upserted: {upserted_count}")
+            self.logger.info(f"Sync {team_name} {season_range} match results from {site.name} completed. upserted: {upserted_count}")
 
-            insert_flag_stmt = insert(MatchStatsSyncState).values(
-                team_code=club.code,
-                season=season,
-                sync_flags=MatchStatsSyncFlag.MATCH_RESULT.value
-            )
-            insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
-                index_elements=['team_code', 'season'],
-                set_={
-                    'sync_flags': MatchStatsSyncState.sync_flags.op('|')(MatchStatsSyncFlag.MATCH_RESULT.value),
-                    'updated_at': func.now()
-                }
-            )
-            session.execute(insert_flag_stmt)
-            self.logger.info(f"Mark {site.name} {club.name} {season_range} match results as synced")
+            self.add_sync_flag(session, team_code, season, MatchStatsSyncFlag.MATCH_RESULT.value)
+            self.logger.info(f"Mark {site.name} {team_name} {season_range} match results as synced")

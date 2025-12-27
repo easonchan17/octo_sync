@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any
 from core.registry.registry import Registry
 from core.scheduler.tasks.sync.fbref import (
     SyncClub,
+    SyncCompTeam,
     SyncCompetition,
     SyncCountry,
     SyncDefensiveAction,
@@ -17,7 +18,8 @@ from core.store.postgres.models import (
     Site, Country, Club, Competition, MatchResult,
     MatchStatsSyncState, CountrySyncState, GoalAndShotCreation,
     Passing, DefensiveAction, Shooting, GoalKeeping,
-    GlobalState, PlayerMatchStats, PlayerStatsSyncState, MarketOdds
+    GlobalState, PlayerMatchStats, PlayerStatsSyncState, MarketOdds,
+    CompTeam, CompTeamSyncState
 )
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
@@ -66,6 +68,21 @@ def create_sync_fbref_clubs_task(
     return Pipeline(
         SyncCountry(site),
         SyncClub(site)
+    )
+
+@Registry.register('sync.fbref.comp_teams')
+def create_sync_fbref_comp_teams_task(
+    site: Site,
+    db: PostgreSQLManager,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    db.create_schema(site.get_namespace())
+    db.create_tables(
+        [GlobalState, CompTeam, CompTeamSyncState],
+        site.get_namespace()
+    )
+    return Pipeline(
+        SyncCompTeam(site, payload)
     )
 
 @Registry.register('sync.fbref.match_results')
