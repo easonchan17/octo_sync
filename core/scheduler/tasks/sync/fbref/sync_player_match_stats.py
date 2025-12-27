@@ -1,12 +1,11 @@
 from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
-from core.store.postgres.models.fbref.match_result import MatchResult
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.player_stats_sync_state import PlayerStatsSyncFlag
 from core.scheduler.synchronizers.fbref.player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
-from core.scheduler.synchronizers.fbref.club_synchronizer import ClubSynchronizer
+
 
 class SyncPlayerMatchStats(BaseTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
@@ -14,35 +13,34 @@ class SyncPlayerMatchStats(BaseTask):
         self.site = site
         self.payload = payload
         self.synchronizer = PlayerMatchStatsSynchronizer()
-        self.club_synchronizer = ClubSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
         policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.player_match_stats")
         intercept_policy = InterceptPolicy.from_rules(policy_config)
 
-        clubs = self.club_synchronizer.get_clubs(
-            self.site,
-            comp_code=self.payload.get("comp_code"),
-            club_code=self.payload.get("club_code")
-        )
-
+        comp_code = self.payload.get("comp_code")
+        team_code = self.payload.get("team_code")
         min_season = self.payload.get("min_season")
         max_season = self.payload.get("max_season")
 
-        matches = self.synchronizer.get_unsynced_matches(
+        targets = self.synchronizer.get_sync_targets(
             self.site,
-            clubs,
             min_season,
             max_season,
-            PlayerStatsSyncFlag.PLAYER_STATS.value
+            PlayerStatsSyncFlag.PLAYER_STATS.value,
+            comp_code=comp_code,
+            team_code=team_code
         )
 
-        for match_code, home_team, away_team, season, match_report_url in matches:
+        if not targets:
+            self.logger.warning(f"No unsynced matches found for {comp_code or team_code}")
+            return
+
+        for match_code, home_team, away_team, season, match_report_url in targets:
             if self.should_stop():
                 return
 
             match_tag = f"{season} {home_team} vs {away_team}"
-
             if not match_report_url:
                 self.logger.warning(f"Match {match_tag} has no match report URL")
                 continue
@@ -69,12 +67,13 @@ class SyncPlayerMatchStats(BaseTask):
                     if not player_stat.match_code:
                         player_stat.match_code = match_code
 
-                self.logger.debug(f"Intercepted player match stats for match {match_tag} from {self.site.name}: {len(player_stats)} players")
                 self.synchronizer.sync(
                     self.site,
-                    MatchResult(match_code=match_code, home_team=home_team, away_team=away_team, season=season),
+                    match_code,
+                    home_team,
+                    away_team,
+                    season,
                     player_stats
                 )
-
             except Exception as e:
                 self.logger.error(f"Failed to sync player match stats for match {match_tag} from {self.site.name}: {e}")

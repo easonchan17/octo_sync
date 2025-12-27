@@ -1,4 +1,5 @@
 from .club_receiver import ClubReceiver
+from .comp_team_receiver import CompTeamReceiver
 from .competition_receiver import CompetitionReceiver
 from .country_receiver import CountryReceiver
 from .defensive_action_receiver import DefensiveActionReceiver
@@ -11,6 +12,7 @@ from .shooting_receiver import ShootingReceiver
 
 __all__ = [
     'ClubReceiver',
+    'CompTeamReceiver',
     'CompetitionReceiver',
     'CountryReceiver',
     'DefensiveActionReceiver',

@@ -9,7 +9,7 @@ from core.utils.html_utils import (
     get_text, get_float, get_number,
     is_table_header, extract_comp_code_from_cell,
     extract_match_code_from_cell, extract_venue_time,
-    extract_club_code_from_cell
+    extract_team_code_from_cell
 )
 
 class HtmlMatchResult:
@@ -203,7 +203,7 @@ class MatchResultReceiver(BaseReceiver):
                 gf=get_number(gf),
                 ga=get_number(ga),
                 opponent=get_text(opponent),
-                opponent_code=extract_club_code_from_cell(opponent),
+                opponent_code=extract_team_code_from_cell(opponent),
                 xg=get_float(xg_for),
                 xga=get_float(xg_against),
                 possession=get_number(possession),

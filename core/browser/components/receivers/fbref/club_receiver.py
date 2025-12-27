@@ -6,7 +6,7 @@ from core.store.postgres.models.fbref.club import Club
 from core.utils.html_utils import (
     get_text, extract_season_from_cell,
     is_table_header, extract_comp_code_from_cell,
-    extract_club_code_from_cell
+    extract_team_code_from_cell
 )
 
 class ClubReceiver(BaseReceiver):
@@ -37,7 +37,7 @@ class ClubReceiver(BaseReceiver):
 
             club = Club(
                 name=get_text(team),
-                code=extract_club_code_from_cell(team),
+                code=extract_team_code_from_cell(team),
                 gender=get_text(gender),
                 comp_name=get_text(comp),
                 comp_code=extract_comp_code_from_cell(comp),

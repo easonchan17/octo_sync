@@ -72,11 +72,11 @@ def extract_comp_code_from_cell(cell) -> Optional[str]:
 def extract_comp_code_from_url(url) -> Optional[str]:
     return extract_text(url, r"/en/comps/(Big5|\d+)/")
 
-def extract_club_code_from_cell(cell) -> Optional[str]:
+def extract_team_code_from_cell(cell) -> Optional[str]:
     url = cell.find("a").get("href") if cell and cell.find("a") else None
-    return extract_club_code_from_url(url)
+    return extract_team_code_from_url(url)
 
-def extract_club_code_from_url(url) -> Optional[str]:
+def extract_team_code_from_url(url) -> Optional[str]:
     return extract_text(url, r"/en/squads/([a-zA-Z0-9]+)/")
 
 def extract_match_code_from_cell(cell) -> Optional[str]:
@@ -110,7 +110,7 @@ def extract_season_from_cell(cell) -> Optional[int]:
 def normalize_season_range(season: str) -> str:
     return f"{int(season)}-{int(season)+1}"
 
-def normalize_club_name(name: str) -> tuple[str, str]:
+def normalize_team_name(name: str) -> tuple[str, str]:
     parts = name.split()
 
     PREFIX_SUFFIX = {"AFC", "FC", "SC", "AC"}

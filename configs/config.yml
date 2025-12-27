@@ -68,38 +68,38 @@ interceptor:
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.ClubReceiver"
-    clubs:
-      url_template: "https://fbref.com/en/comps/{comp_code}/{season}/{season}-Premier-League-Stats"
+    comp_teams:
+      url_template: "https://fbref.com/en/comps/{comp_code}/{season}/{season}-{comp_name}-Stats"
       rules:
         - type: dom
-          receiver: "core.browser.components.receivers.fbref.ClubReceiver"
+          receiver: "core.browser.components.receivers.fbref.CompTeamReceiver"
     match_results:
-      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/schedule/{club_name}-Scores-and-Fixtures-All-Competitions"
+      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/schedule/{team_name}-Scores-and-Fixtures-All-Competitions"
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.MatchResultReceiver"
     gca:
-      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/gca/{club_name}-Match-Logs-All-Competitions"
+      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/gca/{team_name}-Match-Logs-All-Competitions"
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.GoalAndShotCreationReceiver"
     passing:
-      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/passing/{club_name}-Match-Logs-All-Competitions"
+      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/passing/{team_name}-Match-Logs-All-Competitions"
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.PassingReceiver"
     defensive_actions:
-      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/defense/{club_name}-Match-Logs-All-Competitions"
+      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/defense/{team_name}-Match-Logs-All-Competitions"
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.DefensiveActionReceiver"
     shooting:
-      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/shooting/{club_name}-Match-Logs-All-Competitions"
+      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/shooting/{team_name}-Match-Logs-All-Competitions"
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.ShootingReceiver"
     goalkeeping:
-      url_template: "https://fbref.com/en/squads/{club_code}/{season}/matchlogs/all_comps/keeper/{club_name}-Match-Logs-All-Competitions"
+      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/keeper/{team_name}-Match-Logs-All-Competitions"
       rules:
         - type: dom
           receiver: "core.browser.components.receivers.fbref.GoalkeepingReceiver"
