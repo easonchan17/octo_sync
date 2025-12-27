@@ -2,9 +2,9 @@ from typing import List
 from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import MatchResult, Site, MatchStatsSyncFlag
-from .match_stats_synchronizer import MatchStatsSynchronizer
+from .team_level_synchronizer import TeamLevelSynchronizer
 
-class MatchResultSynchronizer(MatchStatsSynchronizer):
+class MatchResultSynchronizer(TeamLevelSynchronizer):
     def sync(self, site: Site, team_name: str, team_code: str, season: int, results: List[MatchResult]) -> None:
         season_range = f"{season}-{season+1}"
         if not results:

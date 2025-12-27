@@ -3,7 +3,7 @@ from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
-from core.store.postgres.models.fbref.comp_team_sync_state import CompTeamSyncFlag
+from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
 from core.scheduler.synchronizers.fbref.comp_team_synchronizer import CompTeamSynchronizer
 
 
@@ -24,7 +24,7 @@ class SyncCompTeam(BaseTask):
         max_season = self.payload.get("max_season")
 
         targets = self.synchronizer.get_sync_targets(
-            self.site, comp_code, min_season, max_season, CompTeamSyncFlag.TEAMS.value
+            self.site, comp_code, min_season, max_season, CompSyncFlag.TEAMS.value
         )
 
         if not targets:

@@ -5,7 +5,7 @@ from core.store.postgres.models import Site, CompTeam, MatchStatsSyncState
 from ..base_synchronizer import BaseSynchronizer
 
 
-class MatchStatsSynchronizer(BaseSynchronizer):
+class TeamLevelSynchronizer(BaseSynchronizer):
     def get_sync_targets(
         self,
         site: Site,

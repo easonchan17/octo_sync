@@ -6,7 +6,7 @@ from .sync_goal_keeping import SyncGoalKeeping
 from .sync_passing import SyncPassing
 from .sync_player_match_stats import SyncPlayerMatchStats
 from .sync_shooting import SyncShooting
-from .ingest_market_odds import IngestMarketOdds
+from .sync_market_odds import SyncMarketOdds
 
 __all__ = [
     'SyncCompTeam',
@@ -17,5 +17,5 @@ __all__ = [
     'SyncPassing',
     'SyncPlayerMatchStats',
     'SyncShooting',
-    'IngestMarketOdds'
+    'SyncMarketOdds'
 ]
