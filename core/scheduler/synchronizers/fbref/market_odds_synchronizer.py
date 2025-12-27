@@ -9,7 +9,7 @@ from ..base_synchronizer import BaseSynchronizer
 class MarketOddsSynchronizer(BaseSynchronizer):
     TARGET_SITE = 'fbref'
 
-    def get_target_matches(self, league_id: str, start_time: datetime) -> List[MatchResult]:
+    def get_target_matches(self, comp_code: str, start_time: datetime) -> List[MatchResult]:
         target_site = self.get_site(self.TARGET_SITE)
         if not target_site:
             self.logger.error(f"Target site not found: {self.TARGET_SITE}")
@@ -17,7 +17,7 @@ class MarketOddsSynchronizer(BaseSynchronizer):
 
         with self.db.get_session(target_site.get_namespace()) as session:
             matches = session.query(MatchResult).filter(
-                MatchResult.comp_code == league_id,
+                MatchResult.comp_code == comp_code,
                 MatchResult.kickoff_time >= start_time
             ).order_by(MatchResult.kickoff_time).all()
 

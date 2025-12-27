@@ -1,7 +1,4 @@
-from .club_synchronizer import ClubSynchronizer
 from .comp_team_synchronizer import CompTeamSynchronizer
-from .competition_synchronizer import CompetitionSynchronizer
-from .country_synchronizer import CountrySynchronizer
 from .defensive_action_synchronizer import DefensiveActionSynchronizer
 from .match_result_synchronizer import MatchResultSynchronizer
 from .goal_and_shot_creation_synchronizer import GoalAndShotCreationSynchronizer
@@ -12,10 +9,7 @@ from .shooting_synchronizer import ShootingSynchronizer
 from .market_odds_synchronizer import MarketOddsSynchronizer
 
 __all__ = [
-    'ClubSynchronizer',
     'CompTeamSynchronizer',
-    'CompetitionSynchronizer',
-    'CountrySynchronizer',
     'DefensiveActionSynchronizer',
     'MatchResultSynchronizer',
     'GoalAndShotCreationSynchronizer',

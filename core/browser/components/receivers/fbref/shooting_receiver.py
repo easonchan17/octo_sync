@@ -7,7 +7,7 @@ from core.utils.html_utils import (
     get_text, get_number, get_float,
     is_table_header,
     extract_match_code_from_cell,
-    extract_venue_time,
+    extract_venue_epoch,
     extract_team_code_from_cell,
     extract_team_code_from_url
 )
@@ -34,7 +34,7 @@ class ShootingReceiver(BaseReceiver):
                 if is_table_header(row):
                     continue
 
-                venue_epoch = extract_venue_time(row)
+                venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
                     self.logger.error(f"No venue epoch: {row}")
                     continue

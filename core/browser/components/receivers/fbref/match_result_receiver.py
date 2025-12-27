@@ -8,7 +8,7 @@ from core.store.postgres.models import MatchStatus
 from core.utils.html_utils import (
     get_text, get_float, get_number,
     is_table_header, extract_comp_code_from_cell,
-    extract_match_code_from_cell, extract_venue_time,
+    extract_match_code_from_cell, extract_venue_epoch,
     extract_team_code_from_cell
 )
 
@@ -74,12 +74,20 @@ class HtmlMatchResult:
 
         return MatchStatus.FINISHED.value
 
-    def as_db_model(self, club_name: str, club_code: str, season: int) -> MatchResult:
+    def as_db_model(self, team_name: str, team_code: str, season: int) -> MatchResult:
+        """
+        Convert the HTML result to a database model.
+
+        Args:
+            team_name: The name of the team we are currently scraping
+            team_code: The code of the team we are currently scraping
+            season: The season of the match
+        """
         venue = self.venue
         if venue == "Home":
             venue = None
-            home_team = club_name
-            home_code = club_code
+            home_team = team_name
+            home_code = team_code
             home_gf = self.gf
             home_xg = self.xg
             home_possession = self.possession
@@ -93,8 +101,8 @@ class HtmlMatchResult:
             away_formation = self.opp_formation
         elif venue == "Away":
             venue = None
-            away_team = club_name
-            away_code = club_code
+            away_team = team_name
+            away_code = team_code
             away_gf = self.gf
             away_xg = self.xg
             away_possession = self.possession
@@ -107,8 +115,8 @@ class HtmlMatchResult:
             home_possession = (100 - away_possession) if away_possession else None
             home_formation = self.opp_formation
         else:
-            home_team = club_name
-            home_code = club_code
+            home_team = team_name
+            home_code = team_code
             home_gf = self.gf
             home_xg = self.xg
             home_possession = self.possession
@@ -167,7 +175,7 @@ class MatchResultReceiver(BaseReceiver):
             if is_table_header(row):
                 continue
 
-            venue_epoch = extract_venue_time(row)
+            venue_epoch = extract_venue_epoch(row)
             if not venue_epoch:
                 self.logger.warning(f"No venue epoch")
                 continue

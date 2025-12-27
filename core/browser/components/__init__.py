@@ -4,8 +4,7 @@ from .receivers import (
     CategoryReceiver,
     SubCategoryReceiver,
     BrandReceiver,
-    ProductReceiver,
-    ClubReceiver
+    ProductReceiver
 )
 from .senders import (
     BaseSender,
@@ -19,8 +18,6 @@ __all__ = [
     'SubCategoryReceiver',
     'BrandReceiver',
     'ProductReceiver',
-    'MatchOddsParser',
     'BaseSender',
-    'SearchProductSender',
-    'ClubReceiver'
+    'SearchProductSender'
 ]

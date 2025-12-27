@@ -6,15 +6,15 @@ from .zcy import (
     SubCategorySynchronizer
 )
 from .fbref import (
-    ClubSynchronizer,
-    CompetitionSynchronizer,
-    CountrySynchronizer,
+    CompTeamSynchronizer,
     DefensiveActionSynchronizer,
     MatchResultSynchronizer,
     GoalAndShotCreationSynchronizer,
     GoalKeepingSynchronizer,
     PassingSynchronizer,
-    ShootingSynchronizer
+    PlayerMatchStatsSynchronizer,
+    ShootingSynchronizer,
+    MarketOddsSynchronizer
 )
 
 __all__ = [
@@ -23,13 +23,13 @@ __all__ = [
     'CategorySynchronizer',
     'ProductSynchronizer',
     'SubCategorySynchronizer',
-    'ClubSynchronizer',
-    'CompetitionSynchronizer',
-    'CountrySynchronizer',
+    'CompTeamSynchronizer',
     'DefensiveActionSynchronizer',
     'MatchResultSynchronizer',
     'GoalAndShotCreationSynchronizer',
     'GoalKeepingSynchronizer',
     'PassingSynchronizer',
-    'ShootingSynchronizer'
+    'PlayerMatchStatsSynchronizer',
+    'ShootingSynchronizer',
+    'MarketOddsSynchronizer'
 ]
