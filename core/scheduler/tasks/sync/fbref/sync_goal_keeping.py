@@ -53,7 +53,7 @@ class SyncGoalKeeping(BaseTask):
                     intercept_policy=intercept_policy
                 )
 
-                responses, _ = future.result(timeout=intercept_policy.timeout*2)
+                responses, _ = future.result()
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
                     return

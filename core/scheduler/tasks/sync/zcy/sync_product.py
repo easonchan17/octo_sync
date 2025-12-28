@@ -44,7 +44,7 @@ class SyncProduct(BaseTask):
                         intercept_policy=intercept_policy,
                         query_params=query_params
                     )
-                    responses, _ = future.result(timeout=intercept_policy.timeout*2)
+                    responses, _ = future.result()
 
                     # Task will be retried based on the following reasons:
                     # 1. page load timeout

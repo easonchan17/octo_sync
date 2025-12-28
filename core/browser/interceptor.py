@@ -1,5 +1,3 @@
-import re
-import time
 import janus
 import asyncio
 from enum import Enum
@@ -10,10 +8,11 @@ from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, List, Optional, Any
-from core.config.config_manager import ConfigManager
-from core.browser.cloudflare_handler import CloudflareHandler
 from core.utils.string_utils import is_valid_url
+from core.browser.rate_limiter import RateLimiter
+from core.config.config_manager import ConfigManager
 from core.browser.intercept_monitor import InterceptMonitor
+from core.browser.cloudflare_handler import CloudflareHandler
 from core.browser.intercept_policy import InterceptType, InterceptPolicy
 
 class TaskType(Enum):
@@ -26,6 +25,7 @@ class Interceptor(Thread, Singleton):
         self.page_pool = None
         self.task_queue: Optional[janus.Queue] = None
         self.cloudflare_handler = CloudflareHandler()
+        self.rate_limiter = RateLimiter()
 
     def get_page_pool(self) -> Optional[PagePool]:
         return self.page_pool
@@ -273,13 +273,13 @@ class Interceptor(Thread, Singleton):
             self.logger.error(f"Policy is None for URL: {url}")
             return None
 
-        retry_delay = policy.page_delay
         retry_count = policy.retry_count
-
         for idx in range(retry_count + 1):
             if self.stop_event.is_set():
                 self.logger.error(f"Stop event is set for URL: {url}")
                 return None
+
+            await self.rate_limiter.throttle(url, policy.page_delay)
 
             success, collected_responses = await self._intercept(
                 url=url,
@@ -290,12 +290,9 @@ class Interceptor(Thread, Singleton):
             if success:
                 return collected_responses
 
-            if idx < retry_count:
-                await asyncio.sleep(retry_delay)
-                continue
-
-            self.logger.error(f"Failed to intercept page {url} after {retry_count} retries")
-            return None
+            if idx >= retry_count:
+                self.logger.error(f"Failed to intercept page {url} after {retry_count} retries")
+                return None
 
     async def _intercept(
         self,
@@ -303,7 +300,6 @@ class Interceptor(Thread, Singleton):
         policy: InterceptPolicy,
         query_params: Optional[dict[str, Any]] = None
     ) -> Tuple[bool, Optional[List[Any]]]:
-        intercept_flag = False
         collected_datas: List[Any] = []
 
         is_resident = policy.has_rules(InterceptType.WS)
@@ -326,13 +322,20 @@ class Interceptor(Thread, Singleton):
                         query_params
                     )
 
-                    await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
+                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
                     self.logger.info(f"Page loaded: {url}")
+
+                    is_rate_limited, _ = await self.rate_limiter.is_rate_limited(response, page_context)
+                    if is_rate_limited:
+                        self.rate_limiter.activate_backoff(url)
+                        return False, collected_datas
 
                     await self._process_dom_content(page_context, policy, collected_datas)
                     await monitor.wait(timeout)
 
-                    intercept_flag = True
+                    self.rate_limiter.reset_backoff(url)
+                    return True, collected_datas
+
                 except Exception as e:
                     self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
                 finally:
@@ -344,5 +347,4 @@ class Interceptor(Thread, Singleton):
 
         except asyncio.TimeoutError:
             self.logger.error(f"Timeout while acquiring page for URL: {url}")
-
-        return intercept_flag, collected_datas
+        return False, collected_datas
