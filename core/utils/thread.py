@@ -23,7 +23,7 @@ class Thread(ABC):
             self.thread.start()
             self.logger.debug(f"{self.name} started")
 
-    def stop(self, timeout: Optional[float] = None) -> None:
+    def stop(self, timeout: Optional[float] = 30.0) -> None:
         with self.lock:
             if self.thread is None:
                 self.logger.warning(f"{self.name} is not running")
@@ -33,7 +33,7 @@ class Thread(ABC):
             self.stop_event.set()
             self.thread.join(timeout=timeout)
             if self.thread.is_alive():
-                self.logger.warning(f"{self.name} did not stop within timeout")
+                self.logger.warning(f"{self.name} did not stop within {timeout} seconds")
             else:
                 self.logger.debug(f"{self.name} stopped successfully")
 
