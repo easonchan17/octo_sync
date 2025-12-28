@@ -40,7 +40,7 @@ class InterceptPolicy:
         self.rules: Dict[InterceptType, List[InterceptRule]] = defaultdict(list)
         self.selector: Optional[str] = None
         self.timeout: Optional[int] = None
-        self.page_delay: Optional[int] = None
+        self.page_delay: Optional[float] = None
         self.retry_count: Optional[int] = None
         self.debug: Optional[bool] = False
         self.url: Optional[str] = None
@@ -92,7 +92,7 @@ class InterceptPolicy:
         selector = policy_config.get("selector", None)
         debug = policy_config.get("debug", False)
         timeout = policy_config.get("timeout", 60)
-        page_delay = policy_config.get("page_delay", 4)
+        page_delay = policy_config.get("page_delay", 3.5)
         retry_count = policy_config.get("retry_count", 3)
         url_template = policy_config.get("url_template")
         url = policy_config.get("url")

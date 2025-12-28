@@ -1,6 +1,7 @@
 import janus
 import asyncio
 from enum import Enum
+from contextlib import suppress
 from core.utils.thread import Thread
 from concurrent.futures import Future
 from core.utils.singleton import Singleton
@@ -276,7 +277,7 @@ class Interceptor(Thread, Singleton):
         retry_count = policy.retry_count
         for idx in range(retry_count + 1):
             if self.stop_event.is_set():
-                self.logger.error(f"Stop event is set for URL: {url}")
+                self.logger.info(f"Stop event is set for URL: {url}")
                 return None
 
             await self.rate_limiter.throttle(url, policy.page_delay)
