@@ -53,21 +53,6 @@ interceptor:
           pattern: "https://www.zcygov.cn/front/detail/item/.*"
           receiver: "core.browser.components.receivers.zcy.ProductDetailReceiver"
   fbref:
-    countries:
-      url: "https://fbref.com/en/countries/"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.CountryReceiver"
-    competitions:
-      url: "https://fbref.com/en/comps/"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.CompetitionReceiver"
-    clubs:
-      url_template: "https://fbref.com/en/country/clubs/{country_code}/{country_name}-Football-Clubs"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.ClubReceiver"
     comp_teams:
       url_template: "https://fbref.com/en/comps/{comp_code}/{season}/{season}-{comp_name}-Stats"
       rules:
