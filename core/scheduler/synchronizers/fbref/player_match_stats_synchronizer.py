@@ -112,56 +112,36 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                     or_(
                         PlayerMatchStats.team_code != insert_stmt.excluded.team_code,
                         PlayerMatchStats.player_name != insert_stmt.excluded.player_name,
-                        PlayerMatchStats.position != insert_stmt.excluded.position,
-                        PlayerMatchStats.minutes != insert_stmt.excluded.minutes,
+                        PlayerMatchStats.position.is_distinct_from(insert_stmt.excluded.position),
+                        PlayerMatchStats.minutes.is_distinct_from(insert_stmt.excluded.minutes),
                         PlayerMatchStats.is_starter != insert_stmt.excluded.is_starter,
-                        PlayerMatchStats.goals != insert_stmt.excluded.goals,
-                        or_(
-                            PlayerMatchStats.penalties_made != insert_stmt.excluded.penalties_made,
-                            and_(
-                                PlayerMatchStats.penalties_made.is_(None),
-                                insert_stmt.excluded.penalties_made.isnot(None)
-                            ),
-                            and_(
-                                PlayerMatchStats.penalties_made.isnot(None),
-                                insert_stmt.excluded.penalties_made.is_(None)
-                            )
-                        ),
-                        PlayerMatchStats.shots != insert_stmt.excluded.shots,
-                        PlayerMatchStats.shots_on_target != insert_stmt.excluded.shots_on_target,
-                        PlayerMatchStats.npxg != insert_stmt.excluded.npxg,
-                        PlayerMatchStats.xg_assist != insert_stmt.excluded.xg_assist,
-                        PlayerMatchStats.shot_creating_actions != insert_stmt.excluded.shot_creating_actions,
-                        PlayerMatchStats.progressive_passes != insert_stmt.excluded.progressive_passes,
-                        PlayerMatchStats.key_passes != insert_stmt.excluded.key_passes,
-                        PlayerMatchStats.progressive_carries != insert_stmt.excluded.progressive_carries,
-                        PlayerMatchStats.take_ons_won != insert_stmt.excluded.take_ons_won,
-                        PlayerMatchStats.fouls_drawn != insert_stmt.excluded.fouls_drawn,
-                        PlayerMatchStats.dispossessed != insert_stmt.excluded.dispossessed,
-                        PlayerMatchStats.miscontrols != insert_stmt.excluded.miscontrols,
-                        PlayerMatchStats.tackles != insert_stmt.excluded.tackles,
-                        or_(
-                            PlayerMatchStats.tackles_won != insert_stmt.excluded.tackles_won,
-                            and_(
-                                PlayerMatchStats.tackles_won.is_(None),
-                                insert_stmt.excluded.tackles_won.isnot(None)
-                            ),
-                            and_(
-                                PlayerMatchStats.tackles_won.isnot(None),
-                                insert_stmt.excluded.tackles_won.is_(None)
-                            )
-                        ),
-                        PlayerMatchStats.blocks != insert_stmt.excluded.blocks,
-                        PlayerMatchStats.interceptions != insert_stmt.excluded.interceptions,
-                        PlayerMatchStats.ball_recoveries != insert_stmt.excluded.ball_recoveries,
-                        PlayerMatchStats.challenges_lost != insert_stmt.excluded.challenges_lost,
-                        PlayerMatchStats.aerials_won != insert_stmt.excluded.aerials_won,
-                        PlayerMatchStats.aerials_lost != insert_stmt.excluded.aerials_lost,
-                        PlayerMatchStats.gk_goals_against != insert_stmt.excluded.gk_goals_against,
-                        PlayerMatchStats.gk_psxg != insert_stmt.excluded.gk_psxg,
-                        PlayerMatchStats.gk_crosses != insert_stmt.excluded.gk_crosses,
-                        PlayerMatchStats.gk_crosses_stopped != insert_stmt.excluded.gk_crosses_stopped,
-                        PlayerMatchStats.gk_def_actions_outside_pen_area != insert_stmt.excluded.gk_def_actions_outside_pen_area
+                        PlayerMatchStats.goals.is_distinct_from(insert_stmt.excluded.goals),
+                        PlayerMatchStats.penalties_made.is_distinct_from(insert_stmt.excluded.penalties_made),
+                        PlayerMatchStats.shots.is_distinct_from(insert_stmt.excluded.shots),
+                        PlayerMatchStats.shots_on_target.is_distinct_from(insert_stmt.excluded.shots_on_target),
+                        PlayerMatchStats.npxg.is_distinct_from(insert_stmt.excluded.npxg),
+                        PlayerMatchStats.xg_assist.is_distinct_from(insert_stmt.excluded.xg_assist),
+                        PlayerMatchStats.shot_creating_actions.is_distinct_from(insert_stmt.excluded.shot_creating_actions),
+                        PlayerMatchStats.progressive_passes.is_distinct_from(insert_stmt.excluded.progressive_passes),
+                        PlayerMatchStats.key_passes.is_distinct_from(insert_stmt.excluded.key_passes),
+                        PlayerMatchStats.progressive_carries.is_distinct_from(insert_stmt.excluded.progressive_carries),
+                        PlayerMatchStats.take_ons_won.is_distinct_from(insert_stmt.excluded.take_ons_won),
+                        PlayerMatchStats.fouls_drawn.is_distinct_from(insert_stmt.excluded.fouls_drawn),
+                        PlayerMatchStats.dispossessed.is_distinct_from(insert_stmt.excluded.dispossessed),
+                        PlayerMatchStats.miscontrols.is_distinct_from(insert_stmt.excluded.miscontrols),
+                        PlayerMatchStats.tackles.is_distinct_from(insert_stmt.excluded.tackles),
+                        PlayerMatchStats.tackles_won.is_distinct_from(insert_stmt.excluded.tackles_won),
+                        PlayerMatchStats.blocks.is_distinct_from(insert_stmt.excluded.blocks),
+                        PlayerMatchStats.interceptions.is_distinct_from(insert_stmt.excluded.interceptions),
+                        PlayerMatchStats.ball_recoveries.is_distinct_from(insert_stmt.excluded.ball_recoveries),
+                        PlayerMatchStats.challenges_lost.is_distinct_from(insert_stmt.excluded.challenges_lost),
+                        PlayerMatchStats.aerials_won.is_distinct_from(insert_stmt.excluded.aerials_won),
+                        PlayerMatchStats.aerials_lost.is_distinct_from(insert_stmt.excluded.aerials_lost),
+                        PlayerMatchStats.gk_goals_against.is_distinct_from(insert_stmt.excluded.gk_goals_against),
+                        PlayerMatchStats.gk_psxg.is_distinct_from(insert_stmt.excluded.gk_psxg),
+                        PlayerMatchStats.gk_crosses.is_distinct_from(insert_stmt.excluded.gk_crosses),
+                        PlayerMatchStats.gk_crosses_stopped.is_distinct_from(insert_stmt.excluded.gk_crosses_stopped),
+                        PlayerMatchStats.gk_def_actions_outside_pen_area.is_distinct_from(insert_stmt.excluded.gk_def_actions_outside_pen_area)
                     )
                 )
             )

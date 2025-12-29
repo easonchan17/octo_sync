@@ -43,20 +43,20 @@ class GoalAndShotCreationSynchronizer(TeamLevelSynchronizer):
                 },
                 where=(
                     or_(
-                        GoalAndShotCreation.shot_creating_actions != insert_stmt.excluded.shot_creating_actions,
-                        GoalAndShotCreation.sca_passes_live != insert_stmt.excluded.sca_passes_live,
-                        GoalAndShotCreation.sca_passes_dead != insert_stmt.excluded.sca_passes_dead,
-                        GoalAndShotCreation.sca_take_ons != insert_stmt.excluded.sca_take_ons,
-                        GoalAndShotCreation.sca_shots != insert_stmt.excluded.sca_shots,
-                        GoalAndShotCreation.sca_fouled != insert_stmt.excluded.sca_fouled,
-                        GoalAndShotCreation.sca_defense != insert_stmt.excluded.sca_defense,
-                        GoalAndShotCreation.goal_creating_actions != insert_stmt.excluded.goal_creating_actions,
-                        GoalAndShotCreation.gca_passes_live != insert_stmt.excluded.gca_passes_live,
-                        GoalAndShotCreation.gca_passes_dead != insert_stmt.excluded.gca_passes_dead,
-                        GoalAndShotCreation.gca_take_ons != insert_stmt.excluded.gca_take_ons,
-                        GoalAndShotCreation.gca_shots != insert_stmt.excluded.gca_shots,
-                        GoalAndShotCreation.gca_fouled != insert_stmt.excluded.gca_fouled,
-                        GoalAndShotCreation.gca_defense != insert_stmt.excluded.gca_defense
+                        GoalAndShotCreation.shot_creating_actions.is_distinct_from(insert_stmt.excluded.shot_creating_actions),
+                        GoalAndShotCreation.sca_passes_live.is_distinct_from(insert_stmt.excluded.sca_passes_live),
+                        GoalAndShotCreation.sca_passes_dead.is_distinct_from(insert_stmt.excluded.sca_passes_dead),
+                        GoalAndShotCreation.sca_take_ons.is_distinct_from(insert_stmt.excluded.sca_take_ons),
+                        GoalAndShotCreation.sca_shots.is_distinct_from(insert_stmt.excluded.sca_shots),
+                        GoalAndShotCreation.sca_fouled.is_distinct_from(insert_stmt.excluded.sca_fouled),
+                        GoalAndShotCreation.sca_defense.is_distinct_from(insert_stmt.excluded.sca_defense),
+                        GoalAndShotCreation.goal_creating_actions.is_distinct_from(insert_stmt.excluded.goal_creating_actions),
+                        GoalAndShotCreation.gca_passes_live.is_distinct_from(insert_stmt.excluded.gca_passes_live),
+                        GoalAndShotCreation.gca_passes_dead.is_distinct_from(insert_stmt.excluded.gca_passes_dead),
+                        GoalAndShotCreation.gca_take_ons.is_distinct_from(insert_stmt.excluded.gca_take_ons),
+                        GoalAndShotCreation.gca_shots.is_distinct_from(insert_stmt.excluded.gca_shots),
+                        GoalAndShotCreation.gca_fouled.is_distinct_from(insert_stmt.excluded.gca_fouled),
+                        GoalAndShotCreation.gca_defense.is_distinct_from(insert_stmt.excluded.gca_defense)
                     )
                 )
             )

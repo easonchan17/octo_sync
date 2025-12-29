@@ -44,21 +44,21 @@ class DefensiveActionSynchronizer(TeamLevelSynchronizer):
                 },
                 where=(
                     or_(
-                        DefensiveAction.tackles != insert_stmt.excluded.tackles,
-                        DefensiveAction.tackles_won != insert_stmt.excluded.tackles_won,
-                        DefensiveAction.tackles_def_third != insert_stmt.excluded.tackles_def_third,
-                        DefensiveAction.tackles_mid_third != insert_stmt.excluded.tackles_mid_third,
-                        DefensiveAction.tackles_att_third != insert_stmt.excluded.tackles_att_third,
-                        DefensiveAction.challenge_tackles != insert_stmt.excluded.challenge_tackles,
-                        DefensiveAction.challenges != insert_stmt.excluded.challenges,
-                        DefensiveAction.challenge_tackles_pct != insert_stmt.excluded.challenge_tackles_pct,
-                        DefensiveAction.challenges_lost != insert_stmt.excluded.challenges_lost,
-                        DefensiveAction.blocks != insert_stmt.excluded.blocks,
-                        DefensiveAction.blocked_shots != insert_stmt.excluded.blocked_shots,
-                        DefensiveAction.blocked_passes != insert_stmt.excluded.blocked_passes,
-                        DefensiveAction.interceptions != insert_stmt.excluded.interceptions,
-                        DefensiveAction.clearances != insert_stmt.excluded.clearances,
-                        DefensiveAction.errors_shot != insert_stmt.excluded.errors_shot
+                        DefensiveAction.tackles.is_distinct_from(insert_stmt.excluded.tackles),
+                        DefensiveAction.tackles_won.is_distinct_from(insert_stmt.excluded.tackles_won),
+                        DefensiveAction.tackles_def_third.is_distinct_from(insert_stmt.excluded.tackles_def_third),
+                        DefensiveAction.tackles_mid_third.is_distinct_from(insert_stmt.excluded.tackles_mid_third),
+                        DefensiveAction.tackles_att_third.is_distinct_from(insert_stmt.excluded.tackles_att_third),
+                        DefensiveAction.challenge_tackles.is_distinct_from(insert_stmt.excluded.challenge_tackles),
+                        DefensiveAction.challenges.is_distinct_from(insert_stmt.excluded.challenges),
+                        DefensiveAction.challenge_tackles_pct.is_distinct_from(insert_stmt.excluded.challenge_tackles_pct),
+                        DefensiveAction.challenges_lost.is_distinct_from(insert_stmt.excluded.challenges_lost),
+                        DefensiveAction.blocks.is_distinct_from(insert_stmt.excluded.blocks),
+                        DefensiveAction.blocked_shots.is_distinct_from(insert_stmt.excluded.blocked_shots),
+                        DefensiveAction.blocked_passes.is_distinct_from(insert_stmt.excluded.blocked_passes),
+                        DefensiveAction.interceptions.is_distinct_from(insert_stmt.excluded.interceptions),
+                        DefensiveAction.clearances.is_distinct_from(insert_stmt.excluded.clearances),
+                        DefensiveAction.errors_shot.is_distinct_from(insert_stmt.excluded.errors_shot)
                     )
                 )
             )

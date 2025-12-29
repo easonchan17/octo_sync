@@ -1,3 +1,4 @@
+import json
 from thefuzz import fuzz
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -57,8 +58,10 @@ class TeamResolver:
                 best_candidate = candidate_match
 
         if not best_candidate:
-            self.logger.warning(f"No best match found for source match: {source_match}")
-            self.logger.warning(f"Candidate matches: {candidate_matches}")
+            pretty_source = json.dumps(source_match, indent=4, ensure_ascii=False, default=str)
+            self.logger.warning(f"No best match found for source match:\n{pretty_source}")
+            pretty_candidates = json.dumps(candidate_matches, indent=4, ensure_ascii=False, default=str)
+            self.logger.warning(f"Candidate matches:\n{pretty_candidates}")
 
         return best_candidate
 

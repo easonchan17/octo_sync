@@ -38,16 +38,16 @@ class ShootingSynchronizer(TeamLevelSynchronizer):
                 },
                 where=(
                     or_(
-                        Shooting.goals != insert_stmt.excluded.goals,
-                        Shooting.shots != insert_stmt.excluded.shots,
-                        Shooting.shots_on_target != insert_stmt.excluded.shots_on_target,
-                        Shooting.shots_on_target_pct != insert_stmt.excluded.shots_on_target_pct,
-                        Shooting.shots_free_kicks != insert_stmt.excluded.shots_free_kicks,
-                        Shooting.average_shot_distance != insert_stmt.excluded.average_shot_distance,
-                        Shooting.penalties_made != insert_stmt.excluded.penalties_made,
-                        Shooting.penalties_attempted != insert_stmt.excluded.penalties_attempted,
-                        Shooting.xg != insert_stmt.excluded.xg,
-                        Shooting.npxg != insert_stmt.excluded.npxg
+                        Shooting.goals.is_distinct_from(insert_stmt.excluded.goals),
+                        Shooting.shots.is_distinct_from(insert_stmt.excluded.shots),
+                        Shooting.shots_on_target.is_distinct_from(insert_stmt.excluded.shots_on_target),
+                        Shooting.shots_on_target_pct.is_distinct_from(insert_stmt.excluded.shots_on_target_pct),
+                        Shooting.shots_free_kicks.is_distinct_from(insert_stmt.excluded.shots_free_kicks),
+                        Shooting.average_shot_distance.is_distinct_from(insert_stmt.excluded.average_shot_distance),
+                        Shooting.penalties_made.is_distinct_from(insert_stmt.excluded.penalties_made),
+                        Shooting.penalties_attempted.is_distinct_from(insert_stmt.excluded.penalties_attempted),
+                        Shooting.xg.is_distinct_from(insert_stmt.excluded.xg),
+                        Shooting.npxg.is_distinct_from(insert_stmt.excluded.npxg)
                     )
                 )
             )

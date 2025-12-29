@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from urllib.parse import urlparse
-from typing import Optional
+from typing import Optional, Tuple
 
 def wildcard_to_regex(pattern: str) -> str:
     pattern = re.escape(pattern)
@@ -53,3 +53,18 @@ def parse_utc_time(utc_time_str: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(utc_time_str.replace('Z', '+00:00'))
     except ValueError:
         return None
+
+def parse_scores(scores: str) -> Tuple[Optional[int], Optional[int]]:
+    if not scores:
+        return None, None
+
+    try:
+        parts = scores.split('-')
+        if len(parts) != 2:
+            return None, None
+
+        home_score = int(parts[0].strip())
+        away_score = int(parts[1].strip())
+        return home_score, away_score
+    except Exception:
+        return None, None

@@ -39,16 +39,16 @@ class GoalKeepingSynchronizer(TeamLevelSynchronizer):
                 },
                 where=(
                     or_(
-                        GoalKeeping.shots_on_target_against != insert_stmt.excluded.shots_on_target_against,
-                        GoalKeeping.saves != insert_stmt.excluded.saves,
-                        GoalKeeping.save_pct != insert_stmt.excluded.save_pct,
-                        GoalKeeping.psxg != insert_stmt.excluded.psxg,
-                        GoalKeeping.psxg_net != insert_stmt.excluded.psxg_net,
-                        GoalKeeping.crosses != insert_stmt.excluded.crosses,
-                        GoalKeeping.crosses_stopped != insert_stmt.excluded.crosses_stopped,
-                        GoalKeeping.crosses_stopped_pct != insert_stmt.excluded.crosses_stopped_pct,
-                        GoalKeeping.def_actions_outside_pen_area != insert_stmt.excluded.def_actions_outside_pen_area,
-                        GoalKeeping.avg_distance_def_actions != insert_stmt.excluded.avg_distance_def_actions
+                        GoalKeeping.shots_on_target_against.is_distinct_from(insert_stmt.excluded.shots_on_target_against),
+                        GoalKeeping.saves.is_distinct_from(insert_stmt.excluded.saves),
+                        GoalKeeping.save_pct.is_distinct_from(insert_stmt.excluded.save_pct),
+                        GoalKeeping.psxg.is_distinct_from(insert_stmt.excluded.psxg),
+                        GoalKeeping.psxg_net.is_distinct_from(insert_stmt.excluded.psxg_net),
+                        GoalKeeping.crosses.is_distinct_from(insert_stmt.excluded.crosses),
+                        GoalKeeping.crosses_stopped.is_distinct_from(insert_stmt.excluded.crosses_stopped),
+                        GoalKeeping.crosses_stopped_pct.is_distinct_from(insert_stmt.excluded.crosses_stopped_pct),
+                        GoalKeeping.def_actions_outside_pen_area.is_distinct_from(insert_stmt.excluded.def_actions_outside_pen_area),
+                        GoalKeeping.avg_distance_def_actions.is_distinct_from(insert_stmt.excluded.avg_distance_def_actions)
                     )
                 )
             )

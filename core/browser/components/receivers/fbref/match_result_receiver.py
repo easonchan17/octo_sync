@@ -70,7 +70,7 @@ class HtmlMatchResult:
             return MatchStatus.FINISHED_AET.value
 
         if "match awarded to" in notes_lower:
-            return MatchStatus.CANCELLED.value
+            return MatchStatus.FINISHED_AWARDED.value
 
         return MatchStatus.FINISHED.value
 

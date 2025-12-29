@@ -52,6 +52,7 @@ class MatchSynchronizer(BaseSynchronizer):
                     'league_name': insert_stmt.excluded.league_name,
                     'home_team': insert_stmt.excluded.home_team,
                     'away_team': insert_stmt.excluded.away_team,
+                    'fixture_id': insert_stmt.excluded.fixture_id,
                     'updated_at': func.now()
                 },
                 where=(
@@ -61,6 +62,7 @@ class MatchSynchronizer(BaseSynchronizer):
                         Match.league_name != insert_stmt.excluded.league_name,
                         Match.home_team != insert_stmt.excluded.home_team,
                         Match.away_team != insert_stmt.excluded.away_team,
+                        Match.fixture_id != insert_stmt.excluded.fixture_id,
                     )
                 )
             )
