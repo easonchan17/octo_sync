@@ -95,11 +95,11 @@ interceptor:
           receiver: "core.browser.components.receivers.fbref.PlayerMatchStatsReceiver"
   fotmob:
     fixtures:
-      url_template: "https://www.fotmob.com/?date={date}"
+      url_template: "https://www.fotmob.com/leagues/{league_id}/fixtures/{league_name}?group=by-round"
       debug: false
       rules:
         - type: http
-          pattern: "https://www.fotmob.com/api/data/matches"
+          pattern: "https://www.fotmob.com/api/data/leagues"
           sender: "core.browser.components.senders.fotmob.SearchFixtureSender"
           receiver: "core.browser.components.receivers.fotmob.FixtureReceiver"
   pinnacle:

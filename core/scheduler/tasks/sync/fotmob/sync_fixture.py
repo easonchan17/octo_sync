@@ -18,23 +18,11 @@ class SyncFixture(BaseTask):
         policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.fixtures")
         intercept_policy = InterceptPolicy.from_rules(policy_config)
 
-        DATE_FORMAT = "%Y%m%d"
-        today = date.today().strftime(DATE_FORMAT)
-        from_date = self.payload.get("from_date", today)
-        to_date = self.payload.get("to_date", today)
+        try:
+            league_id = self.payload["league_id"]
+            league_name = self.payload["league_name"]
 
-        start_date = datetime.strptime(from_date, DATE_FORMAT).date()
-        end_date = datetime.strptime(to_date, DATE_FORMAT).date()
-
-        fixtures = []
-
-        current_date = start_date
-        while current_date <= end_date:
-            if self.should_stop():
-                break
-
-            page_url = intercept_policy.url.format(date=current_date.strftime(DATE_FORMAT))
-
+            page_url = intercept_policy.url.format(league_id=league_id, league_name=league_name)
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
                 url=page_url,
@@ -44,9 +32,14 @@ class SyncFixture(BaseTask):
             responses, _ = future.result()
             if not responses:
                 self.logger.error(f"No response for {page_url}")
-                break
+                return
 
-            fixtures.extend(responses[0] or [])
-            current_date += timedelta(days=1)
-
-        self.synchronizer.sync(self.site, fixtures)
+            fixtures = responses[0]
+            self.synchronizer.sync(
+                self.site,
+                league_name,
+                round,
+                fixtures
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to sync fixtures from {self.site.name}: {e}")
