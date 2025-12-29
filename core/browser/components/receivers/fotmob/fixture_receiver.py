@@ -1,6 +1,9 @@
-from typing import Any, Optional, List
+import json
 from urllib.parse import urlparse, parse_qs
+from core.utils.string_utils import parse_scores
+from typing import Any, Optional, List, Tuple, Dict
 from core.store.postgres.models.fotmob.fixture import Fixture
+from core.store.postgres.models.common.match_status import MatchStatus
 from ..base_receiver import BaseReceiver
 
 class FixtureReceiver(BaseReceiver):
@@ -8,47 +11,79 @@ class FixtureReceiver(BaseReceiver):
         parsed_url = urlparse(response.url)
         query_params = parse_qs(parsed_url.query)
 
-        if 'timezone' not in query_params or 'ccode3' not in query_params:
-            self.logger.warning(f"Skipping response: {response.url}")
-            return None
+        # if 'id' not in query_params or 'ccode3' not in query_params:
+        #     self.logger.warning(f"Skipping response: {response.url}")
+        #     return None
 
         json_data = await self.decode_json_body(response)
         if not json_data:
             self.logger.error(f"Failed to decode json body: {response}")
             return None
 
+        # self.logger.info(f"Processing FixtureReceiver for URL: {response.url}")
+        # self.logger.info(f"Json data:\n{json.dumps(json_data, indent=2)}")
+
         fixtures = []
-        leagues = json_data.get('leagues', [])
-        for league in leagues:
-            league_id = league.get('primaryId')
-            league_name = league.get('name')
 
-            matches = league.get('matches', [])
-            for match in matches:
-                home = match.get('home', {})
-                away = match.get('away', {})
+        league_detail = json_data.get('details', {})
+        league_id = league_detail.get('id')
+        league_name = league_detail.get('name')
 
-                status = match.get('status', {})
-                utctime = status.get('utcTime')
-                if not utctime:
-                    self.logger.warning(f"Skipping match without utcTime: {match}")
-                    continue
+        matches = json_data.get('fixtures', {}).get('allMatches', [])
+        for match in matches:
+            round = match.get('round')
+            match_id = match.get('id')
 
-                fixture = Fixture(
-                    match_id=match.get('id'),
-                    league_id=league_id,
-                    league_name=league_name,
-                    kickoff_time=utctime,
-                    round=match.get('tournamentStage'),
-                    home_team=home.get('longName') or home.get('name'),
-                    home_id=home.get('id'),
-                    away_team=away.get('longName') or away.get('name'),
-                    away_id=away.get('id'),
-                    home_score=home.get('score'),
-                    away_score=away.get('score'),
-                    match_status=match.get('statusId')
-                )
-                fixtures.append(fixture)
+            home = match.get('home', {})
+            away = match.get('away', {})
+            home_team = home.get('longName') or home.get('name')
+            away_team = away.get('longName') or away.get('name')
 
-        self.logger.info(f"Parsed {len(fixtures)} fixtures from {len(leagues)} leagues")
+            match_status, kickoff_time, home_score, away_score = self.extract_status(match.get('status', {}))
+
+            fixture = Fixture(
+                round=round,
+                match_id=match_id,
+                league_id=league_id,
+                league_name=league_name,
+                kickoff_time=kickoff_time,
+                home_team=home_team,
+                home_id=home.get('id'),
+                away_team=away_team,
+                away_id=away.get('id'),
+                home_score=home_score,
+                away_score=away_score,
+                match_status=match_status
+            )
+            fixtures.append(fixture)
+
+        self.logger.info(f"Parsed {len(fixtures)} fixtures from {league_name}")
         return fixtures
+
+    def extract_status(self, status: Dict[str, Any]) -> Tuple[int, Optional[str], Optional[int], Optional[int]]:
+        if not status:
+            return MatchStatus.SCHEDULED.value, None, None, None
+
+        utctime = status.get('utcTime')
+        if not utctime:
+            return MatchStatus.SCHEDULED.value, None, None, None
+
+        cancelled = status.get('cancelled', False)
+        if cancelled:
+            return MatchStatus.CANCELLED.value, utctime, None, None
+
+        score_str = status.get('scoreStr')
+        home_score, away_score = parse_scores(score_str)
+
+        finished = status.get('finished', False)
+        if finished:
+            awarded = status.get('awarded', False)
+            if awarded:
+                return MatchStatus.FINISHED_AWARDED.value, utctime, home_score, away_score
+            return MatchStatus.FINISHED.value, utctime, home_score, away_score
+
+        started = status.get('started', False)
+        if started:
+            return MatchStatus.IN_PROGRESS.value, utctime, home_score, away_score
+
+        return MatchStatus.TIMED.value, utctime, None, None

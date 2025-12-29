@@ -24,6 +24,8 @@ class Match(Base, StatusMixin, DictMixin):
     home_team = Column(String(100), nullable=False)
     away_team = Column(String(100), nullable=False)
 
+    fixture_id = Column(Integer, nullable=False, unique=True)
+
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

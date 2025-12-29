@@ -86,7 +86,10 @@ class SyncOdds(BaseTask):
             match_records[0]['league_id'],
             match_records[0]['kickoff_time']
         )
-        self.team_resolver.resolve(match_records, target_matches)
+        self.team_resolver.resolve(match_records, target_matches, with_target=True)
+
+        for record in match_records:
+            record['fixture_id'] =  record.pop('target').match_id
 
         for odds_type, match_odds in odds.items():
             for match_id, odds_data in match_odds.items():

@@ -6,7 +6,7 @@ from core.store.postgres.models.fotmob.fixture import Fixture
 from ..base_synchronizer import BaseSynchronizer
 
 class FixtureSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, fixtures: List[Fixture]) -> None:
+    def sync(self, site: Site, league_name: str, round: int, fixtures: List[Fixture]) -> None:
         if not fixtures:
             self.logger.warning(f"No fixtures to sync from {site.name}")
             return
@@ -42,17 +42,17 @@ class FixtureSynchronizer(BaseSynchronizer):
                         Fixture.league_id != insert_stmt.excluded.league_id,
                         Fixture.league_name != insert_stmt.excluded.league_name,
                         Fixture.kickoff_time != insert_stmt.excluded.kickoff_time,
-                        Fixture.round != insert_stmt.excluded.round,
+                        Fixture.round.is_distinct_from(insert_stmt.excluded.round),
                         Fixture.home_team != insert_stmt.excluded.home_team,
                         Fixture.home_id != insert_stmt.excluded.home_id,
                         Fixture.away_team != insert_stmt.excluded.away_team,
                         Fixture.away_id != insert_stmt.excluded.away_id,
-                        Fixture.home_score != insert_stmt.excluded.home_score,
-                        Fixture.away_score != insert_stmt.excluded.away_score,
+                        Fixture.home_score.is_distinct_from(insert_stmt.excluded.home_score),
+                        Fixture.away_score.is_distinct_from(insert_stmt.excluded.away_score),
                         Fixture.match_status != insert_stmt.excluded.match_status
                     )
                 )
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
-            self.logger.info(f"Sync fixtures from {site.name} completed. upserted: {upserted_count}")
+            self.logger.info(f"Sync {site.name} {league_name} {round} fixtures completed. upserted: {upserted_count}")
