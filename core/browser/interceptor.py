@@ -69,6 +69,8 @@ class Interceptor(Thread, Singleton):
             context = await browser.new_context()
             self.page_pool = PagePool(browser, context, page_pool_size)
 
+            active_tasks: set[asyncio.Task] = set()
+
             while not self.stop_event.is_set():
                 task_data = await self.task_queue.async_q.get()
                 if task_data is None:
@@ -76,27 +78,32 @@ class Interceptor(Thread, Singleton):
                     break
 
                 task_type, future, payload = task_data
-                await self._process_task(task_type, future, payload)
+                task = asyncio.create_task(self._process_task(task_type, future, payload))
+                active_tasks.add(task)
+                task.add_done_callback(active_tasks.discard)
+
+            await asyncio.gather(*active_tasks, return_exceptions=True)
 
             self.logger.info(f"Page pool cleanup. Active pages remaining: {self.page_pool.get_count()}")
             self.page_pool = None
 
     async def _process_task(self, task_type: TaskType, future: Future, payload: dict[str, Any]) -> None:
-        handlers = {
-            TaskType.OPEN_PAGE: self._handle_open_page,
-            TaskType.CLOSE_PAGE: self._handle_close_page
-        }
+        try:
+            handlers = {
+                TaskType.OPEN_PAGE: self._handle_open_page,
+                TaskType.CLOSE_PAGE: self._handle_close_page
+            }
 
-        handler = handlers.get(task_type)
-        if handler is None:
-            self.logger.error(f"Invalid task type: {task_type}")
-            future.set_exception(ValueError(f"Invalid task type: {task_type}"))
+            handler = handlers.get(task_type)
+            result = await handler(payload)
+            if not future.done():
+                future.set_result(result)
+        except Exception as e:
+            self.logger.error(f"Error processing task {task_type}: {e}", exc_info=True)
+            if not future.done():
+                future.set_exception(e)
+        finally:
             self.task_queue.async_q.task_done()
-            return
-
-        result = await handler(payload)
-        future.set_result(result)
-        self.task_queue.async_q.task_done()
 
     async def _handle_open_page(self, payload: dict[str, Any]) -> Tuple[Optional[List[Any]], None]:
         url = payload.get("url")
@@ -144,6 +151,8 @@ class Interceptor(Thread, Singleton):
                         await route.continue_()
                     except Exception as e:
                         self.logger.error(f"Failed to continue request: {e}")
+                        with suppress(Exception):
+                            await route.abort("failed")
 
                 await page_context.route("**/*", _http_request_handler)
                 http_request_handler = _http_request_handler
@@ -212,6 +221,7 @@ class Interceptor(Thread, Singleton):
 
 
     async def _unregister_handlers(
+        self,
         page_context: Any,
         http_request_handler: Optional[Any] = None,
         http_response_handler: Optional[Any] = None,
