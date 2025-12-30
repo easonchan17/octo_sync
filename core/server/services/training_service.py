@@ -1,3 +1,4 @@
+from threading import Lock
 from typing import Dict, Any, Optional
 from core.scheduler.worker import Worker
 from core.server.services.base_service import BaseService
@@ -8,38 +9,51 @@ class TrainingService(BaseService):
     def __init__(self):
         super().__init__()
         self.tasks: Dict[str, Dict[str, Any]] = {}
+        self._lock = Lock()
 
     def _cleanup_task(self, name: str, task_id: str) -> Optional[BaseTask]:
-        if name not in self.tasks:
-            self.logger.warning(f"Task {name} {task_id} not found")
-            return None
+        task = None
 
-        task = self.tasks[name].pop(task_id, None)
+        with self._lock:
+            task_group = self.tasks.get(name)
+
+            if task_group:
+                task = task_group.pop(task_id, None)
+
+                if not task_group:
+                    del self.tasks[name]
+
         if not task:
             self.logger.warning(f"Task {name} {task_id} not found")
             return None
 
-        if not self.tasks[name]:
-            del self.tasks[name]
-
         self.logger.info(f"Task {name} {task_id} cleaned up")
         return task
 
-    async def start_training(self, model: str, payload: Dict[str, Any]) -> str:
-        _ = self.loop
+    def start_training(self, model: str, payload: Dict[str, Any]) -> str:
         name = f"{model}.training"
-        if name not in self.tasks:
-            self.tasks[name] = {}
 
-        task = Registry.get(name, None, self.db, payload)
-        task.on_complete = lambda: self.run_in_loop(lambda: self._cleanup_task(name, task.id))
-        self.tasks[name][task.id] = task
+        task = Registry.call(name, None, self.db, payload)
+        task.on_complete = lambda: self._cleanup_task(name, task.id)
+
+        with self._lock:
+            if name not in self.tasks:
+                self.tasks[name] = {}
+
+            self.tasks[name][task.id] = task
 
         return Worker.get_instance().submit(AsyncTask(task))
 
-    async def stop_training(self, model: str, task_id: str) -> str:
+    def stop_training(self, model: str, task_id: str) -> str:
+        task = None
         name = f"{model}.training"
-        task = self.tasks.get(name, {}).get(task_id, None)
+
+        with self._lock:
+            task_group = self.tasks.get(name)
+
+            if task_group:
+                task = task_group.get(task_id, None)
+
         if not task:
             self.logger.warning(f"Task {name} {task_id} not found")
             return ""
@@ -47,9 +61,9 @@ class TrainingService(BaseService):
         task.cancel()
         return task_id
 
-    async def create_samples(self, model: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
+    def create_samples(self, model: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
         site = self.get_site(site_name)
 
         name = f"{model}.{site_name}.samples"
-        task = Registry.get(name, site, self.db, payload)
+        task = Registry.call(name, site, self.db, payload)
         return Worker.get_instance().submit(AsyncTask(task))

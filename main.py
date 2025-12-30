@@ -7,6 +7,7 @@ from core.server.web_server import WebServer
 from core.browser.interceptor import Interceptor
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
+from core.registry.workflows.cron import init_cron_jobs
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.scheduler.cron import Cron
 
@@ -79,6 +80,10 @@ def run_app() -> None:
     logger.info("🔧 Starting cron...")
     Cron.get_instance().start()
     logger.info("✅ Cron started")
+
+    logger.info("🔧 Initializing cron jobs...")
+    init_cron_jobs()
+    logger.info("✅ Cron jobs initialized")
 
     logger.info("🌐 Starting web server...")
     WebServer.get_instance().start()

@@ -3,7 +3,6 @@ from core.server.services.base_service import BaseService
 from core.server.models.browser_models import PagePoolStatus
 
 class BrowserService(BaseService):
-
     def get_page_pool_status(self) -> PagePoolStatus:
         page_pool = Interceptor.get_instance().get_page_pool()
 
