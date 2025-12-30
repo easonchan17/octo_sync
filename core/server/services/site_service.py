@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any
-from core.scheduler.task_executor import TaskExecutor
+from core.scheduler.worker import Worker
 from core.server.services.base_service import BaseService
 from core.scheduler.tasks.base_task import BaseTask, AsyncTask
 from core.store.postgres.models import Site
@@ -45,7 +45,7 @@ class SiteService(BaseService):
         task.on_complete = lambda: self.run_in_loop(lambda: self._cleanup_task(name))
         self.tasks[name] = task
 
-        return TaskExecutor.get_instance().submit_task(AsyncTask(task))
+        return Worker.get_instance().submit(AsyncTask(task))
 
     async def stop_sync(self, site_name: str, resource: str) -> str:
         name = f"sync.{site_name}.{resource}"

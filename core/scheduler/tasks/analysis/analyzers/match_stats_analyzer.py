@@ -7,14 +7,15 @@ from typing import Any, Dict, List, Optional
 from core.utils.html_utils import normalize_team_name, normalize_season_range
 from core.store.postgres.models import (
     MatchResult, GoalAndShotCreation, Passing, Shooting,
-    DefensiveAction, GoalKeeping
+    DefensiveAction, GoalKeeping, MarketOdds
 )
 from ..feature_engineering import (
     FeatureSelector,
     MeanImputer,
     FormulaDeriver,
     TeamTimeSeriesDeriver,
-    EloRatingDeriver
+    EloRatingDeriver,
+    EntropyDeriver
 )
 from ..feature_engineering.constants import (
     HOME_CODE_COL, HOME_TEAM_COL, POINT_COL, SITE_HOST, PAGE_URL_TEMPLATE,
@@ -96,7 +97,40 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         ("home_set_piece_sca_ratio_ema_5", "home_sca_passes_dead_ema_5 / home_sca_ema_5"),
         ("away_set_piece_sca_ratio_ema_5", "away_sca_passes_dead_ema_5 / away_sca_ema_5"),
         ("home_take_on_sca_ratio_ema_5", "home_sca_take_ons_ema_5 / home_sca_ema_5"),
-        ("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5")
+        ("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5"),
+        ("home_open_implied", "1 / home_open_odds"),
+        ("draw_open_implied", "1 / draw_open_odds"),
+        ("away_open_implied", "1 / away_open_odds"),
+        ("home_close_implied", "1 / home_close_odds"),
+        ("draw_close_implied", "1 / draw_close_odds"),
+        ("away_close_implied", "1 / away_close_odds"),
+        ("vig_1x2_open", "home_open_implied + draw_open_implied + away_open_implied"),
+        ("vig_1x2_close", "home_close_implied + draw_close_implied + away_close_implied"),
+        ("home_open_real", "home_open_implied / vig_1x2_open"),
+        ("draw_open_real", "draw_open_implied / vig_1x2_open"),
+        ("away_open_real", "away_open_implied / vig_1x2_open"),
+        ("home_close_real", "home_close_implied / vig_1x2_close"),
+        ("draw_close_real", "draw_close_implied / vig_1x2_close"),
+        ("away_close_real", "away_close_implied / vig_1x2_close"),
+        ("home_real_net", "home_close_real - home_open_real"),
+        ("draw_real_net", "draw_close_real - draw_open_real"),
+        ("away_real_net", "away_close_real - away_open_real"),
+        ("ah_home_open_implied", "1 / ah_home_open_odds"),
+        ("ah_away_open_implied", "1 / ah_away_open_odds"),
+        ("ah_home_close_implied", "1 / ah_home_close_odds"),
+        ("ah_away_close_implied", "1 / ah_away_close_odds"),
+        ("vig_ah_open", "ah_home_open_implied + ah_away_open_implied"),
+        ("vig_ah_close", "ah_home_close_implied + ah_away_close_implied"),
+        ("ah_home_open_real", "ah_home_open_implied / vig_ah_open"),
+        ("ah_away_open_real", "ah_away_open_implied / vig_ah_open"),
+        ("ah_home_close_real", "ah_home_close_implied / vig_ah_close"),
+        ("ah_away_close_real", "ah_away_close_implied / vig_ah_close"),
+        ("ah_home_real_net", "ah_home_close_real - ah_home_open_real"),
+        ("ah_away_real_net", "ah_away_close_real - ah_away_open_real"),
+        ("ah_line_change", "ah_line_close - ah_line_open"),
+        ("home_bias_ratio", "home_open_odds / away_open_odds"),
+        ("home_log_return", "log(home_close_real / home_open_real)"),
+        ("ah_home_log_return", "log(ah_home_close_real / ah_home_open_real)")
     ]
 
     HOME_AWAY_DIFF_FEATURES = [
@@ -143,7 +177,18 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         "home_sca_take_ons_ema_5", "away_sca_take_ons_ema_5", "sca_take_ons_ema_5_diff",
         "home_passes_into_penalty_area_ema_5", "away_passes_into_penalty_area_ema_5", "passes_into_penalty_area_ema_5_diff",
         "home_creativity_share_ema_5", "away_creativity_share_ema_5", "creativity_share_ema_5_diff",
-        "home_final_third_entry_share_ema_5", "away_final_third_entry_share_ema_5", "final_third_entry_share_ema_5_diff"
+        "home_final_third_entry_share_ema_5", "away_final_third_entry_share_ema_5", "final_third_entry_share_ema_5_diff",
+        "ah_line_open", "ah_line_close","ah_line_change",
+        "home_open_real", "draw_open_real", "away_open_real",
+        "home_close_real", "draw_close_real", "away_close_real",
+        "home_real_net", "draw_real_net", "away_real_net",
+        "ah_home_open_real", "ah_away_open_real",
+        "ah_home_close_real", "ah_away_close_real",
+        "ah_home_real_net", "ah_away_real_net",
+        "vig_1x2_close", "vig_ah_close",
+        "entropy_1x2_open", "entropy_1x2_close",
+        "home_log_return", "ah_home_log_return",
+        "home_bias_ratio"
         # "home_gsaa_ema_5", "away_gsaa_ema_5", "gsaa_ema_5_diff",
         # "home_possession_ema_5", "away_possession_ema_5", "possession_ema_5_diff",
         # "home_passes_ema_5", "away_passes_ema_5", "passes_ema_5_diff",
@@ -187,6 +232,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             goalkeeping_home = aliased(GoalKeeping)
             goalkeeping_away = aliased(GoalKeeping)
 
+            market_odds = aliased(MarketOdds)
+
             query = session.query(
                 MatchResult,
                 gca_home,
@@ -198,7 +245,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                 defensive_home,
                 defensive_away,
                 goalkeeping_home,
-                goalkeeping_away
+                goalkeeping_away,
+                market_odds
             ).outerjoin(
                 gca_home,
                 and_(
@@ -259,6 +307,9 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                     MatchResult.match_code == goalkeeping_away.match_code,
                     MatchResult.away_code == goalkeeping_away.team_code
                 )
+            ).outerjoin(
+                market_odds,
+                MatchResult.match_code == market_odds.match_code
             ).filter(
                 MatchResult.comp_code == comp_code,
                 MatchResult.season >= min_season,
@@ -280,6 +331,7 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                 defensive_away_obj = row[8]
                 goalkeeping_home_obj = row[9]
                 goalkeeping_away_obj = row[10]
+                market_odds_obj = row[11]
 
                 record = {
                     "match_code": match_result.match_code,
@@ -431,16 +483,27 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                         "away_gk_avg_distance_def_actions": goalkeeping_away_obj.avg_distance_def_actions if goalkeeping_away_obj.avg_distance_def_actions else 0
                     })
 
+                if market_odds_obj:
+                    record.update({
+                        "home_open_odds": market_odds_obj.home_open,
+                        "draw_open_odds": market_odds_obj.draw_open,
+                        "away_open_odds": market_odds_obj.away_open,
+                        "home_close_odds": market_odds_obj.home_close,
+                        "draw_close_odds": market_odds_obj.draw_close,
+                        "away_close_odds": market_odds_obj.away_close,
+                        "ah_line_open": market_odds_obj.ah_line_open,
+                        "ah_home_open_odds": market_odds_obj.ah_home_open,
+                        "ah_away_open_odds": market_odds_obj.ah_away_open,
+                        "ah_line_close": market_odds_obj.ah_line_close,
+                        "ah_home_close_odds": market_odds_obj.ah_home_close,
+                        "ah_away_close_odds": market_odds_obj.ah_away_close
+                    })
+
                 data.append(record)
 
             return data
 
-
-    def do_feature_engineering(
-        self,
-        stats: List[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Optional[pd.DataFrame]:
+    def do_feature_engineering(self, stats: List[Dict[str, Any]], options: Dict[str, Any]) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
         df = FeatureSelector(df).filter_rows(
             NOTES_COL,
@@ -486,6 +549,9 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             formula = f"{HOME_VENUE}_{feature} - {AWAY_VENUE}_{feature}"
             FormulaDeriver(df).derive(name, formula)
 
+        EntropyDeriver(df).derive("entropy_1x2_open", ['home_open_real', 'draw_open_real', 'away_open_real'])
+        EntropyDeriver(df).derive("entropy_1x2_close", ['home_close_real', 'draw_close_real', 'away_close_real'])
+
         df[PAGE_URL_COL] = df.apply(lambda row: PAGE_URL_TEMPLATE.format(
             season=normalize_season_range(row[SEASON_COL]),
             team_code=row[HOME_CODE_COL],
@@ -494,4 +560,5 @@ class MatchStatsAnalyzer(BaseAnalyzer):
         df[MATCH_REPORT_COL] = df[MATCH_REPORT_COL].apply(lambda uri: urljoin(SITE_HOST, uri))
 
         required_features = options.get("required_features", self.REQUIRED_FEATURES)
+
         return FeatureSelector(df).select_columns(required_features)
