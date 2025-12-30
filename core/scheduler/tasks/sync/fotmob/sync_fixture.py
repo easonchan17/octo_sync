@@ -38,7 +38,6 @@ class SyncFixture(BaseTask):
             self.synchronizer.sync(
                 self.site,
                 league_name,
-                round,
                 fixtures
             )
         except Exception as e:

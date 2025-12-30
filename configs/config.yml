@@ -12,7 +12,7 @@ task_thread_pool:
   max_workers: 10
 
 browser:
-  headless: true
+  headless: false
   channel:  "chrome"
   page_pool_size: 5
 

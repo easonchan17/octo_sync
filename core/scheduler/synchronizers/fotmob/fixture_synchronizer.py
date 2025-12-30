@@ -6,7 +6,7 @@ from core.store.postgres.models.fotmob.fixture import Fixture
 from ..base_synchronizer import BaseSynchronizer
 
 class FixtureSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, league_name: str, round: int, fixtures: List[Fixture]) -> None:
+    def sync(self, site: Site, league_name: str, fixtures: List[Fixture]) -> None:
         if not fixtures:
             self.logger.warning(f"No fixtures to sync from {site.name}")
             return
@@ -55,4 +55,4 @@ class FixtureSynchronizer(BaseSynchronizer):
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
-            self.logger.info(f"Sync {site.name} {league_name} {round} fixtures completed. upserted: {upserted_count}")
+            self.logger.info(f"Sync {site.name} {league_name} fixtures completed. upserted: {upserted_count}")
