@@ -9,7 +9,7 @@ class BrowserController(BaseController):
         self.browser_service = BrowserService()
         self.router.get("/browser/page-pool/status")(self.get_page_pool_status)
 
-    async def get_page_pool_status(self) -> PagePoolStatus:
+    def get_page_pool_status(self) -> PagePoolStatus:
         try:
             return self.browser_service.get_page_pool_status()
         except ValueError as e:

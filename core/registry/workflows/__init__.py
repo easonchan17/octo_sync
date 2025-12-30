@@ -3,6 +3,7 @@ from . import zcy
 from . import winball
 from . import pinnacle
 from . import fotmob
+from . import cron
 
 __all__ = [
     'fbref',
@@ -10,4 +11,5 @@ __all__ = [
     'winball',
     'pinnacle',
     'fotmob',
+    'cron',
 ]

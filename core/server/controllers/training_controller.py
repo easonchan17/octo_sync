@@ -11,27 +11,27 @@ class TrainingController(BaseController):
         self.router.post("/models/{model}/trainings", response_model=str)(self.start_training)
         self.router.delete("/models/{model}/trainings/{task_id}", response_model=str)(self.stop_training)
 
-    async def create_samples(self, model: str, site_name: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
+    def create_samples(self, model: str, site_name: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
         try:
-            return await self.training_service.create_samples(model, site_name, payload)
+            return self.training_service.create_samples(model, site_name, payload)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             self.logger.error(f"Failed to generate samples: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to process features: {str(e)}")
 
-    async def start_training(self, model: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
+    def start_training(self, model: str, payload: Optional[Dict[str, Any]] = Body(default=None)) -> str:
         try:
-            return await self.training_service.start_training(model, payload)
+            return self.training_service.start_training(model, payload)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             self.logger.error(f"Failed to start training: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to start training: {str(e)}")
 
-    async def stop_training(self, model: str, task_id: str) -> str:
+    def stop_training(self, model: str, task_id: str) -> str:
         try:
-            return await self.training_service.stop_training(model, task_id)
+            return self.training_service.stop_training(model, task_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:

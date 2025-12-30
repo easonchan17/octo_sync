@@ -2,10 +2,9 @@ import os
 from typing import Generator
 from sqlalchemy import text
 from typing import List, Any
-from sqlalchemy.orm import Session
 from contextlib import contextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from core.utils.singleton import Singleton
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager

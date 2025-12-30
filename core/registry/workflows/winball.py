@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any
-from core.registry.registry import Registry
+from core.registry import Registry
 from core.scheduler.tasks.analysis.training.winball.winball_trainer import WinballTrainer
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
@@ -8,7 +8,7 @@ from core.scheduler.tasks.analysis.inference.base_predictor import BasePredictor
 from core.scheduler.tasks.analysis.inference.winball.winball_predictor import WinballPredictor
 from core.scheduler.tasks.analysis.analyzers.match_stats_aggregator import MatchStatsAggregator
 
-@Registry.register('winball.fbref.samples')
+@Registry.factory('winball.fbref.samples')
 def create_winball_fbref_samples_task(
     site: Site,
     db: PostgreSQLManager,
@@ -18,7 +18,7 @@ def create_winball_fbref_samples_task(
         MatchStatsAggregator(site, payload)
     )
 
-@Registry.register('winball.training')
+@Registry.factory('winball.training')
 def create_winball_training_task(
     site: Site,
     db: PostgreSQLManager,
@@ -31,7 +31,7 @@ def create_winball_training_task(
         WinballTrainer(site, payload)
     )
 
-@Registry.register('winball.inference')
+@Registry.factory('winball.inference')
 def create_winball_inference_instance(
     site: Site,
     db: PostgreSQLManager,
