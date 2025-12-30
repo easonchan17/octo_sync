@@ -2,12 +2,13 @@
 import signal
 import argparse
 from threading import Event
+from core.scheduler.worker import Worker
 from core.server.web_server import WebServer
 from core.browser.interceptor import Interceptor
-from core.scheduler.task_executor import TaskExecutor
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.scheduler.cron import Cron
 
 logger = LoggerManager.get_instance().get_logger(__name__)
 shutdown_event = Event()
@@ -15,13 +16,17 @@ shutdown_event = Event()
 def signal_handler(signum, frame) -> None:
     logger.info(f"Received signal {signum}, shutting down gracefully...")
 
+    logger.info("🔧 Stopping cron...")
+    Cron.get_instance().stop()
+    logger.info("✅ Cron stopped")
+
     logger.info("🔧 Stopping web server...")
     WebServer.get_instance().stop()
     logger.info("✅ Web server stopped")
 
-    logger.info("🔧 Stopping task manager...")
-    TaskExecutor.get_instance().stop()
-    logger.info("✅ Task manager stopped")
+    logger.info("🔧 Stopping worker...")
+    Worker.get_instance().stop()
+    logger.info("✅ Worker stopped")
 
     logger.info("🔧 Stopping network interceptor...")
     Interceptor.get_instance().stop()
@@ -67,9 +72,13 @@ def run_app() -> None:
     Interceptor.get_instance().start()
     logger.info("✅ Network interceptor started")
 
-    logger.info("🔧 Starting task manager...")
-    TaskExecutor.get_instance().start()
-    logger.info("✅ Task manager started")
+    logger.info("🔧 Starting worker...")
+    Worker.get_instance().start()
+    logger.info("✅ Worker started")
+
+    logger.info("🔧 Starting cron...")
+    Cron.get_instance().start()
+    logger.info("✅ Cron started")
 
     logger.info("🌐 Starting web server...")
     WebServer.get_instance().start()

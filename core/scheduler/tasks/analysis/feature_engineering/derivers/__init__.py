@@ -7,6 +7,7 @@ from .time_series_deriver import (
     PlayerTimeSeriesDeriver
 )
 from .elo_rating_deriver import EloRatingDeriver
+from .entropy_deriver import EntropyDeriver
 
 __all__ = [
     'BaseDeriver',
@@ -15,5 +16,6 @@ __all__ = [
     'TimeSeriesDeriver',
     'TeamTimeSeriesDeriver',
     'PlayerTimeSeriesDeriver',
-    'EloRatingDeriver'
+    'EloRatingDeriver',
+    'EntropyDeriver'
 ]

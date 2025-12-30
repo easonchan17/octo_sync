@@ -174,3 +174,15 @@ training:
             colsample_bytree: { type: Real, low: 0.5, high: 0.9 }
             reg_alpha: { type: Real, low: 1.0e-5, high: 10, prior: log-uniform }
             reg_lambda: { type: Real, low: 1.0e-5, high: 10, prior: log-uniform }
+
+crons:
+  - name: "sync_fixtures"
+    trigger:
+      hour: "10"
+      minute: "00"
+    action:
+      task: "sync.fotmob.fixtures"
+      site: "fotmob"
+      payload:
+        league_id: "47"
+        league_name: "premier-league"

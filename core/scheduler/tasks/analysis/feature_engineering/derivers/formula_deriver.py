@@ -1,4 +1,4 @@
-import pandas as pd
+import numpy as np
 from typing import Optional
 from .base_deriver import BaseDeriver
 from ..constants import DEFAULT_DECIMALS
@@ -15,7 +15,7 @@ class FormulaDeriver(BaseDeriver):
         if not formula:
             raise ValueError("Formula cannot be empty")
 
-        calculated_series = self.df.eval(formula)
+        calculated_series = self.df.eval(formula, local_dict={'np': np, 'log': np.log})
         if decimals is not None:
             calculated_series = calculated_series.round(decimals)
 
