@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
-from core.scheduler.tasks.base_task import BaseTask, AsyncTask
-from core.scheduler.task_executor import TaskExecutor
+from core.scheduler.worker import Worker
 from core.server.services.base_service import BaseService
+from core.scheduler.tasks.base_task import BaseTask, AsyncTask
 from core.registry import Registry
 
 class TrainingService(BaseService):
@@ -35,7 +35,7 @@ class TrainingService(BaseService):
         task.on_complete = lambda: self.run_in_loop(lambda: self._cleanup_task(name, task.id))
         self.tasks[name][task.id] = task
 
-        return TaskExecutor.get_instance().submit_task(AsyncTask(task))
+        return Worker.get_instance().submit(AsyncTask(task))
 
     async def stop_training(self, model: str, task_id: str) -> str:
         name = f"{model}.training"
@@ -52,4 +52,4 @@ class TrainingService(BaseService):
 
         name = f"{model}.{site_name}.samples"
         task = Registry.get(name, site, self.db, payload)
-        return TaskExecutor.get_instance().submit_task(AsyncTask(task))
+        return Worker.get_instance().submit(AsyncTask(task))

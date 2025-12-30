@@ -5,12 +5,12 @@ from core.utils.singleton import Singleton
 from core.config.config_manager import ConfigManager
 from .tasks.base_task import BaseTask
 
-class TaskExecutor(Thread, Singleton):
+class Worker(Thread, Singleton):
     def __init__(self) -> None:
         super().__init__()
         self.task_queue = Queue()
 
-    def submit_task(self, task: BaseTask) -> str:
+    def submit(self, task: BaseTask) -> str:
         self.task_queue.put(task)
         return task.id
 
@@ -30,12 +30,12 @@ class TaskExecutor(Thread, Singleton):
                     if task.is_async:
                         thread_pool.submit(task.execute)
                         tasks.append(task)
-                        self.logger.info(f"Execute task: {task.id} {task.name}")
+                        self.logger.info(f"Worker executing task: {task.id} {task.name}")
                     else:
                         task.execute()
-                        self.logger.info(f"Execute task: {task.id} {task.name}")
+                        self.logger.info(f"Worker executing task: {task.id} {task.name}")
             except Exception as e:
-                self.logger.error(f"Error in TaskManager thread: {e}")
+                self.logger.error(f"Error in Worker thread: {e}")
             finally:
                 self.task_queue.task_done()
 
