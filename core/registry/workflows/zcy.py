@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any
-from core.registry.registry import Registry
+from core.registry import Registry
 from core.scheduler.tasks.sync.zcy import (
     SyncBrand,
     SyncCategory,
@@ -12,7 +12,7 @@ from core.store.postgres.models import (
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 
-@Registry.register('sync.zcy.category')
+@Registry.factory('sync.zcy.category')
 def create_sync_zcy_category_task(
     site: Site,
     db: PostgreSQLManager,
@@ -28,7 +28,7 @@ def create_sync_zcy_category_task(
         SyncCategory(site)
     )
 
-@Registry.register('sync.zcy.sub_category')
+@Registry.factory('sync.zcy.sub_category')
 def create_sync_zcy_sub_category_task(
     site: Site,
     db: PostgreSQLManager,
@@ -44,7 +44,7 @@ def create_sync_zcy_sub_category_task(
         SyncSubCategory(site)
     )
 
-@Registry.register('sync.zcy.brand')
+@Registry.factory('sync.zcy.brand')
 def create_sync_zcy_brand_task(
     site: Site,
     db: PostgreSQLManager,
@@ -60,7 +60,7 @@ def create_sync_zcy_brand_task(
         SyncBrand(site)
     )
 
-@Registry.register('sync.zcy.product')
+@Registry.factory('sync.zcy.product')
 def create_sync_zcy_product_task(
     site: Site,
     db: PostgreSQLManager,

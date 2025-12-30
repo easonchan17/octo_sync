@@ -15,7 +15,7 @@ class InferenceService(BaseService):
 
         training_record = self.get_training_record(version)
 
-        predictor = Registry.get(name=f"{family}.inference")
+        predictor = Registry.call(name=f"{family}.inference")
         if not predictor.load_model(training_record):
             raise ValueError(f"Failed to load model {version}")
 

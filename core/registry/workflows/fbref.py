@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any
-from core.registry.registry import Registry
+from core.registry import Registry
 from core.scheduler.tasks.sync.fbref import (
     SyncCompTeam,
     SyncDefensiveAction,
@@ -21,7 +21,7 @@ from core.store.postgres.models import (
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 
-@Registry.register('sync.fbref.comp_teams')
+@Registry.factory('sync.fbref.comp_teams')
 def create_sync_fbref_comp_teams_task(
     site: Site,
     db: PostgreSQLManager,
@@ -36,7 +36,7 @@ def create_sync_fbref_comp_teams_task(
         SyncCompTeam(site, payload)
     )
 
-@Registry.register('sync.fbref.match_results')
+@Registry.factory('sync.fbref.match_results')
 def create_sync_fbref_match_results_task(
     site: Site,
     db: PostgreSQLManager,
@@ -51,7 +51,7 @@ def create_sync_fbref_match_results_task(
         SyncMatchResult(site, payload)
     )
 
-@Registry.register('sync.fbref.gca')
+@Registry.factory('sync.fbref.gca')
 def create_sync_fbref_gca_task(
     site: Site,
     db: PostgreSQLManager,
@@ -66,7 +66,7 @@ def create_sync_fbref_gca_task(
         SyncGoalAndShotCreation(site, payload)
     )
 
-@Registry.register('sync.fbref.passing')
+@Registry.factory('sync.fbref.passing')
 def create_sync_fbref_passing_task(
     site: Site,
     db: PostgreSQLManager,
@@ -81,7 +81,7 @@ def create_sync_fbref_passing_task(
         SyncPassing(site, payload)
     )
 
-@Registry.register('sync.fbref.defensive_actions')
+@Registry.factory('sync.fbref.defensive_actions')
 def create_sync_fbref_defensive_actions_task(
     site: Site,
     db: PostgreSQLManager,
@@ -96,7 +96,7 @@ def create_sync_fbref_defensive_actions_task(
         SyncDefensiveAction(site, payload)
     )
 
-@Registry.register('sync.fbref.shooting')
+@Registry.factory('sync.fbref.shooting')
 def create_sync_fbref_shooting_task(
     site: Site,
     db: PostgreSQLManager,
@@ -111,7 +111,7 @@ def create_sync_fbref_shooting_task(
         SyncShooting(site, payload)
     )
 
-@Registry.register('sync.fbref.goalkeeping')
+@Registry.factory('sync.fbref.goalkeeping')
 def create_sync_fbref_goalkeeping_task(
     site: Site,
     db: PostgreSQLManager,
@@ -126,7 +126,7 @@ def create_sync_fbref_goalkeeping_task(
         SyncGoalKeeping(site, payload)
     )
 
-@Registry.register('sync.fbref.player_match_stats')
+@Registry.factory('sync.fbref.player_match_stats')
 def create_sync_fbref_player_match_stats_task(
     site: Site,
     db: PostgreSQLManager,
@@ -141,7 +141,7 @@ def create_sync_fbref_player_match_stats_task(
         SyncPlayerMatchStats(site, payload)
     )
 
-@Registry.register('sync.fbref.market_odds')
+@Registry.factory('sync.fbref.market_odds')
 def create_sync_fbref_market_odds_task(
     site: Site,
     db: PostgreSQLManager,
@@ -156,7 +156,7 @@ def create_sync_fbref_market_odds_task(
         SyncMarketOdds(site, payload)
     )
 
-@Registry.register('sync.fbref.batch')
+@Registry.factory('sync.fbref.batch')
 def create_sync_fbref_batch_task(
     site: Site,
     db: PostgreSQLManager,

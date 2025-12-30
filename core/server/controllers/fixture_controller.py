@@ -14,7 +14,7 @@ class FixtureController(BaseController):
         self.router.get("/fixtures", response_model=FixtureListResponse)(self.get_fixtures)
         self.router.get("/fixtures/{match_id}", response_model=FixtureResponse)(self.get_fixture)
 
-    async def get_fixtures(
+    def get_fixtures(
         self,
         league_id: Optional[int] = Query(None, description="Filter by league ID"),
         start_date: Optional[datetime] = Query(None, description="Filter by start date"),
@@ -40,7 +40,7 @@ class FixtureController(BaseController):
             self.logger.error(f"Failed to get fixtures: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get fixtures: {str(e)}")
 
-    async def get_fixture(self, match_id: int) -> FixtureResponse:
+    def get_fixture(self, match_id: int) -> FixtureResponse:
         try:
             fixture = self.fixture_service.get_fixture(match_id)
             if not fixture:
