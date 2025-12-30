@@ -4,8 +4,9 @@ def init_cron_jobs() -> None:
     from core.scheduler.cron import Cron
     cron = Cron.get_instance()
 
-    for func, metadata in Registry.filter(RegistryKind.CRON):
-        cron.add_job(func, **metadata["trigger"])
+    jobs = Registry.filter(RegistryKind.CRON)
+    for target, metadata in jobs:
+        cron.add_job(target, **metadata["trigger"])
 
 @Registry.cron('cron.sync_fotmob_fixtures', minute="*/1")
 def sync_fotmob_fixtures() -> None:
