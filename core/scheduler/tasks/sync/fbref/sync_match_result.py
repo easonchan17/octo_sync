@@ -66,10 +66,10 @@ class SyncMatchResult(BaseTask):
 
                 match_results = [r.to_dict(team_name, team_code, season) for r in html_results]
                 match_results.sort(key=lambda x: x.get(MatchResult.kickoff_time.key))
-                last_synced_match_time = match_results[-1].get(MatchResult.kickoff_time.key)
+                last_synced_time = match_results[-1].get(MatchResult.kickoff_time.key)
 
                 self.synchronizer.sync(
-                    self.site, team_name, team_code, season, last_synced_match_time, match_results
+                    self.site, team_name, team_code, season, last_synced_time, match_results
                 )
             except Exception as e:
                 self.logger.error(f"Failed to sync {team_name} {season_range} match results from {self.site.name}: {e}")

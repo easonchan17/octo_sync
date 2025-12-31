@@ -8,12 +8,15 @@ class Shooting(Base, StatusMixin, DictMixin):
         Index('idx_shooting_created_at', 'created_at'),
         Index('idx_shooting_updated_at', 'updated_at'),
         Index('idx_shooting_match_team', 'match_code', 'team_code', unique=True),
+        Index('idx_shooting_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}'}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_code = Column(CHAR(8), nullable=False)
     team_code = Column(CHAR(8), nullable=False)
+
+    kickoff_time = Column(DateTime(timezone=True), nullable=False)
 
     goals = Column(Integer, nullable=True)
     shots = Column(Integer, nullable=True)

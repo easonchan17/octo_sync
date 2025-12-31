@@ -1,6 +1,7 @@
-from datetime import datetime, timezone
-from typing import List, Any, Dict
+import time
 from bs4 import BeautifulSoup
+from typing import List, Any, Dict
+from datetime import datetime, timezone
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.shooting import Shooting
 from core.utils.html_utils import (
@@ -39,13 +40,12 @@ class ShootingReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch: {row}")
+                    self.logger.error(f"No venue epoch")
                     continue
 
-                kickoff_utc_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
-                now_utc_time = datetime.now(timezone.utc)
-                if kickoff_utc_time > now_utc_time:
-                    self.logger.warning(f"{kickoff_utc_time} > {now_utc_time}")
+                now = int(time.time())
+                if int(venue_epoch) > now:
+                    self.logger.warning(f"Skipping shooting for future match: {venue_epoch} > {now}")
                     continue
 
                 date = row.find("th", {"data-stat": "date"})
@@ -60,8 +60,10 @@ class ShootingReceiver(BaseReceiver):
                 pens_att = row.find("td", {"data-stat": "pens_att"})
                 xg = row.find("td", {"data-stat": "xg"})
                 npxg = row.find("td", {"data-stat": "npxg"})
+                kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 
                 shooting = {
+                    Shooting.kickoff_time.key: kickoff_time,
                     Shooting.match_code.key: extract_match_code_from_cell(date),
                     Shooting.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
                     Shooting.goals.key: get_number(goals),

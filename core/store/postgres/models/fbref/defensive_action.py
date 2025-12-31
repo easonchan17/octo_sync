@@ -9,12 +9,15 @@ class DefensiveAction(Base, StatusMixin, DictMixin):
         Index('idx_defensive_actions_created_at', 'created_at'),
         Index('idx_defensive_actions_updated_at', 'updated_at'),
         Index('idx_defensive_actions_match_team', 'match_code', 'team_code', unique=True),
+        Index('idx_defensive_actions_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}'}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_code = Column(CHAR(8), nullable=False)
     team_code = Column(CHAR(8), nullable=False)
+
+    kickoff_time = Column(DateTime(timezone=True), nullable=False)
 
     tackles = Column(Integer, nullable=True)
     tackles_won = Column(Integer, nullable=True)

@@ -1,11 +1,20 @@
 from typing import List, Dict, Any
+from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import GoalKeeping, Site, MatchStatsSyncFlag
 from .team_level_synchronizer import TeamLevelSynchronizer
 
 
 class GoalKeepingSynchronizer(TeamLevelSynchronizer):
-    def sync(self, site: Site, team_name: str, team_code: str, season: int, goal_keepings: List[Dict[str, Any]]) -> None:
+    def sync(
+        self,
+        site: Site,
+        team_name: str,
+        team_code: str,
+        season: int,
+        last_synced_time: datetime,
+        goal_keepings: List[Dict[str, Any]]
+    ) -> None:
         season_range = f"{season}-{season+1}"
         if not goal_keepings:
             self.logger.warning(f"No {team_name} {season_range} goal keepings to sync from {site.name}")
@@ -28,5 +37,11 @@ class GoalKeepingSynchronizer(TeamLevelSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {team_name} {season_range} goal keepings from {site.name} completed. upserted: {upserted_count}")
 
-            self.add_sync_flag(session, team_code, season, MatchStatsSyncFlag.GOAL_KEEPING.value)
+            self.update_sync_state(
+                session,
+                team_code,
+                season,
+                MatchStatsSyncFlag.GOAL_KEEPING,
+                last_synced_time
+            )
             self.logger.info(f"Mark {site.name} {team_name} {season_range} goal keepings as synced")

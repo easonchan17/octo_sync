@@ -177,7 +177,7 @@ class MatchResultReceiver(BaseReceiver):
 
             venue_epoch = extract_venue_epoch(row)
             if not venue_epoch:
-                self.logger.warning(f"No venue epoch")
+                self.logger.error(f"No venue epoch")
                 continue
 
             now = int(time.time())

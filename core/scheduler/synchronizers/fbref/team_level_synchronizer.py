@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional
-from sqlalchemy import func, and_, or_, update
-from sqlalchemy.dialects.postgresql import insert
+from datetime import datetime
+from typing import List, Any, Optional
+from sqlalchemy import func, and_, or_
+from sqlalchemy.dialects.postgresql import insert, JSONB
 from core.store.postgres.models import Site, CompTeam, MatchStatsSyncState
+from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
 from ..base_synchronizer import BaseSynchronizer
-
 
 class TeamLevelSynchronizer(BaseSynchronizer):
     def get_pending_tasks(
@@ -46,51 +47,55 @@ class TeamLevelSynchronizer(BaseSynchronizer):
 
             return query.order_by(CompTeam.season, CompTeam.team_code).all()
 
-    def add_sync_flag(
+
+    def update_sync_state(
         self,
         session: Session,
         team_code: str,
         season: int,
-        flag: int
-    ) -> bool:
-        insert_flag_stmt = insert(MatchStatsSyncState).values(
+        flag: MatchStatsSyncFlag,
+        last_synced_time: datetime
+    ) -> None:
+        flag_value = flag.value
+        flag_name = flag.name.lower()
+        new_state_times = func.jsonb_build_object(flag_name, last_synced_time)
+
+        insert_stmt = insert(MatchStatsSyncState).values(
             team_code=team_code,
             season=season,
-            sync_flags=flag
+            sync_flags=flag_value,
+            last_synced_times=new_state_times
         )
-        insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
+        insert_stmt = insert_stmt.on_conflict_do_update(
             index_elements=['team_code', 'season'],
             set_={
-                'sync_flags': MatchStatsSyncState.sync_flags.op('|')(flag),
+                'sync_flags': MatchStatsSyncState.sync_flags.op('|')(flag_value),
+                'last_synced_times': func.coalesce(
+                    MatchStatsSyncState.last_synced_times,
+                    func.cast('{}', JSONB)
+                ).op('||')(new_state_times),
                 'updated_at': func.now()
             }
         )
-        session.execute(insert_flag_stmt)
+        session.execute(insert_stmt)
 
-    def update_sync_state(
+    def update_latest_match_time(
         self,
-        session,
+        session: Session,
         team_code: str,
         season: int,
-        values: Dict[str, Any]
-    ) -> bool:
-        if not values:
-            raise ValueError("Values cannot be empty")
-
-        valid_columns = {col.key for col in MatchStatsSyncState.columns}
-        pending_values = {key: val for key, val in values.items() if key in valid_columns}
-
-        if not pending_values:
-            raise ValueError("No valid columns found to update")
-
-        update_stmt = update(MatchStatsSyncState).where(
-            and_(
-                MatchStatsSyncState.team_code == team_code,
-                MatchStatsSyncState.season == season
-            )
-        ).values(
-            pending_values
-        ).execution_options(synchronize_session="fetch")
-
-        result = session.execute(update_stmt)
-        return result.rowcount > 0
+        latest_match_time: datetime
+    ) -> None:
+        insert_stmt = insert(MatchStatsSyncState).values(
+            team_code=team_code,
+            season=season,
+            latest_match_time=latest_match_time
+        )
+        insert_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=['team_code', 'season'],
+            set_={
+                'latest_match_time': latest_match_time,
+                'updated_at': func.now()
+            }
+        )
+        session.execute(insert_stmt)

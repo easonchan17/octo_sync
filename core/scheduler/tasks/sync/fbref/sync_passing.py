@@ -5,6 +5,7 @@ from core.utils.html_utils import normalize_team_name
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
+from core.store.postgres.models.fbref.passing import Passing
 from core.scheduler.synchronizers.fbref.passing_synchronizer import PassingSynchronizer
 
 
@@ -63,8 +64,11 @@ class SyncPassing(BaseTask):
                     self.logger.warning(f"No passing for {page_url}")
                     continue
 
+                passings.sort(key=lambda x: x.get(Passing.kickoff_time.key))
+                last_synced_time = passings[-1].get(Passing.kickoff_time.key)
+
                 self.synchronizer.sync(
-                    self.site, team_name, team_code, season, passings
+                    self.site, team_name, team_code, season, last_synced_time, passings
                 )
             except Exception as e:
                 self.logger.error(f"Failed to sync {team_name} {season_range} passing from {self.site.name}: {e}")

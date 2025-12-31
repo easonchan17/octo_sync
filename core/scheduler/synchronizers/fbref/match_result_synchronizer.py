@@ -12,7 +12,7 @@ class MatchResultSynchronizer(TeamLevelSynchronizer):
         team_name: str,
         team_code: str,
         season: int,
-        last_synced_match_time: datetime,
+        last_synced_time: datetime,
         match_results: List[Dict[str, Any]]
     ) -> None:
         season_range = f"{season}-{season+1}"
@@ -38,10 +38,11 @@ class MatchResultSynchronizer(TeamLevelSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {team_name} {season_range} match results from {site.name} completed. upserted: {upserted_count}")
 
-            self.add_sync_flag(session, team_code, season, MatchStatsSyncFlag.MATCH_RESULT.value)
-
             self.update_sync_state(
-                session, team_code, season, {'last_synced_match_time': last_synced_match_time}
+                session,
+                team_code,
+                season,
+                MatchStatsSyncFlag.MATCH_RESULT,
+                last_synced_time
             )
-
             self.logger.info(f"Mark {site.name} {team_name} {season_range} match results as synced")
