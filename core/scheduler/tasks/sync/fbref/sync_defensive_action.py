@@ -5,6 +5,7 @@ from core.utils.html_utils import normalize_team_name
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
+from core.store.postgres.models.fbref.defensive_action import DefensiveAction
 from core.scheduler.synchronizers.fbref.defensive_action_synchronizer import DefensiveActionSynchronizer
 
 
@@ -63,8 +64,11 @@ class SyncDefensiveAction(BaseTask):
                     self.logger.warning(f"No defensive actions for {page_url}")
                     continue
 
+                defensive_actions.sort(key=lambda x: x.get(DefensiveAction.kickoff_time.key))
+                last_synced_time = defensive_actions[-1].get(DefensiveAction.kickoff_time.key)
+
                 self.synchronizer.sync(
-                    self.site, team_name, team_code, season, defensive_actions
+                    self.site, team_name, team_code, season, last_synced_time, defensive_actions
                 )
             except Exception as e:
                 self.logger.error(f"Failed to sync {team_name} {season_range} defensive actions from {self.site.name}: {e}")

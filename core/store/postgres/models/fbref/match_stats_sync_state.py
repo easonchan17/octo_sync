@@ -1,7 +1,8 @@
 from enum import IntFlag
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index, BigInteger
+from sqlalchemy.dialects.postgresql import JSONB
 from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, String, DateTime, Index, BigInteger
 
 class MatchStatsSyncFlag(IntFlag):
     MATCH_RESULT = 1
@@ -18,7 +19,6 @@ class MatchStatsSyncState(Base, StatusMixin, DictMixin):
         Index('idx_match_stats_sync_state_updated_at', 'updated_at'),
         Index('idx_match_stats_sync_state_team_code_season', 'team_code', 'season', unique=True),
         Index('idx_match_stats_sync_state_latest_match_time', 'latest_match_time'),
-        Index('idx_match_stats_sync_state_last_synced_match_time', 'last_synced_match_time'),
         {'schema': '{schema}'}
     )
 
@@ -28,7 +28,7 @@ class MatchStatsSyncState(Base, StatusMixin, DictMixin):
     sync_flags = Column(BigInteger, nullable=False, default=0)
 
     latest_match_time = Column(DateTime(timezone=True), nullable=True)
-    last_synced_match_time = Column(DateTime(timezone=True), nullable=True)
+    last_synced_times = Column(JSONB, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())

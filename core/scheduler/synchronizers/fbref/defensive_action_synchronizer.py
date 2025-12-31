@@ -1,11 +1,20 @@
 from typing import List, Dict, Any
+from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import DefensiveAction, Site, MatchStatsSyncFlag
 from .team_level_synchronizer import TeamLevelSynchronizer
 
 
 class DefensiveActionSynchronizer(TeamLevelSynchronizer):
-    def sync(self, site: Site, team_name: str, team_code: str, season: int, defensive_actions: List[Dict[str, Any]]) -> None:
+    def sync(
+        self,
+        site: Site,
+        team_name: str,
+        team_code: str,
+        season: int,
+        last_synced_time: datetime,
+        defensive_actions: List[Dict[str, Any]]
+    ) -> None:
         season_range = f"{season}-{season+1}"
         if not defensive_actions:
             self.logger.warning(f"No {team_name} {season_range} defensive actions to sync from {site.name}")
@@ -28,5 +37,11 @@ class DefensiveActionSynchronizer(TeamLevelSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {team_name} {season_range} defensive actions from {site.name} completed. upserted: {upserted_count}")
 
-            self.add_sync_flag(session, team_code, season, MatchStatsSyncFlag.DEFENSIVE_ACTION.value)
+            self.update_sync_state(
+                session,
+                team_code,
+                season,
+                MatchStatsSyncFlag.DEFENSIVE_ACTION,
+                last_synced_time
+            )
             self.logger.info(f"Mark {site.name} {team_name} {season_range} defensive actions as synced")
