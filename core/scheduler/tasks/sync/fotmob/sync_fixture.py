@@ -35,10 +35,12 @@ class SyncFixture(BaseTask):
                 return
 
             fixtures = responses[0]
+            if not fixtures:
+                self.logger.warning(f"No fixtures for {page_url}")
+                return
+
             self.synchronizer.sync(
-                self.site,
-                league_name,
-                fixtures
+                self.site, league_name, fixtures
             )
         except Exception as e:
             self.logger.error(f"Failed to sync fixtures from {self.site.name}: {e}")

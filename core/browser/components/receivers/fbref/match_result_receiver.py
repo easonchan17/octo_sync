@@ -156,7 +156,7 @@ class HtmlMatchResult:
         }
 
 class MatchResultReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[HtmlMatchResult]:
+    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
         soup = BeautifulSoup(page_content, 'html.parser')
 
         result_table = soup.find("table", id="matchlogs_for")

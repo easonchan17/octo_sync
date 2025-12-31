@@ -1,17 +1,21 @@
-from ast import pattern
-from typing import List, Any
 import re
+from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.player_match_stats import PlayerMatchStats
 from core.utils.html_utils import (
     get_number, get_float, get_text,
     is_table_header,
-    extract_player_code_from_cell
+    extract_player_code_from_cell,
+    extract_match_code_from_url
 )
 
 class PlayerMatchStatsReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[PlayerMatchStats]:
+    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+        match_code = extract_match_code_from_url(url)
+        if not match_code:
+            raise ValueError(f"Match code not found in the URL: {url}")
+
         soup = BeautifulSoup(page_content, 'html.parser')
 
         player_stats_dict = {}
@@ -195,42 +199,42 @@ class PlayerMatchStatsReceiver(BaseReceiver):
 
         player_stats = []
         for player_code, stats in player_stats_dict.items():
-            player_stat = PlayerMatchStats(
-                match_code=None,
-                player_code=player_code,
-                team_code=stats.get("team_code"),
-                player_name=stats.get("player_name"),
-                position=stats.get("position"),
-                minutes=stats.get("minutes"),
-                is_starter=stats.get("is_starter"),
-                goals=stats.get("goals"),
-                penalties_made=stats.get("penalties_made"),
-                shots=stats.get("shots"),
-                shots_on_target=stats.get("shots_on_target"),
-                npxg=stats.get("npxg"),
-                xg_assist=stats.get("xg_assist"),
-                shot_creating_actions=stats.get("shot_creating_actions"),
-                tackles=stats.get("tackles"),
-                tackles_won=stats.get("tackles_won"),
-                blocks=stats.get("blocks"),
-                interceptions=stats.get("interceptions"),
-                progressive_passes=stats.get("progressive_passes"),
-                key_passes=stats.get("key_passes"),
-                progressive_carries=stats.get("progressive_carries"),
-                take_ons_won=stats.get("take_ons_won"),
-                dispossessed=stats.get("dispossessed"),
-                miscontrols=stats.get("miscontrols"),
-                fouls_drawn=stats.get("fouls_drawn"),
-                ball_recoveries=stats.get("ball_recoveries"),
-                aerials_won=stats.get("aerials_won"),
-                aerials_lost=stats.get("aerials_lost"),
-                challenges_lost=stats.get("challenges_lost"),
-                gk_goals_against=stats.get("gk_goals_against"),
-                gk_psxg=stats.get("gk_psxg"),
-                gk_crosses=stats.get("gk_crosses"),
-                gk_crosses_stopped=stats.get("gk_crosses_stopped"),
-                gk_def_actions_outside_pen_area=stats.get("gk_def_actions_outside_pen_area")
-            )
+            player_stat = {
+                PlayerMatchStats.match_code.key: match_code,
+                PlayerMatchStats.player_code.key: player_code,
+                PlayerMatchStats.team_code.key: stats.get("team_code"),
+                PlayerMatchStats.player_name.key: stats.get("player_name"),
+                PlayerMatchStats.position.key: stats.get("position"),
+                PlayerMatchStats.minutes.key: stats.get("minutes"),
+                PlayerMatchStats.is_starter.key: stats.get("is_starter"),
+                PlayerMatchStats.goals.key: stats.get("goals"),
+                PlayerMatchStats.penalties_made.key: stats.get("penalties_made"),
+                PlayerMatchStats.shots.key: stats.get("shots"),
+                PlayerMatchStats.shots_on_target.key: stats.get("shots_on_target"),
+                PlayerMatchStats.npxg.key: stats.get("npxg"),
+                PlayerMatchStats.xg_assist.key: stats.get("xg_assist"),
+                PlayerMatchStats.shot_creating_actions.key: stats.get("shot_creating_actions"),
+                PlayerMatchStats.tackles.key: stats.get("tackles"),
+                PlayerMatchStats.tackles_won.key: stats.get("tackles_won"),
+                PlayerMatchStats.blocks.key: stats.get("blocks"),
+                PlayerMatchStats.interceptions.key: stats.get("interceptions"),
+                PlayerMatchStats.progressive_passes.key: stats.get("progressive_passes"),
+                PlayerMatchStats.key_passes.key: stats.get("key_passes"),
+                PlayerMatchStats.progressive_carries.key: stats.get("progressive_carries"),
+                PlayerMatchStats.take_ons_won.key: stats.get("take_ons_won"),
+                PlayerMatchStats.dispossessed.key: stats.get("dispossessed"),
+                PlayerMatchStats.miscontrols.key: stats.get("miscontrols"),
+                PlayerMatchStats.fouls_drawn.key: stats.get("fouls_drawn"),
+                PlayerMatchStats.ball_recoveries.key: stats.get("ball_recoveries"),
+                PlayerMatchStats.aerials_won.key: stats.get("aerials_won"),
+                PlayerMatchStats.aerials_lost.key: stats.get("aerials_lost"),
+                PlayerMatchStats.challenges_lost.key: stats.get("challenges_lost"),
+                PlayerMatchStats.gk_goals_against.key: stats.get("gk_goals_against"),
+                PlayerMatchStats.gk_psxg.key: stats.get("gk_psxg"),
+                PlayerMatchStats.gk_crosses.key: stats.get("gk_crosses"),
+                PlayerMatchStats.gk_crosses_stopped.key: stats.get("gk_crosses_stopped"),
+                PlayerMatchStats.gk_def_actions_outside_pen_area.key: stats.get("gk_def_actions_outside_pen_area")
+            }
             player_stats.append(player_stat)
 
         return player_stats

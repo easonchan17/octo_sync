@@ -61,11 +61,8 @@ class SyncCompTeam(BaseTask):
                     self.logger.warning(f"No teams for {page_url}")
                     continue
 
-                for team in teams:
-                    team.season = season
-                    team.comp_name = comp_name
-                    team.comp_code = comp_code
-
-                self.synchronizer.sync(self.site, comp_code, comp_name, season, teams)
+                self.synchronizer.sync(
+                    self.site, comp_code, comp_name, season, teams
+                )
             except Exception as e:
                 self.logger.error(f"Failed to sync {comp_name} {season_range} teams from {self.site.name}: {e}")

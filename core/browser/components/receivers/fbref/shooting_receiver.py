@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
-from typing import List, Any
+from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.shooting import Shooting
 from core.utils.html_utils import (
-    get_text, get_number, get_float,
-    is_table_header,
+    get_number, get_float,is_table_header,
     extract_match_code_from_cell,
     extract_venue_epoch,
     extract_team_code_from_cell,
@@ -13,7 +12,11 @@ from core.utils.html_utils import (
 )
 
 class ShootingReceiver(BaseReceiver):
-    async def process(self, page_content: str) -> List[Shooting]:
+    async def process(self, page_content: str, url: str) -> List[Dict[str, Any]]:
+        team_code = extract_team_code_from_url(url)
+        if not team_code:
+            raise ValueError(f"Team code not found in the URL: {url}")
+
         soup = BeautifulSoup(page_content, 'html.parser')
 
         shootings = []
@@ -58,20 +61,20 @@ class ShootingReceiver(BaseReceiver):
                 xg = row.find("td", {"data-stat": "xg"})
                 npxg = row.find("td", {"data-stat": "npxg"})
 
-                shooting = Shooting(
-                    match_code=extract_match_code_from_cell(date),
-                    team_code=extract_team_code_from_cell(opponent) if id == "matchlogs_against" else None,
-                    goals=get_number(goals),
-                    shots=get_number(shots),
-                    shots_on_target=get_number(shots_on_target),
-                    shots_on_target_pct=get_float(shots_on_target_pct),
-                    shots_free_kicks=get_number(shots_free_kicks),
-                    average_shot_distance=get_float(average_shot_distance),
-                    penalties_made=get_number(pens_made),
-                    penalties_attempted=get_number(pens_att),
-                    xg=get_float(xg),
-                    npxg=get_float(npxg)
-                )
+                shooting = {
+                    Shooting.match_code.key: extract_match_code_from_cell(date),
+                    Shooting.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
+                    Shooting.goals.key: get_number(goals),
+                    Shooting.shots.key: get_number(shots),
+                    Shooting.shots_on_target.key: get_number(shots_on_target),
+                    Shooting.shots_on_target_pct.key: get_float(shots_on_target_pct),
+                    Shooting.shots_free_kicks.key: get_number(shots_free_kicks),
+                    Shooting.average_shot_distance.key: get_float(average_shot_distance),
+                    Shooting.penalties_made.key: get_number(pens_made),
+                    Shooting.penalties_attempted.key: get_number(pens_att),
+                    Shooting.xg.key: get_float(xg),
+                    Shooting.npxg.key: get_float(npxg)
+                }
                 shootings.append(shooting)
 
         return shootings

@@ -1,56 +1,28 @@
-from typing import List
-from sqlalchemy import func, or_
+from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import GoalKeeping, Site, MatchStatsSyncFlag
 from .team_level_synchronizer import TeamLevelSynchronizer
 
 
 class GoalKeepingSynchronizer(TeamLevelSynchronizer):
-    def sync(self, site: Site, team_name: str, team_code: str, season: int, goal_keepings: List[GoalKeeping]) -> None:
+    def sync(self, site: Site, team_name: str, team_code: str, season: int, goal_keepings: List[Dict[str, Any]]) -> None:
         season_range = f"{season}-{season+1}"
         if not goal_keepings:
             self.logger.warning(f"No {team_name} {season_range} goal keepings to sync from {site.name}")
             return
 
-        goal_keeping_dict = self.to_dict(
-            goal_keepings,
-            ['match_code', 'team_code', 'shots_on_target_against', 'saves', 'save_pct',
-             'psxg', 'psxg_net', 'crosses', 'crosses_stopped',
-             'crosses_stopped_pct', 'def_actions_outside_pen_area', 'avg_distance_def_actions'],
-            ['match_code', 'team_code']
-        )
-
         with self.db.get_session(site.get_namespace()) as session:
-            insert_stmt = insert(GoalKeeping).values(list(goal_keeping_dict.values()))
+            insert_stmt = insert(GoalKeeping).values(goal_keepings)
+            assignment, where_clause = self.build_upsert_clauses(
+                GoalKeeping,
+                insert_stmt,
+                {'id', 'created_at', 'match_code', 'team_code', 'updated_at'}
+            )
+
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['match_code', 'team_code'],
-                set_={
-                    'shots_on_target_against': insert_stmt.excluded.shots_on_target_against,
-                    'saves': insert_stmt.excluded.saves,
-                    'save_pct': insert_stmt.excluded.save_pct,
-                    'psxg': insert_stmt.excluded.psxg,
-                    'psxg_net': insert_stmt.excluded.psxg_net,
-                    'crosses': insert_stmt.excluded.crosses,
-                    'crosses_stopped': insert_stmt.excluded.crosses_stopped,
-                    'crosses_stopped_pct': insert_stmt.excluded.crosses_stopped_pct,
-                    'def_actions_outside_pen_area': insert_stmt.excluded.def_actions_outside_pen_area,
-                    'avg_distance_def_actions': insert_stmt.excluded.avg_distance_def_actions,
-                    'updated_at': func.now()
-                },
-                where=(
-                    or_(
-                        GoalKeeping.shots_on_target_against.is_distinct_from(insert_stmt.excluded.shots_on_target_against),
-                        GoalKeeping.saves.is_distinct_from(insert_stmt.excluded.saves),
-                        GoalKeeping.save_pct.is_distinct_from(insert_stmt.excluded.save_pct),
-                        GoalKeeping.psxg.is_distinct_from(insert_stmt.excluded.psxg),
-                        GoalKeeping.psxg_net.is_distinct_from(insert_stmt.excluded.psxg_net),
-                        GoalKeeping.crosses.is_distinct_from(insert_stmt.excluded.crosses),
-                        GoalKeeping.crosses_stopped.is_distinct_from(insert_stmt.excluded.crosses_stopped),
-                        GoalKeeping.crosses_stopped_pct.is_distinct_from(insert_stmt.excluded.crosses_stopped_pct),
-                        GoalKeeping.def_actions_outside_pen_area.is_distinct_from(insert_stmt.excluded.def_actions_outside_pen_area),
-                        GoalKeeping.avg_distance_def_actions.is_distinct_from(insert_stmt.excluded.avg_distance_def_actions)
-                    )
-                )
+                set_=assignment,
+                where=where_clause
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount

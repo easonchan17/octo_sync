@@ -63,10 +63,6 @@ class SyncDefensiveAction(BaseTask):
                     self.logger.warning(f"No defensive actions for {page_url}")
                     continue
 
-                for defensive_action in defensive_actions:
-                    if not defensive_action.team_code:
-                        defensive_action.team_code = team_code
-
                 self.synchronizer.sync(
                     self.site, team_name, team_code, season, defensive_actions
                 )

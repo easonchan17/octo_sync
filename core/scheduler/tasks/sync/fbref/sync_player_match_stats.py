@@ -63,17 +63,8 @@ class SyncPlayerMatchStats(BaseTask):
                     self.logger.warning(f"No player stats for {page_url}")
                     continue
 
-                for player_stat in player_stats:
-                    if not player_stat.match_code:
-                        player_stat.match_code = match_code
-
                 self.synchronizer.sync(
-                    self.site,
-                    match_code,
-                    home_team,
-                    away_team,
-                    season,
-                    player_stats
+                    self.site, match_code, home_team, away_team, season, player_stats
                 )
             except Exception as e:
                 self.logger.error(f"Failed to sync player match stats for match {match_tag} from {self.site.name}: {e}")

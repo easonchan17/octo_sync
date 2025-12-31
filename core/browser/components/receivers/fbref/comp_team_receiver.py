@@ -1,12 +1,21 @@
 import re
-from typing import List, Any
+from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.comp_team import CompTeam
-from core.utils.html_utils import get_text, is_table_header, extract_team_code_from_cell
+from core.utils.html_utils import (
+    get_text, is_table_header,
+    extract_team_code_from_cell, extract_comp_info_from_url
+)
 
 class CompTeamReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[CompTeam]:
+    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+        comp_info = extract_comp_info_from_url(url)
+        if not comp_info:
+            raise ValueError(f"Failed to extract comp info from URL: {url}")
+
+        comp_code, season, comp_name = comp_info
+
         soup = BeautifulSoup(page_content, 'html.parser')
 
         league_table = soup.find("table", id=re.compile(r'^results\d{4}-\d+_overall$'))
@@ -35,10 +44,13 @@ class CompTeamReceiver(BaseReceiver):
             if not team_name or not team_code:
                 continue
 
-            team = CompTeam(
-                team_name=team_name,
-                team_code=team_code
-            )
+            team = {
+                CompTeam.season.key: season,
+                CompTeam.comp_name.key: comp_name,
+                CompTeam.comp_code.key: comp_code,
+                CompTeam.team_name.key: team_name,
+                CompTeam.team_code.key: team_code
+            }
             teams.append(team)
 
         return teams
