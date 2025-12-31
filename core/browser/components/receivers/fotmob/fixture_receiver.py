@@ -1,5 +1,4 @@
-import json
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 from core.utils.string_utils import parse_scores
 from typing import Any, Optional, List, Tuple, Dict
 from core.store.postgres.models.fotmob.fixture import Fixture
@@ -7,9 +6,9 @@ from core.store.postgres.models.common.match_status import MatchStatus
 from ..base_receiver import BaseReceiver
 
 class FixtureReceiver(BaseReceiver):
-    async def process(self, response: Any) -> Optional[List[Fixture]]:
+    async def process(self, response: Any) -> List[Dict[str, Any]]:
         parsed_url = urlparse(response.url)
-        query_params = parse_qs(parsed_url.query)
+        # query_params = parse_qs(parsed_url.query)
 
         # if 'id' not in query_params or 'ccode3' not in query_params:
         #     self.logger.warning(f"Skipping response: {response.url}")
@@ -41,20 +40,20 @@ class FixtureReceiver(BaseReceiver):
 
             match_status, kickoff_time, home_score, away_score = self.extract_status(match.get('status', {}))
 
-            fixture = Fixture(
-                round=round,
-                match_id=match_id,
-                league_id=league_id,
-                league_name=league_name,
-                kickoff_time=kickoff_time,
-                home_team=home_team,
-                home_id=home.get('id'),
-                away_team=away_team,
-                away_id=away.get('id'),
-                home_score=home_score,
-                away_score=away_score,
-                match_status=match_status
-            )
+            fixture = {
+                Fixture.round.key: round,
+                Fixture.match_id.key: match_id,
+                Fixture.league_id.key: league_id,
+                Fixture.league_name.key: league_name,
+                Fixture.kickoff_time.key: kickoff_time,
+                Fixture.home_team.key: home_team,
+                Fixture.home_id.key: home.get('id'),
+                Fixture.away_team.key: away_team,
+                Fixture.away_id.key: away.get('id'),
+                Fixture.home_score.key: home_score,
+                Fixture.away_score.key: away_score,
+                Fixture.match_status.key: match_status
+            }
             fixtures.append(fixture)
 
         self.logger.info(f"Parsed {len(fixtures)} fixtures from {league_name}")

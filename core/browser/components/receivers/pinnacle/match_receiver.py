@@ -1,6 +1,6 @@
-from datetime import datetime
 from typing import Any, Optional, Dict
 from ..base_receiver import BaseReceiver
+from core.store.postgres.models.pinnacle.match import Match
 
 class MatchReceiver(BaseReceiver):
     async def process(self, response: Any) -> Optional[Dict[str, Any]]:
@@ -35,12 +35,12 @@ class MatchReceiver(BaseReceiver):
 
             league = item.get('league', {})
             matches[match_id] = {
-                'match_id': match_id,
-                'kickoff_time': kickoff_time,
-                'league_id': league.get('id'),
-                'league_name': league.get('name'),
-                'home_team': home_team,
-                'away_team': away_team
+                Match.match_id.key: match_id,
+                Match.kickoff_time.key: kickoff_time,
+                Match.league_id.key: league.get('id'),
+                Match.league_name.key: league.get('name'),
+                Match.home_team.key: home_team,
+                Match.away_team.key: away_team
             }
 
         return {'type': 'matches', 'data': matches}

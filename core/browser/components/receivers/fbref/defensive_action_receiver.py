@@ -1,5 +1,5 @@
 import time
-from typing import List, Any
+from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.defensive_action import DefensiveAction
@@ -7,11 +7,16 @@ from core.utils.html_utils import (
     get_number,is_table_header,
     extract_match_code_from_cell,
     get_float, extract_venue_epoch,
-    extract_team_code_from_cell
+    extract_team_code_from_cell,
+    extract_team_code_from_url
 )
 
 class DefensiveActionReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[DefensiveAction]:
+    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+        team_code = extract_team_code_from_url(url)
+        if not team_code:
+            raise ValueError(f"Team code not found in the URL: {url}")
+
         soup = BeautifulSoup(page_content, 'html.parser')
 
         defensive_actions = []
@@ -60,25 +65,25 @@ class DefensiveActionReceiver(BaseReceiver):
                 clearances = row.find("td", {"data-stat": "clearances"})
                 errors_shot = row.find("td", {"data-stat": "errors"})
 
-                defensive_action = DefensiveAction(
-                    match_code=extract_match_code_from_cell(date),
-                    team_code=extract_team_code_from_cell(opponent) if id == "matchlogs_against" else None,
-                    tackles=get_number(tackles),
-                    tackles_won=get_number(tackles_won),
-                    tackles_def_third=get_number(tackles_def_third),
-                    tackles_mid_third=get_number(tackles_mid_third),
-                    tackles_att_third=get_number(tackles_att_third),
-                    challenge_tackles=get_number(challenge_tackles),
-                    challenges=get_number(challenges),
-                    challenge_tackles_pct=get_float(challenge_tackles_pct),
-                    challenges_lost=get_number(challenges_lost),
-                    blocks=get_number(blocks),
-                    blocked_shots=get_number(blocked_shots),
-                    blocked_passes=get_number(blocked_passes),
-                    interceptions=get_number(interceptions),
-                    clearances=get_number(clearances),
-                    errors_shot=get_number(errors_shot)
-                )
+                defensive_action = {
+                    DefensiveAction.match_code.key: extract_match_code_from_cell(date),
+                    DefensiveAction.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
+                    DefensiveAction.tackles.key: get_number(tackles),
+                    DefensiveAction.tackles_won.key: get_number(tackles_won),
+                    DefensiveAction.tackles_def_third.key: get_number(tackles_def_third),
+                    DefensiveAction.tackles_mid_third.key: get_number(tackles_mid_third),
+                    DefensiveAction.tackles_att_third.key: get_number(tackles_att_third),
+                    DefensiveAction.challenge_tackles.key: get_number(challenge_tackles),
+                    DefensiveAction.challenges.key: get_number(challenges),
+                    DefensiveAction.challenge_tackles_pct.key: get_float(challenge_tackles_pct),
+                    DefensiveAction.challenges_lost.key: get_number(challenges_lost),
+                    DefensiveAction.blocks.key: get_number(blocks),
+                    DefensiveAction.blocked_shots.key: get_number(blocked_shots),
+                    DefensiveAction.blocked_passes.key: get_number(blocked_passes),
+                    DefensiveAction.interceptions.key: get_number(interceptions),
+                    DefensiveAction.clearances.key: get_number(clearances),
+                    DefensiveAction.errors_shot.key: get_number(errors_shot)
+                }
                 defensive_actions.append(defensive_action)
 
         return defensive_actions

@@ -8,6 +8,9 @@ from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from core.scheduler.synchronizers.pinnacle.match_synchronizer import MatchSynchronizer
 from core.scheduler.synchronizers.pinnacle.moneyline_synchronizer import MoneylineSynchronizer
 from core.scheduler.synchronizers.pinnacle.spread_synchronizer import SpreadSynchronizer
+from core.store.postgres.models.pinnacle.match import Match
+from core.store.postgres.models.pinnacle.moneyline import Moneyline
+from core.store.postgres.models.pinnacle.spread import Spread
 
 class SyncOdds(BaseTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
@@ -58,7 +61,7 @@ class SyncOdds(BaseTask):
         except Exception as e:
             self.logger.error(f"Failed to sync odds from {self.site.name}: {e}", exc_info=True)
 
-    def _clean_and_build(self, responses: List[Any]) -> Tuple[List[Any], List[Any], List[Any]]:
+    def _clean_and_build(self, responses: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         matches: Dict[str, Any] = {}
         odds: Dict[str, Any] = {}
 
@@ -81,15 +84,15 @@ class SyncOdds(BaseTask):
             match_id = int(match_id)
             match_records.append(self._build_match_record(match_id, match_data))
 
-        match_records.sort(key=lambda x: x['kickoff_time'])
+        match_records.sort(key=lambda x: x[Match.kickoff_time.key])
         target_matches = self.match_synchronizer.get_target_matches(
-            match_records[0]['league_id'],
-            match_records[0]['kickoff_time']
+            match_records[0][Match.league_id.key],
+            match_records[0][Match.kickoff_time.key]
         )
         self.team_resolver.resolve(match_records, target_matches, with_target=True)
 
         for record in match_records:
-            record['fixture_id'] =  record.pop('target').match_id
+            record[Match.fixture_id.key] = record.pop('target').match_id
 
         for odds_type, match_odds in odds.items():
             for match_id, odds_data in match_odds.items():
@@ -106,18 +109,18 @@ class SyncOdds(BaseTask):
 
     def _build_match_record(self, match_id: int, match_data: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            'match_id': match_id,
-            'kickoff_time': match_data.get('kickoff_time'),
-            'league_id': match_data.get('league_id'),
-            'league_name': match_data.get('league_name'),
-            'home_team': match_data.get('home_team'),
-            'away_team': match_data.get('away_team')
+            Match.match_id.key: match_id,
+            Match.kickoff_time.key: match_data.get(Match.kickoff_time.key),
+            Match.league_id.key: match_data.get(Match.league_id.key),
+            Match.league_name.key: match_data.get(Match.league_name.key),
+            Match.home_team.key: match_data.get(Match.home_team.key),
+            Match.away_team.key: match_data.get(Match.away_team.key)
         }
 
     def _build_moneyline_record(self, match_id: int, odds_data: Dict[str, Any]) -> Dict[str, Any]:
         record = {
-            'match_id': match_id,
-            'period': odds_data.get('period', 0),
+            Moneyline.match_id.key: match_id,
+            Moneyline.period.key: odds_data.get('period', 0),
         }
 
         for price in odds_data.get('prices', []):
@@ -125,22 +128,22 @@ class SyncOdds(BaseTask):
             price_value = price.get('price')
 
             if designation == 'home':
-                record['home_price'] = price_value
-                record['home_odds'] = self._american_to_decimal(price_value)
+                record[Moneyline.home_price.key] = price_value
+                record[Moneyline.home_odds.key] = self._american_to_decimal(price_value)
             elif designation == 'away':
-                record['away_price'] = price_value
-                record['away_odds'] = self._american_to_decimal(price_value)
+                record[Moneyline.away_price.key] = price_value
+                record[Moneyline.away_odds.key] = self._american_to_decimal(price_value)
             elif designation == 'draw':
-                record['draw_price'] = price_value
-                record['draw_odds'] = self._american_to_decimal(price_value)
+                record[Moneyline.draw_price.key] = price_value
+                record[Moneyline.draw_odds.key] = self._american_to_decimal(price_value)
 
         return record
 
     def _build_spread_record(self, match_id: int, odds_data: Dict[str, Any]) -> Dict[str, Any]:
         record = {
-            'match_id': match_id,
-            'period': odds_data.get('period', 0),
-            'is_alternate': odds_data.get('isAlternate', False)
+            Spread.match_id.key: match_id,
+            Spread.period.key: odds_data.get('period', 0),
+            Spread.is_alternate.key: odds_data.get('is_alternate', False)
         }
 
         for price in odds_data.get('prices', []):
@@ -149,12 +152,12 @@ class SyncOdds(BaseTask):
             points = price.get('points') or 0
 
             if designation == 'home':
-                record['handicap'] = Decimal(str(points))
-                record['home_price'] = price_value
-                record['home_odds'] = self._american_to_decimal(price_value)
+                record[Spread.handicap.key] = Decimal(str(points))
+                record[Spread.home_price.key] = price_value
+                record[Spread.home_odds.key] = self._american_to_decimal(price_value)
             elif designation == 'away':
-                record['away_price'] = price_value
-                record['away_odds'] = self._american_to_decimal(price_value)
+                record[Spread.away_price.key] = price_value
+                record[Spread.away_odds.key] = self._american_to_decimal(price_value)
 
         return record
 

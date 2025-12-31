@@ -32,7 +32,7 @@ class OddsReceiver(BaseReceiver):
             prices = item.get('prices', [])
             match_odds[odds_type][match_id] = {
                 'period': 0,
-                'isAlternate': False,
+                'is_alternate': False,
                 'prices': prices
             }
 

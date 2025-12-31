@@ -63,10 +63,6 @@ class SyncPassing(BaseTask):
                     self.logger.warning(f"No passing for {page_url}")
                     continue
 
-                for passing in passings:
-                    if not passing.team_code:
-                        passing.team_code = team_code
-
                 self.synchronizer.sync(
                     self.site, team_name, team_code, season, passings
                 )
