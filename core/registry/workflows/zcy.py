@@ -6,9 +6,7 @@ from core.scheduler.tasks.sync.zcy import (
     SyncProduct,
     SyncSubCategory
 )
-from core.store.postgres.models import (
-    Site, Category, SubCategory, Brand, SubCategoryBrand, Product
-)
+from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 
@@ -18,15 +16,7 @@ def create_sync_zcy_category_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [Category],
-        site.get_namespace()
-    )
-
-    return Pipeline(
-        SyncCategory(site)
-    )
+    return Pipeline(SyncCategory(site))
 
 @Registry.factory('sync.zcy.sub_category')
 def create_sync_zcy_sub_category_task(
@@ -34,15 +24,7 @@ def create_sync_zcy_sub_category_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [Category, SubCategory],
-        site.get_namespace()
-    )
-
-    return Pipeline(
-        SyncSubCategory(site)
-    )
+    return Pipeline(SyncSubCategory(site))
 
 @Registry.factory('sync.zcy.brand')
 def create_sync_zcy_brand_task(
@@ -50,15 +32,7 @@ def create_sync_zcy_brand_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [Category, SubCategory, Brand, SubCategoryBrand],
-        site.get_namespace()
-    )
-
-    return Pipeline(
-        SyncBrand(site)
-    )
+    return Pipeline(SyncBrand(site))
 
 @Registry.factory('sync.zcy.product')
 def create_sync_zcy_product_task(
@@ -66,12 +40,4 @@ def create_sync_zcy_product_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [SubCategory, Brand, SubCategoryBrand, Product],
-        site.get_namespace()
-    )
-
-    return Pipeline(
-        SyncProduct(site)
-    )
+    return Pipeline(SyncProduct(site))

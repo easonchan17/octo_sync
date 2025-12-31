@@ -1,13 +1,33 @@
 from threading import Lock
+from sqlalchemy.sql import func
 from typing import Optional, Dict, Any
 from core.scheduler.worker import Worker
 from core.utils.singleton import Singleton
+from sqlalchemy.dialects.postgresql import insert
 from core.server.services.base_service import BaseService
 from core.scheduler.tasks.base_task import BaseTask, AsyncTask
-from core.store.postgres.models import Site
+from core.store.postgres.models import (
+    Site, TrainingRecord, Category, SubCategory, Brand, SubCategoryBrand, Product,
+    Fixture, Match, Moneyline, Spread, GlobalState, CompTeam, CompSyncState,
+    MatchStatsSyncState, MatchResult, GoalAndShotCreation, Passing,
+    DefensiveAction, Shooting, GoalKeeping, PlayerMatchStats,
+    PlayerStatsSyncState, MarketOdds
+)
 from core.registry import Registry
 
 class SiteService(BaseService, Singleton):
+    SITE_TABLES = {
+        "public": [Site, TrainingRecord],
+        "zcy": [Category, SubCategory, Brand, SubCategoryBrand, Product],
+        "fotmob": [Fixture],
+        "pinnacle": [Match, Moneyline, Spread],
+        "fbref": [
+            GlobalState, CompTeam, CompSyncState, MatchStatsSyncState,
+            MatchResult, GoalAndShotCreation, Passing, DefensiveAction,
+            Shooting, GoalKeeping, PlayerMatchStats, PlayerStatsSyncState, MarketOdds
+        ],
+    }
+
     def __init__(self):
         super().__init__()
         self.tasks: Dict[str, BaseTask] = {}
@@ -25,19 +45,26 @@ class SiteService(BaseService, Singleton):
         return task
 
     def create_site(self, site_name: str, url: str) -> Site:
-        self.db.create_tables([Site])
+        self.db.create_tables(self.SITE_TABLES.get("public"))
 
         with self.db.get_session() as session:
-            site = Site(name=site_name, url=url)
-            session.add(site)
-            session.flush()
-            return Site(
-                id=site.id,
-                name=site.name,
-                url=site.url,
-                created_at=site.created_at,
-                updated_at=site.updated_at
+            stmt = (
+                insert(Site)
+                .values(name=site_name, url=url)
+                .on_conflict_do_update(
+                    index_elements=['name'],
+                    set_={'url': url, 'updated_at': func.now()}
+                )
+                .returning(Site)
             )
+            site = session.execute(stmt).scalar_one()
+            session.expunge(site)
+
+        namespace = site.get_namespace()
+        self.db.create_schema(namespace)
+        self.db.create_tables(self.SITE_TABLES.get(site_name), namespace)
+
+        return site
 
     def start_sync(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
         name = f"sync.{site_name}.{resource}"

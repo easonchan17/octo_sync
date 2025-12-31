@@ -2,7 +2,6 @@ from typing import Optional, Dict, Any
 from core.registry import Registry
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
-from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.scheduler.tasks.sync.fotmob.sync_fixture import SyncFixture
 
@@ -12,11 +11,4 @@ def create_sync_fotmob_fixtures_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [Fixture],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncFixture(site, payload)
-    )
+    return Pipeline(SyncFixture(site, payload))

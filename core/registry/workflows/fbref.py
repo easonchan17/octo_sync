@@ -11,13 +11,7 @@ from core.scheduler.tasks.sync.fbref import (
     SyncPlayerMatchStats,
     SyncMarketOdds
 )
-from core.store.postgres.models import (
-    Site, MatchResult,
-    MatchStatsSyncState, GoalAndShotCreation,
-    Passing, DefensiveAction, Shooting, GoalKeeping,
-    GlobalState, PlayerMatchStats, PlayerStatsSyncState, MarketOdds,
-    CompTeam, CompSyncState
-)
+from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 
@@ -27,14 +21,7 @@ def create_sync_fbref_comp_teams_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncCompTeam(site, payload)
-    )
+    return Pipeline(SyncCompTeam(site, payload))
 
 @Registry.factory('sync.fbref.match_results')
 def create_sync_fbref_match_results_task(
@@ -42,14 +29,7 @@ def create_sync_fbref_match_results_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState, MatchResult, MatchStatsSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncMatchResult(site, payload)
-    )
+    return Pipeline(SyncMatchResult(site, payload))
 
 @Registry.factory('sync.fbref.gca')
 def create_sync_fbref_gca_task(
@@ -57,14 +37,7 @@ def create_sync_fbref_gca_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState, GoalAndShotCreation, MatchStatsSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncGoalAndShotCreation(site, payload)
-    )
+    return Pipeline(SyncGoalAndShotCreation(site, payload))
 
 @Registry.factory('sync.fbref.passing')
 def create_sync_fbref_passing_task(
@@ -72,14 +45,7 @@ def create_sync_fbref_passing_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState, Passing, MatchStatsSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncPassing(site, payload)
-    )
+    return Pipeline(SyncPassing(site, payload))
 
 @Registry.factory('sync.fbref.defensive_actions')
 def create_sync_fbref_defensive_actions_task(
@@ -87,14 +53,7 @@ def create_sync_fbref_defensive_actions_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState, DefensiveAction, MatchStatsSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncDefensiveAction(site, payload)
-    )
+    return Pipeline(SyncDefensiveAction(site, payload))
 
 @Registry.factory('sync.fbref.shooting')
 def create_sync_fbref_shooting_task(
@@ -102,14 +61,7 @@ def create_sync_fbref_shooting_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState, Shooting, MatchStatsSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncShooting(site, payload)
-    )
+    return Pipeline(SyncShooting(site, payload))
 
 @Registry.factory('sync.fbref.goalkeeping')
 def create_sync_fbref_goalkeeping_task(
@@ -117,14 +69,7 @@ def create_sync_fbref_goalkeeping_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState, GoalKeeping, MatchStatsSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncGoalKeeping(site, payload)
-    )
+    return Pipeline(SyncGoalKeeping(site, payload))
 
 @Registry.factory('sync.fbref.player_match_stats')
 def create_sync_fbref_player_match_stats_task(
@@ -132,14 +77,7 @@ def create_sync_fbref_player_match_stats_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [MatchResult, PlayerMatchStats, PlayerStatsSyncState],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncPlayerMatchStats(site, payload)
-    )
+    return Pipeline(SyncPlayerMatchStats(site, payload))
 
 @Registry.factory('sync.fbref.market_odds')
 def create_sync_fbref_market_odds_task(
@@ -147,14 +85,7 @@ def create_sync_fbref_market_odds_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [CompSyncState, MarketOdds],
-        site.get_namespace()
-    )
-    return Pipeline(
-        SyncMarketOdds(site, payload)
-    )
+    return Pipeline(SyncMarketOdds(site, payload))
 
 @Registry.factory('sync.fbref.batch')
 def create_sync_fbref_batch_task(
@@ -162,13 +93,6 @@ def create_sync_fbref_batch_task(
     db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    db.create_schema(site.get_namespace())
-    db.create_tables(
-        [GlobalState, CompTeam, CompSyncState, MatchStatsSyncState,
-         MatchResult, GoalAndShotCreation, Passing,
-         DefensiveAction, Shooting, GoalKeeping, PlayerMatchStats, PlayerStatsSyncState],
-        site.get_namespace()
-    )
     return Pipeline(
         SyncCompTeam(site, payload),
         SyncMatchResult(site, payload),
