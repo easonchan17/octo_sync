@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 from typing import List, Any, Dict
 from bs4 import BeautifulSoup
@@ -39,13 +40,12 @@ class GoalkeepingReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch: {row}")
+                    self.logger.error(f"No venue epoch")
                     continue
 
-                kickoff_utc_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
-                now_utc_time = datetime.now(timezone.utc)
-                if kickoff_utc_time > now_utc_time:
-                    self.logger.warning(f"{kickoff_utc_time} > {now_utc_time}")
+                now = int(time.time())
+                if int(venue_epoch) > now:
+                    self.logger.warning(f"Skipping goal keeping for future match: {venue_epoch} > {now}")
                     continue
 
                 date = row.find("th", {"data-stat": "date"})
@@ -60,8 +60,10 @@ class GoalkeepingReceiver(BaseReceiver):
                 gk_crosses_stopped_pct = row.find("td", {"data-stat": "gk_crosses_stopped_pct"})
                 gk_def_actions_outside_pen_area = row.find("td", {"data-stat": "gk_def_actions_outside_pen_area"})
                 gk_avg_distance_def_actions = row.find("td", {"data-stat": "gk_avg_distance_def_actions"})
+                kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 
                 goal_keeping = {
+                    GoalKeeping.kickoff_time.key: kickoff_time,
                     GoalKeeping.match_code.key: extract_match_code_from_cell(date),
                     GoalKeeping.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
                     GoalKeeping.shots_on_target_against.key: get_number(gk_shots_on_target_against),

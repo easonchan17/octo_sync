@@ -5,6 +5,7 @@ from core.utils.html_utils import normalize_team_name
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
+from core.store.postgres.models.fbref.goal_and_shot_creation import GoalAndShotCreation
 from core.scheduler.synchronizers.fbref.goal_and_shot_creation_synchronizer import GoalAndShotCreationSynchronizer
 
 
@@ -63,8 +64,11 @@ class SyncGoalAndShotCreation(BaseTask):
                     self.logger.warning(f"No goal and shot creations for {page_url}")
                     continue
 
+                goal_and_shot_creations.sort(key=lambda x: x.get(GoalAndShotCreation.kickoff_time.key))
+                last_synced_time = goal_and_shot_creations[-1].get(GoalAndShotCreation.kickoff_time.key)
+
                 self.synchronizer.sync(
-                    self.site, team_name, team_code, season, goal_and_shot_creations
+                    self.site, team_name, team_code, season, last_synced_time, goal_and_shot_creations
                 )
             except Exception as e:
                 self.logger.error(f"Failed to sync {team_name} {season_range} goal and shot creations from {self.site.name}: {e}")

@@ -5,6 +5,7 @@ from core.utils.html_utils import normalize_team_name
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
+from core.store.postgres.models.fbref.goal_keeping import GoalKeeping
 from core.scheduler.synchronizers.fbref.goal_keeping_synchronizer import GoalKeepingSynchronizer
 
 
@@ -63,8 +64,11 @@ class SyncGoalKeeping(BaseTask):
                     self.logger.warning(f"No goal keeping for {page_url}")
                     continue
 
+                goal_keepings.sort(key=lambda x: x.get(GoalKeeping.kickoff_time.key))
+                last_synced_time = goal_keepings[-1].get(GoalKeeping.kickoff_time.key)
+
                 self.synchronizer.sync(
-                    self.site, team_name, team_code, season, goal_keepings
+                    self.site, team_name, team_code, season, last_synced_time, goal_keepings
                 )
             except Exception as e:
                 self.logger.error(f"Failed to sync {team_name} {season_range} goal keeping from {self.site.name}: {e}")

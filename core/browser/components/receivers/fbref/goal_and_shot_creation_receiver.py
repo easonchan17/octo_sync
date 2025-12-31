@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 from typing import List, Any, Dict
 from bs4 import BeautifulSoup
@@ -39,13 +40,12 @@ class GoalAndShotCreationReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch: {row}")
+                    self.logger.error(f"No venue epoch")
                     continue
 
-                kickoff_utc_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
-                now_utc_time = datetime.now(timezone.utc)
-                if kickoff_utc_time > now_utc_time:
-                    self.logger.warning(f"{kickoff_utc_time} > {now_utc_time}")
+                now = int(time.time())
+                if int(venue_epoch) > now:
+                    self.logger.warning(f"Skipping goal and shot creation for future match: {venue_epoch} > {now}")
                     continue
 
                 date = row.find("th", {"data-stat": "date"})
@@ -64,8 +64,10 @@ class GoalAndShotCreationReceiver(BaseReceiver):
                 gca_shots = row.find("td", {"data-stat": "gca_shots"})
                 gca_fouled = row.find("td", {"data-stat": "gca_fouled"})
                 gca_defense = row.find("td", {"data-stat": "gca_defense"})
+                kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 
                 goal_and_shot_creation = {
+                    GoalAndShotCreation.kickoff_time.key: kickoff_time,
                     GoalAndShotCreation.match_code.key: extract_match_code_from_cell(date),
                     GoalAndShotCreation.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
                     GoalAndShotCreation.shot_creating_actions.key: get_number(sca),

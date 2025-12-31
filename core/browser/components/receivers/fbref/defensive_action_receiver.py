@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timezone
 from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
@@ -39,7 +40,7 @@ class DefensiveActionReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch: {row}")
+                    self.logger.error(f"No venue epoch")
                     continue
 
                 now = int(time.time())
@@ -64,8 +65,10 @@ class DefensiveActionReceiver(BaseReceiver):
                 interceptions = row.find("td", {"data-stat": "interceptions"})
                 clearances = row.find("td", {"data-stat": "clearances"})
                 errors_shot = row.find("td", {"data-stat": "errors"})
+                kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 
                 defensive_action = {
+                    DefensiveAction.kickoff_time.key: kickoff_time,
                     DefensiveAction.match_code.key: extract_match_code_from_cell(date),
                     DefensiveAction.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
                     DefensiveAction.tackles.key: get_number(tackles),
