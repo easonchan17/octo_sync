@@ -25,11 +25,17 @@ class ShootingSynchronizer(TeamLevelSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 Shooting,
                 insert_stmt,
-                {'id', 'created_at', 'match_code', 'team_code', 'updated_at'}
+                {
+                    Shooting.id.key,
+                    Shooting.created_at.key,
+                    Shooting.match_code.key,
+                    Shooting.team_code.key,
+                    Shooting.updated_at.key
+                }
             )
 
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_code', 'team_code'],
+                index_elements=[Shooting.match_code.key, Shooting.team_code.key],
                 set_=assignment,
                 where=where_clause
             )

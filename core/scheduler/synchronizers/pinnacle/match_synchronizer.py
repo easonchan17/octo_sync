@@ -46,10 +46,15 @@ class MatchSynchronizer(BaseSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 Match,
                 insert_stmt,
-                {'id', 'created_at', 'match_id', 'updated_at'}
+                {
+                    Match.id.key,
+                    Match.created_at.key,
+                    Match.match_id.key,
+                    Match.updated_at.key
+                }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_id'],
+                index_elements=[Match.match_id.key],
                 set_=assignment,
                 where=where_clause
             )

@@ -44,10 +44,15 @@ class MarketOddsSynchronizer(CompLevelSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 MarketOdds,
                 insert_stmt,
-                {'id', 'created_at', 'match_code', 'updated_at'}
+                {
+                    MarketOdds.id.key,
+                    MarketOdds.created_at.key,
+                    MarketOdds.match_code.key,
+                    MarketOdds.updated_at.key
+                }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_code'],
+                index_elements=[MarketOdds.match_code.key],
                 set_=assignment,
                 where=where_clause
             )
@@ -55,5 +60,7 @@ class MarketOddsSynchronizer(CompLevelSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {season_range} market odds completed. upserted: {upserted_count}")
 
-            self.update_sync_state(session, comp_code, season, CompSyncFlag.MARKET_ODDS, last_synced_time)
+            self.update_sync_state(
+                session, comp_code, season, CompSyncFlag.MARKET_ODDS, last_synced_time
+            )
             self.logger.info(f"Mark {season_range} market odds as synced")

@@ -47,7 +47,6 @@ class TeamLevelSynchronizer(BaseSynchronizer):
 
             return query.order_by(CompTeam.season, CompTeam.team_code).all()
 
-
     def update_sync_state(
         self,
         session: Session,

@@ -15,10 +15,15 @@ class FixtureSynchronizer(BaseSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 Fixture,
                 insert_stmt,
-                {'id', 'created_at', 'match_id', 'updated_at'}
+                {
+                    Fixture.id.key,
+                    Fixture.created_at.key,
+                    Fixture.match_id.key,
+                    Fixture.updated_at.key
+                }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_id'],
+                index_elements=[Fixture.match_id.key],
                 set_=assignment,
                 where=where_clause
             )

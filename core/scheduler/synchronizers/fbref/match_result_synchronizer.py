@@ -26,11 +26,16 @@ class MatchResultSynchronizer(TeamLevelSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 MatchResult,
                 insert_stmt,
-                {'id', 'match_code', 'created_at', 'updated_at'}
+                {
+                    MatchResult.id.key,
+                    MatchResult.created_at.key,
+                    MatchResult.match_code.key,
+                    MatchResult.updated_at.key
+                }
             )
 
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_code'],
+                index_elements=[MatchResult.match_code.key],
                 set_=assignment,
                 where=where_clause
             )
