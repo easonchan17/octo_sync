@@ -25,13 +25,11 @@ class ShootingReceiver(BaseReceiver):
         for id in table_ids:
             shooting_table = soup.find("table", id=id)
             if not shooting_table:
-                self.logger.error(f"Shooting table not found in the page content: {page_content}")
-                return []
+                raise ValueError(f"Shooting table not found in the page content: {page_content}")
 
             table_body = shooting_table.find("tbody")
             if not table_body:
-                self.logger.error("Shooting table body not found in the page content")
-                return []
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -40,8 +38,7 @@ class ShootingReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch")
-                    continue
+                    raise ValueError(f"No venue epoch for row: {row}")
 
                 now = int(time.time())
                 if int(venue_epoch) > now:

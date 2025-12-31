@@ -161,13 +161,11 @@ class MatchResultReceiver(BaseReceiver):
 
         result_table = soup.find("table", id="matchlogs_for")
         if not result_table:
-            self.logger.error(f"Match result table not found in the page content: {page_content}")
-            return []
+            raise ValueError(f"Match result table not found in the page content: {page_content}")
 
         table_body = result_table.find("tbody")
         if not table_body:
-            self.logger.error("Match result table body not found in the page content")
-            return []
+            raise ValueError("Table body not found")
 
         html_results = []
         rows = table_body.find_all("tr")
@@ -177,8 +175,7 @@ class MatchResultReceiver(BaseReceiver):
 
             venue_epoch = extract_venue_epoch(row)
             if not venue_epoch:
-                self.logger.error(f"No venue epoch")
-                continue
+                raise ValueError(f"No venue epoch for row: {row}")
 
             now = int(time.time())
             if int(venue_epoch) > now:
@@ -220,9 +217,6 @@ class MatchResultReceiver(BaseReceiver):
                 notes = get_text(notes),
                 match_report = match_report.find("a").get("href")
             )
-
-            if not html_result.match_code:
-                self.logger.error(f"Processing match result row: {row}")
 
             html_results.append(html_result)
 

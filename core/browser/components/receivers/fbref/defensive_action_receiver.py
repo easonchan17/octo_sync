@@ -25,13 +25,11 @@ class DefensiveActionReceiver(BaseReceiver):
         for id in table_ids:
             defensive_table = soup.find("table", id=id)
             if not defensive_table:
-                self.logger.error(f"Defensive action table not found in the page content: {page_content}")
-                return []
+                raise ValueError(f"Defensive action table not found in the page content: {page_content}")
 
             table_body = defensive_table.find("tbody")
             if not table_body:
-                self.logger.error("Defensive action table body not found in the page content")
-                return []
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -40,8 +38,7 @@ class DefensiveActionReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch")
-                    continue
+                    raise ValueError(f"No venue epoch for row: {row}")
 
                 now = int(time.time())
                 if int(venue_epoch) > now:
