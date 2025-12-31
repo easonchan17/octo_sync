@@ -25,11 +25,17 @@ class PassingSynchronizer(TeamLevelSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 Passing,
                 insert_stmt,
-                {'id', 'created_at', 'match_code', 'team_code', 'updated_at'}
+                {
+                    Passing.id.key,
+                    Passing.created_at.key,
+                    Passing.match_code.key,
+                    Passing.team_code.key,
+                    Passing.updated_at.key
+                }
             )
 
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_code', 'team_code'],
+                index_elements=[Passing.match_code.key, Passing.team_code.key],
                 set_=assignment,
                 where=where_clause
             )

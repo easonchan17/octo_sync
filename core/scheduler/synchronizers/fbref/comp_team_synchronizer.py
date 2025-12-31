@@ -15,10 +15,17 @@ class CompTeamSynchronizer(CompLevelSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 CompTeam,
                 insert_stmt,
-                {'id', 'created_at', 'season', 'comp_code', 'team_code', 'updated_at'}
+                {
+                    CompTeam.id.key,
+                    CompTeam.created_at.key,
+                    CompTeam.season.key,
+                    CompTeam.comp_code.key,
+                    CompTeam.team_code.key,
+                    CompTeam.updated_at.key
+                }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['season', 'comp_code', 'team_code'],
+                index_elements=[CompTeam.season.key, CompTeam.comp_code.key, CompTeam.team_code.key],
                 set_=assignment,
                 where=where_clause
             )

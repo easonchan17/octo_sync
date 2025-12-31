@@ -63,10 +63,16 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 PlayerMatchStats,
                 insert_stmt,
-                {'id', 'created_at', 'match_code', 'player_code', 'updated_at'}
+                {
+                    PlayerMatchStats.id.key,
+                    PlayerMatchStats.created_at.key,
+                    PlayerMatchStats.match_code.key,
+                    PlayerMatchStats.player_code.key,
+                    PlayerMatchStats.updated_at.key
+                }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_code', 'player_code'],
+                index_elements=[PlayerMatchStats.match_code.key, PlayerMatchStats.player_code.key],
                 set_=assignment,
                 where=where_clause
             )
@@ -79,10 +85,10 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
                 sync_flags=PlayerStatsSyncFlag.PLAYER_STATS.value
             )
             insert_flag_stmt = insert_flag_stmt.on_conflict_do_update(
-                index_elements=['match_code'],
+                index_elements=[PlayerStatsSyncState.match_code.key],
                 set_={
-                    'sync_flags': PlayerStatsSyncState.sync_flags.op('|')(PlayerStatsSyncFlag.PLAYER_STATS.value),
-                    'updated_at': func.now()
+                    PlayerStatsSyncState.sync_flags.key: PlayerStatsSyncState.sync_flags.op('|')(PlayerStatsSyncFlag.PLAYER_STATS.value),
+                    PlayerStatsSyncState.updated_at.key: func.now()
                 }
             )
             session.execute(insert_flag_stmt)
