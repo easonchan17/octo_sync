@@ -1,6 +1,6 @@
 import time
 from datetime import datetime, timezone
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.match_result import MatchResult
@@ -74,7 +74,7 @@ class HtmlMatchResult:
 
         return MatchStatus.FINISHED.value
 
-    def as_db_model(self, team_name: str, team_code: str, season: int) -> MatchResult:
+    def to_dict(self, team_name: str, team_code: str, season: int) -> Dict[str, Any]:
         """
         Convert the HTML result to a database model.
 
@@ -130,33 +130,33 @@ class HtmlMatchResult:
             away_formation = self.opp_formation
 
 
-        return MatchResult(
-            season=season,
-            kickoff_time=self.kickoff_time,
-            match_code=self.match_code,
-            comp_name=self.comp_name,
-            comp_code=self.comp_code,
-            round=self.round,
-            venue=venue,
-            home_team=home_team,
-            home_code=home_code,
-            away_team=away_team,
-            away_code=away_code,
-            home_gf=home_gf,
-            away_gf=away_gf,
-            home_xg=home_xg,
-            away_xg=away_xg,
-            home_possession=home_possession,
-            away_possession=away_possession,
-            home_formation=home_formation,
-            away_formation=away_formation,
-            match_status=self.get_match_status(),
-            notes=self.notes,
-            match_report=self.match_report or ""
-        )
+        return {
+            MatchResult.season.key: season,
+            MatchResult.kickoff_time.key: self.kickoff_time,
+            MatchResult.match_code.key: self.match_code,
+            MatchResult.comp_name.key: self.comp_name,
+            MatchResult.comp_code.key: self.comp_code,
+            MatchResult.round.key: self.round,
+            MatchResult.venue.key: venue,
+            MatchResult.home_team.key: home_team,
+            MatchResult.home_code.key: home_code,
+            MatchResult.away_team.key: away_team,
+            MatchResult.away_code.key: away_code,
+            MatchResult.home_gf.key: home_gf,
+            MatchResult.away_gf.key: away_gf,
+            MatchResult.home_xg.key: home_xg,
+            MatchResult.away_xg.key: away_xg,
+            MatchResult.home_possession.key: home_possession,
+            MatchResult.away_possession.key: away_possession,
+            MatchResult.home_formation.key: home_formation,
+            MatchResult.away_formation.key: away_formation,
+            MatchResult.match_status.key: self.get_match_status(),
+            MatchResult.notes.key: self.notes,
+            MatchResult.match_report.key: self.match_report or ""
+        }
 
 class MatchResultReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[MatchResult]:
+    async def process(self, page_content: Any) -> List[HtmlMatchResult]:
         soup = BeautifulSoup(page_content, 'html.parser')
 
         result_table = soup.find("table", id="matchlogs_for")

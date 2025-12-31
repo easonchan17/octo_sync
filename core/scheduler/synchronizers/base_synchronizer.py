@@ -1,5 +1,7 @@
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Set, Tuple
 from abc import ABC, abstractmethod
+from sqlalchemy import func, or_
+from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.postgresql_manager import PostgreSQLManager
@@ -26,6 +28,28 @@ class BaseSynchronizer(ABC):
                 key = tuple(getattr(item, k) for k in key_fields)
             result[key] = {f: getattr(item, f) for f in fields}
         return result
+
+    def build_upsert_clauses(
+        self,
+        model: Any,
+        insert_stmt: insert,
+        immutable_cols: Set[str]
+    ) -> Tuple[Dict[str, Any], Any]:
+        assignment = {
+            col.name: getattr(insert_stmt.excluded, col.name)
+            for col in model.__table__.columns
+            if col.name not in immutable_cols
+        }
+        assignment['updated_at'] = func.now()
+
+        update_conditions = [
+            getattr(model, col.name).is_distinct_from(getattr(insert_stmt.excluded, col.name))
+            for col in model.__table__.columns
+            if col.name not in immutable_cols
+        ]
+        where_clause = or_(*update_conditions) if update_conditions else None
+
+        return assignment, where_clause
 
     @abstractmethod
     def sync(self, site, *args, **kwargs) -> None:

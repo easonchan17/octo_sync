@@ -63,9 +63,7 @@ class SyncMatchResult(BaseTask):
                     self.logger.warning(f"No match results for {page_url}")
                     continue
 
-                results = []
-                for html_result in html_results:
-                    results.append(html_result.as_db_model(team_name, team_code, season))
+                results = [r.to_dict(team_name, team_code, season) for r in html_results]
 
                 self.synchronizer.sync(
                     self.site, team_name, team_code, season, results
