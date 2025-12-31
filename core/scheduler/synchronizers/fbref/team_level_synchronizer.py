@@ -67,14 +67,14 @@ class TeamLevelSynchronizer(BaseSynchronizer):
             last_synced_times=new_state_times
         )
         insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=['team_code', 'season'],
+            index_elements=[MatchStatsSyncState.team_code.key, MatchStatsSyncState.season.key],
             set_={
-                'sync_flags': MatchStatsSyncState.sync_flags.op('|')(flag_value),
-                'last_synced_times': func.coalesce(
+                MatchStatsSyncState.sync_flags.key: MatchStatsSyncState.sync_flags.op('|')(flag_value),
+                MatchStatsSyncState.last_synced_times.key: func.coalesce(
                     MatchStatsSyncState.last_synced_times,
                     func.cast('{}', JSONB)
                 ).op('||')(new_state_times),
-                'updated_at': func.now()
+                MatchStatsSyncState.updated_at.key: func.now()
             }
         )
         session.execute(insert_stmt)
@@ -92,10 +92,10 @@ class TeamLevelSynchronizer(BaseSynchronizer):
             latest_match_time=latest_match_time
         )
         insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=['team_code', 'season'],
+            index_elements=[MatchStatsSyncState.team_code.key, MatchStatsSyncState.season.key],
             set_={
-                'latest_match_time': latest_match_time,
-                'updated_at': func.now()
+                MatchStatsSyncState.latest_match_time.key: latest_match_time,
+                MatchStatsSyncState.updated_at.key: func.now()
             }
         )
         session.execute(insert_stmt)

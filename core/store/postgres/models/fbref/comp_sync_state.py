@@ -1,5 +1,6 @@
 from enum import IntFlag
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import Column, Integer, DateTime, Index, CHAR, BigInteger
 from ..base_model import Base, StatusMixin, DictMixin, Status
 
@@ -13,6 +14,7 @@ class CompSyncState(Base, StatusMixin, DictMixin):
         Index('idx_comp_sync_state_created_at', 'created_at'),
         Index('idx_comp_sync_state_updated_at', 'updated_at'),
         Index('idx_comp_sync_state_season_comp_code', 'season', 'comp_code', unique=True),
+        Index('idx_comp_sync_state_latest_match_time', 'latest_match_time'),
         {'schema': '{schema}'}
     )
 
@@ -20,6 +22,9 @@ class CompSyncState(Base, StatusMixin, DictMixin):
     season = Column(Integer, nullable=False)
     comp_code = Column(CHAR(8), nullable=False)
     sync_flags = Column(BigInteger, nullable=False, default=0)
+
+    latest_match_time = Column(DateTime(timezone=True), nullable=True)
+    last_synced_times = Column(JSONB, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())

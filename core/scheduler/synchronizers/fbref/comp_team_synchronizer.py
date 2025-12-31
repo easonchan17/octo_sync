@@ -26,5 +26,5 @@ class CompTeamSynchronizer(CompLevelSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {site.name} {comp_name} {season} teams completed. upserted: {upserted_count}")
 
-            self.add_sync_flag(session, comp_code, season, CompSyncFlag.TEAMS.value)
+            self.update_sync_state(session, comp_code, season, CompSyncFlag.TEAMS)
             self.logger.info(f"Mark {site.name} {comp_name} {season} teams as synced")

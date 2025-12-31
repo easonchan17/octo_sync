@@ -25,13 +25,11 @@ class GoalAndShotCreationReceiver(BaseReceiver):
         for id in table_ids:
             gca_table = soup.find("table", id=id)
             if not gca_table:
-                self.logger.error(f"Goal and shot creation table not found in the page content: {page_content}")
-                return []
+                raise ValueError(f"Goal and shot creation table not found in the page content: {page_content}")
 
             table_body = gca_table.find("tbody")
             if not table_body:
-                self.logger.error("Goal and shot creation table body not found in the page content")
-                return []
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -40,8 +38,7 @@ class GoalAndShotCreationReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch")
-                    continue
+                    raise ValueError(f"No venue epoch for row: {row}")
 
                 now = int(time.time())
                 if int(venue_epoch) > now:

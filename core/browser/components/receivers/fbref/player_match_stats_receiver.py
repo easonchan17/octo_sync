@@ -25,7 +25,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
         for stats_table in summary_tables:
             table_body = stats_table.find("tbody")
             if not table_body:
-                continue
+                raise ValueError("Table body not found")
 
             table_id = stats_table['id']
             match = summary_pattern.search(table_id)
@@ -77,7 +77,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
         for stats_table in passing_tables:
             table_body = stats_table.find("tbody")
             if not table_body:
-                continue
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -99,7 +99,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
         for stats_table in possession_tables:
             table_body = stats_table.find("tbody")
             if not table_body:
-                continue
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -125,7 +125,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
         for stats_table in defense_tables:
             table_body = stats_table.find("tbody")
             if not table_body:
-                continue
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -147,7 +147,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
         for stats_table in misc_tables:
             table_body = stats_table.find("tbody")
             if not table_body:
-                continue
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -173,7 +173,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
         for stats_table in keeper_tables:
             table_body = stats_table.find("tbody")
             if not table_body:
-                continue
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:
