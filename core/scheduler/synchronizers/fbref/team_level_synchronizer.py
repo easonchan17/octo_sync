@@ -1,12 +1,13 @@
-from typing import List, Any, Optional
-from sqlalchemy import func, and_, or_
+from sqlalchemy.orm import Session
+from typing import List, Dict, Any, Optional
+from sqlalchemy import func, and_, or_, update
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site, CompTeam, MatchStatsSyncState
 from ..base_synchronizer import BaseSynchronizer
 
 
 class TeamLevelSynchronizer(BaseSynchronizer):
-    def get_sync_targets(
+    def get_pending_tasks(
         self,
         site: Site,
         min_season: int,
@@ -45,7 +46,13 @@ class TeamLevelSynchronizer(BaseSynchronizer):
 
             return query.order_by(CompTeam.season, CompTeam.team_code).all()
 
-    def add_sync_flag(self, session, team_code: str, season: int, flag: int) -> None:
+    def add_sync_flag(
+        self,
+        session: Session,
+        team_code: str,
+        season: int,
+        flag: int
+    ) -> bool:
         insert_flag_stmt = insert(MatchStatsSyncState).values(
             team_code=team_code,
             season=season,
@@ -59,3 +66,31 @@ class TeamLevelSynchronizer(BaseSynchronizer):
             }
         )
         session.execute(insert_flag_stmt)
+
+    def update_sync_state(
+        self,
+        session,
+        team_code: str,
+        season: int,
+        values: Dict[str, Any]
+    ) -> bool:
+        if not values:
+            raise ValueError("Values cannot be empty")
+
+        valid_columns = {col.key for col in MatchStatsSyncState.columns}
+        pending_values = {key: val for key, val in values.items() if key in valid_columns}
+
+        if not pending_values:
+            raise ValueError("No valid columns found to update")
+
+        update_stmt = update(MatchStatsSyncState).where(
+            and_(
+                MatchStatsSyncState.team_code == team_code,
+                MatchStatsSyncState.season == season
+            )
+        ).values(
+            pending_values
+        ).execution_options(synchronize_session="fetch")
+
+        result = session.execute(update_stmt)
+        return result.rowcount > 0
