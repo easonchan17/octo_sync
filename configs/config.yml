@@ -17,41 +17,6 @@ browser:
   page_pool_size: 5
 
 interceptor:
-  zcy:
-    category:
-      url: "https://www.zcygov.cn/"
-      rules:
-        - type: http
-          pattern: "https://www.zcygov.cn/front/index/home/category/tree"
-          receiver: "core.browser.components.receivers.zcy.CategoryReceiver"
-    sub_category:
-      url_template: "https://www.zcygov.cn/eevees/search?fcid={cid}&holdParam=false&utm=luban.luban-PC-194.161-market-menubar-pc.{salt}.3146d9e0834e11f0a492c702f45b45cf"
-      rules:
-        - type: http
-          pattern: "https://www.zcygov.cn/front/index/search/search"
-          receiver: "core.browser.components.receivers.zcy.SubCategoryReceiver"
-    brand:
-      url_template: "https://www.zcygov.cn/eevees/search?fcid={scid}&holdParam=false&utm=luban.luban-PC-194.161-market-menubar-pc.{salt}.3146d9e0834e11f0a492c702f45b45cf"
-      rules:
-        - type: http
-          pattern: "https://www.zcygov.cn/front/index/search/search"
-          receiver: "core.browser.components.receivers.zcy.BrandReceiver"
-    product:
-      page_size: 100
-      max_page_no: 10
-      sort: "0_0_0_0_0_0_0_2"
-      url_template: "https://www.zcygov.cn/eevees/search?fcid={scid}&holdParam=false&utm=luban.luban-PC-194.161-market-menubar-pc.{salt}.3146d9e0834e11f0a492c702f45b45cf"
-      rules:
-        - type: http
-          pattern: "https://www.zcygov.cn/front/index/search/search"
-          sender: "core.browser.components.senders.zcy.SearchProductSender"
-          receiver: "core.browser.components.receivers.zcy.ProductReceiver"
-    product_detail:
-      url_template: "https://www.zcygov.cn/items/{item_id}"
-      rules:
-        - type: http
-          pattern: "https://www.zcygov.cn/front/detail/item/.*"
-          receiver: "core.browser.components.receivers.zcy.ProductDetailReceiver"
   fbref:
     comp_teams:
       url_template: "https://fbref.com/en/comps/{comp_code}/{season}/{season}-{comp_name}-Stats"
