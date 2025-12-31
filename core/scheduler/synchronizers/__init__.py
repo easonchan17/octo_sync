@@ -1,10 +1,4 @@
 from .base_synchronizer import BaseSynchronizer
-from .zcy import (
-    BrandSynchronizer,
-    CategorySynchronizer,
-    ProductSynchronizer,
-    SubCategorySynchronizer
-)
 from .fbref import (
     CompTeamSynchronizer,
     DefensiveActionSynchronizer,
@@ -19,10 +13,6 @@ from .fbref import (
 
 __all__ = [
     'BaseSynchronizer',
-    'BrandSynchronizer',
-    'CategorySynchronizer',
-    'ProductSynchronizer',
-    'SubCategorySynchronizer',
     'CompTeamSynchronizer',
     'DefensiveActionSynchronizer',
     'MatchResultSynchronizer',
