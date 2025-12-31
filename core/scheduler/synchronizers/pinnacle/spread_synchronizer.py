@@ -1,10 +1,10 @@
-from typing import List, Any
+from typing import List, Dict, Any
 from core.store.postgres.models import Site
 from core.store.postgres.models.pinnacle.spread import Spread
 from ..base_synchronizer import BaseSynchronizer
 
 class SpreadSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, records: List[Any]) -> None:
+    def sync(self, site: Site, records: List[Dict[str, Any]]) -> None:
         if not records:
             self.logger.warning(f"No spread records to sync from {site.name}")
             return

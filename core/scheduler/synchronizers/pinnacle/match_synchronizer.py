@@ -1,8 +1,7 @@
 from typing import List, Dict, Any
 from datetime import datetime
-from sqlalchemy import func, or_
-from core.store.postgres.models import Site
 from sqlalchemy.dialects.postgresql import insert
+from core.store.postgres.models import Site
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.pinnacle.match import Match
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
@@ -44,27 +43,15 @@ class MatchSynchronizer(BaseSynchronizer):
 
         with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(Match).values(matches)
+            assignment, where_clause = self.build_upsert_clauses(
+                Match,
+                insert_stmt,
+                {'id', 'created_at', 'match_id', 'updated_at'}
+            )
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['match_id'],
-                set_={
-                    'kickoff_time': insert_stmt.excluded.kickoff_time,
-                    'league_id': insert_stmt.excluded.league_id,
-                    'league_name': insert_stmt.excluded.league_name,
-                    'home_team': insert_stmt.excluded.home_team,
-                    'away_team': insert_stmt.excluded.away_team,
-                    'fixture_id': insert_stmt.excluded.fixture_id,
-                    'updated_at': func.now()
-                },
-                where=(
-                    or_(
-                        Match.kickoff_time != insert_stmt.excluded.kickoff_time,
-                        Match.league_id != insert_stmt.excluded.league_id,
-                        Match.league_name != insert_stmt.excluded.league_name,
-                        Match.home_team != insert_stmt.excluded.home_team,
-                        Match.away_team != insert_stmt.excluded.away_team,
-                        Match.fixture_id != insert_stmt.excluded.fixture_id,
-                    )
-                )
+                set_=assignment,
+                where=where_clause
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount

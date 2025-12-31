@@ -63,10 +63,6 @@ class SyncShooting(BaseTask):
                     self.logger.warning(f"No shooting for {page_url}")
                     continue
 
-                for shooting in shootings:
-                    if not shooting.team_code:
-                        shooting.team_code = team_code
-
                 self.synchronizer.sync(
                     self.site, team_name, team_code, season, shootings
                 )

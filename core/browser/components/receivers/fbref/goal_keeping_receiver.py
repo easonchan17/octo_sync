@@ -1,18 +1,22 @@
 from datetime import datetime, timezone
-from typing import List, Any
+from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.goal_keeping import GoalKeeping
 from core.utils.html_utils import (
-    get_text, get_number,
-    is_table_header,
+    get_number,is_table_header,
     extract_match_code_from_cell,
     get_float, extract_venue_epoch,
-    extract_team_code_from_cell
+    extract_team_code_from_cell,
+    extract_team_code_from_url
 )
 
 class GoalkeepingReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[GoalKeeping]:
+    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+        team_code = extract_team_code_from_url(url)
+        if not team_code:
+            raise ValueError(f"Team code not found in the URL: {url}")
+
         soup = BeautifulSoup(page_content, 'html.parser')
 
         goal_keepings = []
@@ -57,20 +61,20 @@ class GoalkeepingReceiver(BaseReceiver):
                 gk_def_actions_outside_pen_area = row.find("td", {"data-stat": "gk_def_actions_outside_pen_area"})
                 gk_avg_distance_def_actions = row.find("td", {"data-stat": "gk_avg_distance_def_actions"})
 
-                goal_keeping = GoalKeeping(
-                    match_code=extract_match_code_from_cell(date),
-                    team_code=extract_team_code_from_cell(opponent) if id == "matchlogs_against" else None,
-                    shots_on_target_against=get_number(gk_shots_on_target_against),
-                    saves=get_number(gk_saves),
-                    save_pct=get_float(gk_save_pct),
-                    psxg=get_float(gk_psxg),
-                    psxg_net=get_float(gk_psxg_net),
-                    crosses=get_number(gk_crosses),
-                    crosses_stopped=get_number(gk_crosses_stopped),
-                    crosses_stopped_pct=get_float(gk_crosses_stopped_pct),
-                    def_actions_outside_pen_area=get_number(gk_def_actions_outside_pen_area),
-                    avg_distance_def_actions=get_float(gk_avg_distance_def_actions)
-                )
+                goal_keeping = {
+                    GoalKeeping.match_code.key: extract_match_code_from_cell(date),
+                    GoalKeeping.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
+                    GoalKeeping.shots_on_target_against.key: get_number(gk_shots_on_target_against),
+                    GoalKeeping.saves.key: get_number(gk_saves),
+                    GoalKeeping.save_pct.key: get_float(gk_save_pct),
+                    GoalKeeping.psxg.key: get_float(gk_psxg),
+                    GoalKeeping.psxg_net.key: get_float(gk_psxg_net),
+                    GoalKeeping.crosses.key: get_number(gk_crosses),
+                    GoalKeeping.crosses_stopped.key: get_number(gk_crosses_stopped),
+                    GoalKeeping.crosses_stopped_pct.key: get_float(gk_crosses_stopped_pct),
+                    GoalKeeping.def_actions_outside_pen_area.key: get_number(gk_def_actions_outside_pen_area),
+                    GoalKeeping.avg_distance_def_actions.key: get_float(gk_avg_distance_def_actions)
+                }
                 goal_keepings.append(goal_keeping)
 
         return goal_keepings

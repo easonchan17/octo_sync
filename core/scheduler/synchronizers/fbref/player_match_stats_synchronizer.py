@@ -1,5 +1,5 @@
-from typing import List, Any, Optional
-from sqlalchemy import func, or_, and_
+from typing import List, Any, Optional, Dict
+from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import (
     PlayerMatchStats, Site, PlayerStatsSyncState,
@@ -51,99 +51,24 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
 
             return query.order_by(MatchResult.season, MatchResult.kickoff_time).all()
 
-    def sync(self, site: Site, match_code: str, home_team: str, away_team: str, season: int, player_stats: List[PlayerMatchStats]) -> None:
+    def sync(self, site: Site, match_code: str, home_team: str, away_team: str, season: int, player_stats: List[Dict[str, Any]]) -> None:
         match_tag = f"{season} {home_team} vs {away_team}"
 
         if not player_stats:
             self.logger.warning(f"No player match stats to sync for match {match_tag} from {site.name}")
             return
 
-        player_stats_dict = self.to_dict(
-            player_stats,
-            ['match_code', 'player_code', 'team_code', 'player_name', 'position', 'minutes', 'is_starter', 'goals', 'penalties_made', 'shots', 'shots_on_target', 'npxg',
-             'xg_assist', 'shot_creating_actions', 'progressive_passes', 'key_passes',
-             'progressive_carries', 'take_ons_won', 'fouls_drawn', 'dispossessed', 'miscontrols',
-             'tackles', 'tackles_won', 'blocks', 'interceptions', 'ball_recoveries', 'challenges_lost',
-             'aerials_won', 'aerials_lost',
-             'gk_goals_against', 'gk_psxg', 'gk_crosses', 'gk_crosses_stopped', 'gk_def_actions_outside_pen_area'],
-            ['match_code', 'player_code']
-        )
-
         with self.db.get_session(site.get_namespace()) as session:
-            insert_stmt = insert(PlayerMatchStats).values(list(player_stats_dict.values()))
+            insert_stmt = insert(PlayerMatchStats).values(player_stats)
+            assignment, where_clause = self.build_upsert_clauses(
+                PlayerMatchStats,
+                insert_stmt,
+                {'id', 'created_at', 'match_code', 'player_code', 'updated_at'}
+            )
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=['match_code', 'player_code'],
-                set_={
-                    'team_code': insert_stmt.excluded.team_code,
-                    'player_name': insert_stmt.excluded.player_name,
-                    'position': insert_stmt.excluded.position,
-                    'minutes': insert_stmt.excluded.minutes,
-                    'is_starter': insert_stmt.excluded.is_starter,
-                    'goals': insert_stmt.excluded.goals,
-                    'penalties_made': insert_stmt.excluded.penalties_made,
-                    'shots': insert_stmt.excluded.shots,
-                    'shots_on_target': insert_stmt.excluded.shots_on_target,
-                    'npxg': insert_stmt.excluded.npxg,
-                    'xg_assist': insert_stmt.excluded.xg_assist,
-                    'shot_creating_actions': insert_stmt.excluded.shot_creating_actions,
-                    'progressive_passes': insert_stmt.excluded.progressive_passes,
-                    'key_passes': insert_stmt.excluded.key_passes,
-                    'progressive_carries': insert_stmt.excluded.progressive_carries,
-                    'take_ons_won': insert_stmt.excluded.take_ons_won,
-                    'fouls_drawn': insert_stmt.excluded.fouls_drawn,
-                    'dispossessed': insert_stmt.excluded.dispossessed,
-                    'miscontrols': insert_stmt.excluded.miscontrols,
-                    'tackles': insert_stmt.excluded.tackles,
-                    'tackles_won': insert_stmt.excluded.tackles_won,
-                    'blocks': insert_stmt.excluded.blocks,
-                    'interceptions': insert_stmt.excluded.interceptions,
-                    'ball_recoveries': insert_stmt.excluded.ball_recoveries,
-                    'challenges_lost': insert_stmt.excluded.challenges_lost,
-                    'aerials_won': insert_stmt.excluded.aerials_won,
-                    'aerials_lost': insert_stmt.excluded.aerials_lost,
-                    'gk_goals_against': insert_stmt.excluded.gk_goals_against,
-                    'gk_psxg': insert_stmt.excluded.gk_psxg,
-                    'gk_crosses': insert_stmt.excluded.gk_crosses,
-                    'gk_crosses_stopped': insert_stmt.excluded.gk_crosses_stopped,
-                    'gk_def_actions_outside_pen_area': insert_stmt.excluded.gk_def_actions_outside_pen_area,
-                    'updated_at': func.now()
-                },
-                where=(
-                    or_(
-                        PlayerMatchStats.team_code != insert_stmt.excluded.team_code,
-                        PlayerMatchStats.player_name != insert_stmt.excluded.player_name,
-                        PlayerMatchStats.position.is_distinct_from(insert_stmt.excluded.position),
-                        PlayerMatchStats.minutes.is_distinct_from(insert_stmt.excluded.minutes),
-                        PlayerMatchStats.is_starter != insert_stmt.excluded.is_starter,
-                        PlayerMatchStats.goals.is_distinct_from(insert_stmt.excluded.goals),
-                        PlayerMatchStats.penalties_made.is_distinct_from(insert_stmt.excluded.penalties_made),
-                        PlayerMatchStats.shots.is_distinct_from(insert_stmt.excluded.shots),
-                        PlayerMatchStats.shots_on_target.is_distinct_from(insert_stmt.excluded.shots_on_target),
-                        PlayerMatchStats.npxg.is_distinct_from(insert_stmt.excluded.npxg),
-                        PlayerMatchStats.xg_assist.is_distinct_from(insert_stmt.excluded.xg_assist),
-                        PlayerMatchStats.shot_creating_actions.is_distinct_from(insert_stmt.excluded.shot_creating_actions),
-                        PlayerMatchStats.progressive_passes.is_distinct_from(insert_stmt.excluded.progressive_passes),
-                        PlayerMatchStats.key_passes.is_distinct_from(insert_stmt.excluded.key_passes),
-                        PlayerMatchStats.progressive_carries.is_distinct_from(insert_stmt.excluded.progressive_carries),
-                        PlayerMatchStats.take_ons_won.is_distinct_from(insert_stmt.excluded.take_ons_won),
-                        PlayerMatchStats.fouls_drawn.is_distinct_from(insert_stmt.excluded.fouls_drawn),
-                        PlayerMatchStats.dispossessed.is_distinct_from(insert_stmt.excluded.dispossessed),
-                        PlayerMatchStats.miscontrols.is_distinct_from(insert_stmt.excluded.miscontrols),
-                        PlayerMatchStats.tackles.is_distinct_from(insert_stmt.excluded.tackles),
-                        PlayerMatchStats.tackles_won.is_distinct_from(insert_stmt.excluded.tackles_won),
-                        PlayerMatchStats.blocks.is_distinct_from(insert_stmt.excluded.blocks),
-                        PlayerMatchStats.interceptions.is_distinct_from(insert_stmt.excluded.interceptions),
-                        PlayerMatchStats.ball_recoveries.is_distinct_from(insert_stmt.excluded.ball_recoveries),
-                        PlayerMatchStats.challenges_lost.is_distinct_from(insert_stmt.excluded.challenges_lost),
-                        PlayerMatchStats.aerials_won.is_distinct_from(insert_stmt.excluded.aerials_won),
-                        PlayerMatchStats.aerials_lost.is_distinct_from(insert_stmt.excluded.aerials_lost),
-                        PlayerMatchStats.gk_goals_against.is_distinct_from(insert_stmt.excluded.gk_goals_against),
-                        PlayerMatchStats.gk_psxg.is_distinct_from(insert_stmt.excluded.gk_psxg),
-                        PlayerMatchStats.gk_crosses.is_distinct_from(insert_stmt.excluded.gk_crosses),
-                        PlayerMatchStats.gk_crosses_stopped.is_distinct_from(insert_stmt.excluded.gk_crosses_stopped),
-                        PlayerMatchStats.gk_def_actions_outside_pen_area.is_distinct_from(insert_stmt.excluded.gk_def_actions_outside_pen_area)
-                    )
-                )
+                set_=assignment,
+                where=where_clause
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount

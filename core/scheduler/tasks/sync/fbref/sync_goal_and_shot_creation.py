@@ -63,10 +63,6 @@ class SyncGoalAndShotCreation(BaseTask):
                     self.logger.warning(f"No goal and shot creations for {page_url}")
                     continue
 
-                for goal_and_shot_creation in goal_and_shot_creations:
-                    if not goal_and_shot_creation.team_code:
-                        goal_and_shot_creation.team_code = team_code
-
                 self.synchronizer.sync(
                     self.site, team_name, team_code, season, goal_and_shot_creations
                 )

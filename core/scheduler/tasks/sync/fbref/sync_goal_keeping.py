@@ -63,10 +63,6 @@ class SyncGoalKeeping(BaseTask):
                     self.logger.warning(f"No goal keeping for {page_url}")
                     continue
 
-                for goal_keeping in goal_keepings:
-                    if not goal_keeping.team_code:
-                        goal_keeping.team_code = team_code
-
                 self.synchronizer.sync(
                     self.site, team_name, team_code, season, goal_keepings
                 )

@@ -1,19 +1,23 @@
 
 from datetime import datetime, timezone
-from typing import List, Any
+from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.passing import Passing
 from core.utils.html_utils import (
-    get_text, get_number,
-    is_table_header,
+    get_number,is_table_header,
     extract_match_code_from_cell,
     get_float, extract_venue_epoch,
-    extract_team_code_from_cell
+    extract_team_code_from_cell,
+    extract_team_code_from_url
 )
 
 class PassingReceiver(BaseReceiver):
-    async def process(self, page_content: Any) -> List[Passing]:
+    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+        team_code = extract_team_code_from_url(url)
+        if not team_code:
+            raise ValueError(f"Team code not found in the URL: {url}")
+
         soup = BeautifulSoup(page_content, 'html.parser')
 
         passings = []
@@ -70,32 +74,32 @@ class PassingReceiver(BaseReceiver):
                 crosses_into_penalty_area = row.find("td", {"data-stat": "crosses_into_penalty_area"})      # Successful crosses into the penalty area
                 progressive_passes = row.find("td", {"data-stat": "progressive_passes"})                    # Progressive passes, moving the ball more than 10 yards forward
 
-                passing = Passing(
-                    match_code=extract_match_code_from_cell(date),
-                    team_code=extract_team_code_from_cell(opponent) if id == "matchlogs_against" else None,
-                    passes_completed=get_number(passes_completed),
-                    passes=get_number(passes),
-                    passes_pct=get_float(passes_pct),
-                    passes_total_distance=get_number(passes_total_distance),
-                    passes_progressive_distance=get_number(passes_progressive_distance),
-                    passes_completed_short=get_number(passes_completed_short),
-                    passes_short=get_number(passes_short),
-                    passes_pct_short=get_float(passes_pct_short),
-                    passes_completed_medium=get_number(passes_completed_medium),
-                    passes_medium=get_number(passes_medium),
-                    passes_pct_medium=get_float(passes_pct_medium),
-                    passes_completed_long=get_number(passes_completed_long),
-                    passes_long=get_number(passes_long),
-                    passes_pct_long=get_float(passes_pct_long),
-                    assists=get_number(assists),
-                    xg_assist=get_float(xg_assist),
-                    pass_xa=get_float(pass_xa),
-                    assisted_shots=get_number(assisted_shots),
-                    passes_into_final_third=get_number(passes_into_final_third),
-                    passes_into_penalty_area=get_number(passes_into_penalty_area),
-                    crosses_into_penalty_area=get_number(crosses_into_penalty_area),
-                    progressive_passes=get_number(progressive_passes)
-                )
+                passing = {
+                    Passing.match_code.key: extract_match_code_from_cell(date),
+                    Passing.team_code.key: extract_team_code_from_cell(opponent) if id == "matchlogs_against" else team_code,
+                    Passing.passes_completed.key: get_number(passes_completed),
+                    Passing.passes.key: get_number(passes),
+                    Passing.passes_pct.key: get_float(passes_pct),
+                    Passing.passes_total_distance.key: get_number(passes_total_distance),
+                    Passing.passes_progressive_distance.key: get_number(passes_progressive_distance),
+                    Passing.passes_completed_short.key: get_number(passes_completed_short),
+                    Passing.passes_short.key: get_number(passes_short),
+                    Passing.passes_pct_short.key: get_float(passes_pct_short),
+                    Passing.passes_completed_medium.key: get_number(passes_completed_medium),
+                    Passing.passes_medium.key: get_number(passes_medium),
+                    Passing.passes_pct_medium.key: get_float(passes_pct_medium),
+                    Passing.passes_completed_long.key: get_number(passes_completed_long),
+                    Passing.passes_long.key: get_number(passes_long),
+                    Passing.passes_pct_long.key: get_float(passes_pct_long),
+                    Passing.assists.key: get_number(assists),
+                    Passing.xg_assist.key: get_float(xg_assist),
+                    Passing.pass_xa.key: get_float(pass_xa),
+                    Passing.assisted_shots.key: get_number(assisted_shots),
+                    Passing.passes_into_final_third.key: get_number(passes_into_final_third),
+                    Passing.passes_into_penalty_area.key: get_number(passes_into_penalty_area),
+                    Passing.crosses_into_penalty_area.key: get_number(crosses_into_penalty_area),
+                    Passing.progressive_passes.key: get_number(progressive_passes)
+                }
                 passings.append(passing)
 
         return passings

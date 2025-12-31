@@ -1,6 +1,6 @@
 import re
-from typing import Optional, Any
-from datetime import datetime, timezone, timedelta
+from typing import Optional, Tuple
+from datetime import datetime
 
 def get_text(cell) -> Optional[str]:
     text = cell.get_text(strip=True) if cell else None
@@ -50,6 +50,20 @@ def extract_comp_code_from_cell(cell) -> Optional[str]:
 
 def extract_comp_code_from_url(url) -> Optional[str]:
     return extract_text(url, r"/en/comps/(Big5|\d+)/")
+
+COMP_URL_PATTERN = re.compile(r"/comps/([\w]+)/(\d{4})(?:-\d{4})?/\d{4}(?:-\d{4})?-(.+?)-Stats")
+
+def extract_comp_info_from_url(url: str) -> Optional[Tuple[str, int, str]]:
+    if not url:
+        return None
+
+    match = COMP_URL_PATTERN.search(url)
+    if not match:
+        return None
+
+    comp_code, season_start, comp_name_slug = match.groups()
+
+    return comp_code, int(season_start), comp_name_slug.replace("-", " ")
 
 def extract_team_code_from_cell(cell) -> Optional[str]:
     url = cell.find("a").get("href") if cell and cell.find("a") else None

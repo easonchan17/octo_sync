@@ -254,21 +254,22 @@ class Interceptor(Thread, Singleton):
         if not policy.has_rules(InterceptType.DOM):
             return
 
+        url = page_context.url
         dom_rule = policy.find_rule(type=InterceptType.DOM)
         if dom_rule is None or dom_rule.receiver is None:
             if policy.debug:
-                self.logger.warning(f"No receiver found for DOM rule: {policy.url}")
+                self.logger.warning(f"No receiver found for DOM rule: {url}")
             return
 
         try:
             content = await page_context.content()
-            parsed_data = await dom_rule.receiver.process(content)
+            parsed_data = await dom_rule.receiver.process(content, url=url)
             if parsed_data is None:
                 return
 
             collected_datas.append(parsed_data)
         except Exception as e:
-            self.logger.error(f"Failed to process page content from {policy.url} {dom_rule.receiver}: {e}", exc_info=True)
+            self.logger.error(f"Failed to process page content from {url} {dom_rule.receiver}: {e}", exc_info=True)
 
     async def _open_page(
         self,
