@@ -25,13 +25,11 @@ class GoalkeepingReceiver(BaseReceiver):
         for id in table_ids:
             goalkeeping_table = soup.find("table", id=id)
             if not goalkeeping_table:
-                self.logger.error(f"Goalkeeping table not found in the page content: {page_content}")
-                return []
+                raise ValueError(f"Goalkeeping table not found in the page content: {page_content}")
 
             table_body = goalkeeping_table.find("tbody")
             if not table_body:
-                self.logger.error("Goalkeeping table body not found in the page content")
-                return []
+                raise ValueError("Goalkeeping table body not found in the page content")
 
             rows = table_body.find_all("tr")
             for row in rows:
@@ -40,8 +38,7 @@ class GoalkeepingReceiver(BaseReceiver):
 
                 venue_epoch = extract_venue_epoch(row)
                 if not venue_epoch:
-                    self.logger.error(f"No venue epoch")
-                    continue
+                    raise ValueError(f"No venue epoch for row: {row}")
 
                 now = int(time.time())
                 if int(venue_epoch) > now:

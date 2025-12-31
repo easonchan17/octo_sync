@@ -23,7 +23,7 @@ class SyncPlayerMatchStats(BaseTask):
         min_season = self.payload.get("min_season")
         max_season = self.payload.get("max_season")
 
-        targets = self.synchronizer.get_sync_targets(
+        tasks = self.synchronizer.get_sync_targets(
             self.site,
             min_season,
             max_season,
@@ -32,11 +32,11 @@ class SyncPlayerMatchStats(BaseTask):
             team_code=team_code
         )
 
-        if not targets:
-            self.logger.warning(f"No sync targets found for comp_code: {comp_code}, team_code: {team_code} from {min_season} to {max_season}")
+        if not tasks:
+            self.logger.warning(f"No pending tasks found for comp_code: {comp_code}, team_code: {team_code} from {min_season} to {max_season}")
             return
 
-        for match_code, home_team, away_team, season, match_report_url in targets:
+        for match_code, home_team, away_team, season, match_report_url in tasks:
             if self.should_stop():
                 return
 

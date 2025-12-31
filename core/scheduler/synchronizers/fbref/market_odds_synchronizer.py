@@ -26,7 +26,14 @@ class MarketOddsSynchronizer(CompLevelSynchronizer):
 
             return matches
 
-    def sync(self, site: Site, comp_code: str, season: int, records: List[Dict[str, Any]]) -> None:
+    def sync(
+        self,
+        site: Site,
+        comp_code: str,
+        season: int,
+        last_synced_time: datetime,
+        records: List[Dict[str, Any]]
+    ) -> None:
         season_range = f"{season}-{season+1}"
         if not records:
             self.logger.warning(f"No market odds to sync for {site.name} {season_range}")
@@ -48,5 +55,5 @@ class MarketOddsSynchronizer(CompLevelSynchronizer):
             upserted_count = result.rowcount
             self.logger.info(f"Sync {season_range} market odds completed. upserted: {upserted_count}")
 
-            self.add_sync_flag(session, comp_code, season, CompSyncFlag.MARKET_ODDS.value)
+            self.update_sync_state(session, comp_code, season, CompSyncFlag.MARKET_ODDS, last_synced_time)
             self.logger.info(f"Mark {season_range} market odds as synced")

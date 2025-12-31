@@ -23,17 +23,17 @@ class SyncCompTeam(BaseTask):
         min_season = self.payload.get("min_season")
         max_season = self.payload.get("max_season")
 
-        targets = self.synchronizer.get_sync_targets(
+        tasks = self.synchronizer.get_pending_tasks(
             self.site, comp_code, min_season, max_season, CompSyncFlag.TEAMS.value
         )
 
-        if not targets:
-            self.logger.warning(f"No sync targets found for {comp_name}({comp_code}) from {min_season} to {max_season}")
+        if not tasks:
+            self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
             return
 
         comp_name_with_dash = comp_name.replace(" ", "-")
 
-        for season in targets:
+        for season in tasks:
             if self.should_stop():
                 return
 

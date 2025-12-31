@@ -15,18 +15,15 @@ class CompTeamReceiver(BaseReceiver):
             raise ValueError(f"Failed to extract comp info from URL: {url}")
 
         comp_code, season, comp_name = comp_info
-
         soup = BeautifulSoup(page_content, 'html.parser')
 
         league_table = soup.find("table", id=re.compile(r'^results\d{4}-\d+_overall$'))
         if not league_table:
-            self.logger.error("League table not found in the page content")
-            return []
+            raise ValueError(f"League table not found in the page content: {page_content}")
 
         table_body = league_table.find("tbody")
         if not table_body:
-            self.logger.error("Table body not found")
-            return []
+            raise ValueError("Table body not found")
 
         teams = []
         rows = table_body.find_all("tr")
@@ -36,13 +33,15 @@ class CompTeamReceiver(BaseReceiver):
 
             team_cell = row.find("td", {"data-stat": "team"})
             if not team_cell:
-                continue
+                raise ValueError(f"Team cell not found for row: {row}")
 
             team_name = get_text(team_cell)
-            team_code = extract_team_code_from_cell(team_cell)
+            if not team_name:
+                raise ValueError(f"Team name not found for row: {row}")
 
-            if not team_name or not team_code:
-                continue
+            team_code = extract_team_code_from_cell(team_cell)
+            if not team_code:
+                raise ValueError(f"Team code not found for row: {row}")
 
             team = {
                 CompTeam.season.key: season,

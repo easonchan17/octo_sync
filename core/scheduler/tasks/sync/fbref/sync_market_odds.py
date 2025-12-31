@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
+from core.store.postgres.models.fbref.market_odds import MarketOdds
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
 from core.scheduler.synchronizers.fbref.market_odds_synchronizer import MarketOddsSynchronizer
@@ -44,14 +45,14 @@ class SyncMarketOdds(BaseTask):
             min_season = self._get_required_param("min_season")
             max_season = self._get_required_param("max_season")
 
-            targets = self.synchronizer.get_sync_targets(
+            tasks = self.synchronizer.get_pending_tasks(
                 self.site, comp_code, min_season, max_season, CompSyncFlag.MARKET_ODDS.value
             )
-            if not targets:
-                self.logger.warning(f"No sync targets found for {comp_name}({comp_code}) from {min_season} to {max_season}")
+            if not tasks:
+                self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
                 return
 
-            for season in targets:
+            for season in tasks:
                 source_matches = self._load_match_records(comp_name_with_dash, season, timezone)
                 if not source_matches:
                     self.logger.warning(f"No source matches loaded for {comp_name_with_dash} {season}")
@@ -63,7 +64,10 @@ class SyncMarketOdds(BaseTask):
                 for record in source_matches:
                     record['match_code'] = record.pop('target').match_code
 
-                self.synchronizer.sync(self.site, comp_code, season, source_matches)
+                last_synced_time = source_matches[-1].get(MarketOdds.kickoff_time.key)
+                self.synchronizer.sync(
+                    self.site, comp_code, season, last_synced_time, source_matches
+                )
         except Exception as e:
             self.logger.error(f"Failed to sync market odds: {e}", exc_info=True)
 
