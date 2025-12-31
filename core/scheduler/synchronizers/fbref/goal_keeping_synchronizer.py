@@ -25,11 +25,17 @@ class GoalKeepingSynchronizer(TeamLevelSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 GoalKeeping,
                 insert_stmt,
-                {'id', 'created_at', 'match_code', 'team_code', 'updated_at'}
+                {
+                    GoalKeeping.id.key,
+                    GoalKeeping.created_at.key,
+                    GoalKeeping.match_code.key,
+                    GoalKeeping.team_code.key,
+                    GoalKeeping.updated_at.key
+                }
             )
 
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_code', 'team_code'],
+                index_elements=[GoalKeeping.match_code.key, GoalKeeping.team_code.key],
                 set_=assignment,
                 where=where_clause
             )

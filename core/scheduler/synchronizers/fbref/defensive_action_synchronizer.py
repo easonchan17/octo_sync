@@ -25,11 +25,17 @@ class DefensiveActionSynchronizer(TeamLevelSynchronizer):
             assignment, where_clause = self.build_upsert_clauses(
                 DefensiveAction,
                 insert_stmt,
-                {'id', 'created_at', 'match_code', 'team_code', 'updated_at'}
+                {
+                    DefensiveAction.id.key,
+                    DefensiveAction.created_at.key,
+                    DefensiveAction.match_code.key,
+                    DefensiveAction.team_code.key,
+                    DefensiveAction.updated_at.key
+                }
             )
 
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=['match_code', 'team_code'],
+                index_elements=[DefensiveAction.match_code.key, DefensiveAction.team_code.key],
                 set_=assignment,
                 where=where_clause
             )
