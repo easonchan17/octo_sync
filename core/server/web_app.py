@@ -7,6 +7,7 @@ from core.server.controllers.browser_controller import BrowserController
 from core.server.controllers.training_controller import TrainingController
 from core.server.controllers.inference_controller import InferenceController
 from core.server.controllers.fixture_controller import FixtureController
+from core.server.controllers.cron_controller import CronController
 
 class WebApp:
     def __init__(self) -> None:
@@ -38,6 +39,9 @@ class WebApp:
 
         fixture_controller = FixtureController()
         self.app.include_router(fixture_controller.router, prefix="/api", tags=["fixtures"])
+
+        cron_controller = CronController()
+        self.app.include_router(cron_controller.router, prefix="/api", tags=["cron"])
 
     def _setup_middleware(self) -> None:
         @self.app.middleware("http")
