@@ -11,5 +11,5 @@ __all__ = [
     'winball',
     'pinnacle',
     'fotmob',
-    'cron',
+    'cron'
 ]

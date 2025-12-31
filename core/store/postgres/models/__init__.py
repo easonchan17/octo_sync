@@ -31,6 +31,7 @@ from .pinnacle import (
     Moneyline,
     Spread
 )
+from .fotmob import Fixture
 
 __all__ = [
     'Base',
@@ -63,5 +64,6 @@ __all__ = [
     'Match',
     'Moneyline',
     'Spread',
-    'MarketOdds'
+    'MarketOdds',
+    'Fixture'
 ]
