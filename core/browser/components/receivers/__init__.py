@@ -1,10 +1,4 @@
 from .base_receiver import BaseReceiver
-from .zcy import (
-    BrandReceiver,
-    CategoryReceiver,
-    ProductReceiver,
-    SubCategoryReceiver
-)
 from .fbref import (
     CompTeamReceiver,
     DefensiveActionReceiver,
@@ -24,10 +18,6 @@ from .fotmob import (
 
 __all__ = [
     'BaseReceiver',
-    'BrandReceiver',
-    'CategoryReceiver',
-    'ProductReceiver',
-    'SubCategoryReceiver',
     'CompTeamReceiver',
     'DefensiveActionReceiver',
     'MatchResultReceiver',
