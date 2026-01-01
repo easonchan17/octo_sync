@@ -7,10 +7,14 @@ from ..base_synchronizer import BaseSynchronizer
 from core.store.postgres.models import Site, CompSyncState
 from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
 
-
 class CompLevelSynchronizer(BaseSynchronizer):
     def get_pending_tasks(
-        self, site: Site, comp_code: str, min_season: int, max_season: int, flag: int
+        self,
+        site: Site,
+        comp_code: str,
+        min_season: int,
+        max_season: int,
+        flag: int
     ) -> List[int]:
         with self.db.get_session(site.get_namespace()) as session:
             synced_seasons = {
@@ -54,31 +58,10 @@ class CompLevelSynchronizer(BaseSynchronizer):
                 func.cast('{}', JSONB)
             ).op('||')(new_state_times)
 
-        stmt = insert(CompSyncState).values(insert_values)
-        stmt = stmt.on_conflict_do_update(
+        insert_stmt = insert(CompSyncState).values(insert_values)
+        insert_stmt = insert_stmt.on_conflict_do_update(
             index_elements=[CompSyncState.season.key, CompSyncState.comp_code.key],
             set_=update_set
         )
 
-        session.execute(stmt)
-
-    def update_latest_match_time(
-        self,
-        session: Session,
-        comp_code: str,
-        season: int,
-        latest_match_time: datetime
-    ) -> None:
-        insert_stmt = insert(CompSyncState).values(
-            comp_code=comp_code,
-            season=season,
-            latest_match_time=latest_match_time
-        )
-        insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[CompSyncState.season.key, CompSyncState.comp_code.key],
-            set_={
-                CompSyncState.latest_match_time.key: latest_match_time,
-                CompSyncState.updated_at.key: func.now()
-            }
-        )
         session.execute(insert_stmt)

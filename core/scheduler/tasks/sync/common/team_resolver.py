@@ -18,8 +18,11 @@ class TeamResolver:
         self.db = PostgreSQLManager.get_instance()
 
     def resolve(self, source_matches: List[Dict], target_matches: List[Any], with_target: Optional[bool] = False) -> None:
-        if not source_matches or not target_matches:
-            raise ValueError("No source or target matches")
+        if not source_matches:
+            raise ValueError("No source matches")
+
+        if not target_matches:
+            raise ValueError("No target matches")
 
         target_index = {}
         for target_match in target_matches:

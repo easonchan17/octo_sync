@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+from core.utils.downloader import FileDownloader
 from typing import Any, Dict, List, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
@@ -83,8 +84,12 @@ class SyncMarketOdds(BaseTask):
 
         dataset_file = dataset_path / file_name
         if not dataset_file.exists():
-            self.logger.warning(f"CSV file not found: {dataset_file}")
-            return []
+            with FileDownloader() as downloader:
+                downloader.download('https://www.football-data.co.uk/mmz4281/2526/E0.csv', dataset_file)
+
+            if not dataset_file.exists():
+                self.logger.warning(f"CSV file not found: {dataset_file}")
+                return []
 
         df = pd.read_csv(dataset_file, encoding='utf-8')
         if df.empty:

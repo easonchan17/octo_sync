@@ -1,6 +1,9 @@
 # PostgreSQL models package
 from .base_model import Base, Status, StatusMixin, DictMixin
-from .common import Site, TrainingRecord, MatchStatus
+from .common import Site, TrainingRecord, MatchStatus, MatchCursor
+from .pinnacle import Match, Moneyline, Spread
+from .fotmob import Fixture
+
 from .fbref import (
     CompTeam,
     CompSyncState,
@@ -16,15 +19,8 @@ from .fbref import (
     Passing,
     PlayerMatchStats,
     Shooting,
-    GlobalState,
     MarketOdds
 )
-from .pinnacle import (
-    Match,
-    Moneyline,
-    Spread
-)
-from .fotmob import Fixture
 
 __all__ = [
     'Base',
@@ -47,8 +43,8 @@ __all__ = [
     'Passing',
     'PlayerMatchStats',
     'Shooting',
-    'GlobalState',
     'TrainingRecord',
+    'MatchCursor',
     'Match',
     'Moneyline',
     'Spread',

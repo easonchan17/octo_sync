@@ -2,7 +2,7 @@ import re
 from enum import StrEnum
 from collections import defaultdict
 from typing import Dict, List, Optional, Any
-from core.utils.string_utils import normalize_url
+from core.utils.parsing import normalize_url
 from core.browser.components.component_factory import ComponentFactory
 
 class InterceptType(StrEnum):

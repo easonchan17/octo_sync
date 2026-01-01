@@ -77,24 +77,3 @@ class TeamLevelSynchronizer(BaseSynchronizer):
             }
         )
         session.execute(insert_stmt)
-
-    def update_latest_match_time(
-        self,
-        session: Session,
-        team_code: str,
-        season: int,
-        latest_match_time: datetime
-    ) -> None:
-        insert_stmt = insert(MatchStatsSyncState).values(
-            team_code=team_code,
-            season=season,
-            latest_match_time=latest_match_time
-        )
-        insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[MatchStatsSyncState.team_code.key, MatchStatsSyncState.season.key],
-            set_={
-                MatchStatsSyncState.latest_match_time.key: latest_match_time,
-                MatchStatsSyncState.updated_at.key: func.now()
-            }
-        )
-        session.execute(insert_stmt)

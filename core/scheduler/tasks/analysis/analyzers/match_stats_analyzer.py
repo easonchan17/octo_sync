@@ -4,7 +4,7 @@ from sqlalchemy import and_
 from urllib.parse import urljoin
 from sqlalchemy.orm import aliased
 from typing import Any, Dict, List, Optional
-from core.utils.html_utils import normalize_team_name, normalize_season_range
+from core.utils.parsing import normalize_team_name, normalize_season_range
 from core.store.postgres.models import (
     MatchResult, GoalAndShotCreation, Passing, Shooting,
     DefensiveAction, GoalKeeping, MarketOdds

@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.match_result import MatchResult
 from core.store.postgres.models import MatchStatus
-from core.utils.html_utils import (
+from core.utils.parsing import (
     get_text, get_float, get_number,
     is_table_header, extract_comp_code_from_cell,
     extract_match_code_from_cell, extract_venue_epoch,

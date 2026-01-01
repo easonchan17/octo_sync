@@ -1,5 +1,5 @@
 from urllib.parse import urlparse
-from core.utils.string_utils import parse_scores
+from core.utils.parsing import parse_scores
 from typing import Any, Optional, List, Tuple, Dict
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.common.match_status import MatchStatus
@@ -7,20 +7,10 @@ from ..base_receiver import BaseReceiver
 
 class FixtureReceiver(BaseReceiver):
     async def process(self, response: Any) -> List[Dict[str, Any]]:
-        parsed_url = urlparse(response.url)
-        # query_params = parse_qs(parsed_url.query)
-
-        # if 'id' not in query_params or 'ccode3' not in query_params:
-        #     self.logger.warning(f"Skipping response: {response.url}")
-        #     return None
-
         json_data = await self.decode_json_body(response)
         if not json_data:
             self.logger.error(f"Failed to decode json body: {response}")
             return None
-
-        # self.logger.info(f"Processing FixtureReceiver for URL: {response.url}")
-        # self.logger.info(f"Json data:\n{json.dumps(json_data, indent=2)}")
 
         fixtures = []
 

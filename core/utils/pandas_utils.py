@@ -1,7 +1,6 @@
 import pandas as pd
 from pathlib import Path
 
-
 def save_dataframe(df: pd.DataFrame, output_path: Path) -> None:
     if df is None:
         raise ValueError("DataFrame is required and cannot be empty")
