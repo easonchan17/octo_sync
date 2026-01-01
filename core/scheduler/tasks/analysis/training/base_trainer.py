@@ -1,9 +1,9 @@
 import pandas as pd
 from abc import abstractmethod
 from typing import Any, Tuple, Optional
-from sklearn.utils.class_weight import compute_sample_weight
 from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
+from sklearn.utils.class_weight import compute_sample_weight
 
 class BaseTrainer(BaseTask):
     def __init__(self) -> None:

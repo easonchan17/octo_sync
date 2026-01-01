@@ -4,7 +4,7 @@ from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.goal_and_shot_creation import GoalAndShotCreation
-from core.utils.html_utils import (
+from core.utils.parsing import (
     get_number,is_table_header,
     extract_match_code_from_cell,
     extract_venue_epoch,

@@ -14,10 +14,10 @@ def sync_fotmob_fixtures() -> None:
     SiteService.get_instance().start_sync(
         'fotmob',
         'fixtures',
-        {'league_id': '47', 'league_naqme': 'premier-league'}
+        {'league_id': '47', 'league_name': 'premier-league'}
     )
 
-@Registry.cron('cron.sync_pinnacle_odds', minute="*/15")
+@Registry.cron('cron.sync_pinnacle_odds', minute="*/10")
 def sync_pinnacle_odds() -> None:
     from core.server.services.site_service import SiteService
     SiteService.get_instance().start_sync(

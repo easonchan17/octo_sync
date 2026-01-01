@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
+from core.utils.pandas_utils import save_dataframe
 from core.scheduler.tasks.analysis.feature_engineering import FeatureSelector
 from core.scheduler.tasks.analysis.feature_engineering import FormulaDeriver
 from core.scheduler.tasks.analysis.feature_engineering.constants import (
@@ -23,7 +24,6 @@ from core.scheduler.tasks.analysis.feature_engineering.constants import (
     DEFAULT_DECIMALS
 )
 from core.scheduler.tasks.base_task import BaseTask
-from core.utils.pandas_utils import save_dataframe
 from .match_stats_analyzer import MatchStatsAnalyzer
 from .player_stats_analyzer import OutfieldPlayerStatsAnalyzer, GoalkeeperStatsAnalyzer
 
