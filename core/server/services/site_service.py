@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from core.server.services.base_service import BaseService
 from core.scheduler.tasks.base_task import BaseTask, AsyncTask
 from core.store.postgres.models import (
-    Site, TrainingRecord, Fixture, Match, Moneyline, Spread, GlobalState, CompTeam, CompSyncState,
+    Site, TrainingRecord, Fixture, Match, Moneyline, Spread, CompTeam, CompSyncState,
     MatchStatsSyncState, MatchResult, GoalAndShotCreation, Passing,
     DefensiveAction, Shooting, GoalKeeping, PlayerMatchStats,
     PlayerStatsSyncState, MarketOdds
@@ -20,7 +20,7 @@ class SiteService(BaseService, Singleton):
         "fotmob": [Fixture],
         "pinnacle": [Match, Moneyline, Spread],
         "fbref": [
-            GlobalState, CompTeam, CompSyncState, MatchStatsSyncState,
+            CompTeam, CompSyncState, MatchStatsSyncState,
             MatchResult, GoalAndShotCreation, Passing, DefensiveAction,
             Shooting, GoalKeeping, PlayerMatchStats, PlayerStatsSyncState, MarketOdds
         ],

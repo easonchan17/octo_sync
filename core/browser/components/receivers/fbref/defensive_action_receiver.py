@@ -4,7 +4,7 @@ from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.defensive_action import DefensiveAction
-from core.utils.html_utils import (
+from core.utils.parsing import (
     get_number,is_table_header,
     extract_match_code_from_cell,
     get_float, extract_venue_epoch,

@@ -18,3 +18,4 @@ python-dotenv==1.2.1
 janus==2.0.0
 thefuzz==0.22.1
 apscheduler==3.11.2
+httpx==0.28.1

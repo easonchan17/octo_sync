@@ -9,7 +9,7 @@ from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, List, Optional, Any
-from core.utils.string_utils import is_valid_url
+from core.utils.parsing import is_valid_url
 from core.browser.rate_limiter import RateLimiter
 from core.config.config_manager import ConfigManager
 from core.browser.intercept_monitor import InterceptMonitor
@@ -342,8 +342,8 @@ class Interceptor(Thread, Singleton):
                         self.rate_limiter.activate_backoff(url)
                         return False, collected_datas
 
-                    await self._process_dom_content(page_context, policy, collected_datas)
                     await monitor.wait(timeout)
+                    await self._process_dom_content(page_context, policy, collected_datas)
 
                     self.rate_limiter.reset_backoff(url)
                     return True, collected_datas

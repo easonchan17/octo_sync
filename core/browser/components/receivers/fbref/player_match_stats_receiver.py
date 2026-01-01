@@ -3,7 +3,7 @@ from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.player_match_stats import PlayerMatchStats
-from core.utils.html_utils import (
+from core.utils.parsing import (
     get_number, get_float, get_text,
     is_table_header,
     extract_player_code_from_cell,

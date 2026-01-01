@@ -4,7 +4,7 @@ from typing import List, Any, Dict
 from datetime import datetime, timezone
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.shooting import Shooting
-from core.utils.html_utils import (
+from core.utils.parsing import (
     get_number, get_float,is_table_header,
     extract_match_code_from_cell,
     extract_venue_epoch,

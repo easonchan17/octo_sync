@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
-from core.utils.html_utils import normalize_team_name
+from core.utils.parsing import normalize_team_name
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
 from core.store.postgres.models.fbref.shooting import Shooting

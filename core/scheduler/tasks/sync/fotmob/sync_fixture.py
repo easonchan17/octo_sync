@@ -1,10 +1,11 @@
 from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
-from datetime import datetime, date, timedelta
-from core.scheduler.tasks.base_task import BaseTask
 from core.browser.interceptor import TaskType
+from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
+from core.store.postgres.models.fotmob.fixture import Fixture
 from core.scheduler.synchronizers.fotmob.fixture_synchronizer import FixtureSynchronizer
+from core.scheduler.synchronizers.common.match_cursor_synchronizer import MatchCursorSynchronizer
 
 
 class SyncFixture(BaseTask):
@@ -13,6 +14,7 @@ class SyncFixture(BaseTask):
         self.site = site
         self.payload = payload or {}
         self.synchronizer = FixtureSynchronizer()
+        self.match_cursor_synchronizer = MatchCursorSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
         policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.fixtures")
@@ -39,8 +41,12 @@ class SyncFixture(BaseTask):
                 self.logger.warning(f"No fixtures for {page_url}")
                 return
 
-            self.synchronizer.sync(
-                self.site, league_name, fixtures
-            )
+            self.synchronizer.sync(self.site, league_name, fixtures)
+            fixtures.sort(key=lambda x: x.get(Fixture.kickoff_time.key))
+
+            comp_code = self.payload.get("comp_code")
+            if comp_code: # TODO
+                self.match_cursor_synchronizer.sync(fixtures, comp_code)
+
         except Exception as e:
             self.logger.error(f"Failed to sync fixtures from {self.site.name}: {e}")
