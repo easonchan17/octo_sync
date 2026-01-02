@@ -1,12 +1,11 @@
-from urllib.parse import urlparse
-from core.utils.parsing import parse_scores
+from core.utils.parsing import parse_scores, extract_season_from_range
 from typing import Any, Optional, List, Tuple, Dict
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.common.match_status import MatchStatus
 from ..base_receiver import BaseReceiver
 
 class FixtureReceiver(BaseReceiver):
-    async def process(self, response: Any) -> List[Dict[str, Any]]:
+    async def process(self, response: Any) -> Tuple[str, List[Dict[str, Any]]]:
         json_data = await self.decode_json_body(response)
         if not json_data:
             self.logger.error(f"Failed to decode json body: {response}")
@@ -17,6 +16,7 @@ class FixtureReceiver(BaseReceiver):
         league_detail = json_data.get('details', {})
         league_id = league_detail.get('id')
         league_name = league_detail.get('name')
+        latest_season = extract_season_from_range(league_detail.get('latestSeason'))
 
         matches = json_data.get('fixtures', {}).get('allMatches', [])
         for match in matches:
@@ -47,7 +47,7 @@ class FixtureReceiver(BaseReceiver):
             fixtures.append(fixture)
 
         self.logger.info(f"Parsed {len(fixtures)} fixtures from {league_name}")
-        return fixtures
+        return latest_season, fixtures
 
     def extract_status(self, status: Dict[str, Any]) -> Tuple[int, Optional[str], Optional[int], Optional[int]]:
         if not status:

@@ -16,69 +16,6 @@ browser:
   channel:  "chrome"
   page_pool_size: 5
 
-interceptor:
-  fbref:
-    comp_teams:
-      url_template: "https://fbref.com/en/comps/{comp_code}/{season}/{season}-{comp_name}-Stats"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.CompTeamReceiver"
-    match_results:
-      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/schedule/{team_name}-Scores-and-Fixtures-All-Competitions"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.MatchResultReceiver"
-    gca:
-      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/gca/{team_name}-Match-Logs-All-Competitions"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.GoalAndShotCreationReceiver"
-    passing:
-      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/passing/{team_name}-Match-Logs-All-Competitions"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.PassingReceiver"
-    defensive_actions:
-      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/defense/{team_name}-Match-Logs-All-Competitions"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.DefensiveActionReceiver"
-    shooting:
-      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/shooting/{team_name}-Match-Logs-All-Competitions"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.ShootingReceiver"
-    goalkeeping:
-      url_template: "https://fbref.com/en/squads/{team_code}/{season}/matchlogs/all_comps/keeper/{team_name}-Match-Logs-All-Competitions"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.GoalkeepingReceiver"
-    player_match_stats:
-      url_template: "https://fbref.com{match_report_url}"
-      rules:
-        - type: dom
-          receiver: "core.browser.components.receivers.fbref.PlayerMatchStatsReceiver"
-  fotmob:
-    fixtures:
-      url_template: "https://www.fotmob.com/leagues/{league_id}/fixtures/{league_name}?group=by-round"
-      debug: false
-      rules:
-        - type: http
-          pattern: "https://www.fotmob.com/api/data/leagues"
-          sender: "core.browser.components.senders.fotmob.SearchFixtureSender"
-          receiver: "core.browser.components.receivers.fotmob.FixtureReceiver"
-  pinnacle:
-    odds:
-      url_template: "https://www.pinnacle.com/en/soccer/{country_name}-{league_name}/matchups/#all"
-      debug: false
-      rules:
-        - type: http
-          pattern: "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/matchups"
-          receiver: "core.browser.components.receivers.pinnacle.MatchReceiver"
-        - type: http
-          pattern: "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/markets/straight"
-          receiver: "core.browser.components.receivers.pinnacle.OddsReceiver"
-
 http:
   host: "0.0.0.0"
   port: 8080

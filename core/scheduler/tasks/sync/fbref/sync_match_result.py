@@ -4,12 +4,24 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.parsing import normalize_team_name
 from core.browser.intercept_policy import InterceptPolicy
+from core.config.league_config import get_league_metadata
 from core.store.postgres.models.fbref.match_result import MatchResult
 from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
+from core.browser.components.receivers.fbref.match_result_receiver import MatchResultReceiver
 from core.scheduler.synchronizers.fbref.match_result_synchronizer import MatchResultSynchronizer
 
 
 class SyncMatchResult(BaseTask):
+    POLICY_CONFIG = {
+        "url_template": "https://fbref.com/en/squads/{team_code}/{season_range}/matchlogs/all_comps/schedule/{team_name}-Scores-and-Fixtures-All-Competitions",
+        "rules": [
+            {
+                "type": "dom",
+                "receiver": MatchResultReceiver
+            }
+        ]
+    }
+
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self.site = site
@@ -17,22 +29,23 @@ class SyncMatchResult(BaseTask):
         self.synchronizer = MatchResultSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.match_results")
-        intercept_policy = InterceptPolicy.from_rules(policy_config)
+        intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
-        comp_code = self.payload.get("comp_code")
+        league_id = self.get_required_param("league_id")
+        min_season = self.get_required_param("min_season")
+        max_season = self.get_required_param("max_season")
+
+        league_metadata = get_league_metadata(league_id, self.site.name)
+        comp_code = league_metadata["id"]
+        comp_name = league_metadata["name"]
         team_code = self.payload.get("team_code")
-        min_season = self.payload.get("min_season")
-        max_season = self.payload.get("max_season")
 
         tasks = self.synchronizer.get_pending_tasks(
-            self.site, min_season, max_season,
-            MatchStatsSyncFlag.MATCH_RESULT.value,
-            comp_code=comp_code, team_code=team_code
+            self.site, min_season, max_season, MatchStatsSyncFlag.MATCH_RESULT.value, comp_code=comp_code, team_code=team_code
         )
 
         if not tasks:
-            self.logger.warning(f"No pending tasks found for comp_code: {comp_code}, team_code: {team_code} from {min_season} to {max_season}")
+            self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
             return
 
         for season, team_name, team_code in tasks:
@@ -45,7 +58,7 @@ class SyncMatchResult(BaseTask):
             try:
                 page_url = intercept_policy.url.format(
                     team_code=team_code,
-                    season=season_range,
+                    season_range=season_range,
                     team_name=team_name_with_dash
                 )
                 future = self.interceptor.submit_task(
