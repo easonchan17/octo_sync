@@ -1,8 +1,11 @@
 import pandas as pd
 from pathlib import Path
-from core.utils.downloader import FileDownloader
+from core.config.league_config import get_league_metadata
+from functools import cached_property
 from typing import Any, Dict, List, Optional
 from core.store.postgres.models import Site
+from core.utils.downloader import FileDownloader
+from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
 from core.store.postgres.models.fbref.market_odds import MarketOdds
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
@@ -29,6 +32,10 @@ class SyncMarketOdds(BaseTask):
         'PCAHA': 'ah_away_close'
     }
 
+    POLICY_CONFIG = {
+        "url_template": "https://www.football-data.co.uk/mmz4281/{season_range}/{comp_name}.csv"
+    }
+
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self.site = site
@@ -36,15 +43,20 @@ class SyncMarketOdds(BaseTask):
         self.team_resolver = TeamResolver()
         self.synchronizer = MarketOddsSynchronizer()
 
+    @cached_property
+    def dataset_path(self) -> Path:
+        return Path(self.config_manager.get_config("training.artifact.dataset"))
+
     def execute(self, *args, **kwargs) -> None:
         try:
-            timezone = self._get_required_param("timezone")
-            comp_code = self._get_required_param("comp_code")
-            comp_name = self._get_required_param("comp_name")
-            comp_name_with_dash = comp_name.replace(" ", "-")
+            league_id = self.get_required_param("league_id")
+            min_season = self.get_required_param("min_season")
+            max_season = self.get_required_param("max_season")
 
-            min_season = self._get_required_param("min_season")
-            max_season = self._get_required_param("max_season")
+            league_metadata = get_league_metadata(league_id, "football-data")
+            comp_code = league_metadata["id"]
+            comp_name = league_metadata["name"]
+            timezone = league_metadata["timezone"]
 
             tasks = self.synchronizer.get_pending_tasks(
                 self.site, comp_code, min_season, max_season, CompSyncFlag.MARKET_ODDS.value
@@ -54,56 +66,58 @@ class SyncMarketOdds(BaseTask):
                 return
 
             for season in tasks:
-                source_matches = self._load_match_records(comp_name_with_dash, season, timezone)
+                source_matches = self.load_dataset(comp_name, season, timezone)
                 if not source_matches:
-                    self.logger.warning(f"No source matches loaded for {comp_name_with_dash} {season}")
+                    self.logger.warning(f"No source matches loaded for {comp_name} {season}")
                     continue
 
-                target_matches = self.synchronizer.get_target_matches(comp_code, source_matches[0]['kickoff_time'])
+                kickoff_time_key = MarketOdds.kickoff_time.key
+                match_code_key = MarketOdds.match_code.key
+
+                first_synced_time = source_matches[0].get(kickoff_time_key)
+                target_matches = self.synchronizer.get_target_matches(comp_code, first_synced_time)
                 self.team_resolver.resolve(source_matches, target_matches, with_target=True)
 
                 for record in source_matches:
-                    record['match_code'] = record.pop('target').match_code
+                    record[match_code_key] = record.pop('target').match_code
 
-                last_synced_time = source_matches[-1].get(MarketOdds.kickoff_time.key)
+                last_synced_time = source_matches[-1].get(kickoff_time_key)
                 self.synchronizer.sync(
                     self.site, comp_code, season, last_synced_time, source_matches
                 )
         except Exception as e:
             self.logger.error(f"Failed to sync market odds: {e}", exc_info=True)
 
-    def _get_required_param(self, key: str) -> Any:
-        value = self.payload.get(key)
-        if not value:
-            raise ValueError(f"{key} is required")
-        return value
+    def prepare_dataset_file(self, comp_name: str, season: int) -> Path:
+        season_range = f"{season % 100:02d}{(season + 1) % 100:02d}"
+        dataset_file = self.dataset_path / f"{comp_name}-{season_range}.csv"
 
-    def _load_match_records(self, comp_name: str, season: int, timezone: str) -> List[Dict[str, Any]]:
-        dataset_path = Path(self.config_manager.get_config("training.artifact.dataset"))
-        file_name = f"{comp_name}-{season}-{season+1}.csv"
+        if dataset_file.exists():
+            return dataset_file
 
-        dataset_file = dataset_path / file_name
+        with FileDownloader() as downloader:
+            url = self.POLICY_CONFIG['url_template'].format(season_range=season_range, comp_name=comp_name)
+            downloader.download(url, dataset_file)
+
+        return dataset_file
+
+    def load_dataset(self, comp_name: str, season: int, timezone: str) -> List[Dict[str, Any]]:
+        dataset_file = self.prepare_dataset_file(comp_name, season)
+
         if not dataset_file.exists():
-            with FileDownloader() as downloader:
-                downloader.download('https://www.football-data.co.uk/mmz4281/2526/E0.csv', dataset_file)
+            raise FileNotFoundError(f"Dataset file not found: {dataset_file}")
 
-            if not dataset_file.exists():
-                self.logger.warning(f"CSV file not found: {dataset_file}")
-                return []
+        df = load_dataframe(dataset_file)
 
-        df = pd.read_csv(dataset_file, encoding='utf-8')
-        if df.empty:
-            self.logger.warning(f"CSV file is empty: {dataset_file}")
-            return []
-
-        df['kickoff_time'] = pd.to_datetime(
+        kickoff_time_key = MarketOdds.kickoff_time.key
+        df[kickoff_time_key] = pd.to_datetime(
             df['Date'] + ' ' + df['Time'],
             format='%d/%m/%Y %H:%M'
         ).dt.tz_localize(timezone).dt.tz_convert('UTC')
 
-        df['kickoff_time'] = df['kickoff_time'].apply(lambda x: x.to_pydatetime())
+        df[kickoff_time_key] = df[kickoff_time_key].apply(lambda x: x.to_pydatetime())
         df = df[self.COLUMN_MAPPING.keys()].rename(columns=self.COLUMN_MAPPING)
 
         records = df.to_dict('records')
-        records.sort(key=lambda x: x['kickoff_time'])
+        records.sort(key=lambda x: x[kickoff_time_key])
         return records

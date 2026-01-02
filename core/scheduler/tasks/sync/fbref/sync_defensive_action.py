@@ -1,15 +1,27 @@
 from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
+from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
 from core.utils.parsing import normalize_team_name
-from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
+from core.config.league_config import get_league_metadata
 from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
 from core.store.postgres.models.fbref.defensive_action import DefensiveAction
+from core.browser.components.receivers.fbref.defensive_action_receiver import DefensiveActionReceiver
 from core.scheduler.synchronizers.fbref.defensive_action_synchronizer import DefensiveActionSynchronizer
 
 
 class SyncDefensiveAction(BaseTask):
+    POLICY_CONFIG = {
+        "url_template": "https://fbref.com/en/squads/{team_code}/{season_range}/matchlogs/all_comps/defense/{team_name}-Match-Logs-All-Competitions",
+        "rules": [
+            {
+                "type": "dom",
+                "receiver": DefensiveActionReceiver
+            }
+        ]
+    }
+
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self.site = site
@@ -17,22 +29,23 @@ class SyncDefensiveAction(BaseTask):
         self.synchronizer = DefensiveActionSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.defensive_actions")
-        intercept_policy = InterceptPolicy.from_rules(policy_config)
+        intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
-        comp_code = self.payload.get("comp_code")
+        league_id = self.get_required_param("league_id")
+        min_season = self.get_required_param("min_season")
+        max_season = self.get_required_param("max_season")
+
+        league_metadata = get_league_metadata(league_id, self.site.name)
+        comp_code = league_metadata["id"]
+        comp_name = league_metadata["name"]
         team_code = self.payload.get("team_code")
-        min_season = self.payload.get("min_season")
-        max_season = self.payload.get("max_season")
 
         tasks = self.synchronizer.get_pending_tasks(
-            self.site, min_season, max_season,
-            MatchStatsSyncFlag.DEFENSIVE_ACTION.value,
-            comp_code=comp_code, team_code=team_code
+            self.site, min_season, max_season, MatchStatsSyncFlag.DEFENSIVE_ACTION.value, comp_code=comp_code, team_code=team_code
         )
 
         if not tasks:
-            self.logger.warning(f"No pending tasks found for comp_code: {comp_code}, team_code: {team_code} from {min_season} to {max_season}")
+            self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
             return
 
         for season, team_name, team_code in tasks:
@@ -45,7 +58,7 @@ class SyncDefensiveAction(BaseTask):
             try:
                 page_url = intercept_policy.url.format(
                     team_code=team_code,
-                    season=season_range,
+                    season_range=season_range,
                     team_name=team_name_with_dash
                 )
                 future = self.interceptor.submit_task(

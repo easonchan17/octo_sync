@@ -3,11 +3,23 @@ from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
+from core.config.league_config import get_league_metadata
 from core.store.postgres.models.fbref.player_stats_sync_state import PlayerStatsSyncFlag
+from core.browser.components.receivers.fbref.player_match_stats_receiver import PlayerMatchStatsReceiver
 from core.scheduler.synchronizers.fbref.player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
 
 
 class SyncPlayerMatchStats(BaseTask):
+    POLICY_CONFIG = {
+        "url_template": "https://fbref.com{match_report_url}",
+        "rules": [
+            {
+                "type": "dom",
+                "receiver": PlayerMatchStatsReceiver
+            }
+        ]
+    }
+
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self.site = site
@@ -15,25 +27,23 @@ class SyncPlayerMatchStats(BaseTask):
         self.synchronizer = PlayerMatchStatsSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.player_match_stats")
-        intercept_policy = InterceptPolicy.from_rules(policy_config)
+        intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
-        comp_code = self.payload.get("comp_code")
+        league_id = self.get_required_param("league_id")
+        min_season = self.get_required_param("min_season")
+        max_season = self.get_required_param("max_season")
+
+        league_metadata = get_league_metadata(league_id, self.site.name)
+        comp_code = league_metadata["id"]
+        comp_name = league_metadata["name"]
         team_code = self.payload.get("team_code")
-        min_season = self.payload.get("min_season")
-        max_season = self.payload.get("max_season")
 
         tasks = self.synchronizer.get_sync_targets(
-            self.site,
-            min_season,
-            max_season,
-            PlayerStatsSyncFlag.PLAYER_STATS.value,
-            comp_code=comp_code,
-            team_code=team_code
+            self.site, min_season, max_season, PlayerStatsSyncFlag.PLAYER_STATS.value, comp_code=comp_code, team_code=team_code
         )
 
         if not tasks:
-            self.logger.warning(f"No pending tasks found for comp_code: {comp_code}, team_code: {team_code} from {min_season} to {max_season}")
+            self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
             return
 
         for match_code, home_team, away_team, season, match_report_url in tasks:

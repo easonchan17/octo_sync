@@ -1,5 +1,5 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, DateTime, Index, CHAR
+from sqlalchemy import Column, Integer, DateTime, Index, CHAR, String
 from ..base_model import Base, StatusMixin, DictMixin, Status
 
 class MatchCursor(Base, StatusMixin, DictMixin):
@@ -14,6 +14,7 @@ class MatchCursor(Base, StatusMixin, DictMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     comp_code = Column(CHAR(8), nullable=False)
     team_code = Column(CHAR(8), nullable=False)
+    team_name = Column(String(100), nullable=False)
     last_kickoff_time = Column(DateTime(timezone=True), nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)

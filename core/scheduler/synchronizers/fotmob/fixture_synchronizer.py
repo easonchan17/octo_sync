@@ -1,11 +1,11 @@
 from typing import List, Dict, Any
-from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
+from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.fotmob.fixture import Fixture
 from ..base_synchronizer import BaseSynchronizer
 
 class FixtureSynchronizer(BaseSynchronizer):
-    def sync(self, site: Site, league_name: str, fixtures: List[Dict[str, Any]]) -> None:
+    def sync(self, site: Site, comp_name: str, fixtures: List[Dict[str, Any]]) -> None:
         if not fixtures:
             self.logger.warning(f"No fixtures to sync from {site.name}")
             return
@@ -29,4 +29,4 @@ class FixtureSynchronizer(BaseSynchronizer):
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
-            self.logger.info(f"Sync {site.name} {league_name} fixtures completed. upserted: {upserted_count}")
+            self.logger.info(f"Sync {site.name} {comp_name} fixtures completed. upserted: {upserted_count}")

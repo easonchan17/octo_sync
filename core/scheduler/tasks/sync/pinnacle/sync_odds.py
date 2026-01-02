@@ -4,6 +4,8 @@ from core.browser.interceptor import TaskType
 from typing import Any, Dict, Optional, List, Tuple
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
+from core.browser.components.receivers.pinnacle.match_receiver import MatchReceiver
+from core.browser.components.receivers.pinnacle.odds_receiver import OddsReceiver
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from core.scheduler.synchronizers.pinnacle.match_synchronizer import MatchSynchronizer
 from core.scheduler.synchronizers.pinnacle.moneyline_synchronizer import MoneylineSynchronizer
@@ -13,6 +15,23 @@ from core.store.postgres.models.pinnacle.moneyline import Moneyline
 from core.store.postgres.models.pinnacle.spread import Spread
 
 class SyncOdds(BaseTask):
+    POLICY_CONFIG = {
+        "url_template": "https://www.pinnacle.com/en/soccer/{country_name}-{league_name}/matchups/#all",
+        "debug": False,
+        "rules": [
+            {
+                "type": "http",
+                "pattern": "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/matchups",
+                "receiver": MatchReceiver
+            },
+            {
+                "type": "http",
+                "pattern": "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/markets/straight",
+                "receiver": OddsReceiver
+            }
+        ]
+    }
+
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.site = site
@@ -33,8 +52,7 @@ class SyncOdds(BaseTask):
             self.logger.error("Country name and league name are required")
             return
 
-        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.odds")
-        intercept_policy = InterceptPolicy.from_rules(policy_config)
+        intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         page_url = intercept_policy.url.format(
             country_name=country_name,
