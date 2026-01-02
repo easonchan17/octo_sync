@@ -1,8 +1,8 @@
 from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site, CompTeam, CompSyncFlag
+from core.store.postgres.models.base_model import Status
 from .comp_level_synchronizer import CompLevelSynchronizer
-
 
 class CompTeamSynchronizer(CompLevelSynchronizer):
     def sync(self, site: Site, comp_code: str, comp_name: str, season: int, teams: List[Dict[str, Any]]) -> None:
@@ -35,3 +35,11 @@ class CompTeamSynchronizer(CompLevelSynchronizer):
 
             self.update_sync_state(session, comp_code, season, CompSyncFlag.TEAMS)
             self.logger.info(f"Mark {site.name} {comp_name} {season} teams as synced")
+
+    def load_teams(self, site: Site, comp_code: str, season: int) -> List[CompTeam]:
+        with self.db.get_session(site.get_namespace()) as session:
+            return session.query(CompTeam.team_code).filter(
+                CompTeam.comp_code == comp_code,
+                CompTeam.season == season,
+                CompTeam.status == Status.ACTIVE.value
+            ).all()

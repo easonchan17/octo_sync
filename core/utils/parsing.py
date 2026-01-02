@@ -10,6 +10,7 @@ REGEX_TEAM_CODE = re.compile(r"/en/squads/([a-zA-Z0-9]+)/")
 REGEX_MATCH_CODE = re.compile(r"/en/matches/([a-zA-Z0-9]+)")
 REGEX_PLAYER_CODE = re.compile(r"/en/players/([a-zA-Z0-9]+)/")
 REGEX_COMP_INFO = re.compile(r"/comps/([\w]+)/(\d{4})(?:-\d{4})?/\d{4}(?:-\d{4})?-(.+?)-Stats")
+REGEX_SEASON_RANGE = re.compile(r'^(\d{4})/(\d{4})$')
 
 
 # ==============================================================================
@@ -148,3 +149,11 @@ def extract_player_code_from_cell(cell: Any) -> Optional[str]:
 # --- Season ---
 def normalize_season_range(season: int) -> str:
     return f"{season}-{season+1}"
+
+def extract_season_from_range(season_range: str) -> Optional[int]:
+    if not season_range:
+        return None
+    match = REGEX_SEASON_RANGE.match(season_range.strip())
+    if match:
+        return int(match.group(1))
+    return None

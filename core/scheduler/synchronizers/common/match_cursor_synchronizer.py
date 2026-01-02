@@ -1,90 +1,78 @@
-from typing import List, Dict, Any, Set
-from datetime import datetime
 from sqlalchemy import func
+from datetime import datetime
+from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
-from core.store.postgres.models import Site, CompTeam, MatchCursor
+from core.utils.singleton import Singleton
+from core.store.postgres.models import MatchCursor, MatchStatus
 from core.store.postgres.models.fotmob.fixture import Fixture
+from core.config.league_config import get_league_metadata
 from ..base_synchronizer import BaseSynchronizer
 
-class MatchCursorSynchronizer(BaseSynchronizer):
-    def sync(self, fixtures: List[Dict[str, Any]], comp_code: str) -> None:
+class MatchCursorSynchronizer(BaseSynchronizer, Singleton):
+    def sync(self, site_name: str, league_id: int, fixtures: List[Dict[str, Any]]) -> None:
         if not fixtures:
+            self.logger.warning(f"No fixtures to sync from {site_name}")
             return
 
-        fbref_site = self.get_site("fbref")
-        if not fbref_site:
-            self.logger.warning("fbref site not found, skip updating match_cursor")
-            return
+        metadata = get_league_metadata(league_id, site_name)
 
-        with self.db.get_session(fbref_site.get_namespace()) as session:
-            team_name_to_code = self._get_team_code_mapping(session, comp_code)
-            if not team_name_to_code:
-                self.logger.warning(f"No team code mapping found for comp_code={comp_code}")
-                return
+        comp_code = metadata["id"]
+        comp_name = metadata["name"]
 
-            all_team_codes = set(team_name_to_code.values())
+        cursors = self.extract_cursors(comp_code, fixtures)
+        self.persist_cursors(comp_code, comp_name, cursors)
 
-            team_kickoff_times = {}
-            for fixture in fixtures:
-                kickoff_time = fixture.get(Fixture.kickoff_time.key)
-                if not kickoff_time:
-                    continue
+    def extract_cursors(self, comp_code: str, fixtures: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        kickoff_time_key = Fixture.kickoff_time.key
+        match_status_key = Fixture.match_status.key
+        home_id_key = Fixture.home_id.key
+        away_id_key = Fixture.away_id.key
 
-                if isinstance(kickoff_time, str):
-                    kickoff_time = datetime.fromisoformat(kickoff_time.replace('Z', '+00:00'))
+        cursors: Dict[str, datetime] = {}
 
-                home_team = fixture.get(Fixture.home_team.key)
-                away_team = fixture.get(Fixture.away_team.key)
+        for fixture in fixtures:
+            if not MatchStatus(fixture[match_status_key]).is_finished:
+                continue
 
-                if home_team and home_team in team_name_to_code:
-                    team_code = team_name_to_code[home_team]
-                    current_time = team_kickoff_times.get(team_code)
-                    if not current_time or kickoff_time > current_time:
-                        team_kickoff_times[team_code] = kickoff_time
+            kickoff_time = fixture[kickoff_time_key]
 
-                if away_team and away_team in team_name_to_code:
-                    team_code = team_name_to_code[away_team]
-                    current_time = team_kickoff_times.get(team_code)
-                    if not current_time or kickoff_time > current_time:
-                        team_kickoff_times[team_code] = kickoff_time
+            home_code = fixture[home_id_key]
+            home_name = fixture[home_team_key]
+            home_cursor = cursors.get(home_code)
+            if home_cursor is None or kickoff_time > home_cursor:
+                cursors[home_code] = {
+                    kickoff_time
+                }
 
-            missing_teams = all_team_codes - set(team_kickoff_times.keys())
-            if missing_teams:
-                self.logger.warning(
-                    f"Found {len(missing_teams)} teams without matches in fixtures for comp_code={comp_code}. "
-                    f"These teams will not be updated: {missing_teams}"
-                )
+            away_code = fixture[away_id_key]
+            away_name = fixture[away_team_key]
+            away_cursor = cursors.get(away_code)
+            if away_cursor is None or kickoff_time > away_cursor:
+                cursors[away_code] = {
+                    kickoff_time
+                }
 
-        with self.db.get_session() as public_session:
-            for team_code in all_team_codes:
-                if team_code in team_kickoff_times:
-                    last_kickoff_time = team_kickoff_times[team_code]
-                    insert_stmt = insert(MatchCursor).values(
-                        comp_code=comp_code,
-                        team_code=team_code,
-                        last_kickoff_time=last_kickoff_time
-                    )
-                    insert_stmt = insert_stmt.on_conflict_do_update(
-                        index_elements=[MatchCursor.comp_code.key, MatchCursor.team_code.key],
-                        set_={
-                            MatchCursor.last_kickoff_time.key: last_kickoff_time,
-                            MatchCursor.updated_at.key: func.now()
-                        }
-                    )
-                    public_session.execute(insert_stmt)
+        return [
+            {
+                MatchCursor.comp_code.key: comp_code,
+                MatchCursor.team_code.key: team_code,
+                MatchCursor.team_name.key: team_name,
+                MatchCursor.last_kickoff_time.key: kickoff_time
+            }
+            for team_code, kickoff_time in cursors.items()
+        ]
 
-            public_session.commit()
-
-        updated_count = len(team_kickoff_times)
-        total_count = len(all_team_codes)
-        self.logger.info(
-            f"Updated {updated_count}/{total_count} match cursors for comp_code={comp_code}"
-        )
-
-    def _get_team_code_mapping(self, session: Session, comp_code: str) -> Dict[str, str]:
-        teams = session.query(CompTeam.team_name, CompTeam.team_code).filter(
-            CompTeam.comp_code == comp_code
-        ).all()
-
-        return {team_name: team_code for team_name, team_code in teams}
+    def persist_cursors(self, comp_code: str, comp_name: str, cursors: List[Dict[str, Any]]) -> None:
+        with self.db.get_session() as session:
+            insert_stmt = insert(MatchCursor).values(cursors)
+            insert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[MatchCursor.comp_code.key, MatchCursor.team_code.key],
+                set_={
+                    MatchCursor.last_kickoff_time.key: insert_stmt.excluded.last_kickoff_time,
+                    MatchCursor.updated_at.key: func.now()
+                },
+                where=insert_stmt.excluded.last_kickoff_time > MatchCursor.last_kickoff_time
+            )
+            result = session.execute(insert_stmt)
+            upserted_count = result.rowcount
+            self.logger.info(f"Sync {comp_name}({comp_code}) match cursors completed. upserted: {upserted_count}")

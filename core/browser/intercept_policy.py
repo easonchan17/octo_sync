@@ -1,9 +1,8 @@
 import re
 from enum import StrEnum
 from collections import defaultdict
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Type
 from core.utils.parsing import normalize_url
-from core.browser.components.component_factory import ComponentFactory
 
 class InterceptType(StrEnum):
     HTTP = "http"
@@ -15,16 +14,16 @@ class InterceptRule:
         self,
         type: str,
         pattern: Optional[str] = None,
-        receiver: Optional[str] = None,
-        sender: Optional[str] = None
+        receiver: Optional[Type[Any]] = None,
+        sender: Optional[Type[Any]] = None
     ) -> None:
         self.type = InterceptType(type)
         if not self.is_dom() and pattern is None:
             raise ValueError("pattern is required for non-dom intercept rules")
 
         self.pattern = pattern
-        self.receiver = ComponentFactory.create_inst(receiver)
-        self.sender = ComponentFactory.create_inst(sender)
+        self.receiver = receiver() if receiver else None
+        self.sender = sender() if sender else None
 
     def is_http(self) -> bool:
         return self.type == InterceptType.HTTP

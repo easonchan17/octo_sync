@@ -3,28 +3,43 @@ from core.store.postgres.models import Site
 from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
-from core.store.postgres.models.fotmob.fixture import Fixture
+from core.config.league_config import get_league_metadata
+from core.browser.components.receivers.fotmob.fixture_receiver import FixtureReceiver
 from core.scheduler.synchronizers.fotmob.fixture_synchronizer import FixtureSynchronizer
+from core.browser.components.senders.fotmob.search_fixture_sender import SearchFixtureSender
 from core.scheduler.synchronizers.common.match_cursor_synchronizer import MatchCursorSynchronizer
 
-
 class SyncFixture(BaseTask):
+    POLICY_CONFIG = {
+        "url_template": "https://www.fotmob.com/leagues/{league_id}/fixtures/{league_name}?group=by-round",
+        "debug": False,
+        "rules": [
+            {
+                "type": "http",
+                "pattern": "https://www.fotmob.com/api/data/leagues",
+                "sender": SearchFixtureSender,
+                "receiver": FixtureReceiver
+            }
+        ]
+    }
+
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.site = site
         self.payload = payload or {}
         self.synchronizer = FixtureSynchronizer()
-        self.match_cursor_synchronizer = MatchCursorSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        policy_config = self.config_manager.get_config(f"interceptor.{self.site.name}.fixtures")
-        intercept_policy = InterceptPolicy.from_rules(policy_config)
+        intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         try:
-            league_id = self.payload["league_id"]
-            league_name = self.payload["league_name"]
+            league_id = self.get_required_param("league_id")
 
-            page_url = intercept_policy.url.format(league_id=league_id, league_name=league_name)
+            league_metadata = get_league_metadata(league_id, self.site.name)
+            comp_code = league_metadata["id"]
+            comp_name = league_metadata["name"]
+
+            page_url = intercept_policy.url.format(league_id=comp_code, league_name=comp_name)
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
                 url=page_url,
@@ -36,17 +51,14 @@ class SyncFixture(BaseTask):
                 self.logger.error(f"No response for {page_url}")
                 return
 
-            fixtures = responses[0]
+            latest_season, fixtures = responses[0]
             if not fixtures:
                 self.logger.warning(f"No fixtures for {page_url}")
                 return
 
-            self.synchronizer.sync(self.site, league_name, fixtures)
-            fixtures.sort(key=lambda x: x.get(Fixture.kickoff_time.key))
+            self.synchronizer.sync(self.site, comp_name, fixtures)
 
-            comp_code = self.payload.get("comp_code")
-            if comp_code: # TODO
-                self.match_cursor_synchronizer.sync(fixtures, comp_code)
+            MatchCursorSynchronizer.get_instance().sync("fbref", league_id, fixtures)
 
         except Exception as e:
             self.logger.error(f"Failed to sync fixtures from {self.site.name}: {e}")
