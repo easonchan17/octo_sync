@@ -248,13 +248,13 @@ class Interceptor(Thread, Singleton):
     async def _process_dom_content(
         self,
         page_context: Any,
+        url: str,
         policy: InterceptPolicy,
         collected_datas: List[Any]
     ) -> None:
         if not policy.has_rules(InterceptType.DOM):
             return
 
-        url = page_context.url
         dom_rule = policy.find_rule(type=InterceptType.DOM)
         if dom_rule is None or dom_rule.receiver is None:
             if policy.debug:
@@ -343,7 +343,7 @@ class Interceptor(Thread, Singleton):
                         return False, collected_datas
 
                     await monitor.wait(timeout)
-                    await self._process_dom_content(page_context, policy, collected_datas)
+                    await self._process_dom_content(page_context, url, policy, collected_datas)
 
                     self.rate_limiter.reset_backoff(url)
                     return True, collected_datas
