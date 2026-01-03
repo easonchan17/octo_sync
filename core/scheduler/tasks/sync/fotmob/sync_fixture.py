@@ -2,12 +2,12 @@ from typing import Any, Dict, Optional
 from core.store.postgres.models import Site
 from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
+from core.store.cache.global_store import GlobalStore
 from core.browser.intercept_policy import InterceptPolicy
 from core.config.league_config import get_league_metadata
 from core.browser.components.receivers.fotmob.fixture_receiver import FixtureReceiver
 from core.scheduler.synchronizers.fotmob.fixture_synchronizer import FixtureSynchronizer
 from core.browser.components.senders.fotmob.search_fixture_sender import SearchFixtureSender
-from core.scheduler.synchronizers.common.match_cursor_synchronizer import MatchCursorSynchronizer
 
 class SyncFixture(BaseTask):
     POLICY_CONFIG = {
@@ -39,6 +39,7 @@ class SyncFixture(BaseTask):
             comp_code = league_metadata["id"]
             comp_name = league_metadata["name"]
 
+
             page_url = intercept_policy.url.format(league_id=comp_code, league_name=comp_name)
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
@@ -57,8 +58,6 @@ class SyncFixture(BaseTask):
                 return
 
             self.synchronizer.sync(self.site, comp_name, fixtures)
-
-            MatchCursorSynchronizer.get_instance().sync("fbref", league_id, fixtures)
-
+            GlobalStore.get_instance().set(f"seasons.{league_id}", latest_season)
         except Exception as e:
             self.logger.error(f"Failed to sync fixtures from {self.site.name}: {e}")

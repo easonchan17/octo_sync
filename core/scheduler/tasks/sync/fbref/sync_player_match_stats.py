@@ -38,7 +38,7 @@ class SyncPlayerMatchStats(BaseTask):
         comp_name = league_metadata["name"]
         team_code = self.payload.get("team_code")
 
-        tasks = self.synchronizer.get_sync_targets(
+        tasks = self.synchronizer.get_pending_tasks(
             self.site, min_season, max_season, PlayerStatsSyncFlag.PLAYER_STATS.value, comp_code=comp_code, team_code=team_code
         )
 

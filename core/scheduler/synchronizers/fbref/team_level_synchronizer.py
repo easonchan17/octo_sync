@@ -15,7 +15,8 @@ class TeamLevelSynchronizer(BaseSynchronizer):
         max_season: int,
         flag: int,
         comp_code: Optional[str] = None,
-        team_code: Optional[str] = None
+        team_code: Optional[str] = None,
+        is_force: Optional[bool] = False
     ) -> List[Any]:
         if not comp_code and not team_code:
             raise ValueError("Either comp_code or team_code must be provided")
@@ -33,12 +34,16 @@ class TeamLevelSynchronizer(BaseSynchronizer):
                 )
             ).filter(
                 CompTeam.season >= min_season,
-                CompTeam.season <= max_season,
-                or_(
-                    MatchStatsSyncState.team_code.is_(None),
-                    (MatchStatsSyncState.sync_flags.op('&')(flag)) != flag
-                )
+                CompTeam.season <= max_season
             )
+
+            if not is_force:
+                query = query.filter(
+                    or_(
+                        MatchStatsSyncState.team_code.is_(None),
+                        (MatchStatsSyncState.sync_flags.op('&')(flag)) != flag
+                    )
+                )
 
             if comp_code:
                 query = query.filter(CompTeam.comp_code == comp_code)

@@ -59,7 +59,7 @@ class SyncMarketOdds(BaseTask):
             timezone = league_metadata["timezone"]
 
             tasks = self.synchronizer.get_pending_tasks(
-                self.site, comp_code, min_season, max_season, CompSyncFlag.MARKET_ODDS.value
+                self.site, comp_code, min_season, max_season, CompSyncFlag.MARKET_ODDS.value, is_force=self.is_force
             )
             if not tasks:
                 self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
@@ -92,12 +92,10 @@ class SyncMarketOdds(BaseTask):
         season_range = f"{season % 100:02d}{(season + 1) % 100:02d}"
         dataset_file = self.dataset_path / f"{comp_name}-{season_range}.csv"
 
-        if dataset_file.exists():
-            return dataset_file
-
-        with FileDownloader() as downloader:
-            url = self.POLICY_CONFIG['url_template'].format(season_range=season_range, comp_name=comp_name)
-            downloader.download(url, dataset_file)
+        if self.is_force or not dataset_file.exists():
+            with FileDownloader() as downloader:
+                url = self.POLICY_CONFIG['url_template'].format(season_range=season_range, comp_name=comp_name)
+                downloader.download(url, dataset_file)
 
         return dataset_file
 
