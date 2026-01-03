@@ -1,13 +1,12 @@
 from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional
 
 
-class FixtureResponse(BaseModel):
-    id: int
+class FixtureRead(BaseModel):
     match_id: int
-    league_id: int
     league_name: str
+    league_id: int
     kickoff_time: datetime
     round: Optional[str] = None
     home_team: str
@@ -16,16 +15,7 @@ class FixtureResponse(BaseModel):
     away_id: int
     home_score: Optional[int] = None
     away_score: Optional[int] = None
-    home_xg: Optional[float] = None
-    away_xg: Optional[float] = None
     match_status: int
-    created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True
-
-
-class FixtureListResponse(BaseModel):
-    total: int
-    items: List[FixtureResponse]

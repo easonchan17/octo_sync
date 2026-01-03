@@ -3,7 +3,6 @@ from typing import Any
 from fastapi import FastAPI, Request
 from core.logger.logger_manager import LoggerManager
 from core.server.controllers.site_controller import SiteController
-from core.server.controllers.browser_controller import BrowserController
 from core.server.controllers.training_controller import TrainingController
 from core.server.controllers.inference_controller import InferenceController
 from core.server.controllers.fixture_controller import FixtureController
@@ -27,9 +26,6 @@ class WebApp:
 
         site_controller = SiteController()
         self.app.include_router(site_controller.router, prefix="/api", tags=["sites"])
-
-        browser_controller = BrowserController()
-        self.app.include_router(browser_controller.router, prefix="/api", tags=["browser"])
 
         training_controller = TrainingController()
         self.app.include_router(training_controller.router, prefix="/api", tags=["training"])

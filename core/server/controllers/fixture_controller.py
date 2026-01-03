@@ -1,53 +1,44 @@
 from fastapi import HTTPException, Query
-from typing import Optional
-from datetime import datetime
-from core.server.controllers.base_controller import BaseController
 from core.server.services.fixture_service import FixtureService
-from core.server.models.fixture_models import FixtureResponse, FixtureListResponse
-
+from core.server.controllers.base_controller import BaseController
+from core.server.models.api_models import PaginationInfo, PaginatedDataResponse
+from core.server.models.fixture_models import FixtureRead
 
 class FixtureController(BaseController):
     def __init__(self) -> None:
         super().__init__()
         self.fixture_service = FixtureService()
-
-        self.router.get("/fixtures", response_model=FixtureListResponse)(self.get_fixtures)
-        self.router.get("/fixtures/{match_id}", response_model=FixtureResponse)(self.get_fixture)
+        self.router.get("/v1/fixtures", response_model=PaginatedDataResponse[FixtureRead])(self.get_fixtures)
 
     def get_fixtures(
         self,
-        league_id: Optional[int] = Query(None, description="Filter by league ID"),
-        start_date: Optional[datetime] = Query(None, description="Filter by start date"),
-        end_date: Optional[datetime] = Query(None, description="Filter by end date"),
-        match_status: Optional[int] = Query(None, description="Filter by match status"),
-        limit: int = Query(50, ge=1, le=200, description="Number of items to return"),
-        offset: int = Query(0, ge=0, description="Number of items to skip")
-    ) -> FixtureListResponse:
+        status: str = Query(..., description="Match status: finished, live, or upcoming"),
+        page: int = Query(1, ge=1, description="Page number"),
+        per_page: int = Query(20, ge=1, le=100, description="Items per page")
+    ) -> PaginatedDataResponse[FixtureRead]:
+        if status not in ['finished', 'live', 'upcoming']:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}. Must be one of: finished, live, upcoming")
+
         try:
             total, fixtures = self.fixture_service.get_fixtures(
-                league_id=league_id,
-                start_date=start_date,
-                end_date=end_date,
-                match_status=match_status,
-                limit=limit,
-                offset=offset
+                status=status,
+                page=page,
+                per_page=per_page
             )
-            return FixtureListResponse(
-                total=total,
-                items=[FixtureResponse.model_validate(f) for f in fixtures]
-            )
-        except Exception as e:
-            self.logger.error(f"Failed to get fixtures: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to get fixtures: {str(e)}")
 
-    def get_fixture(self, match_id: int) -> FixtureResponse:
-        try:
-            fixture = self.fixture_service.get_fixture(match_id)
-            if not fixture:
-                raise HTTPException(status_code=404, detail=f"Fixture {match_id} not found")
-            return FixtureResponse.model_validate(fixture)
-        except HTTPException:
-            raise
+            items = [FixtureRead.model_validate(f) for f in fixtures]
+
+            return PaginatedDataResponse[FixtureRead](
+                pagination=PaginationInfo(
+                    page=page,
+                    per_page=per_page,
+                    total=total
+                ),
+                items=items
+            )
+
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            self.logger.error(f"Failed to get fixture {match_id}: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to get fixture: {str(e)}")
+            self.logger.error(f"Failed to get fixtures v1: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to get fixtures: {str(e)}")
