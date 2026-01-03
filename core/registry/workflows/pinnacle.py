@@ -8,7 +8,6 @@ from core.store.postgres.models import Site
 @Registry.factory('sync.pinnacle.odds')
 def create_sync_pinnacle_odds_task(
     site: Site,
-    db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
     return Pipeline(SyncOdds(site, payload))

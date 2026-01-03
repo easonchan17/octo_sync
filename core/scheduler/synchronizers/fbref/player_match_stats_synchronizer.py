@@ -8,7 +8,7 @@ from core.store.postgres.models import (
 from ..base_synchronizer import BaseSynchronizer
 
 class PlayerMatchStatsSynchronizer(BaseSynchronizer):
-    def get_sync_targets(
+    def get_pending_tasks(
         self,
         site: Site,
         min_season: int,

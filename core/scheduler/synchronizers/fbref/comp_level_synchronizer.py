@@ -14,8 +14,14 @@ class CompLevelSynchronizer(BaseSynchronizer):
         comp_code: str,
         min_season: int,
         max_season: int,
-        flag: int
+        flag: int,
+        is_force: Optional[bool] = False
     ) -> List[int]:
+        all_seasons = set(range(min_season, max_season + 1))
+
+        if is_force:
+            return sorted(all_seasons)
+
         with self.db.get_session(site.get_namespace()) as session:
             synced_seasons = {
                 row[0] for row in session.query(CompSyncState.season).filter(
@@ -25,7 +31,6 @@ class CompLevelSynchronizer(BaseSynchronizer):
                     (CompSyncState.sync_flags.op('&')(flag)) == flag
                 ).all()
             }
-            all_seasons = set(range(min_season, max_season + 1))
             return sorted(all_seasons - synced_seasons)
 
     def update_sync_state(

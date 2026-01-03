@@ -11,7 +11,6 @@ from core.scheduler.tasks.analysis.analyzers.match_stats_aggregator import Match
 @Registry.factory('winball.fbref.samples')
 def create_winball_fbref_samples_task(
     site: Site,
-    db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
     return Pipeline(MatchStatsAggregator(site, payload))
@@ -19,7 +18,6 @@ def create_winball_fbref_samples_task(
 @Registry.factory('winball.training')
 def create_winball_training_task(
     site: Site,
-    db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
     return Pipeline(WinballTrainer(site, payload))
@@ -27,7 +25,6 @@ def create_winball_training_task(
 @Registry.factory('winball.inference')
 def create_winball_inference_instance(
     site: Site,
-    db: PostgreSQLManager,
     payload: Optional[Dict[str, Any]]
 ) -> BasePredictor:
     return WinballPredictor()
