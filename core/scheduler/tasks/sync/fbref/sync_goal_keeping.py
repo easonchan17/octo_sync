@@ -41,7 +41,7 @@ class SyncGoalKeeping(BaseTask):
         team_code = self.payload.get("team_code")
 
         tasks = self.synchronizer.get_pending_tasks(
-            self.site, min_season, max_season, MatchStatsSyncFlag.GOAL_KEEPING.value, comp_code=comp_code, team_code=team_code
+            self.site, min_season, max_season, MatchStatsSyncFlag.GOAL_KEEPING.value, comp_code=comp_code, team_code=team_code, is_force=self.is_force
         )
 
         if not tasks:

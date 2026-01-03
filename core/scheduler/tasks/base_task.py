@@ -14,9 +14,13 @@ class BaseTask(ABC):
         self.config_manager = ConfigManager.get_instance()
         self.interceptor = Interceptor.get_instance()
         self.cancel_event = Event()
+        self.on_complete: callable = None
+        self.payload = None
+        self.is_async = False
+        self.is_force = False
 
     def get_required_param(self, key: str) -> Any:
-        if not hasattr(self, 'payload') or self.payload is None:
+        if self.payload is None:
             raise ValueError("Payload is not set")
 
         if key not in self.payload:
@@ -44,34 +48,10 @@ class BaseTask(ABC):
     def __repr__(self) -> str:
         return self.__str__()
 
-class WrappedTask(BaseTask):
-    def __init__(self, task: BaseTask) -> None:
-        self.task = task
-
-    def cancel(self) -> None:
-        self.task.cancel()
-
-    def execute(self, *args, **kwargs) -> Any:
-        return self.task.execute(*args, **kwargs)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.task, name)
-
-class AsyncTask(WrappedTask):
-    def __init__(self, task: BaseTask) -> None:
-        super().__init__(task)
-        self.is_async = True
-
-class SyncTask(WrappedTask):
-    def __init__(self, task: BaseTask) -> None:
-        super().__init__(task)
-        self.is_async = False
-
 class Pipeline(BaseTask):
     def __init__(self, *tasks: BaseTask) -> None:
         super().__init__()
         self.tasks: List[BaseTask] = list(tasks)
-        self.on_complete: callable = None
 
     def cancel(self) -> None:
         for task in self.tasks:
@@ -83,6 +63,7 @@ class Pipeline(BaseTask):
                 break
 
             self.logger.info(f"Executing task {i+1}/{len(self.tasks)}: {task.name}")
+            task.is_force = self.is_force
             task.execute(*args, **kwargs)
             self.logger.info(f"Task {task.name} completed")
 
@@ -92,3 +73,56 @@ class Pipeline(BaseTask):
     def __str__(self) -> str:
         task_names = [task.name for task in self.tasks]
         return f"Pipeline({', '.join(task_names)})"
+
+class TaskWrapper(BaseTask):
+    def __init__(self, task: BaseTask) -> None:
+        self._task = task
+
+    def get_required_param(self, key: str) -> Any:
+        if self._task is None:
+            raise ValueError("Task is not set")
+
+        return self._task.get_required_param(key)
+
+    def cancel(self) -> None:
+        if self._task is None:
+            raise ValueError("Task is not set")
+
+        self._task.cancel()
+
+    def should_stop(self) -> bool:
+        if self._task is None:
+            raise ValueError("Task is not set")
+
+        return self._task.should_stop()
+
+    def execute(self, *args, **kwargs) -> Any:
+        if self._task is None:
+            raise ValueError("Task is not set")
+
+        return self._task.execute(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._task, name)
+
+    def __str__(self):
+        return str(self._task)
+
+    def __repr__(self):
+        return repr(self._task)
+
+class AsyncTask(TaskWrapper):
+    def __init__(self, task: BaseTask) -> None:
+        super().__init__(task)
+        self._task.is_async = True
+
+class ForceTask(TaskWrapper):
+    def __init__(self, task):
+        super().__init__(task)
+        self._task.is_force = True
+
+    def execute(self, *args, **kwargs) -> Any:
+        if self._task is None:
+            raise ValueError("Task is not set")
+
+        return self._task.execute(*args, **kwargs)

@@ -5,7 +5,7 @@ from core.scheduler.worker import Worker
 from core.utils.singleton import Singleton
 from sqlalchemy.dialects.postgresql import insert
 from core.server.services.base_service import BaseService
-from core.scheduler.tasks.base_task import BaseTask, AsyncTask
+from core.scheduler.tasks.base_task import BaseTask, AsyncTask, ForceTask
 from core.store.postgres.models import (
     Site, TrainingRecord, Fixture, Match, Moneyline, Spread, CompTeam, CompSyncState,
     MatchStatsSyncState, MatchResult, GoalAndShotCreation, Passing,
@@ -34,13 +34,12 @@ class SiteService(BaseService, Singleton):
     def _cleanup_task(self, name: str) -> Optional[BaseTask]:
         with self._lock:
             task = self.tasks.pop(name, None)
+            if not task:
+                self.logger.warning(f"Task {name} not found")
+                return None
 
-        if not task:
-            self.logger.warning(f"Task {name} not found")
-            return None
-
-        self.logger.info(f"Task {name} cleaned up")
-        return task
+            self.logger.info(f"Task {name} cleaned up")
+            return task
 
     def create_site(self, site_name: str, url: str) -> Site:
         self.db.create_tables(self.SITE_TABLES.get("public"))
@@ -64,34 +63,28 @@ class SiteService(BaseService, Singleton):
 
         return site
 
-    def start_sync(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
-        name = f"sync.{site_name}.{resource}"
-
+    def start_sync(self, site_name: str, resource: str, payload: Optional[Dict[str, Any]], is_force: Optional[bool] = False) -> str:
         with self._lock:
+            name = f"sync.{site_name}.{resource}"
             if name in self.tasks:
                 return ""
 
-        site = self.get_site(site_name)
-        task = Registry.call(name, site, self.db, payload)
-        task.on_complete = lambda: self._cleanup_task(name)
-
-        with self._lock:
-            if name in self.tasks:
-                return ""
-
+            site = self.get_site(site_name)
+            task = Registry.call(name, site, payload)
+            task.on_complete = lambda: self._cleanup_task(name)
             self.tasks[name] = task
 
-        return Worker.get_instance().submit(AsyncTask(task))
+            task = ForceTask(task) if is_force else task
+            return Worker.get_instance().submit(AsyncTask(task))
 
     def stop_sync(self, site_name: str, resource: str) -> str:
-        name = f"sync.{site_name}.{resource}"
-
         with self._lock:
+            name = f"sync.{site_name}.{resource}"
             task = self.tasks.get(name, None)
 
-        if not task:
-            self.logger.warning(f"Task {name} not found")
-            return ""
+            if not task:
+                self.logger.warning(f"Task {name} not found")
+                return ""
 
-        task.cancel()
-        return task.id
+            task.cancel()
+            return task.id

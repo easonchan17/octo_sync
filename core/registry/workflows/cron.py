@@ -1,4 +1,6 @@
+from core.domain import LeagueID
 from core.registry import Registry, RegistryKind
+from core.store.cache.global_store import GlobalStore
 
 def init_cron_jobs() -> None:
     from core.scheduler.cron import Cron
@@ -11,17 +13,44 @@ def init_cron_jobs() -> None:
 @Registry.cron('cron.sync_fotmob_fixtures', minute="*/5")
 def sync_fotmob_fixtures() -> None:
     from core.server.services.site_service import SiteService
+
+    league_id = LeagueID.EPL.value
     SiteService.get_instance().start_sync(
         'fotmob',
         'fixtures',
-        {'league_id': '47', 'league_name': 'premier-league'}
+        {
+            'league_id': str(league_id)
+        }
     )
 
-@Registry.cron('cron.sync_pinnacle_odds', minute="*/10")
+@Registry.cron('cron.sync_pinnacle_odds', minute="*/15")
 def sync_pinnacle_odds() -> None:
     from core.server.services.site_service import SiteService
     SiteService.get_instance().start_sync(
         'pinnacle',
         'odds',
-        {'country_name': 'england', 'league_name': 'premier-league'}
+        {
+            'country_name': 'england',
+            'league_name': 'premier-league'
+        }
+    )
+
+@Registry.cron('cron.sync_fbref_batch', hour=10, minute=0)
+def sync_fbref_batch() -> None:
+    from core.server.services.site_service import SiteService
+
+    league_id = LeagueID.EPL.value
+    latest_season = GlobalStore.get_instance().get(f'seasons.{league_id}')
+    if latest_season is None:
+        raise ValueError(f"Latest season for league {league_id} not found")
+
+    SiteService.get_instance().start_sync(
+        'fbref',
+        'batch',
+        payload={
+            'league_id': str(league_id),
+            'min_season': latest_season,
+            'max_season': latest_season
+        },
+        is_force=True
     )
