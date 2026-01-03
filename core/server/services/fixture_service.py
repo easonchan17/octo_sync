@@ -1,45 +1,109 @@
+from sqlalchemy import  func
 from typing import Optional, List, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from core.server.services.base_service import BaseService
 from core.store.postgres.models.fotmob import Fixture
+from core.store.postgres.models.common import MatchStatus
+from core.config.league_config import LEAGUE_METADATA
+
+
+FINISHED_STATUSES = [
+    MatchStatus.FINISHED.value,
+    MatchStatus.FINISHED_AET.value,
+    MatchStatus.FINISHED_PEN.value,
+    MatchStatus.FINISHED_AWARDED.value
+]
+
+UPCOMING_STATUSES = [
+    MatchStatus.SCHEDULED.value,
+    MatchStatus.TIMED.value,
+    MatchStatus.POSTPONED.value
+]
+
+LIVE_STATUSES = [
+    MatchStatus.IN_PROGRESS.value,
+    MatchStatus.FIRST_HALF.value,
+    MatchStatus.HALFTIME.value,
+    MatchStatus.SECOND_HALF.value,
+    MatchStatus.EXTRA_TIME.value,
+    MatchStatus.PENALTY.value
+]
+
+STATUS_CODE_MAP = {
+    MatchStatus.SCHEDULED.value: "NS",
+    MatchStatus.TIMED.value: "NS",
+    MatchStatus.IN_PROGRESS.value: "Live",
+    MatchStatus.FIRST_HALF.value: "1H",
+    MatchStatus.HALFTIME.value: "HT",
+    MatchStatus.SECOND_HALF.value: "2H",
+    MatchStatus.EXTRA_TIME.value: "ET",
+    MatchStatus.PENALTY.value: "P",
+    MatchStatus.FINISHED.value: "FT",
+    MatchStatus.FINISHED_AET.value: "AET",
+    MatchStatus.FINISHED_PEN.value: "PEN",
+    MatchStatus.FINISHED_AWARDED.value: "AWD",
+    MatchStatus.POSTPONED.value: "POST",
+    MatchStatus.CANCELLED.value: "CAN"
+}
+
+
+def get_status_string(status_code: int) -> str:
+    return STATUS_CODE_MAP.get(status_code, str(status_code))
 
 
 class FixtureService(BaseService):
-    def __init__(self):
-        super().__init__()
-
-    def get_fixtures(
-        self,
-        league_id: Optional[int] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        match_status: Optional[int] = None,
-        limit: int = 50,
-        offset: int = 0
-    ) -> Tuple[int, List[Fixture]]:
-        with self.db.get_session('fotmob') as session:
-            query = session.query(Fixture)
-
-            if league_id:
-                query = query.filter(Fixture.league_id == league_id)
-            if start_date:
-                query = query.filter(Fixture.kickoff_time >= start_date)
-            if end_date:
-                query = query.filter(Fixture.kickoff_time <= end_date)
-            if match_status is not None:
-                query = query.filter(Fixture.match_status == match_status)
-
-            total = query.count()
-            items = query.order_by(Fixture.kickoff_time.desc()).offset(offset).limit(limit).all()
-
-            return total, [self._detach(f) for f in items]
-
     def get_fixture(self, match_id: int) -> Optional[Fixture]:
         with self.db.get_session('fotmob') as session:
             fixture = session.query(Fixture).filter(Fixture.match_id == match_id).first()
             if not fixture:
                 return None
             return self._detach(fixture)
+
+    def get_fixtures(
+        self,
+        status: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> Tuple[int, List[Fixture]]:
+        current_time = datetime.now(timezone.utc)
+        today_start = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        with self.db.get_session('fotmob') as session:
+            query = session.query(Fixture).filter(
+                Fixture.status.op('&')(1) == 1
+            )
+
+            if status == 'finished':
+                time_start = today_start - timedelta(days=6)
+                time_end = current_time
+                query = query.filter(
+                    Fixture.kickoff_time >= time_start,
+                    Fixture.kickoff_time <= time_end,
+                    Fixture.match_status.in_(FINISHED_STATUSES)
+                ).order_by(Fixture.kickoff_time.desc())
+
+            elif status == 'upcoming':
+                time_start = current_time
+                time_end = today_start + timedelta(days=7)
+                query = query.filter(
+                    Fixture.kickoff_time >= time_start,
+                    Fixture.kickoff_time < time_end,
+                    Fixture.match_status.in_(UPCOMING_STATUSES)
+                ).order_by(Fixture.kickoff_time.asc())
+
+            elif status == 'live':
+                query = query.filter(
+                    Fixture.match_status.in_(LIVE_STATUSES)
+                ).order_by(Fixture.kickoff_time.desc())
+
+            else:
+                raise ValueError(f"Invalid status: {status}")
+
+            total = query.count()
+            offset = (page - 1) * per_page
+            fixtures = query.offset(offset).limit(per_page).all()
+
+            return total, fixtures
 
     def _detach(self, f: Fixture) -> Fixture:
         return Fixture(
