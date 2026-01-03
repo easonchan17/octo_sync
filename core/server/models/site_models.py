@@ -1,17 +1,21 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, HttpUrl
 from datetime import datetime
+from typing import Optional
+
 
 class SiteBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100, description="Site name")
-    url: str = Field(..., description="Site URL")
+    name: str
+    url: HttpUrl
+
 
 class SiteCreate(SiteBase):
     pass
 
-class SiteResponse(SiteBase):
+
+class SiteRead(SiteBase):
     id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
