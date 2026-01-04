@@ -43,3 +43,6 @@ class Fixture(Base, StatusMixin, DictMixin):
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+    def repr(self) -> str:
+        return f"<Fixture {self.match_id} {self.league_name} {self.kickoff_time} {self.home_team} {self.away_team}>"

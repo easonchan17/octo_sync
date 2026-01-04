@@ -6,7 +6,10 @@ LEAGUE_METADATA = {
         "name": "Premier League",
         "sites": {
             "fbref": {"id": "9"},
-            "fotmob": {"id": 47},
+            "fotmob": {
+                "id": 47,
+                "name": "premier-league"
+            },
             "football-data": {
                 "id": "9",
                 "name": "E0",

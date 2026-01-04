@@ -2,7 +2,7 @@ from typing import Dict, Any
 from fastapi import HTTPException, Body
 from core.server.services.inference_service import InferenceService
 from core.server.controllers.base_controller import BaseController
-from core.server.models.inference_models import PredictionResponse
+from core.server.models.api_models import PredictionResponse
 
 class InferenceController(BaseController):
     def __init__(self) -> None:

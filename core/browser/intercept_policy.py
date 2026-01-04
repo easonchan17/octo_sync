@@ -37,7 +37,6 @@ class InterceptRule:
 class InterceptPolicy:
     def __init__(self) -> None:
         self.rules: Dict[InterceptType, List[InterceptRule]] = defaultdict(list)
-        self.selector: Optional[str] = None
         self.timeout: Optional[int] = None
         self.page_delay: Optional[float] = None
         self.retry_count: Optional[int] = None
@@ -88,7 +87,6 @@ class InterceptPolicy:
             return None
 
         rules = policy_config.get("rules", [])
-        selector = policy_config.get("selector", None)
         debug = policy_config.get("debug", False)
         timeout = policy_config.get("timeout", 60)
         page_delay = policy_config.get("page_delay", 5)
@@ -104,7 +102,6 @@ class InterceptPolicy:
                 receiver=rule.get("receiver"),
                 sender=rule.get("sender"))
             )
-        policy.selector = selector
         policy.debug = debug
         policy.timeout = timeout
         policy.page_delay = page_delay

@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 from core.config.league_config import get_league_metadata
 from functools import cached_property
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from core.store.postgres.models import Site
 from core.utils.downloader import FileDownloader
 from core.utils.pandas_utils import load_dataframe
@@ -30,6 +30,12 @@ class SyncMarketOdds(BaseTask):
         'AHCh': 'ah_line_close',
         'PCAHH': 'ah_home_close',
         'PCAHA': 'ah_away_close'
+    }
+
+    TIME_CORRECTIONS: Dict[Tuple[str, str, str], str] = {
+        ('20/04/2021', 'Chelsea', 'Brighton'): '20:15',
+        ('19/12/2021', 'Newcastle', 'Man City'): '14:15',
+        ('26/02/2022', 'Brighton', 'Aston Villa'): '15:00',
     }
 
     POLICY_CONFIG = {
@@ -99,6 +105,14 @@ class SyncMarketOdds(BaseTask):
 
         return dataset_file
 
+    def _fix_time_corrections(self, df: pd.DataFrame) -> pd.DataFrame:
+        for (date, home_team, away_team), correct_time in self.TIME_CORRECTIONS.items():
+            mask = (df['Date'] == date) & (df['HomeTeam'] == home_team) & (df['AwayTeam'] == away_team)
+            if mask.any():
+                df.loc[mask, 'Time'] = correct_time
+                self.logger.info(f"Fixed time for {date} {home_team} vs {away_team}: {correct_time}")
+        return df
+
     def load_dataset(self, comp_name: str, season: int, timezone: str) -> List[Dict[str, Any]]:
         dataset_file = self.prepare_dataset_file(comp_name, season)
 
@@ -106,6 +120,8 @@ class SyncMarketOdds(BaseTask):
             raise FileNotFoundError(f"Dataset file not found: {dataset_file}")
 
         df = load_dataframe(dataset_file)
+
+        df = self._fix_time_corrections(df)
 
         kickoff_time_key = MarketOdds.kickoff_time.key
         df[kickoff_time_key] = pd.to_datetime(

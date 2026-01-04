@@ -35,10 +35,19 @@ class TeamResolver:
                 kickoff_time = datetime.fromisoformat(kickoff_time)
 
             candidate_matches = target_index.get(kickoff_time, [])
+            if not candidate_matches:
+                pretty_source = json.dumps(source_match, indent=4, ensure_ascii=False, default=str)
+                self.logger.warning(f"No candidate matches found for source match:\n{pretty_source}")
+                raise ValueError("No candidate matches found for source match")
+
             best_match = self._find_best_match(source_match, candidate_matches)
 
             if not best_match:
-                raise ValueError(f"No best match found for source match: {source_match}")
+                pretty_source = json.dumps(source_match, indent=4, ensure_ascii=False, default=str)
+                self.logger.warning(f"No best match found for source match:\n{pretty_source}")
+                pretty_candidates = json.dumps(candidate_matches, indent=4, ensure_ascii=False, default=str)
+                self.logger.warning(f"Candidate matches:\n{pretty_candidates}")
+                raise ValueError("No best match found for source match")
 
             source_match['home_team'] = best_match.home_team
             source_match['away_team'] = best_match.away_team
@@ -48,9 +57,6 @@ class TeamResolver:
 
 
     def _find_best_match(self, source_match: Dict, candidate_matches: List[Any]) -> Optional[Any]:
-        if not source_match or not candidate_matches:
-            return None
-
         max_score = 0
         best_candidate = None
 
@@ -59,12 +65,6 @@ class TeamResolver:
             if score >= self.SIMILARITY_THRESHOLD and score > max_score:
                 max_score = score
                 best_candidate = candidate_match
-
-        if not best_candidate:
-            pretty_source = json.dumps(source_match, indent=4, ensure_ascii=False, default=str)
-            self.logger.warning(f"No best match found for source match:\n{pretty_source}")
-            pretty_candidates = json.dumps(candidate_matches, indent=4, ensure_ascii=False, default=str)
-            self.logger.warning(f"Candidate matches:\n{pretty_candidates}")
 
         return best_candidate
 

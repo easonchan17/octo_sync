@@ -11,11 +11,14 @@ from core.utils.parsing import (
 )
 
 class PlayerMatchStatsReceiver(BaseReceiver):
-    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+    async def process(self, page_context: Any, url: str, timeout: float) -> List[Dict[str, Any]]:
+        await self.wait_for_ready(page_context, 'table[id^="stats_"][id$="_summary"] tbody tr', timeout)
+
         match_code = extract_match_code_from_url(url)
         if not match_code:
             raise ValueError(f"Match code not found in the URL: {url}")
 
+        page_content = await page_context.content()
         soup = BeautifulSoup(page_content, 'html.parser')
 
         player_stats_dict = {}
