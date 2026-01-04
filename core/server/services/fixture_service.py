@@ -5,6 +5,7 @@ from core.server.services.base_service import BaseService
 from core.store.postgres.models.fotmob import Fixture
 from core.store.postgres.models.common import MatchStatus
 from core.config.league_config import LEAGUE_METADATA
+from core.server.models.api_models import FixtureStatus
 
 
 FINISHED_STATUSES = [
@@ -29,51 +30,23 @@ LIVE_STATUSES = [
     MatchStatus.PENALTY.value
 ]
 
-STATUS_CODE_MAP = {
-    MatchStatus.SCHEDULED.value: "NS",
-    MatchStatus.TIMED.value: "NS",
-    MatchStatus.IN_PROGRESS.value: "Live",
-    MatchStatus.FIRST_HALF.value: "1H",
-    MatchStatus.HALFTIME.value: "HT",
-    MatchStatus.SECOND_HALF.value: "2H",
-    MatchStatus.EXTRA_TIME.value: "ET",
-    MatchStatus.PENALTY.value: "P",
-    MatchStatus.FINISHED.value: "FT",
-    MatchStatus.FINISHED_AET.value: "AET",
-    MatchStatus.FINISHED_PEN.value: "PEN",
-    MatchStatus.FINISHED_AWARDED.value: "AWD",
-    MatchStatus.POSTPONED.value: "POST",
-    MatchStatus.CANCELLED.value: "CAN"
-}
-
-
-def get_status_string(status_code: int) -> str:
-    return STATUS_CODE_MAP.get(status_code, str(status_code))
-
-
 class FixtureService(BaseService):
-    def get_fixture(self, match_id: int) -> Optional[Fixture]:
-        with self.db.get_session('fotmob') as session:
-            fixture = session.query(Fixture).filter(Fixture.match_id == match_id).first()
-            if not fixture:
-                return None
-            return self._detach(fixture)
-
     def get_fixtures(
         self,
-        status: str,
+        status: FixtureStatus,
         page: int = 1,
-        per_page: int = 20
+        page_size: int = 20
     ) -> Tuple[int, List[Fixture]]:
         current_time = datetime.now(timezone.utc)
         today_start = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+        site = self.get_site('fotmob')
 
-        with self.db.get_session('fotmob') as session:
+        with self.db.get_session(site.get_namespace()) as session:
             query = session.query(Fixture).filter(
                 Fixture.status.op('&')(1) == 1
             )
 
-            if status == 'finished':
+            if status == FixtureStatus.FINISHED:
                 time_start = today_start - timedelta(days=6)
                 time_end = current_time
                 query = query.filter(
@@ -82,7 +55,7 @@ class FixtureService(BaseService):
                     Fixture.match_status.in_(FINISHED_STATUSES)
                 ).order_by(Fixture.kickoff_time.desc())
 
-            elif status == 'upcoming':
+            elif status == FixtureStatus.UPCOMING:
                 time_start = current_time
                 time_end = today_start + timedelta(days=7)
                 query = query.filter(
@@ -91,7 +64,7 @@ class FixtureService(BaseService):
                     Fixture.match_status.in_(UPCOMING_STATUSES)
                 ).order_by(Fixture.kickoff_time.asc())
 
-            elif status == 'live':
+            elif status == FixtureStatus.LIVE:
                 query = query.filter(
                     Fixture.match_status.in_(LIVE_STATUSES)
                 ).order_by(Fixture.kickoff_time.desc())
@@ -100,29 +73,8 @@ class FixtureService(BaseService):
                 raise ValueError(f"Invalid status: {status}")
 
             total = query.count()
-            offset = (page - 1) * per_page
-            fixtures = query.offset(offset).limit(per_page).all()
+            offset = (page - 1) * page_size
+            fixtures = query.offset(offset).limit(page_size).all()
 
+            session.expunge_all()
             return total, fixtures
-
-    def _detach(self, f: Fixture) -> Fixture:
-        return Fixture(
-            id=f.id,
-            match_id=f.match_id,
-            league_name=f.league_name,
-            league_id=f.league_id,
-            kickoff_time=f.kickoff_time,
-            round=f.round,
-            home_team=f.home_team,
-            home_id=f.home_id,
-            away_team=f.away_team,
-            away_id=f.away_id,
-            home_score=f.home_score,
-            away_score=f.away_score,
-            home_xg=f.home_xg,
-            away_xg=f.away_xg,
-            match_status=f.match_status,
-            status=f.status,
-            created_at=f.created_at,
-            updated_at=f.updated_at
-        )

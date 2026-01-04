@@ -4,7 +4,7 @@ from apscheduler.schedulers.base import STATE_PAUSED, STATE_RUNNING
 from core.scheduler.cron import Cron
 from core.registry import Registry
 from core.server.controllers.base_controller import BaseController
-from core.server.models.cron_models import CronStatus, CronJob, CronJobCreate
+from core.server.models.api_models import CronStatus, CronJobResponse, CronJobRequest
 
 class CronController(BaseController):
     def __init__(self) -> None:
@@ -14,8 +14,7 @@ class CronController(BaseController):
         self.router.post("/cron/resume", status_code=204)(self.resume)
         self.router.post("/cron/jobs", response_model=str)(self.add_job)
         self.router.delete("/cron/jobs/{job_id}", response_model=bool)(self.remove_job)
-        self.router.get("/cron/status", response_model=CronStatus)(self.get_status)
-        self.router.get("/cron/jobs", response_model=List[CronJob])(self.get_jobs)
+        self.router.get("/cron/jobs", response_model=List[CronJobResponse])(self.get_jobs)
 
     def pause(self) -> None:
         try:
@@ -31,7 +30,7 @@ class CronController(BaseController):
             self.logger.error(f"Failed to resume cron: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to resume cron: {str(e)}")
 
-    def add_job(self, job_in: CronJobCreate) -> str:
+    def add_job(self, job_in: CronJobRequest) -> str:
         try:
             func = Registry.fetch(job_in.func)
             func_kwargs = job_in.kwargs or {}
@@ -61,25 +60,12 @@ class CronController(BaseController):
             self.logger.error(f"Failed to remove cron job {job_id}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to remove cron job: {str(e)}")
 
-    def get_status(self) -> CronStatus:
-        try:
-            scheduler = self.cron.scheduler
-            state_str = "running" if scheduler.state == STATE_RUNNING else "paused" if scheduler.state == STATE_PAUSED else "stopped"
-            return CronStatus(
-                running=scheduler.running,
-                state=state_str,
-                job_count=len(scheduler.get_jobs())
-            )
-        except Exception as e:
-            self.logger.error(f"Failed to get cron status: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Failed to get cron status: {str(e)}")
-
-    def get_jobs(self) -> List[CronJob]:
+    def get_jobs(self) -> List[CronJobResponse]:
         try:
             jobs = []
             scheduler = self.cron.scheduler
             for job in scheduler.get_jobs():
-                jobs.append(CronJob(
+                jobs.append(CronJobResponse(
                     id=job.id,
                     name=job.name,
                     next_run_time=job.next_run_time,

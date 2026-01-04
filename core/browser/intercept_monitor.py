@@ -1,5 +1,5 @@
 import asyncio
-from typing import Set
+from typing import Set, Optional, Any
 from core.browser.intercept_policy import InterceptType, InterceptPolicy
 
 class InterceptMonitor:
@@ -13,9 +13,6 @@ class InterceptMonitor:
 
         if not self._pending:
             self._done.set()
-
-    def is_completed(self) -> bool:
-        return not self._pending
 
     def mark_completed(self, url: str) -> None:
         rule = self.policy.find_rule(type=self._type, url=url)

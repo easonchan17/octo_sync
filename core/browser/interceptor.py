@@ -62,39 +62,75 @@ class Interceptor(Thread, Singleton):
     async def _async_run(self) -> None:
         config = ConfigManager.get_instance().get_config("browser")
         headless = config['headless']
-        channel = config['channel']
         page_pool_size = config['page_pool_size']
 
-        async with AsyncCamoufox(headless=headless, channel=channel) as browser:
-            context = await browser.new_context()
-            self.page_pool = PagePool(browser, context, page_pool_size)
+        restart_interval = config['restart_interval']
+        shutdown_timeout = config['shutdown_timeout']
+        should_exit = False
 
-            active_tasks: set[asyncio.Task] = set()
+        while not self.stop_event.is_set() and not should_exit:
+            intercepted_count = 0
 
-            while not self.stop_event.is_set():
-                task_data = await self.task_queue.async_q.get()
-                if task_data is None:
-                    self.task_queue.async_q.task_done()
-                    break
+            async with AsyncCamoufox(headless=headless) as browser:
+                self.page_pool = PagePool(browser, page_pool_size)
 
-                task_type, future, payload = task_data
-                task = asyncio.create_task(self._process_task(task_type, future, payload))
-                active_tasks.add(task)
-                task.add_done_callback(active_tasks.discard)
+                active_tasks: set[asyncio.Task] = set()
 
-            await asyncio.gather(*active_tasks, return_exceptions=True)
+                while not self.stop_event.is_set() and not should_exit:
+                    task_data = await self.task_queue.async_q.get()
+                    if task_data is None:
+                        self.task_queue.async_q.task_done()
+                        should_exit = True
+                        break
 
-            self.logger.info(f"Page pool cleanup. Active pages remaining: {self.page_pool.get_count()}")
-            self.page_pool = None
+                    task_type, future, payload = task_data
+                    task = asyncio.create_task(self._process_task(task_type, future, payload))
+                    active_tasks.add(task)
+                    task.add_done_callback(active_tasks.discard)
+
+                    intercepted_count += 1
+                    if intercepted_count >= restart_interval:
+                        self.logger.info(f"Restarting browser after {intercepted_count} tasks")
+                        break
+
+                await self._drain_tasks(active_tasks, shutdown_timeout)
+
+                self.logger.info(f"Page pool cleanup. Active pages remaining: {self.page_pool.get_count()}")
+                self.page_pool = None
+
+
+    async def _drain_tasks(self, active_tasks: set[asyncio.Task], timeout: float) -> None:
+        if not active_tasks:
+            return
+
+        try:
+            self.logger.info(f"Draining {len(active_tasks)} active tasks with {timeout}s timeout...")
+            await asyncio.wait_for(
+                asyncio.gather(*active_tasks, return_exceptions=True),
+                timeout=timeout
+            )
+            self.logger.info(f"Drained all active tasks")
+
+        except asyncio.TimeoutError:
+            self.logger.error(f"Draining timed out after {timeout}s!")
+
+            for task in list(active_tasks):
+                if not task.done():
+                    task.cancel()
+
+        except Exception as e:
+            self.logger.error(f"Error draining tasks: {e}", exc_info=True)
 
     async def _process_task(self, task_type: TaskType, future: Future, payload: dict[str, Any]) -> None:
         try:
             handlers = {
-                TaskType.OPEN_PAGE: self._handle_open_page,
-                TaskType.CLOSE_PAGE: self._handle_close_page
+                TaskType.OPEN_PAGE: self._handle_open_page
             }
 
             handler = handlers.get(task_type)
+            if not handler:
+                raise ValueError(f"No handler found for task type: {task_type}")
+
             result = await handler(payload)
             if not future.done():
                 future.set_result(result)
@@ -112,11 +148,6 @@ class Interceptor(Thread, Singleton):
 
         result = await self._open_page(url, policy, query_params)
         return (result, None)
-
-    async def _handle_close_page(self, payload: dict[str, Any]) -> bool:
-        page_id = payload.get("page_id")
-        await self.page_pool.remove_resident_page(page_id)
-        return True
 
     async def _register_handlers(
         self,
@@ -214,38 +245,12 @@ class Interceptor(Thread, Singleton):
                 ws.on("framereceived", _framereceived_handler)
 
             page_context.on("websocket", _ws_connect_handler)
-            collected_datas.append(page_context.id)
+            collected_datas.append(page_context)
             ws_connect_handler = _ws_connect_handler
 
         return http_request_handler, http_response_handler, ws_connect_handler
 
-
-    async def _unregister_handlers(
-        self,
-        page_context: Any,
-        http_request_handler: Optional[Any] = None,
-        http_response_handler: Optional[Any] = None,
-        ws_connect_handler: Optional[Any] = None
-    ) -> None:
-        if http_request_handler:
-            try:
-                await page_context.unroute("**/*", http_request_handler)
-            except Exception:
-                pass
-
-        if http_response_handler:
-            try:
-                page_context.remove_listener("response", http_response_handler)
-            except Exception:
-                pass
-
-        if ws_connect_handler:
-            try:
-                page_context.remove_listener("websocket", ws_connect_handler)
-            except Exception:
-                pass
-
-    async def _process_dom_content(
+    async def _process_dom(
         self,
         page_context: Any,
         url: str,
@@ -262,8 +267,12 @@ class Interceptor(Thread, Singleton):
             return
 
         try:
-            content = await page_context.content()
-            parsed_data = await dom_rule.receiver.process(content, url=url)
+            parsed_data = await dom_rule.receiver.process(
+                page_context=page_context,
+                url=url,
+                timeout=policy.timeout
+            )
+
             if parsed_data is None:
                 return
 
@@ -313,12 +322,13 @@ class Interceptor(Thread, Singleton):
         query_params: Optional[dict[str, Any]] = None
     ) -> Tuple[bool, Optional[List[Any]]]:
         collected_datas: List[Any] = []
-
-        is_resident = policy.has_rules(InterceptType.WS)
         timeout = policy.timeout
 
         try:
-            async with self.page_pool.acquire(is_resident, timeout) as page_context:
+            async with self.page_pool.acquire(timeout) as page_context:
+                http_request_handler = None
+                http_response_handler = None
+
                 try:
                     monitor = InterceptMonitor(policy, InterceptType.HTTP)
 
@@ -335,7 +345,6 @@ class Interceptor(Thread, Singleton):
                     )
 
                     response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
-                    self.logger.info(f"Page loaded: {url}")
 
                     is_rate_limited, _ = await self.rate_limiter.is_rate_limited(response, page_context)
                     if is_rate_limited:
@@ -343,19 +352,17 @@ class Interceptor(Thread, Singleton):
                         return False, collected_datas
 
                     await monitor.wait(timeout)
-                    await self._process_dom_content(page_context, url, policy, collected_datas)
+                    self.logger.info(f"Page loaded: {url}")
 
+                    await self._process_dom(page_context, url, policy, collected_datas)
                     self.rate_limiter.reset_backoff(url)
-                    return True, collected_datas
 
+                    if policy.has_rules(InterceptType.WS):
+                        page_context.detach()
+
+                    return True, collected_datas
                 except Exception as e:
                     self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
-                finally:
-                    await self._unregister_handlers(
-                        page_context,
-                        http_request_handler,
-                        http_response_handler
-                    )
 
         except asyncio.TimeoutError:
             self.logger.error(f"Timeout while acquiring page for URL: {url}")

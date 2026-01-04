@@ -20,6 +20,15 @@ class BaseReceiver(ABC):
     async def process(self, *args, **kwargs) -> Optional[Any]:
         pass
 
+    async def wait_for_ready(self, page_context: Any, selector: str, timeout: float) -> None:
+        if not selector:
+            return
+
+        try:
+            await page_context.wait_for_selector(selector, timeout=timeout*1000, state='attached')
+        except Exception:
+            pass
+
     async def decode_json_body(self, response: Any) -> Optional[Any]:
         try:
             mime_type, body = await self._decode_body(response)

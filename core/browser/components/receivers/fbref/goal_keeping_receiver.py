@@ -13,11 +13,14 @@ from core.utils.parsing import (
 )
 
 class GoalkeepingReceiver(BaseReceiver):
-    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+    async def process(self, page_context: Any, url: str, timeout: float) -> List[Dict[str, Any]]:
+        await self.wait_for_ready(page_context, 'table[id="matchlogs_for"] tbody tr', timeout)
+
         team_code = extract_team_code_from_url(url)
         if not team_code:
             raise ValueError(f"Team code not found in the URL: {url}")
 
+        page_content = await page_context.content()
         soup = BeautifulSoup(page_content, 'html.parser')
 
         goal_keepings = []

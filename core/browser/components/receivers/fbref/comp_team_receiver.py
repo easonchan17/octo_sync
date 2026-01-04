@@ -9,12 +9,15 @@ from core.utils.parsing import (
 )
 
 class CompTeamReceiver(BaseReceiver):
-    async def process(self, page_content: Any, url: str) -> List[Dict[str, Any]]:
+    async def process(self, page_context: Any, url: str, timeout: float) -> List[Dict[str, Any]]:
+        await self.wait_for_ready(page_context, 'table[id^="results"][id$="_overall"] tbody tr', timeout)
+
         comp_info = extract_comp_info_from_url(url)
         if not comp_info:
             raise ValueError(f"Failed to extract comp info from URL: {url}")
-
         comp_code, season, comp_name = comp_info
+
+        page_content = await page_context.content()
         soup = BeautifulSoup(page_content, 'html.parser')
 
         league_table = soup.find("table", id=re.compile(r'^results\d{4}-\d+_overall$'))
