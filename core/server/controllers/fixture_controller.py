@@ -1,37 +1,33 @@
 from fastapi import HTTPException, Query
 from core.server.services.fixture_service import FixtureService
 from core.server.controllers.base_controller import BaseController
-from core.server.models.api_models import PaginationInfo, PaginatedDataResponse
-from core.server.models.fixture_models import FixtureRead
+from core.server.models.api_models import Pagination, Paginated, FixtureResponse, FixtureStatus
 
 class FixtureController(BaseController):
     def __init__(self) -> None:
         super().__init__()
         self.fixture_service = FixtureService()
-        self.router.get("/v1/fixtures", response_model=PaginatedDataResponse[FixtureRead])(self.get_fixtures)
+        self.router.get("/v1/fixtures", response_model=Paginated[FixtureResponse])(self.get_fixtures)
 
     def get_fixtures(
         self,
-        status: str = Query(..., description="Match status: finished, live, or upcoming"),
+        status: FixtureStatus = Query(..., description="Match status: 0=finished, 1=live, 2=upcoming"),
         page: int = Query(1, ge=1, description="Page number"),
-        per_page: int = Query(20, ge=1, le=100, description="Items per page")
-    ) -> PaginatedDataResponse[FixtureRead]:
-        if status not in ['finished', 'live', 'upcoming']:
-            raise HTTPException(status_code=400, detail=f"Invalid status: {status}. Must be one of: finished, live, upcoming")
-
+        page_size: int = Query(20, ge=1, le=100, description="Page size")
+    ) -> Paginated[FixtureResponse]:
         try:
             total, fixtures = self.fixture_service.get_fixtures(
                 status=status,
                 page=page,
-                per_page=per_page
+                page_size=page_size
             )
 
-            items = [FixtureRead.model_validate(f) for f in fixtures]
+            items = [FixtureResponse.model_validate(f) for f in fixtures]
 
-            return PaginatedDataResponse[FixtureRead](
-                pagination=PaginationInfo(
+            return Paginated[FixtureResponse](
+                pagination=Pagination(
                     page=page,
-                    per_page=per_page,
+                    page_size=page_size,
                     total=total
                 ),
                 items=items

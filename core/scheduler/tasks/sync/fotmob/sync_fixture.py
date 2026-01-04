@@ -39,7 +39,6 @@ class SyncFixture(BaseTask):
             comp_code = league_metadata["id"]
             comp_name = league_metadata["name"]
 
-
             page_url = intercept_policy.url.format(league_id=comp_code, league_name=comp_name)
             future = self.interceptor.submit_task(
                 TaskType.OPEN_PAGE,
