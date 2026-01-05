@@ -66,7 +66,7 @@ class SyncPlayerMatchStats(BaseTask):
                 responses, _ = future.result()
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
-                    return
+                    continue
 
                 player_stats = responses[0]
                 if not player_stats:

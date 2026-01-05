@@ -2,11 +2,11 @@ import time
 import asyncio
 from contextlib import suppress
 from urllib.parse import urlparse
-from typing import Optional, Any, Tuple
+from typing import Optional, Any
 from core.logger.logger_manager import LoggerManager
 
 class RateLimiter:
-    PREVIEW_LENGTH = 1000
+    PREVIEW_LENGTH = 2000
     BASE_DELAY = 20.0
 
     RATE_LIMIT_LABELS = [
@@ -40,27 +40,21 @@ class RateLimiter:
 
         self.last_request[hostname] = time.time()
 
-    async def is_rate_limited(self, response: Optional[Any], page_context: Any) -> Tuple[bool, Optional[float]]:
-        if response and response.status in [429, 503]:
-            with suppress(Exception):
-                if raw_value := response.headers.get('retry-after'):
-                    return True, float(raw_value)
+    async def is_rate_limited(self, response: Any) -> bool:
+        if response.status in [429, 503]:
+            return True
 
-            return True, None
+        try:
+            content = await response.text()
+            content_preview = content[:self.PREVIEW_LENGTH].lower()
 
-        with suppress(Exception):
-            body_preview = await page_context.eval_on_selector(
-                "body",
-                f"el => el.innerText.substring(0, {self.PREVIEW_LENGTH})"
-            )
-            if not body_preview:
-                return False, None
+            if any(key in content_preview for key in self.RATE_LIMIT_LABELS):
+                return True
 
-            content = body_preview.lower()
-            if any(key in content for key in self.RATE_LIMIT_LABELS):
-                return True, None
+        except Exception:
+            pass
 
-        return False, None
+        return False
 
     def activate_backoff(self, url: str, delay: Optional[float] = None) -> None:
         hostname = urlparse(url).hostname

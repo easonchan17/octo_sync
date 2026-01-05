@@ -28,7 +28,7 @@ class ShootingReceiver(BaseReceiver):
         for id in table_ids:
             shooting_table = soup.find("table", id=id)
             if not shooting_table:
-                raise ValueError(f"Shooting table not found in the page content: {page_content}")
+                raise ValueError("Shooting table not found in the page content")
 
             table_body = shooting_table.find("tbody")
             if not table_body:

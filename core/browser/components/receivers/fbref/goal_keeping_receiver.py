@@ -28,11 +28,11 @@ class GoalkeepingReceiver(BaseReceiver):
         for id in table_ids:
             goalkeeping_table = soup.find("table", id=id)
             if not goalkeeping_table:
-                raise ValueError(f"Goalkeeping table not found in the page content: {page_content}")
+                raise ValueError("Goalkeeping table not found in the page content")
 
             table_body = goalkeeping_table.find("tbody")
             if not table_body:
-                raise ValueError("Goalkeeping table body not found in the page content")
+                raise ValueError("Table body not found")
 
             rows = table_body.find_all("tr")
             for row in rows:

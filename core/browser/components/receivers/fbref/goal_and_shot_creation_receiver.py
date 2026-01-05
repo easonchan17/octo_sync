@@ -28,7 +28,7 @@ class GoalAndShotCreationReceiver(BaseReceiver):
         for id in table_ids:
             gca_table = soup.find("table", id=id)
             if not gca_table:
-                raise ValueError(f"Goal and shot creation table not found in the page content: {page_content}")
+                raise ValueError("Goal and shot creation table not found in the page content")
 
             table_body = gca_table.find("tbody")
             if not table_body:

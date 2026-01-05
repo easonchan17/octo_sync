@@ -28,7 +28,7 @@ class PassingReceiver(BaseReceiver):
         for id in table_ids:
             passing_table = soup.find("table", id=id)
             if not passing_table:
-                raise ValueError(f"Passing table not found in the page content: {page_content}")
+                raise ValueError("Passing table not found in the page content")
 
             table_body = passing_table.find("tbody")
             if not table_body:

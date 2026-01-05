@@ -70,7 +70,7 @@ class SyncMatchResult(BaseTask):
                 responses, _ = future.result()
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
-                    return
+                    continue
 
                 html_results = responses[0]
                 if not html_results:
