@@ -67,7 +67,7 @@ class SyncCompTeam(BaseTask):
                 responses, _ = future.result()
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
-                    return
+                    continue
 
                 teams = responses[0]
                 if not teams:

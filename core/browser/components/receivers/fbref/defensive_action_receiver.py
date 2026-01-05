@@ -28,7 +28,7 @@ class DefensiveActionReceiver(BaseReceiver):
         for id in table_ids:
             defensive_table = soup.find("table", id=id)
             if not defensive_table:
-                raise ValueError(f"Defensive action table not found in the page content: {page_content}")
+                raise ValueError("Defensive action table not found in the page content")
 
             table_body = defensive_table.find("tbody")
             if not table_body:

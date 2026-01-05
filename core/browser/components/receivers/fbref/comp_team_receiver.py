@@ -22,7 +22,7 @@ class CompTeamReceiver(BaseReceiver):
 
         league_table = soup.find("table", id=re.compile(r'^results\d{4}-\d+_overall$'))
         if not league_table:
-            raise ValueError(f"League table not found in the page content: {page_content}")
+            raise ValueError("League table not found in the page content")
 
         table_body = league_table.find("tbody")
         if not table_body:
