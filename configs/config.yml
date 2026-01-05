@@ -13,6 +13,12 @@ task_thread_pool:
 
 browser:
   headless: false
+  humanize: true
+  os: "windows"
+  language: "zh-CN"
+  screen:
+    width: 1920,
+    height: 1080
   # firefox_user_prefs:
   #   browser.sessionhistory.max_total_viewers: 0
   #   browser.cache.memory.enable: false

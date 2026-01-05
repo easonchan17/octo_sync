@@ -10,7 +10,7 @@ from ..base_synchronizer import BaseSynchronizer
 class MatchSynchronizer(BaseSynchronizer):
     TARGET_SITE = 'fotmob'
 
-    TARGET_LEAGUE = {
+    TARGET_LEAGUE = { # TODO
         1980: 47,   # English Premier League
     }
 

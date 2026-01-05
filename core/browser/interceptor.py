@@ -62,6 +62,10 @@ class Interceptor(Thread, Singleton):
     async def _async_run(self) -> None:
         config = ConfigManager.get_instance().get_config("browser")
         headless = config['headless']
+        humanize = config['humanize']
+        os = config['os']
+        lang = config['lang']
+        screen = config['screen']
         page_pool_size = config['page_pool_size']
 
         restart_interval = config['restart_interval']
@@ -71,7 +75,13 @@ class Interceptor(Thread, Singleton):
         while not self.stop_event.is_set() and not should_exit:
             intercepted_count = 0
 
-            async with AsyncCamoufox(headless=headless) as browser:
+            async with AsyncCamoufox(
+                headless=headless,
+                humanize=humanize,
+                os=os,
+                lang=lang,
+                screen=screen
+            ) as browser:
                 self.page_pool = PagePool(browser, page_pool_size)
 
                 active_tasks: set[asyncio.Task] = set()
