@@ -4,7 +4,7 @@ from apscheduler.schedulers.base import STATE_PAUSED, STATE_RUNNING
 from core.scheduler.cron import Cron
 from core.registry import Registry
 from core.server.controllers.base_controller import BaseController
-from core.server.models.api_models import CronStatus, CronJobResponse, CronJobRequest
+from core.server.models.api_models import CronJobResponse, CronJobRequest
 
 class CronController(BaseController):
     def __init__(self) -> None:
