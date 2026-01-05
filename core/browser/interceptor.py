@@ -1,3 +1,4 @@
+import time
 import janus
 import asyncio
 from enum import Enum
@@ -13,7 +14,7 @@ from core.utils.parsing import is_valid_url
 from core.browser.rate_limiter import RateLimiter
 from core.config.config_manager import ConfigManager
 from core.browser.intercept_monitor import InterceptMonitor
-from core.browser.cloudflare_handler import CloudflareHandler
+from core.browser.turnstile_solver import TurnstileSolver
 from core.browser.intercept_policy import InterceptType, InterceptPolicy
 
 class TaskType(Enum):
@@ -25,7 +26,7 @@ class Interceptor(Thread, Singleton):
         super().__init__()
         self.page_pool = None
         self.task_queue: Optional[janus.Queue] = None
-        self.cloudflare_handler = CloudflareHandler()
+        self.turnstile_solver = TurnstileSolver()
         self.rate_limiter = RateLimiter()
 
     def get_page_pool(self) -> Optional[PagePool]:
@@ -63,20 +64,18 @@ class Interceptor(Thread, Singleton):
         config = ConfigManager.get_instance().get_config("browser")
 
         options = config.get("options", {})
-
         page_pool_size = config['page_pool_size']
-        restart_interval = config['restart_interval']
-        shutdown_timeout = config['shutdown_timeout']
+        page_limit = config['page_limit']
+        viewport = config['viewport']
 
         should_exit = False
 
         while not self.stop_event.is_set() and not should_exit:
-            intercepted_count = 0
+            intercepted_pages = 0
 
             async with AsyncCamoufox(**options) as browser:
-                self.page_pool = PagePool(browser, page_pool_size)
-
-                active_tasks: set[asyncio.Task] = set()
+                context = await browser.new_context(viewport=viewport)
+                self.page_pool = PagePool(context, page_pool_size)
 
                 while not self.stop_event.is_set() and not should_exit:
                     task_data = await self.task_queue.async_q.get()
@@ -86,18 +85,14 @@ class Interceptor(Thread, Singleton):
                         break
 
                     task_type, future, payload = task_data
-                    task = asyncio.create_task(self._process_task(task_type, future, payload))
-                    active_tasks.add(task)
-                    task.add_done_callback(active_tasks.discard)
+                    await self._process_task(task_type, future, payload)
 
-                    intercepted_count += 1
-                    if intercepted_count >= restart_interval:
-                        self.logger.info(f"Restarting browser after {intercepted_count} tasks")
+                    intercepted_pages += 1
+                    if intercepted_pages >= page_limit:
+                        self.logger.info(f"Restarting browser after {intercepted_pages} tasks")
                         break
 
-                await self._drain_tasks(active_tasks, shutdown_timeout)
-
-                self.logger.info(f"Page pool cleanup. Active pages remaining: {self.page_pool.get_count()}")
+                self.logger.info(f"Page pool cleanup.")
                 self.page_pool = None
 
 
@@ -317,6 +312,8 @@ class Interceptor(Thread, Singleton):
                 self.logger.error(f"Failed to intercept page {url} after {retry_count} retries")
                 return None
 
+            self.logger.info(f"Retrying to intercept page {url} (attempt {idx + 1}/{retry_count})")
+
     async def _intercept(
         self,
         url: str,
@@ -332,7 +329,7 @@ class Interceptor(Thread, Singleton):
                 http_response_handler = None
 
                 try:
-                    monitor = InterceptMonitor(policy, InterceptType.HTTP)
+                    intercept_monitor = InterceptMonitor(policy, InterceptType.HTTP)
 
                     (
                         http_request_handler,
@@ -341,20 +338,30 @@ class Interceptor(Thread, Singleton):
                     ) = await self._register_handlers(
                         page_context,
                         policy,
-                        monitor,
+                        intercept_monitor,
                         collected_datas,
                         query_params
                     )
 
-                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
+                    start_time = time.time()
 
-                    is_rate_limited, _ = await self.rate_limiter.is_rate_limited(response, page_context)
-                    if is_rate_limited:
+                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
+                    if response is None:
+                        self.logger.warning(f"Navigation to {url} returned None, no response available")
+                        return False, collected_datas
+
+                    if await self.rate_limiter.is_rate_limited(response):
                         self.rate_limiter.activate_backoff(url)
                         return False, collected_datas
 
-                    await monitor.wait(timeout)
-                    self.logger.info(f"Page loaded: {url}")
+                    if not await self.turnstile_solver.solve(page_context, timeout=timeout):
+                        self.logger.error(f"Failed to solve turnstile for URL: {url}")
+                        return False, collected_datas
+
+                    await intercept_monitor.wait(timeout)
+
+                    elapsed_time = time.time() - start_time
+                    self.logger.info(f"Page loaded: {url} in {elapsed_time:.2f}s")
 
                     await self._process_dom(page_context, url, policy, collected_datas)
                     self.rate_limiter.reset_backoff(url)

@@ -164,7 +164,7 @@ class MatchResultReceiver(BaseReceiver):
 
         result_table = soup.find("table", id="matchlogs_for")
         if not result_table:
-            raise ValueError(f"Match result table not found in the page content: {page_content}")
+            raise ValueError("Match result table not found in the page content")
 
         table_body = result_table.find("tbody")
         if not table_body:

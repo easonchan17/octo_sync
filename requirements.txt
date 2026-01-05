@@ -19,3 +19,4 @@ janus==2.0.0
 thefuzz==0.22.1
 apscheduler==3.11.2
 httpx==0.28.1
+camoufox-captcha==0.1.3

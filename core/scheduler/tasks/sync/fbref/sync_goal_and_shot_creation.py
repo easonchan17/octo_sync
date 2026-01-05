@@ -70,7 +70,7 @@ class SyncGoalAndShotCreation(BaseTask):
                 responses, _ = future.result()
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
-                    return
+                    continue
 
                 goal_and_shot_creations = responses[0]
                 if not goal_and_shot_creations:

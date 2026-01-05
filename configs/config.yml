@@ -13,21 +13,20 @@ task_thread_pool:
 
 browser:
   options:
-    headless: false
+    headless: true
+    os:
+      - "windows"
+      - "macos"
+      - "linux"
     humanize: true
-    os: "windows"
-    locale: "zh-CN"
-  # firefox_user_prefs:
-  #   browser.sessionhistory.max_total_viewers: 0
-  #   browser.cache.memory.enable: false
-  #   network.http.use-cache: false
-  #   dom.serviceWorkers.enabled: false
-  #   permissions.default.image: 2
-  #   media.autoplay.default: 5
-  #   media.autoplay.enabled.user-gestures-needed: false
-  #   media.peerconnection.enabled: false
+    firefox_user_prefs:
+      browser.tabs.remote.useCrossOriginOpenerPolicy: false
+      network.cookie.cookieBehavior: 0
+  viewport:
+    width: 1920
+    height: 1080
   page_pool_size: 5
-  restart_interval: 100
+  page_limit: 30
   shutdown_timeout: 60.0
 
 http:

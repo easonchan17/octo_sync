@@ -70,7 +70,7 @@ class SyncPassing(BaseTask):
                 responses, _ = future.result()
                 if not responses:
                     self.logger.error(f"No response for {page_url}")
-                    return
+                    continue
 
                 passings = responses[0]
                 if not passings:
