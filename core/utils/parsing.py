@@ -137,6 +137,8 @@ def extract_venue_epoch(cell: Any) -> Optional[str]:
             return venue_time.get("data-venue-epoch")
     return None
 
+def extract_match_report_url(cell: Any) -> Optional[str]:
+    return _get_href(cell)
 
 # --- Player ---
 def extract_player_code_from_url(url: str) -> Optional[str]:
