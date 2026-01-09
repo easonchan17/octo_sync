@@ -64,8 +64,11 @@ class Pipeline(BaseTask):
 
             self.logger.info(f"Executing task {i+1}/{len(self.tasks)}: {task.name}")
             task.is_force = self.is_force
-            task.execute(*args, **kwargs)
-            self.logger.info(f"Task {task.name} completed")
+            try:
+                task.execute(*args, **kwargs)
+                self.logger.info(f"Task {task.name} completed")
+            except Exception as e:
+                self.logger.error(f"Task {task.name} failed: {e}", exc_info=True)
 
         if self.on_complete:
             self.on_complete()
