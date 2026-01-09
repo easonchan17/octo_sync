@@ -9,7 +9,7 @@ from core.utils.parsing import (
     get_text, get_float, get_number,
     is_table_header, extract_comp_code_from_cell,
     extract_match_code_from_cell, extract_venue_epoch,
-    extract_team_code_from_cell
+    extract_team_code_from_cell, extract_match_report_url
 )
 
 class HtmlMatchResult:
@@ -218,7 +218,7 @@ class MatchResultReceiver(BaseReceiver):
                 formation=get_text(formation),
                 opp_formation=get_text(opp_formation),
                 notes = get_text(notes),
-                match_report = match_report.find("a").get("href")
+                match_report = extract_match_report_url(match_report)
             )
 
             html_results.append(html_result)
