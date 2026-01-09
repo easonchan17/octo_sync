@@ -38,44 +38,50 @@ class SyncCompTeam(BaseTask):
         comp_name = league_metadata["name"]
         comp_name_with_dash = comp_name.replace(" ", "-")
 
-        tasks = self.synchronizer.get_pending_tasks(
-            self.site, comp_code, min_season, max_season, CompSyncFlag.TEAMS.value
-        )
+        seen_failed = True
 
-        if not tasks:
-            self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
-            return
+        while seen_failed:
+            tasks = self.synchronizer.get_pending_tasks(
+                self.site, comp_code, min_season, max_season, CompSyncFlag.TEAMS.value
+            )
 
-        for season in tasks:
-            if self.should_stop():
+            if not tasks:
+                self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
                 return
 
-            season_range = f"{season}-{season+1}"
+            seen_failed = False
+            for season in tasks:
+                if self.should_stop():
+                    return
 
-            try:
-                page_url = intercept_policy.url.format(
-                    comp_code=comp_code,
-                    season_range=season_range,
-                    comp_name=comp_name_with_dash
-                )
-                future = self.interceptor.submit_task(
-                    TaskType.OPEN_PAGE,
-                    url=page_url,
-                    intercept_policy=intercept_policy
-                )
+                season_range = f"{season}-{season+1}"
 
-                responses, _ = future.result()
-                if not responses:
-                    self.logger.error(f"No response for {page_url}")
-                    continue
+                try:
+                    page_url = intercept_policy.url.format(
+                        comp_code=comp_code,
+                        season_range=season_range,
+                        comp_name=comp_name_with_dash
+                    )
+                    future = self.interceptor.submit_task(
+                        TaskType.OPEN_PAGE,
+                        url=page_url,
+                        intercept_policy=intercept_policy
+                    )
 
-                teams = responses[0]
-                if not teams:
-                    self.logger.warning(f"No teams for {page_url}")
-                    continue
+                    responses, _ = future.result()
+                    if not responses:
+                        self.logger.error(f"No response for {page_url}")
+                        seen_failed = True
+                        continue
 
-                self.synchronizer.sync(
-                    self.site, comp_code, comp_name, season, teams
-                )
-            except Exception as e:
-                self.logger.error(f"Failed to sync {comp_name} {season_range} teams from {self.site.name}: {e}")
+                    teams = responses[0]
+                    if not teams:
+                        self.logger.warning(f"No teams for {page_url}")
+                        continue
+
+                    self.synchronizer.sync(
+                        self.site, comp_code, comp_name, season, teams
+                    )
+                except Exception as e:
+                    self.logger.error(f"Failed to sync {comp_name} {season_range} teams from {self.site.name}: {e}")
+                    seen_failed = True

@@ -38,43 +38,49 @@ class SyncPlayerMatchStats(BaseTask):
         comp_name = league_metadata["name"]
         team_code = self.payload.get("team_code")
 
-        tasks = self.synchronizer.get_pending_tasks(
-            self.site, min_season, max_season, PlayerStatsSyncFlag.PLAYER_STATS.value, comp_code=comp_code, team_code=team_code
-        )
+        seen_failed = True
 
-        if not tasks:
-            self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
-            return
+        while seen_failed:
+            tasks = self.synchronizer.get_pending_tasks(
+                self.site, min_season, max_season, PlayerStatsSyncFlag.PLAYER_STATS.value, comp_code=comp_code, team_code=team_code
+            )
 
-        for match_code, home_team, away_team, season, match_report_url in tasks:
-            if self.should_stop():
+            if not tasks:
+                self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
                 return
 
-            match_tag = f"{season} {home_team} vs {away_team}"
-            if not match_report_url:
-                self.logger.warning(f"Match {match_tag} has no match report URL")
-                continue
+            seen_failed = False
+            for match_code, home_team, away_team, season, match_report_url in tasks:
+                if self.should_stop():
+                    return
 
-            try:
-                page_url = intercept_policy.url.format(match_report_url=match_report_url)
-                future = self.interceptor.submit_task(
-                    TaskType.OPEN_PAGE,
-                    url=page_url,
-                    intercept_policy=intercept_policy
-                )
-
-                responses, _ = future.result()
-                if not responses:
-                    self.logger.error(f"No response for {page_url}")
+                match_tag = f"{season} {home_team} vs {away_team}"
+                if not match_report_url:
+                    self.logger.warning(f"Match {match_tag} has no match report URL")
                     continue
 
-                player_stats = responses[0]
-                if not player_stats:
-                    self.logger.warning(f"No player stats for {page_url}")
-                    continue
+                try:
+                    page_url = intercept_policy.url.format(match_report_url=match_report_url)
+                    future = self.interceptor.submit_task(
+                        TaskType.OPEN_PAGE,
+                        url=page_url,
+                        intercept_policy=intercept_policy
+                    )
 
-                self.synchronizer.sync(
-                    self.site, match_code, home_team, away_team, season, player_stats
-                )
-            except Exception as e:
-                self.logger.error(f"Failed to sync player match stats for match {match_tag} from {self.site.name}: {e}")
+                    responses, _ = future.result()
+                    if not responses:
+                        self.logger.error(f"No response for {page_url}")
+                        seen_failed = True
+                        continue
+
+                    player_stats = responses[0]
+                    if not player_stats:
+                        self.logger.warning(f"No player stats for {page_url}")
+                        continue
+
+                    self.synchronizer.sync(
+                        self.site, match_code, home_team, away_team, season, player_stats
+                    )
+                except Exception as e:
+                    self.logger.error(f"Failed to sync player match stats for match {match_tag} from {self.site.name}: {e}")
+                    seen_failed = True

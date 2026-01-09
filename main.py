@@ -1,7 +1,10 @@
 
+import os
 import signal
 import argparse
+from pathlib import Path
 from threading import Event
+from dotenv import load_dotenv
 from core.scheduler.worker import Worker
 from core.server.web_server import WebServer
 from core.browser.interceptor import Interceptor
@@ -51,6 +54,13 @@ def parse_arguments() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+def load_env() -> None:
+    env_path = Path(__file__).parent / '.env'
+    if not env_path.exists():
+        raise FileNotFoundError(f".env file not found at {env_path}")
+
+    load_dotenv(dotenv_path=env_path)
+
 def run_app() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -92,4 +102,5 @@ def run_app() -> None:
     shutdown_event.wait()
 
 if __name__ == "__main__":
-   run_app()
+    load_env()
+    run_app()

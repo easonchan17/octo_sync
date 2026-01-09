@@ -91,7 +91,7 @@ class Cron(Singleton):
                 replace_existing=False,
                 kwargs=func_kwargs
             )
-            self.logger.info(f"Added job: {job_id} (name={name}) with schedule: {trigger}")
+            self.logger.info(f"Added job: {name} with schedule: {trigger}")
             return job_id
 
     def remove_job(self, job_id: str) -> bool:
