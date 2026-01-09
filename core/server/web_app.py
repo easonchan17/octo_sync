@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Any
 from fastapi import FastAPI, Request
@@ -10,16 +11,21 @@ from core.server.controllers.cron_controller import CronController
 
 class WebApp:
     def __init__(self) -> None:
-        self.app = FastAPI()
+        is_prod = os.getenv("ENV", "dev").lower() == "prod"
+
+        self.app = FastAPI(
+            title="Octopus API",
+            description="Octopus Sports API",
+            version="1.0.0",
+            docs_url=None if is_prod else "/docs",
+            redoc_url=None if is_prod else "/redoc",
+            openapi_url=None if is_prod else "/openapi.json"
+        )
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self._setup_middleware()
         self._setup_routes()
 
     def _setup_routes(self) -> None:
-        @self.app.get("/")
-        async def root() -> dict[str, str]:
-            return {"message": "Octopus Extractor API is running"}
-
         @self.app.get("/health")
         async def health_check() -> dict[str, str]:
             return {"status": "healthy"}

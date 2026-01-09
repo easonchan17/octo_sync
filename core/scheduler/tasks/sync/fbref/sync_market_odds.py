@@ -54,16 +54,18 @@ class SyncMarketOdds(BaseTask):
         return Path(self.config_manager.get_config("training.artifact.dataset"))
 
     def execute(self, *args, **kwargs) -> None:
-        try:
-            league_id = self.get_required_param("league_id")
-            min_season = self.get_required_param("min_season")
-            max_season = self.get_required_param("max_season")
+        league_id = self.get_required_param("league_id")
+        min_season = self.get_required_param("min_season")
+        max_season = self.get_required_param("max_season")
 
-            league_metadata = get_league_metadata(league_id, "football-data")
-            comp_code = league_metadata["id"]
-            comp_name = league_metadata["name"]
-            timezone = league_metadata["timezone"]
+        league_metadata = get_league_metadata(league_id, "football-data")
+        comp_code = league_metadata["id"]
+        comp_name = league_metadata["name"]
+        timezone = league_metadata["timezone"]
 
+        seen_failed = True
+
+        while seen_failed:
             tasks = self.synchronizer.get_pending_tasks(
                 self.site, comp_code, min_season, max_season, CompSyncFlag.MARKET_ODDS.value, is_force=self.is_force
             )
@@ -71,28 +73,31 @@ class SyncMarketOdds(BaseTask):
                 self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
                 return
 
+            seen_failed = False
             for season in tasks:
-                source_matches = self.load_dataset(comp_name, season, timezone)
-                if not source_matches:
-                    self.logger.warning(f"No source matches loaded for {comp_name} {season}")
-                    continue
+                try:
+                    source_matches = self.load_dataset(comp_name, season, timezone)
+                    if not source_matches:
+                        self.logger.warning(f"No source matches loaded for {comp_name} {season}")
+                        continue
 
-                kickoff_time_key = MarketOdds.kickoff_time.key
-                match_code_key = MarketOdds.match_code.key
+                    kickoff_time_key = MarketOdds.kickoff_time.key
+                    match_code_key = MarketOdds.match_code.key
 
-                first_synced_time = source_matches[0].get(kickoff_time_key)
-                target_matches = self.synchronizer.get_target_matches(comp_code, first_synced_time)
-                self.team_resolver.resolve(source_matches, target_matches, with_target=True)
+                    first_synced_time = source_matches[0].get(kickoff_time_key)
+                    target_matches = self.synchronizer.get_target_matches(comp_code, first_synced_time)
+                    self.team_resolver.resolve(source_matches, target_matches, with_target=True)
 
-                for record in source_matches:
-                    record[match_code_key] = record.pop('target').match_code
+                    for record in source_matches:
+                        record[match_code_key] = record.pop('target').match_code
 
-                last_synced_time = source_matches[-1].get(kickoff_time_key)
-                self.synchronizer.sync(
-                    self.site, comp_code, season, last_synced_time, source_matches
-                )
-        except Exception as e:
-            self.logger.error(f"Failed to sync market odds: {e}", exc_info=True)
+                    last_synced_time = source_matches[-1].get(kickoff_time_key)
+                    self.synchronizer.sync(
+                        self.site, comp_code, season, last_synced_time, source_matches
+                    )
+                except Exception as e:
+                    self.logger.error(f"Failed to sync {comp_name} {season} market odds: {e}")
+                    seen_failed = True
 
     def prepare_dataset_file(self, comp_name: str, season: int) -> Path:
         season_range = f"{season % 100:02d}{(season + 1) % 100:02d}"

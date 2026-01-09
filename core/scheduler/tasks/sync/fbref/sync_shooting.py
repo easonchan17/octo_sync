@@ -40,48 +40,54 @@ class SyncShooting(BaseTask):
         comp_name = league_metadata["name"]
         team_code = self.payload.get("team_code")
 
-        tasks = self.synchronizer.get_pending_tasks(
-            self.site, min_season, max_season, MatchStatsSyncFlag.SHOOTING.value, comp_code=comp_code, team_code=team_code, is_force=self.is_force
-        )
+        seen_failed = True
 
-        if not tasks:
-            self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
-            return
+        while seen_failed:
+            tasks = self.synchronizer.get_pending_tasks(
+                self.site, min_season, max_season, MatchStatsSyncFlag.SHOOTING.value, comp_code=comp_code, team_code=team_code, is_force=self.is_force
+            )
 
-        for season, team_name, team_code in tasks:
-            if self.should_stop():
+            if not tasks:
+                self.logger.warning(f"No pending tasks found for {comp_name}({comp_code}) from {min_season} to {max_season}")
                 return
 
-            season_range = f"{season}-{season+1}"
-            team_name, team_name_with_dash = normalize_team_name(team_name)
+            seen_failed = False
+            for season, team_name, team_code in tasks:
+                if self.should_stop():
+                    return
 
-            try:
-                page_url = intercept_policy.url.format(
-                    team_code=team_code,
-                    season_range=season_range,
-                    team_name=team_name_with_dash
-                )
-                future = self.interceptor.submit_task(
-                    TaskType.OPEN_PAGE,
-                    url=page_url,
-                    intercept_policy=intercept_policy
-                )
+                season_range = f"{season}-{season+1}"
+                team_name, team_name_with_dash = normalize_team_name(team_name)
 
-                responses, _ = future.result()
-                if not responses:
-                    self.logger.error(f"No response for {page_url}")
-                    continue
+                try:
+                    page_url = intercept_policy.url.format(
+                        team_code=team_code,
+                        season_range=season_range,
+                        team_name=team_name_with_dash
+                    )
+                    future = self.interceptor.submit_task(
+                        TaskType.OPEN_PAGE,
+                        url=page_url,
+                        intercept_policy=intercept_policy
+                    )
 
-                shootings = responses[0]
-                if not shootings:
-                    self.logger.warning(f"No shooting for {page_url}")
-                    continue
+                    responses, _ = future.result()
+                    if not responses:
+                        self.logger.error(f"No response for {page_url}")
+                        seen_failed = True
+                        continue
 
-                shootings.sort(key=lambda x: x.get(Shooting.kickoff_time.key))
-                last_synced_time = shootings[-1].get(Shooting.kickoff_time.key)
+                    shootings = responses[0]
+                    if not shootings:
+                        self.logger.warning(f"No shooting for {page_url}")
+                        continue
 
-                self.synchronizer.sync(
-                    self.site, team_name, team_code, season, last_synced_time, shootings
-                )
-            except Exception as e:
-                self.logger.error(f"Failed to sync {team_name} {season_range} shooting from {self.site.name}: {e}")
+                    shootings.sort(key=lambda x: x.get(Shooting.kickoff_time.key))
+                    last_synced_time = shootings[-1].get(Shooting.kickoff_time.key)
+
+                    self.synchronizer.sync(
+                        self.site, team_name, team_code, season, last_synced_time, shootings
+                    )
+                except Exception as e:
+                    self.logger.error(f"Failed to sync {team_name} {season_range} shooting from {self.site.name}: {e}")
+                    seen_failed = True
