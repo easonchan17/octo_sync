@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 from core.utils.pandas_utils import save_dataframe
+from core.config.league_config import get_league_metadata
 from core.scheduler.tasks.analysis.feature_engineering import FeatureSelector
 from core.scheduler.tasks.analysis.feature_engineering import FormulaDeriver
 from core.scheduler.tasks.analysis.feature_engineering.constants import (
@@ -102,6 +103,7 @@ class MatchStatsAggregator(BaseTask):
         self.match_stats_analyzer = MatchStatsAnalyzer(site, payload)
         self.outfield_player_stats_analyzer = OutfieldPlayerStatsAnalyzer(site, payload)
         self.goalkeeper_stats_analyzer = GoalkeeperStatsAnalyzer(site, payload)
+        self.site = site
         self.payload = payload
 
     def build_output_file(self, tag: str, comp_code: str, min_season: int, max_season: int, output_format: str) -> str:
@@ -114,9 +116,12 @@ class MatchStatsAggregator(BaseTask):
         return output_dir
 
     def execute(self) -> None:
-        comp_code = self.payload["comp_code"]
-        min_season = self.payload["min_season"]
-        max_season = self.payload["max_season"]
+        league_id = self.get_required_param("league_id")
+        min_season = self.get_required_param("min_season")
+        max_season = self.get_required_param("max_season")
+
+        league_metadata = get_league_metadata(league_id, self.site.name)
+        comp_code = league_metadata["id"]
 
         output_format = self.payload.get("format", "csv")
         output_path = self.config_manager.get_config(
@@ -125,7 +130,9 @@ class MatchStatsAggregator(BaseTask):
         output_path = self.check_output_path(output_path)
 
         try:
-            match_stats_df = self.match_stats_analyzer.analyze()
+            match_stats_df = self.match_stats_analyzer.analyze(
+                comp_code=comp_code, min_season=min_season, max_season=max_season
+            )
             if match_stats_df is None or match_stats_df.empty:
                 self.logger.error("No match stats data found")
                 return None
@@ -134,7 +141,9 @@ class MatchStatsAggregator(BaseTask):
             save_dataframe(match_stats_df, output_path/output_file)
             self.logger.info(f"Match stats saved to: {str((output_path/output_file).resolve())}")
 
-            outfield_player_stats_df = self.outfield_player_stats_analyzer.analyze()
+            outfield_player_stats_df = self.outfield_player_stats_analyzer.analyze(
+                comp_code=comp_code, min_season=min_season, max_season=max_season
+            )
             if outfield_player_stats_df is None or outfield_player_stats_df.empty:
                 self.logger.error("No outfield player stats data found")
                 return None
@@ -143,7 +152,9 @@ class MatchStatsAggregator(BaseTask):
             save_dataframe(outfield_player_stats_df, output_path/output_file)
             self.logger.info(f"Outfield player stats saved to: {str((output_path/output_file).resolve())}")
 
-            goalkeeper_stats_df = self.goalkeeper_stats_analyzer.analyze()
+            goalkeeper_stats_df = self.goalkeeper_stats_analyzer.analyze(
+                comp_code=comp_code, min_season=min_season, max_season=max_season
+            )
             if goalkeeper_stats_df is None or goalkeeper_stats_df.empty:
                 self.logger.error("No goalkeeper stats data found")
                 return None
