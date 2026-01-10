@@ -186,6 +186,14 @@ class MatchResultReceiver(BaseReceiver):
                 continue
 
             date = row.find("th", {"data-stat": "date"})
+            match_report = row.find("td", {"data-stat": "match_report"})
+
+            match_code = extract_match_code_from_cell(date)
+            if not match_code:
+                match_report_text = get_text(match_report)
+                self.logger.warning(f"Skipping match result for match report text: {match_report_text}")
+                continue
+
             comp = row.find("td", {"data-stat": "comp"})
             round = row.find("td", {"data-stat": "round"})
             venue = row.find("td", {"data-stat": "venue"})
@@ -198,7 +206,6 @@ class MatchResultReceiver(BaseReceiver):
             formation = row.find("td", {"data-stat": "formation"})
             opp_formation = row.find("td", {"data-stat": "opp_formation"})
             notes = row.find("td", {"data-stat": "notes"})
-            match_report = row.find("td", {"data-stat": "match_report"})
             kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 
             html_result = HtmlMatchResult(
