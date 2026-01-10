@@ -34,7 +34,7 @@ class TrainingService(BaseService):
             if name not in self.tasks:
                 self.tasks[name] = {}
 
-            task = Registry.call(name, None, self.db, payload)
+            task = Registry.call(name, None, payload)
             task.on_complete = lambda: self._cleanup_task(name, task.id)
 
             self.tasks[name][task.id] = task
@@ -59,5 +59,5 @@ class TrainingService(BaseService):
         site = self.get_site(site_name)
 
         name = f"{model}.{site_name}.samples"
-        task = Registry.call(name, site, self.db, payload)
+        task = Registry.call(name, site, payload)
         return Worker.get_instance().submit(AsyncTask(task))

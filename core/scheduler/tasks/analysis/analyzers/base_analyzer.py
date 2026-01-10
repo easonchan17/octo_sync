@@ -12,12 +12,8 @@ class BaseAnalyzer:
         self.db = PostgreSQLManager.get_instance()
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
 
-    def analyze(self, *args, **kwargs) -> Optional[pd.DataFrame]:
+    def analyze(self, comp_code: str, min_season: int, max_season: int) -> Optional[pd.DataFrame]:
         try:
-            comp_code = self.payload["comp_code"]
-            min_season = self.payload["min_season"]
-            max_season = self.payload["max_season"]
-
             stats = self.query_raw_data(comp_code, min_season, max_season)
             if not stats:
                 self.logger.warning(f"No data found for comp_code={comp_code}, seasons={min_season}-{max_season}")
