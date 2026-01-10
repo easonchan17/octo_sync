@@ -52,8 +52,10 @@ class WebApp:
             response = await call_next(request)
             process_time = time.time() - start_time
 
+            client_ip = request.client.host if request.client else "unknown"
+
             self.logger.info(
-                f"{request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s"
+                f"{client_ip} - {request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s"
             )
 
             return response
