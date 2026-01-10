@@ -21,6 +21,7 @@ class FixtureReceiver(BaseReceiver):
         matches = json_data.get('fixtures', {}).get('allMatches', [])
         for match in matches:
             round = match.get('round')
+            page_url = match.get('pageUrl')
             match_id = match.get('id')
 
             home = match.get('home', {})
@@ -32,6 +33,7 @@ class FixtureReceiver(BaseReceiver):
 
             fixture = {
                 Fixture.round.key: round,
+                Fixture.page_url.key: page_url,
                 Fixture.match_id.key: match_id,
                 Fixture.league_id.key: league_id,
                 Fixture.league_name.key: league_name,
