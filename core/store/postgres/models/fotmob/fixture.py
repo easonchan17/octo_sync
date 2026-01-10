@@ -26,6 +26,7 @@ class Fixture(Base, StatusMixin, DictMixin):
 
     kickoff_time = Column(DateTime(timezone=True), nullable=False)
     round = Column(String(128), nullable=True)
+    page_url = Column(String(512), nullable=False)
 
     home_team = Column(String(100), nullable=False)
     home_id = Column(Integer, nullable=False)
