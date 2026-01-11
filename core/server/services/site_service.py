@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from core.server.services.base_service import BaseService
 from core.scheduler.tasks.base_task import BaseTask, AsyncTask, ForceTask
 from core.store.postgres.models import (
-    Site, TrainingRecord, Fixture, Match, Moneyline, Spread, CompTeam, CompSyncState,
+    Site, TrainingRecord, Fixture, Lineup, Match, Moneyline, Spread, CompTeam, CompSyncState,
     MatchStatsSyncState, MatchResult, GoalAndShotCreation, Passing,
     DefensiveAction, Shooting, GoalKeeping, PlayerMatchStats,
     PlayerStatsSyncState, MarketOdds
@@ -17,7 +17,7 @@ from core.registry import Registry
 class SiteService(BaseService, Singleton):
     SITE_TABLES = {
         "public": [Site, TrainingRecord],
-        "fotmob": [Fixture],
+        "fotmob": [Fixture, Lineup],
         "pinnacle": [Match, Moneyline, Spread],
         "fbref": [
             CompTeam, CompSyncState, MatchStatsSyncState,

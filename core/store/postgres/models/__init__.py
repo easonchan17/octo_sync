@@ -2,7 +2,7 @@
 from .base_model import Base, Status, StatusMixin, DictMixin
 from .common import Site, TrainingRecord, MatchStatus
 from .pinnacle import Match, Moneyline, Spread
-from .fotmob import Fixture
+from .fotmob import Fixture, Lineup
 
 from .fbref import (
     CompTeam,
@@ -48,5 +48,6 @@ __all__ = [
     'Moneyline',
     'Spread',
     'MarketOdds',
-    'Fixture'
+    'Fixture',
+    'Lineup'
 ]

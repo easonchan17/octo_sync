@@ -1,5 +1,6 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index, Float, JSON, Text
+from sqlalchemy import Column, Integer, String, DateTime, Index, Float, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from ..base_model import Base, StatusMixin, DictMixin, Status
 
 class TrainingRecord(Base, StatusMixin, DictMixin):
@@ -21,11 +22,11 @@ class TrainingRecord(Base, StatusMixin, DictMixin):
     model_path = Column(Text, nullable=False)
 
     dataset_name = Column(String(256), nullable=False)
-    feature_names = Column(JSON, nullable=False)
+    feature_names = Column(JSONB, nullable=False)
 
-    training_params = Column(JSON, nullable=False)
+    training_params = Column(JSONB, nullable=False)
 
-    best_params = Column(JSON, nullable=False)
+    best_params = Column(JSONB, nullable=False)
     train_score = Column(Float, nullable=False)
     test_score = Column(Float, nullable=False)
 
