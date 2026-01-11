@@ -23,6 +23,16 @@ def sync_fotmob_fixtures() -> None:
         }
     )
 
+@Registry.cron('cron.sync_fotmob_lineups', minute="*/10")
+def sync_fotmob_lineups() -> None:
+    from core.server.services.site_service import SiteService
+
+    SiteService.get_instance().start_sync(
+        'fotmob',
+        'lineups'
+    )
+
+
 @Registry.cron('cron.sync_pinnacle_odds', minute="*/15")
 def sync_pinnacle_odds() -> None:
     from core.server.services.site_service import SiteService
