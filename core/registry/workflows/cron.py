@@ -29,7 +29,8 @@ def sync_fotmob_lineups() -> None:
 
     SiteService.get_instance().start_sync(
         'fotmob',
-        'lineups'
+        'lineups',
+        {}
     )
 
 
