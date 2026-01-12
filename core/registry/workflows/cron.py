@@ -7,7 +7,7 @@ def init_cron_jobs() -> None:
     from core.scheduler.cron import Cron
     cron = Cron.get_instance()
 
-    current_env = os.getenv("ENV", "dev").lower()
+    current_env = os.getenv("ENV").lower()
     jobs = Registry.filter(RegistryKind.CRON)
 
     for name, target, metadata in jobs:
