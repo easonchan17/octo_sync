@@ -1,7 +1,7 @@
-import os
 import time
 from typing import Any
 from fastapi import FastAPI, Request
+from core.config.env_manager import env_manager
 from core.logger.logger_manager import LoggerManager
 from core.server.controllers.site_controller import SiteController
 from core.server.controllers.training_controller import TrainingController
@@ -11,9 +11,7 @@ from core.server.controllers.cron_controller import CronController
 
 class WebApp:
     def __init__(self) -> None:
-        current_env = os.getenv("ENV").lower()
-        is_dev = current_env == "dev"
-
+        is_dev = env_manager.is_dev
         self.app = FastAPI(
             title="Octopus API",
             description="Octopus Sports API",

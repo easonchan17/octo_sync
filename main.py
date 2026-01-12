@@ -1,10 +1,7 @@
 
-import os
 import signal
 import argparse
-from pathlib import Path
 from threading import Event
-from dotenv import load_dotenv
 from core.scheduler.worker import Worker
 from core.server.web_server import WebServer
 from core.browser.interceptor import Interceptor
@@ -12,6 +9,7 @@ from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
 from core.registry.workflows.cron import init_cron_jobs
 from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.config.env_manager import env_manager
 from core.scheduler.cron import Cron
 
 logger = LoggerManager.get_instance().get_logger(__name__)
@@ -32,9 +30,10 @@ def signal_handler(signum, frame) -> None:
     Worker.get_instance().stop()
     logger.info("✅ Worker stopped")
 
-    logger.info("🔧 Stopping network interceptor...")
-    Interceptor.get_instance().stop()
-    logger.info("✅ Network interceptor stopped")
+    if not env_manager.is_ml:
+        logger.info("🔧 Stopping network interceptor...")
+        Interceptor.get_instance().stop()
+        logger.info("✅ Network interceptor stopped")
 
     logger.info("🔧 Cleaning up PostgreSQL manager...")
     PostgreSQLManager.get_instance().cleanup()
@@ -54,13 +53,6 @@ def parse_arguments() -> argparse.Namespace:
     )
     return parser.parse_args()
 
-def load_env() -> None:
-    env_path = Path(__file__).parent / '.env'
-    if not env_path.exists():
-        raise FileNotFoundError(f".env file not found at {env_path}")
-
-    load_dotenv(dotenv_path=env_path)
-
 def run_app() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -79,9 +71,10 @@ def run_app() -> None:
     PostgreSQLManager.get_instance().startup()
     logger.info("✅ PostgreSQL manager started")
 
-    logger.info("🔧 Starting network interceptor...")
-    Interceptor.get_instance().start()
-    logger.info("✅ Network interceptor started")
+    if not env_manager.is_ml:
+        logger.info("🔧 Starting network interceptor...")
+        Interceptor.get_instance().start()
+        logger.info("✅ Network interceptor started")
 
     logger.info("🔧 Starting worker...")
     Worker.get_instance().start()
@@ -102,5 +95,4 @@ def run_app() -> None:
     shutdown_event.wait()
 
 if __name__ == "__main__":
-    load_env()
     run_app()

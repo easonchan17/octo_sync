@@ -1,5 +1,5 @@
-import os
 from core.domain import LeagueID
+from core.config.env_manager import env_manager
 from core.registry import Registry, RegistryKind
 from core.store.cache.global_store import GlobalStore
 
@@ -7,7 +7,7 @@ def init_cron_jobs() -> None:
     from core.scheduler.cron import Cron
     cron = Cron.get_instance()
 
-    current_env = os.getenv("ENV").lower()
+    current_env = env_manager.value
     jobs = Registry.filter(RegistryKind.CRON)
 
     for name, target, metadata in jobs:
