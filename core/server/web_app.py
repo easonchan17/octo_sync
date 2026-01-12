@@ -11,15 +11,16 @@ from core.server.controllers.cron_controller import CronController
 
 class WebApp:
     def __init__(self) -> None:
-        is_prod = os.getenv("ENV", "dev").lower() == "prod"
+        current_env = os.getenv("ENV").lower()
+        is_dev = current_env == "dev"
 
         self.app = FastAPI(
             title="Octopus API",
             description="Octopus Sports API",
             version="1.0.0",
-            docs_url=None if is_prod else "/docs",
-            redoc_url=None if is_prod else "/redoc",
-            openapi_url=None if is_prod else "/openapi.json"
+            docs_url="/docs" if is_dev else None,
+            redoc_url="/redoc" if is_dev else None,
+            openapi_url="/openapi.json" if is_dev else None
         )
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self._setup_middleware()
