@@ -13,21 +13,25 @@ class Registry:
     def cron(
         cls,
         name: str,
+        envs: Optional[List[str]] = None,
         minute: Optional[str] = None,
         hour: Optional[str] = None,
         day: Optional[str] = None,
         month: Optional[str] = None,
         day_of_week: Optional[str] = None
     ):
-        trigger = {
-            "name": name,
-            "minute": minute,
-            "hour": hour,
-            "day": day,
-            "month": month,
-            "day_of_week": day_of_week
-        }
-        return cls.register(name, kind=RegistryKind.CRON, trigger=trigger)
+        return cls.register(
+            name,
+            kind=RegistryKind.CRON,
+            envs=envs,
+            trigger={
+                "minute": minute,
+                "hour": hour,
+                "day": day,
+                "month": month,
+                "day_of_week": day_of_week
+            }
+        )
 
     @classmethod
     def factory(cls, name: str):
@@ -42,6 +46,7 @@ class Registry:
         def decorator(target):
             cls._registry[name] = {
                 "target": target,
+                "name": name,
                 "kind": kind,
                 "metadata": metadata
             }
@@ -63,7 +68,7 @@ class Registry:
     @classmethod
     def filter(cls, kind: RegistryKind) -> List[Tuple[Any, Dict[str, Any]]]:
         return [
-            (entry["target"], entry["metadata"])
+            (entry["name"], entry["target"], entry["metadata"])
             for entry in cls._registry.values()
             if entry["kind"] == kind
         ]
