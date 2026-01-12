@@ -23,8 +23,5 @@ def create_winball_training_task(
     return Pipeline(WinballTrainer(site, payload))
 
 @Registry.factory('winball.inference')
-def create_winball_inference_instance(
-    site: Site,
-    payload: Optional[Dict[str, Any]]
-) -> BasePredictor:
+def create_winball_inference_instance() -> BasePredictor:
     return WinballPredictor()

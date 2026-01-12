@@ -13,9 +13,10 @@ class InferenceService(BaseService):
         if version in self.predictors:
             raise ValueError(f"Model {version} is already loaded.")
 
-        training_record = self.get_training_record(version)
+        name = f"{family}.inference"
+        predictor = Registry.call(name)
 
-        predictor = Registry.call(name=f"{family}.inference")
+        training_record = self.get_training_record(version)
         if not predictor.load_model(training_record):
             raise ValueError(f"Failed to load model {version}")
 
