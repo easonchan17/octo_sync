@@ -103,6 +103,18 @@ class CronJobResponse(BaseModel):
 # ==============================================================================
 # Inference Models
 # ==============================================================================
+class ModelResponse(BaseModel):
+    model_version: str
+    model_type: str
+    dataset_name: str
+    train_score: float
+    test_score: float
+    is_loaded: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class PredictionResponse(BaseModel):
     model_version: str
     probabilities: Dict[str, float]

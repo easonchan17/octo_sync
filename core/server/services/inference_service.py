@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from core.registry import Registry
 from core.server.services.base_service import BaseService
 from core.store.postgres.models import TrainingRecord, Status
@@ -38,6 +38,21 @@ class InferenceService(BaseService):
             raise ValueError(f"Model {version} is not loaded. Call load_model() first.")
 
         return predictor.predict(features)
+
+    def get_models(self, page: int = 1, page_size: int = 20) -> Tuple[int, List[TrainingRecord]]:
+        with self.db.get_session() as session:
+            query = session.query(TrainingRecord).filter(
+                TrainingRecord.status == Status.ACTIVE.value
+            ).order_by(
+                TrainingRecord.created_at.desc()
+            )
+
+            total = query.count()
+            offset = (page - 1) * page_size
+            records = query.offset(offset).limit(page_size).all()
+
+            session.expunge_all()
+            return total, records
 
     def get_training_record(self, version: str) -> TrainingRecord:
         with self.db.get_session() as session:
