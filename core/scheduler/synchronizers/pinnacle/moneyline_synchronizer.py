@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
 from core.store.postgres.models.pinnacle.moneyline import Moneyline
 from ..base_synchronizer import BaseSynchronizer
@@ -10,5 +11,7 @@ class MoneylineSynchronizer(BaseSynchronizer):
             return
 
         with self.db.get_session(site.get_namespace()) as session:
-            session.bulk_insert_mappings(Moneyline, records)
-            self.logger.info(f"Inserted {len(records)} moneyline records")
+            insert_stmt = insert(Moneyline).values(records)
+            result = session.execute(insert_stmt)
+            inserted_count = result.rowcount
+            self.logger.info(f"Inserted {inserted_count} moneyline records")
