@@ -8,7 +8,7 @@ from core.server.services.base_service import BaseService
 from core.scheduler.tasks.base_task import BaseTask, AsyncTask, ForceTask
 from core.store.postgres.models import (
     Site, TrainingRecord, Fixture, Lineup, Match, Moneyline, Spread, CompTeam, CompSyncState,
-    MatchStatsSyncState, MatchResult, GoalAndShotCreation, Passing,
+    MatchStatsSyncState, MatchResult, MatchFixture, GoalAndShotCreation, Passing,
     DefensiveAction, Shooting, GoalKeeping, PlayerMatchStats,
     PlayerStatsSyncState, MarketOdds
 )
@@ -21,7 +21,7 @@ class SiteService(BaseService, Singleton):
         "pinnacle": [Match, Moneyline, Spread],
         "fbref": [
             CompTeam, CompSyncState, MatchStatsSyncState,
-            MatchResult, GoalAndShotCreation, Passing, DefensiveAction,
+            MatchResult, MatchFixture, GoalAndShotCreation, Passing, DefensiveAction,
             Shooting, GoalKeeping, PlayerMatchStats, PlayerStatsSyncState, MarketOdds
         ],
     }

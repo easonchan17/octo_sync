@@ -2,7 +2,7 @@ from .base_receiver import BaseReceiver
 from .fbref import (
     CompTeamReceiver,
     DefensiveActionReceiver,
-    MatchResultReceiver,
+    ScoresAndFixturesReceiver,
     GoalAndShotCreationReceiver,
     GoalkeepingReceiver,
     PassingReceiver,
@@ -20,7 +20,7 @@ __all__ = [
     'BaseReceiver',
     'CompTeamReceiver',
     'DefensiveActionReceiver',
-    'MatchResultReceiver',
+    'ScoresAndFixturesReceiver',
     'GoalAndShotCreationReceiver',
     'GoalkeepingReceiver',
     'PassingReceiver',
