@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
 from core.store.postgres.models.pinnacle.spread import Spread
 from ..base_synchronizer import BaseSynchronizer
@@ -10,5 +11,7 @@ class SpreadSynchronizer(BaseSynchronizer):
             return
 
         with self.db.get_session(site.get_namespace()) as session:
-            session.bulk_insert_mappings(Spread, records)
-            self.logger.info(f"Inserted {len(records)} spread records")
+            insert_stmt = insert(Spread).values(records)
+            result = session.execute(insert_stmt)
+            inserted_count = result.rowcount
+            self.logger.info(f"Inserted {inserted_count} spread records")

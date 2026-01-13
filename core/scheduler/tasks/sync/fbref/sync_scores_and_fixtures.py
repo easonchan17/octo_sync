@@ -8,8 +8,7 @@ from core.config.league_config import get_league_metadata
 from core.store.postgres.models.fbref.match_result import MatchResult
 from core.store.postgres.models.fbref.match_stats_sync_state import MatchStatsSyncFlag
 from core.browser.components.receivers.fbref.scores_and_fixtures_receiver import ScoresAndFixturesReceiver
-from core.scheduler.synchronizers.fbref.match_result_synchronizer import MatchResultSynchronizer
-from core.scheduler.synchronizers.fbref.match_fixture_synchronizer import MatchFixtureSynchronizer
+from core.scheduler.synchronizers.fbref.scores_and_fixtures_synchronizer import ScoresAndFixturesSynchronizer
 
 
 class SyncScoresAndFixtures(BaseTask):
@@ -27,8 +26,7 @@ class SyncScoresAndFixtures(BaseTask):
         super().__init__()
         self.site = site
         self.payload = payload
-        self.result_synchronizer = MatchResultSynchronizer()
-        self.fixture_synchronizer = MatchFixtureSynchronizer()
+        self.synchronizer = ScoresAndFixturesSynchronizer()
 
     def _partition_matches(self, matches: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         results = []
@@ -59,7 +57,7 @@ class SyncScoresAndFixtures(BaseTask):
         seen_failed = True
 
         while seen_failed:
-            tasks = self.result_synchronizer.get_pending_tasks(
+            tasks = self.synchronizer.get_pending_tasks(
                 self.site, min_season, max_season, MatchStatsSyncFlag.MATCH_RESULT.value, comp_code=comp_code, team_code=team_code, is_force=self.is_force
             )
 
@@ -100,20 +98,11 @@ class SyncScoresAndFixtures(BaseTask):
                         continue
 
                     matches = [r.to_dict(team_name, team_code, season) for r in match_records]
-                    matches.sort(key=lambda x: x.get(MatchResult.kickoff_time.key))
-
                     results, fixtures = self._partition_matches(matches)
 
-                    if results:
-                        last_synced_time = results[-1].get(MatchResult.kickoff_time.key)
-                        self.result_synchronizer.sync(
-                            self.site, team_name, team_code, season, last_synced_time, results
-                        )
-
-                    if fixtures:
-                        self.fixture_synchronizer.sync(
-                            self.site, team_name, team_code, season, fixtures
-                        )
+                    self.synchronizer.sync(
+                        self.site, team_name, team_code, season, results, fixtures
+                    )
                 except Exception as e:
                     self.logger.error(f"Failed to sync {team_name} {season_range} match results from {self.site.name}: {e}")
                     seen_failed = True
