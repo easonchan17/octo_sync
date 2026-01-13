@@ -10,10 +10,10 @@ class MatchFixture(Base, StatusMixin, DictMixin):
         Index('idx_match_fixtures_created_at', 'created_at'),
         Index('idx_match_fixtures_updated_at', 'updated_at'),
         Index('idx_match_fixtures_home_team', 'home_team'),
-        Index('idx_match_fixtures_home_code', 'home_code'),
         Index('idx_match_fixtures_away_team', 'away_team'),
-        Index('idx_match_fixtures_away_code', 'away_code'),
         Index('idx_match_fixtures_comp_code', 'comp_code'),
+        Index('idx_match_fixtures_home_code_season', 'home_code', 'season'),
+        Index('idx_match_fixtures_away_code_season', 'away_code', 'season'),
         Index('idx_match_fixtures_time_home_away', 'kickoff_time', 'home_code', 'away_code', unique=True),
         {'schema': '{schema}'}
     )
