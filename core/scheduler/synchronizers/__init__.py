@@ -2,7 +2,7 @@ from .base_synchronizer import BaseSynchronizer
 from .fbref import (
     CompTeamSynchronizer,
     DefensiveActionSynchronizer,
-    MatchResultSynchronizer,
+    ScoresAndFixturesSynchronizer,
     GoalAndShotCreationSynchronizer,
     GoalKeepingSynchronizer,
     PassingSynchronizer,
@@ -15,7 +15,7 @@ __all__ = [
     'BaseSynchronizer',
     'CompTeamSynchronizer',
     'DefensiveActionSynchronizer',
-    'MatchResultSynchronizer',
+    'ScoresAndFixturesSynchronizer',
     'GoalAndShotCreationSynchronizer',
     'GoalKeepingSynchronizer',
     'PassingSynchronizer',

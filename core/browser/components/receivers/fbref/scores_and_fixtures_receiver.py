@@ -51,29 +51,29 @@ class MatchRecord:
         self.notes = notes
         self.match_report = match_report
 
-    def get_match_status(self) -> int:
+    def get_match_status(self) -> MatchStatus:
         if self.notes:
             notes_lower = self.notes.lower()
 
             if "match cancelled" in notes_lower:
-                return MatchStatus.CANCELLED.value
+                return MatchStatus.CANCELLED
 
             if "match postponed" in notes_lower:
-                return MatchStatus.POSTPONED.value
+                return MatchStatus.POSTPONED
 
             if "penalty kicks" in notes_lower:
-                return MatchStatus.FINISHED_PEN.value
+                return MatchStatus.FINISHED_PEN
 
             if "required extra time" in notes_lower:
-                return MatchStatus.FINISHED_AET.value
+                return MatchStatus.FINISHED_AET
 
             if "match awarded to" in notes_lower:
-                return MatchStatus.FINISHED_AWARDED.value
+                return MatchStatus.FINISHED_AWARDED
 
         if self.match_report.startswith("/en/matches/"):
-                return MatchStatus.FINISHED.value
+                return MatchStatus.FINISHED
 
-        return MatchStatus.TIMED.value
+        return MatchStatus.TIMED
 
     def to_dict(self, team_name: str, team_code: str, season: int) -> Dict[str, Any]:
         """
@@ -147,7 +147,7 @@ class MatchRecord:
                 MatchFixture.home_code.key: home_code,
                 MatchFixture.away_team.key: away_team,
                 MatchFixture.away_code.key: away_code,
-                MatchFixture.match_status.key: match_status
+                MatchFixture.match_status.key: match_status.value
             }
         else:
             return {
@@ -170,7 +170,7 @@ class MatchRecord:
                 MatchResult.away_possession.key: away_possession,
                 MatchResult.home_formation.key: home_formation,
                 MatchResult.away_formation.key: away_formation,
-                MatchResult.match_status.key: match_status,
+                MatchResult.match_status.key: match_status.value,
                 MatchResult.notes.key: self.notes,
                 MatchResult.match_report.key: self.match_report or ""
             }
