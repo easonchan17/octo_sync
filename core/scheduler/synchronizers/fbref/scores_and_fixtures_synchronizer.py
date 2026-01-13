@@ -76,11 +76,11 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
         match_fixtures: List[Dict[str, Any]]
     ) -> None:
         deleted_count = session.query(MatchFixture).filter(
-            MatchFixture.season == season,
             or_(
                 MatchFixture.home_code == team_code,
                 MatchFixture.away_code == team_code
-            )
+            ),
+            MatchFixture.season == season
         ).delete(synchronize_session=False)
         self.logger.info(f"Delete {team_name} {season}-{season+1} existing match fixtures from {site.name} completed. deleted: {deleted_count}")
 
