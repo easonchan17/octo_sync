@@ -3,7 +3,7 @@ from core.registry import Registry
 from core.scheduler.tasks.sync.fbref import (
     SyncCompTeam,
     SyncDefensiveAction,
-    SyncMatchResult,
+    SyncScoresAndFixtures,
     SyncGoalAndShotCreation,
     SyncGoalKeeping,
     SyncPassing,
@@ -13,7 +13,6 @@ from core.scheduler.tasks.sync.fbref import (
 )
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
-from core.store.postgres.postgresql_manager import PostgreSQLManager
 
 @Registry.factory('sync.fbref.comp_teams')
 def create_sync_fbref_comp_teams_task(
@@ -27,7 +26,7 @@ def create_sync_fbref_match_results_task(
     site: Site,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
-    return Pipeline(SyncMatchResult(site, payload))
+    return Pipeline(SyncScoresAndFixtures(site, payload))
 
 @Registry.factory('sync.fbref.gca')
 def create_sync_fbref_gca_task(
@@ -85,7 +84,7 @@ def create_sync_fbref_batch_task(
 ) -> BaseTask:
     return Pipeline(
         SyncCompTeam(site, payload),
-        SyncMatchResult(site, payload),
+        SyncScoresAndFixtures(site, payload),
         SyncGoalAndShotCreation(site, payload),
         SyncPassing(site, payload),
         SyncDefensiveAction(site, payload),
