@@ -1,6 +1,7 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float
 from ..base_model import Base, StatusMixin, DictMixin, Status
+from core.domain.enums import SiteName
 
 
 class MarketOdds(Base, StatusMixin, DictMixin):
@@ -11,7 +12,7 @@ class MarketOdds(Base, StatusMixin, DictMixin):
         Index('idx_market_odds_kickoff_time', 'kickoff_time'),
         Index('idx_market_odds_home_team', 'home_team'),
         Index('idx_market_odds_away_team', 'away_team'),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

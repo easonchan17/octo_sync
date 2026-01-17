@@ -1,7 +1,9 @@
 from sqlalchemy.sql import func
+from typing import Dict, Any, List
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float, Text
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from ..common import MatchStatus
+from core.domain import MatchStatus
+from core.domain.enums import SiteName
 
 
 class MatchResult(Base, StatusMixin, DictMixin):
@@ -17,7 +19,7 @@ class MatchResult(Base, StatusMixin, DictMixin):
         Index('idx_match_results_comp_code', 'comp_code'),
         Index('idx_match_results_kickoff_time', 'kickoff_time'),
         Index('idx_match_results_season', 'season'),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -35,8 +37,8 @@ class MatchResult(Base, StatusMixin, DictMixin):
     away_team = Column(String(100), nullable=False)
     away_code = Column(CHAR(8), nullable=False)
 
-    home_gf = Column(Integer, nullable=True)
-    away_gf = Column(Integer, nullable=True)
+    home_gf = Column(Integer, nullable=False)
+    away_gf = Column(Integer, nullable=False)
 
     home_xg = Column(Float, nullable=True)
     away_xg = Column(Float, nullable=True)
@@ -58,3 +60,9 @@ class MatchResult(Base, StatusMixin, DictMixin):
 
     def __repr__(self) -> str:
         return f"<MatchResult {self.match_code} {self.kickoff_time} {self.home_team} {self.away_team}>"
+
+    def is_same(self, data: Dict[str, Any], fields: List[str]) -> bool:
+        for field in fields:
+            if getattr(self, field) != data.get(field):
+                return False
+        return True

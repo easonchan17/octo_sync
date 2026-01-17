@@ -2,13 +2,14 @@ from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from ..base_model import Base, StatusMixin, DictMixin, Status
+from core.domain.enums import SiteName
 
 class Lineup(Base, StatusMixin, DictMixin):
     __tablename__ = 'lineups'
     __table_args__ = (
         Index('idx_lineups_created_at', 'created_at'),
         Index('idx_lineups_updated_at', 'updated_at'),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

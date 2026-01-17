@@ -11,6 +11,7 @@ from .player_match_stats import PlayerMatchStats
 from .shooting import Shooting
 from .market_odds import MarketOdds
 from .comp_team import CompTeam
+from .elo_rating import EloRating
 
 __all__ = [
     'MatchStatsSyncState',
@@ -28,5 +29,6 @@ __all__ = [
     'PlayerMatchStats',
     'Shooting',
     'MarketOdds',
-    'CompTeam'
+    'CompTeam',
+    'EloRating'
 ]

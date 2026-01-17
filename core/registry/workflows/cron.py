@@ -58,7 +58,7 @@ def sync_pinnacle_odds() -> None:
         }
     )
 
-@Registry.cron('cron.sync_fbref_batch', hour=9, minute=30, envs=['dev', 'prod'])
+@Registry.cron('cron.sync_fbref_batch', hour=13, minute=48, envs=['dev', 'prod'])
 def sync_fbref_batch() -> None:
     from core.server.services.site_service import SiteService
 
@@ -69,10 +69,10 @@ def sync_fbref_batch() -> None:
 
     SiteService.get_instance().start_sync(
         'fbref',
-        'batch',
+        'scores_and_fixtures',
         payload={
             'league_id': str(league_id),
-            'min_season': latest_season,
+            'min_season': 2019,
             'max_season': latest_season
         },
         is_force=True

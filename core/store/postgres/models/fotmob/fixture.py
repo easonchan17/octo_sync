@@ -1,7 +1,8 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, Float
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from ..common import MatchStatus
+from core.domain import MatchStatus
+from core.domain.enums import SiteName
 
 
 class Fixture(Base, StatusMixin, DictMixin):
@@ -16,7 +17,7 @@ class Fixture(Base, StatusMixin, DictMixin):
         Index('idx_fixtures_league_name', 'league_name'),
         Index('idx_fixtures_league_id', 'league_id'),
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

@@ -1,7 +1,8 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Text
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from ..common import MatchStatus
+from core.domain import MatchStatus
+from core.domain.enums import SiteName
 
 
 class MatchFixture(Base, StatusMixin, DictMixin):
@@ -15,7 +16,7 @@ class MatchFixture(Base, StatusMixin, DictMixin):
         Index('idx_match_fixtures_home_code_season', 'home_code', 'season'),
         Index('idx_match_fixtures_away_code_season', 'away_code', 'season'),
         Index('idx_match_fixtures_time_home_away', 'kickoff_time', 'home_code', 'away_code', unique=True),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

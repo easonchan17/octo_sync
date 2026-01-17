@@ -1,7 +1,7 @@
 from core.utils.parsing import parse_scores, extract_season_from_range
 from typing import Any, Optional, List, Tuple, Dict
 from core.store.postgres.models.fotmob.fixture import Fixture
-from core.store.postgres.models.common.match_status import MatchStatus
+from core.domain import MatchStatus
 from ..base_receiver import BaseReceiver
 
 class FixtureReceiver(BaseReceiver):

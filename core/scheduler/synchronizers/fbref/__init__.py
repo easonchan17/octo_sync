@@ -7,6 +7,7 @@ from .passing_synchronizer import PassingSynchronizer
 from .player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
 from .shooting_synchronizer import ShootingSynchronizer
 from .market_odds_synchronizer import MarketOddsSynchronizer
+from .elo_rating_synchronizer import EloRatingSynchronizer
 
 __all__ = [
     'CompTeamSynchronizer',
@@ -17,5 +18,6 @@ __all__ = [
     'PassingSynchronizer',
     'PlayerMatchStatsSynchronizer',
     'ShootingSynchronizer',
-    'MarketOddsSynchronizer'
+    'MarketOddsSynchronizer',
+    'EloRatingSynchronizer'
 ]
