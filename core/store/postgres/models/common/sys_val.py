@@ -26,13 +26,28 @@ class SysVal(Base, StatusMixin, DictMixin):
     def __repr__(self) -> str:
         return f"<SysVal(key='{self.key}', val_datetime={self.val_datetime}, val_int={self.val_int}, val_json={self.val_json})>"
 
-    def get_value(self) -> Optional[Any]:
+    @property
+    def is_comparable(self) -> bool:
+        return self.val_datetime is not None or self.val_int is not None
+
+    @property
+    def value(self) -> Optional[Any]:
         if self.val_datetime is not None:
             return self.val_datetime
-        elif self.val_int is not None:
+        if self.val_int is not None:
             return self.val_int
-        elif self.val_json is not None:
+        if self.val_json is not None:
             return self.val_json
+        return None
+
+    @property
+    def column(self) -> Optional[Column]:
+        if self.val_datetime is not None:
+            return SysVal.val_datetime
+        if self.val_int is not None:
+            return SysVal.val_int
+        if self.val_json is not None:
+            return SysVal.val_json
         return None
 
     def set_value(self, value: Any) -> None:

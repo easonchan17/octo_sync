@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import MatchResult, Site, MatchStatsSyncFlag
 from core.store.postgres.models.fbref.match_fixture import MatchFixture
 from .team_level_synchronizer import TeamLevelSynchronizer
+from core.domain.enums import UpsertStrategy
 from ..common import SysValSynchronizer
 
 class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
@@ -54,7 +55,7 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
 
         impact_time = self._find_min_impact_time(session, match_results)
         if impact_time:
-            self.sys_val_synchronizer.set_val('elo_impact_time', impact_time)
+            self.sys_val_synchronizer.set_val('elo_impact_time', impact_time, UpsertStrategy.KEEP_MIN)
 
         insert_stmt = insert(MatchResult).values(match_results)
         assignment, where_clause = self.build_upsert_clauses(
