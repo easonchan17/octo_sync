@@ -27,7 +27,7 @@ class MatchStatsSyncState(Base, StatusMixin, DictMixin):
     season = Column(Integer, nullable=False)
     sync_flags = Column(BigInteger, nullable=False, default=0)
 
-    last_synced_times = Column(JSONB, nullable=True)
+    last_synced_times = Column(JSONB(none_as_null=True), nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())

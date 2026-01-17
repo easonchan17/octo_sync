@@ -17,7 +17,7 @@ class SysVal(Base, StatusMixin, DictMixin):
 
     val_datetime = Column(DateTime(timezone=True), nullable=True)
     val_int = Column(Integer, nullable=True)
-    val_json = Column(JSONB, nullable=True)
+    val_json = Column(JSONB(none_as_null=True), nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
