@@ -16,8 +16,8 @@ class Lineup(Base, StatusMixin, DictMixin):
     match_id = Column(Integer, nullable=False, unique=True)
 
     kind = Column(String(16), nullable=False)
-    home_team = Column(JSONB, nullable=False)
-    away_team = Column(JSONB, nullable=False)
+    home_team = Column(JSONB(none_as_null=True), nullable=False)
+    away_team = Column(JSONB(none_as_null=True), nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())
