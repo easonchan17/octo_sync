@@ -1,6 +1,7 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, BigInteger, Integer, String, DateTime, Index
 from ..base_model import Base, StatusMixin, DictMixin, Status
+from core.domain.enums import SiteName
 
 class Match(Base, StatusMixin, DictMixin):
     __tablename__ = 'pinnacle_matches'
@@ -11,7 +12,7 @@ class Match(Base, StatusMixin, DictMixin):
         Index('idx_pinnacle_matches_away_team', 'away_team'),
         Index('idx_pinnacle_matches_created_at', 'created_at'),
         Index('idx_pinnacle_matches_updated_at', 'updated_at'),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)

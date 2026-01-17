@@ -3,11 +3,12 @@ from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import MarketOdds, Site, CompSyncFlag
 from core.store.postgres.models.fbref.match_result import MatchResult
+from core.domain.enums import SiteName
 from .comp_level_synchronizer import CompLevelSynchronizer
 
 
 class MarketOddsSynchronizer(CompLevelSynchronizer):
-    TARGET_SITE = 'fbref'
+    TARGET_SITE = SiteName.FBREF.value
 
     def get_target_matches(self, comp_code: str, start_time: datetime) -> List[MatchResult]:
         target_site = self.get_site(self.TARGET_SITE)

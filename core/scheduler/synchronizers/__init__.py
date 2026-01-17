@@ -1,4 +1,5 @@
 from .base_synchronizer import BaseSynchronizer
+from .common import SysValSynchronizer
 from .fbref import (
     CompTeamSynchronizer,
     DefensiveActionSynchronizer,
@@ -13,6 +14,7 @@ from .fbref import (
 
 __all__ = [
     'BaseSynchronizer',
+    'SysValSynchronizer',
     'CompTeamSynchronizer',
     'DefensiveActionSynchronizer',
     'ScoresAndFixturesSynchronizer',

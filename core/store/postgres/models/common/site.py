@@ -22,4 +22,4 @@ class Site(Base, StatusMixin, DictMixin):
         return f"<Site(id={self.id}, name='{self.name}', url='{self.url}', created_at={self.created_at}, updated_at={self.updated_at})>"
 
     def get_namespace(self) -> str:
-        return f"site{self.id}"
+        return self.name

@@ -4,11 +4,12 @@ from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.pinnacle.match import Match
+from core.domain.enums import SiteName
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from ..base_synchronizer import BaseSynchronizer
 
 class MatchSynchronizer(BaseSynchronizer):
-    TARGET_SITE = 'fotmob'
+    TARGET_SITE = SiteName.FOTMOB.value
 
     TARGET_LEAGUE = { # TODO
         1980: 47,   # English Premier League

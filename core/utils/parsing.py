@@ -116,6 +116,10 @@ def extract_match_code_from_url(url: str) -> Optional[str]:
 def extract_match_code_from_cell(cell: Any) -> Optional[str]:
     return extract_match_code_from_url(_get_href(cell))
 
+def extract_goals_from_cell(cell: Any) -> Optional[int]:
+    csk = cell.get("csk") if cell else None
+    return int(csk) if csk and csk.strip().isdigit() else None
+
 def parse_scores(scores: str) -> Tuple[Optional[int], Optional[int]]:
     if not scores:
         return None, None

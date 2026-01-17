@@ -3,6 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 from ..base_model import Base, StatusMixin, DictMixin, Status
 from sqlalchemy import Column, Integer, String, DateTime, Index, BigInteger
+from core.domain.enums import SiteName
 
 class MatchStatsSyncFlag(IntFlag):
     MATCH_RESULT = 1
@@ -18,7 +19,7 @@ class MatchStatsSyncState(Base, StatusMixin, DictMixin):
         Index('idx_match_stats_sync_state_created_at', 'created_at'),
         Index('idx_match_stats_sync_state_updated_at', 'updated_at'),
         Index('idx_match_stats_sync_state_team_code_season', 'team_code', 'season', unique=True),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
