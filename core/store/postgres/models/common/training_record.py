@@ -22,11 +22,11 @@ class TrainingRecord(Base, StatusMixin, DictMixin):
     model_path = Column(Text, nullable=False)
 
     dataset_name = Column(String(256), nullable=False)
-    feature_names = Column(JSONB, nullable=False)
+    feature_names = Column(JSONB(none_as_null=True), nullable=False)
 
-    training_params = Column(JSONB, nullable=False)
+    training_params = Column(JSONB(none_as_null=True), nullable=False)
 
-    best_params = Column(JSONB, nullable=False)
+    best_params = Column(JSONB(none_as_null=True), nullable=False)
     train_score = Column(Float, nullable=False)
     test_score = Column(Float, nullable=False)
 
