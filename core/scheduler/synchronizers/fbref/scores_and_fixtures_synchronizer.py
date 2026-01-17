@@ -1,12 +1,27 @@
 from sqlalchemy import or_
+from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import MatchResult, Site, MatchStatsSyncFlag
 from core.store.postgres.models.fbref.match_fixture import MatchFixture
 from .team_level_synchronizer import TeamLevelSynchronizer
+from ..common import SysValSynchronizer
 
 class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
+    ELO_IMPACT_FIELDS = [
+        MatchResult.kickoff_time.key,
+        MatchResult.home_gf.key,
+        MatchResult.away_gf.key,
+        MatchResult.comp_code.key,
+        MatchResult.home_code.key,
+        MatchResult.away_code.key
+    ]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.sys_val_synchronizer = SysValSynchronizer()
+
     def sync(
         self,
         site: Site,
@@ -36,6 +51,10 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
         kickoff_time_key = MatchResult.kickoff_time.key
         match_results.sort(key=lambda x: x.get(kickoff_time_key))
         last_synced_time = match_results[-1].get(kickoff_time_key)
+
+        impact_time = self._find_min_impact_time(session, match_results)
+        if impact_time:
+            self.sys_val_synchronizer.set_val('elo_impact_time', impact_time)
 
         insert_stmt = insert(MatchResult).values(match_results)
         assignment, where_clause = self.build_upsert_clauses(
@@ -92,3 +111,37 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
         result = session.execute(insert_stmt)
         inserted_count = result.rowcount
         self.logger.info(f"Sync {team_name} {season}-{season+1} match fixtures from {site.name} completed. inserted: {inserted_count}")
+
+    def _find_min_impact_time(
+        self,
+        session: Session,
+        match_results: List[Dict[str, Any]]
+    ) -> Optional[datetime]:
+
+        match_code_key = MatchResult.match_code.key
+        kickoff_time_key = MatchResult.kickoff_time.key
+
+        match_codes = [item[match_code_key] for item in match_results]
+        existing_records = session.query(MatchResult).filter(
+            MatchResult.match_code.in_(match_codes)
+        ).all()
+        existing_map = {record.match_code: record for record in existing_records}
+
+        min_impact_time: Optional[datetime] = None
+
+        for new_item in match_results:
+            match_code = new_item[match_code_key]
+            old_item = existing_map.get(match_code) # MatchResult Object or None
+
+            impact_time: Optional[datetime] = None
+
+            if not old_item:
+                impact_time = new_item.get(kickoff_time_key)
+            elif not old_item.is_same(new_item, self.ELO_IMPACT_FIELDS):
+                impact_time = min(getattr(old_item, kickoff_time_key), new_item.get(kickoff_time_key))
+
+            if impact_time:
+                if min_impact_time is None or impact_time < min_impact_time:
+                    min_impact_time = impact_time
+
+        return min_impact_time

@@ -1,16 +1,16 @@
 from typing import Dict, Any, Union
-from core.domain.enums import LeagueID
+from core.domain.enums import LeagueID, SiteName
 
 LEAGUE_METADATA = {
     LeagueID.EPL: {
         "name": "Premier League",
         "sites": {
-            "fbref": {"id": "9"},
-            "fotmob": {
+            SiteName.FBREF.value: {"id": "9"},
+            SiteName.FOTMOB.value: {
                 "id": 47,
                 "name": "premier-league"
             },
-            "football-data": {
+            SiteName.FOOTBALL_DATA.value: {
                 "id": "9",
                 "name": "E0",
                 "timezone": "Europe/London"
@@ -20,8 +20,8 @@ LEAGUE_METADATA = {
     LeagueID.LALIGA: {
         "name": "LaLiga",
         "sites": {
-            "fbref": {"id": ""},
-            "fotmob": {"id": ""}
+            SiteName.FBREF.value: {"id": ""},
+            SiteName.FOTMOB.value: {"id": ""}
         }
     }
 }

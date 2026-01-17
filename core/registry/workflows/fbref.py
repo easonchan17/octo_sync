@@ -21,8 +21,8 @@ def create_sync_fbref_comp_teams_task(
 ) -> BaseTask:
     return Pipeline(SyncCompTeam(site, payload))
 
-@Registry.factory('sync.fbref.match_results')
-def create_sync_fbref_match_results_task(
+@Registry.factory('sync.fbref.scores_and_fixtures')
+def create_sync_fbref_scores_and_fixtures_task(
     site: Site,
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:

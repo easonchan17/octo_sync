@@ -1,6 +1,7 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, BigInteger, Integer, Boolean, DateTime, Index, Numeric
 from ..base_model import Base, StatusMixin, DictMixin, Status
+from core.domain.enums import SiteName
 
 
 class Spread(Base, StatusMixin, DictMixin):
@@ -9,7 +10,7 @@ class Spread(Base, StatusMixin, DictMixin):
         Index('idx_pinnacle_spreads_match_id', 'match_id'),
         Index('idx_pinnacle_spreads_created_at', 'created_at'),
         Index('idx_pinnacle_spreads_updated_at', 'updated_at'),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)

@@ -1,12 +1,13 @@
 import pandas as pd
 from pathlib import Path
-from core.config.league_config import get_league_metadata
+from core.domain.enums import SiteName
 from functools import cached_property
-from typing import Any, Dict, List, Optional, Tuple
 from core.store.postgres.models import Site
 from core.utils.downloader import FileDownloader
 from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
+from typing import Any, Dict, List, Optional, Tuple
+from core.config.league_config import get_league_metadata
 from core.store.postgres.models.fbref.market_odds import MarketOdds
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
@@ -58,7 +59,7 @@ class SyncMarketOdds(BaseTask):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_metadata = get_league_metadata(league_id, "football-data")
+        league_metadata = get_league_metadata(league_id, SiteName.FOOTBALL_DATA.value)
         comp_code = league_metadata["id"]
         comp_name = league_metadata["name"]
         timezone = league_metadata["timezone"]

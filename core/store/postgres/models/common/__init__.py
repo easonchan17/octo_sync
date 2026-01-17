@@ -1,9 +1,9 @@
 from .site import Site
-from .match_status import MatchStatus
 from .training_record import TrainingRecord
+from .sys_val import SysVal
 
 __all__ = [
-    'MatchStatus',
     'Site',
-    'TrainingRecord'
+    'TrainingRecord',
+    'SysVal'
 ]

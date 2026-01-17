@@ -1,5 +1,6 @@
-from .enums import LeagueID
+from .enums import LeagueID, MatchStatus
 
 __all__ = [
-    'LeagueID'
+    'LeagueID',
+    'MatchStatus'
 ]

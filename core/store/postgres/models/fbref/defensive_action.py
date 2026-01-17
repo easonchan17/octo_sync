@@ -2,6 +2,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float
 from ..base_model import Base, StatusMixin, DictMixin, Status
+from core.domain.enums import SiteName
 
 class DefensiveAction(Base, StatusMixin, DictMixin):
     __tablename__ = 'defensive_actions'
@@ -10,7 +11,7 @@ class DefensiveAction(Base, StatusMixin, DictMixin):
         Index('idx_defensive_actions_updated_at', 'updated_at'),
         Index('idx_defensive_actions_match_team', 'match_code', 'team_code', unique=True),
         Index('idx_defensive_actions_kickoff_time', 'kickoff_time'),
-        {'schema': '{schema}'}
+        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

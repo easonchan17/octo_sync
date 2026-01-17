@@ -4,9 +4,10 @@ from ..base_receiver import BaseReceiver
 from typing import List, Any, Optional, Dict
 from core.store.postgres.models.fbref.match_result import MatchResult
 from core.store.postgres.models.fbref.match_fixture import MatchFixture
-from core.store.postgres.models import MatchStatus
+from core.domain import MatchStatus
 from core.utils.parsing import (
     get_text, get_float, get_number,
+    extract_goals_from_cell,
     is_table_header, extract_comp_code_from_cell,
     extract_match_code_from_cell, extract_venue_epoch,
     extract_team_code_from_cell, extract_match_report_url
@@ -225,8 +226,8 @@ class ScoresAndFixturesReceiver(BaseReceiver):
                 comp_code=extract_comp_code_from_cell(comp),
                 round=get_text(round),
                 venue=get_text(venue),
-                gf=get_number(gf),
-                ga=get_number(ga),
+                gf=extract_goals_from_cell(gf),
+                ga=extract_goals_from_cell(ga),
                 opponent=get_text(opponent),
                 opponent_code=extract_team_code_from_cell(opponent),
                 xg=get_float(xg_for),
