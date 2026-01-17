@@ -1,5 +1,11 @@
 from enum import IntEnum, Enum
 
+class UpsertStrategy(str, Enum):
+    OVERWRITE = "overwrite"
+    IF_ABSENT = "if_absent"
+    KEEP_MIN = "keep_min"
+    KEEP_MAX = "keep_max"
+
 class SiteName(str, Enum):
     FBREF = 'fbref'
     FOTMOB = 'fotmob'

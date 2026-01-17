@@ -200,7 +200,8 @@ class ScoresAndFixturesReceiver(BaseReceiver):
 
             venue_epoch = extract_venue_epoch(row)
             if not venue_epoch:
-                raise ValueError(f"No venue epoch for row: {row}")
+                self.logger.error(f"No venue epoch for row: {row}")
+                continue
 
             date = row.find("th", {"data-stat": "date"})
             match_report = row.find("td", {"data-stat": "match_report"})
