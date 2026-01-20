@@ -3,7 +3,7 @@ from sqlalchemy import Column, BigInteger, Integer, String, DateTime, Index
 from ..base_model import Base, StatusMixin, DictMixin, Status
 from core.domain.enums import SiteName
 
-class Match(Base, StatusMixin, DictMixin):
+class Fixture(Base, StatusMixin, DictMixin):
     __tablename__ = 'pinnacle_matches'
     __table_args__ = (
         Index('idx_pinnacle_matches_kickoff_time', 'kickoff_time'),

@@ -5,7 +5,7 @@ from core.domain import MatchStatus
 from core.domain.enums import SiteName
 
 
-class MatchFixture(Base, StatusMixin, DictMixin):
+class Fixture(Base, StatusMixin, DictMixin):
     __tablename__ = 'match_fixtures'
     __table_args__ = (
         Index('idx_match_fixtures_created_at', 'created_at'),
@@ -33,6 +33,8 @@ class MatchFixture(Base, StatusMixin, DictMixin):
     away_team = Column(String(100), nullable=False)
     away_code = Column(CHAR(8), nullable=False)
 
+    fixture_id = Column(Integer, nullable=False, unique=True)
+
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
 
     status = Column(Integer, default=Status.ACTIVE.value)
@@ -40,4 +42,4 @@ class MatchFixture(Base, StatusMixin, DictMixin):
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
     def __repr__(self) -> str:
-        return f"<MatchFixture {self.kickoff_time} {self.home_team} {self.away_team}>"
+        return f"<Fixture {self.kickoff_time} {self.home_team} {self.away_team}>"
