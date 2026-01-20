@@ -4,13 +4,13 @@ from core.browser.interceptor import TaskType
 from typing import Any, Dict, Optional, List, Tuple
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
-from core.browser.components.receivers.pinnacle.match_receiver import MatchReceiver
+from core.browser.components.receivers.pinnacle.fixture_receiver import FixtureReceiver
 from core.browser.components.receivers.pinnacle.odds_receiver import OddsReceiver
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
-from core.scheduler.synchronizers.pinnacle.match_synchronizer import MatchSynchronizer
+from core.scheduler.synchronizers.pinnacle.fixture_synchronizer import FixtureSynchronizer
 from core.scheduler.synchronizers.pinnacle.moneyline_synchronizer import MoneylineSynchronizer
 from core.scheduler.synchronizers.pinnacle.spread_synchronizer import SpreadSynchronizer
-from core.store.postgres.models.pinnacle.match import Match
+from core.store.postgres.models.pinnacle.fixture import Fixture
 from core.store.postgres.models.pinnacle.moneyline import Moneyline
 from core.store.postgres.models.pinnacle.spread import Spread
 
@@ -22,7 +22,7 @@ class SyncOdds(BaseTask):
             {
                 "type": "http",
                 "pattern": "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/matchups",
-                "receiver": MatchReceiver
+                "receiver": FixtureReceiver
             },
             {
                 "type": "http",
@@ -36,7 +36,7 @@ class SyncOdds(BaseTask):
         super().__init__()
         self.site = site
         self.payload = payload or {}
-        self.match_synchronizer = MatchSynchronizer()
+        self.fixture_synchronizer = FixtureSynchronizer()
         self.moneyline_synchronizer = MoneylineSynchronizer()
         self.spread_synchronizer = SpreadSynchronizer()
         self.team_resolver = TeamResolver()
@@ -73,7 +73,7 @@ class SyncOdds(BaseTask):
 
             match_records, moneyline_records, spread_records = self._clean_and_build(responses)
 
-            self.match_synchronizer.sync(self.site, match_records)
+            self.fixture_synchronizer.sync(self.site, match_records)
             self.moneyline_synchronizer.sync(self.site, moneyline_records)
             self.spread_synchronizer.sync(self.site, spread_records)
         except Exception as e:
@@ -102,15 +102,15 @@ class SyncOdds(BaseTask):
             match_id = int(match_id)
             match_records.append(self._build_match_record(match_id, match_data))
 
-        match_records.sort(key=lambda x: x[Match.kickoff_time.key])
-        target_matches = self.match_synchronizer.get_target_matches(
-            match_records[0][Match.league_id.key],
-            match_records[0][Match.kickoff_time.key]
+        match_records.sort(key=lambda x: x[Fixture.kickoff_time.key])
+        target_matches = self.fixture_synchronizer.get_target_matches(
+            match_records[0][Fixture.league_id.key],
+            match_records[0][Fixture.kickoff_time.key]
         )
         self.team_resolver.resolve(match_records, target_matches, with_target=True)
 
         for record in match_records:
-            record[Match.fixture_id.key] = record.pop('target').match_id
+            record[Fixture.fixture_id.key] = record.pop('target').match_id
 
         for odds_type, match_odds in odds.items():
             for match_id, odds_data in match_odds.items():
@@ -127,12 +127,12 @@ class SyncOdds(BaseTask):
 
     def _build_match_record(self, match_id: int, match_data: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            Match.match_id.key: match_id,
-            Match.kickoff_time.key: match_data.get(Match.kickoff_time.key),
-            Match.league_id.key: match_data.get(Match.league_id.key),
-            Match.league_name.key: match_data.get(Match.league_name.key),
-            Match.home_team.key: match_data.get(Match.home_team.key),
-            Match.away_team.key: match_data.get(Match.away_team.key)
+            Fixture.match_id.key: match_id,
+            Fixture.kickoff_time.key: match_data.get(Fixture.kickoff_time.key),
+            Fixture.league_id.key: match_data.get(Fixture.league_id.key),
+            Fixture.league_name.key: match_data.get(Fixture.league_name.key),
+            Fixture.home_team.key: match_data.get(Fixture.home_team.key),
+            Fixture.away_team.key: match_data.get(Fixture.away_team.key)
         }
 
     def _build_moneyline_record(self, match_id: int, odds_data: Dict[str, Any]) -> Dict[str, Any]:

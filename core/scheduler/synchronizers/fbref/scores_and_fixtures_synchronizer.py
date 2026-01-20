@@ -1,11 +1,11 @@
-from sqlalchemy import or_
+from sqlalchemy import or_, and_, tuple_
 from datetime import datetime
 from sqlalchemy.orm import Session
 from core.domain.enums import UpsertStrategy
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import MatchResult, Site, MatchStatsSyncFlag
-from core.store.postgres.models.fbref.match_fixture import MatchFixture
+from core.store.postgres.models.fbref.fixture import Fixture
 from .team_level_synchronizer import TeamLevelSynchronizer
 from .elo_rating_synchronizer import EloRatingSynchronizer
 
@@ -88,7 +88,6 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
 
         self.elo_rating_synchronizer.set_impact_time(session, impact_time, UpsertStrategy.KEEP_MIN)
 
-
     def _sync_match_fixtures(
         self,
         session: Session,
@@ -98,23 +97,53 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
         season: int,
         match_fixtures: List[Dict[str, Any]]
     ) -> None:
-        deleted_count = session.query(MatchFixture).filter(
+        if match_fixtures:
+            insert_stmt = insert(Fixture).values(match_fixtures)
+            assignment, where_clause = self.build_upsert_clauses(
+                Fixture,
+                insert_stmt,
+                {
+                    Fixture.id.key,
+                    Fixture.created_at.key,
+                    Fixture.kickoff_time.key,
+                    Fixture.home_code.key,
+                    Fixture.away_code.key,
+                    Fixture.updated_at.key
+                }
+            )
+            upsert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=['kickoff_time', 'home_code', 'away_code'],
+                set_=assignment,
+                where=where_clause
+            )
+            result = session.execute(upsert_stmt)
+            upserted_count = result.rowcount
+            self.logger.info(f"Sync {team_name} {season} fixtures from {site.name} completed. upserted: {upserted_count}")
+
+        incoming_keys = [
+            (m['kickoff_time'], m['home_code'], m['away_code'])
+            for m in match_fixtures
+        ]
+
+        delete_query = session.query(Fixture).filter(
             or_(
-                MatchFixture.home_code == team_code,
-                MatchFixture.away_code == team_code
+                Fixture.home_code == team_code,
+                Fixture.away_code == team_code
             ),
-            MatchFixture.season == season
-        ).delete(synchronize_session=False)
-        self.logger.info(f"Delete {team_name} {season}-{season+1} existing match fixtures from {site.name} completed. deleted: {deleted_count}")
+            Fixture.season == season
+        )
 
-        if not match_fixtures:
-            self.logger.warning(f"No {team_name} {season}-{season+1} match fixtures to sync from {site.name}")
-            return
+        if incoming_keys:
+            delete_query = delete_query.filter(
+                tuple_(
+                    Fixture.kickoff_time,
+                    Fixture.home_code,
+                    Fixture.away_code
+                ).notin_(incoming_keys)
+            )
 
-        insert_stmt = insert(MatchFixture).values(match_fixtures)
-        result = session.execute(insert_stmt)
-        inserted_count = result.rowcount
-        self.logger.info(f"Sync {team_name} {season}-{season+1} match fixtures from {site.name} completed. inserted: {inserted_count}")
+        deleted_count = delete_query.delete(synchronize_session=False)
+        self.logger.info(f"Pruned {deleted_count} fixtures for {team_name} {season}")
 
     def _find_min_impact_time(
         self,

@@ -1,8 +1,8 @@
 from typing import Any, Optional, Dict
 from ..base_receiver import BaseReceiver
-from core.store.postgres.models.pinnacle.match import Match
+from core.store.postgres.models.pinnacle.fixture import Fixture
 
-class MatchReceiver(BaseReceiver):
+class FixtureReceiver(BaseReceiver):
     async def process(self, response: Any) -> Optional[Dict[str, Any]]:
         json_data = await self.decode_json_body(response)
         if not json_data:
@@ -35,12 +35,12 @@ class MatchReceiver(BaseReceiver):
 
             league = item.get('league', {})
             matches[match_id] = {
-                Match.match_id.key: match_id,
-                Match.kickoff_time.key: kickoff_time,
-                Match.league_id.key: league.get('id'),
-                Match.league_name.key: league.get('name'),
-                Match.home_team.key: home_team,
-                Match.away_team.key: away_team
+                Fixture.match_id.key: match_id,
+                Fixture.kickoff_time.key: kickoff_time,
+                Fixture.league_id.key: league.get('id'),
+                Fixture.league_name.key: league.get('name'),
+                Fixture.home_team.key: home_team,
+                Fixture.away_team.key: away_team
             }
 
         return {'type': 'matches', 'data': matches}
