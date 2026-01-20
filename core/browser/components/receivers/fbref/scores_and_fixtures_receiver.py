@@ -2,8 +2,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 from ..base_receiver import BaseReceiver
 from typing import List, Any, Optional, Dict
+from core.store.postgres.models.fbref.fixture import Fixture
 from core.store.postgres.models.fbref.match_result import MatchResult
-from core.store.postgres.models.fbref.match_fixture import MatchFixture
 from core.domain import MatchStatus
 from core.utils.parsing import (
     get_text, get_float, get_number,
@@ -138,17 +138,17 @@ class MatchRecord:
 
         if self.match_code is None:
             return {
-                MatchFixture.season.key: season,
-                MatchFixture.kickoff_time.key: self.kickoff_time,
-                MatchFixture.comp_name.key: self.comp_name,
-                MatchFixture.comp_code.key: self.comp_code,
-                MatchFixture.round.key: self.round,
-                MatchFixture.venue.key: venue,
-                MatchFixture.home_team.key: home_team,
-                MatchFixture.home_code.key: home_code,
-                MatchFixture.away_team.key: away_team,
-                MatchFixture.away_code.key: away_code,
-                MatchFixture.match_status.key: match_status.value
+                Fixture.season.key: season,
+                Fixture.kickoff_time.key: self.kickoff_time,
+                Fixture.comp_name.key: self.comp_name,
+                Fixture.comp_code.key: self.comp_code,
+                Fixture.round.key: self.round,
+                Fixture.venue.key: venue,
+                Fixture.home_team.key: home_team,
+                Fixture.home_code.key: home_code,
+                Fixture.away_team.key: away_team,
+                Fixture.away_code.key: away_code,
+                Fixture.match_status.key: match_status.value
             }
         else:
             return {

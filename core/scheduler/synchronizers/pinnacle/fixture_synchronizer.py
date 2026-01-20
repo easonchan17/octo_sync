@@ -2,20 +2,20 @@ from typing import List, Dict, Any
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
-from core.store.postgres.models.fotmob.fixture import Fixture
-from core.store.postgres.models.pinnacle.match import Match
+from core.store.postgres.models.fotmob.fixture import Fixture as FotmobFixture
+from core.store.postgres.models.pinnacle.fixture import Fixture as PinnacleFixture
 from core.domain.enums import SiteName
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from ..base_synchronizer import BaseSynchronizer
 
-class MatchSynchronizer(BaseSynchronizer):
+class FixtureSynchronizer(BaseSynchronizer):
     TARGET_SITE = SiteName.FOTMOB.value
 
     TARGET_LEAGUE = { # TODO
         1980: 47,   # English Premier League
     }
 
-    def get_target_matches(self, league_id: int, start_time: datetime) -> List[Fixture]:
+    def get_target_matches(self, league_id: int, start_time: datetime) -> List[FotmobFixture]:
         target_site = self.get_site(self.TARGET_SITE)
         if not target_site:
             self.logger.error(f"Target site not found: {self.TARGET_SITE}")
@@ -27,10 +27,10 @@ class MatchSynchronizer(BaseSynchronizer):
             return []
 
         with self.db.get_session(target_site.get_namespace()) as session:
-            matches = session.query(Fixture).filter(
-                Fixture.league_id == target_league_id,
-                Fixture.kickoff_time >= start_time
-            ).order_by(Fixture.kickoff_time).all()
+            matches = session.query(FotmobFixture).filter(
+                FotmobFixture.league_id == target_league_id,
+                FotmobFixture.kickoff_time >= start_time
+            ).order_by(FotmobFixture.kickoff_time).all()
 
             if matches:
                 session.expunge_all()
@@ -43,19 +43,19 @@ class MatchSynchronizer(BaseSynchronizer):
             return
 
         with self.db.get_session(site.get_namespace()) as session:
-            insert_stmt = insert(Match).values(matches)
+            insert_stmt = insert(PinnacleFixture).values(matches)
             assignment, where_clause = self.build_upsert_clauses(
-                Match,
+                PinnacleFixture,
                 insert_stmt,
                 {
-                    Match.id.key,
-                    Match.created_at.key,
-                    Match.match_id.key,
-                    Match.updated_at.key
+                    PinnacleFixture.id.key,
+                    PinnacleFixture.created_at.key,
+                    PinnacleFixture.match_id.key,
+                    PinnacleFixture.updated_at.key
                 }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=[Match.match_id.key],
+                index_elements=[PinnacleFixture.match_id.key],
                 set_=assignment,
                 where=where_clause
             )

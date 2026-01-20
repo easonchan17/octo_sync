@@ -93,6 +93,7 @@ def create_sync_fbref_batch_task(
     return Pipeline(
         SyncCompTeam(site, payload),
         SyncScoresAndFixtures(site, payload),
+        SyncEloRating(site, payload),
         SyncGoalAndShotCreation(site, payload),
         SyncPassing(site, payload),
         SyncDefensiveAction(site, payload),
