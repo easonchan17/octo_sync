@@ -13,10 +13,7 @@ docker/data/
 output/
 plugins/
 tests/
-artifacts/*
-!artifacts/dataset/
-artifacts/dataset/*
-!artifacts/dataset/aggregated_stats_for_training_*
+artifacts/
 
 README.md
 test.html

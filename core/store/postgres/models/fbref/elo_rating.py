@@ -30,6 +30,7 @@ class EloRating(Base, StatusMixin, DictMixin):
     pre_rating = Column[Decimal](Numeric(10, 4), nullable=False)
     expected_score = Column[Decimal](Numeric(10, 4), nullable=False)
     post_rating = Column[Decimal](Numeric(10, 4), nullable=False)
+    game_count = Column(Integer, nullable=False)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())

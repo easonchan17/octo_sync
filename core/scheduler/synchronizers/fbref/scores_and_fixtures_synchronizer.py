@@ -1,13 +1,13 @@
 from sqlalchemy import or_
-from typing import List, Dict, Any, Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from core.domain.enums import UpsertStrategy
+from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import MatchResult, Site, MatchStatsSyncFlag
 from core.store.postgres.models.fbref.match_fixture import MatchFixture
 from .team_level_synchronizer import TeamLevelSynchronizer
-from core.domain.enums import UpsertStrategy
-from ..common import SysValSynchronizer
+from .elo_rating_synchronizer import EloRatingSynchronizer
 
 class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
     ELO_IMPACT_FIELDS = [
@@ -16,12 +16,13 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
         MatchResult.away_gf.key,
         MatchResult.comp_code.key,
         MatchResult.home_code.key,
-        MatchResult.away_code.key
+        MatchResult.away_code.key,
+        MatchResult.venue.key
     ]
 
     def __init__(self) -> None:
         super().__init__()
-        self.sys_val_synchronizer = SysValSynchronizer()
+        self.elo_rating_synchronizer = EloRatingSynchronizer()
 
     def sync(
         self,
@@ -53,9 +54,8 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
         match_results.sort(key=lambda x: x.get(kickoff_time_key))
         last_synced_time = match_results[-1].get(kickoff_time_key)
 
+        self.elo_rating_synchronizer.lock_impact_time(session)
         impact_time = self._find_min_impact_time(session, match_results)
-        if impact_time:
-            self.sys_val_synchronizer.set_val('elo_impact_time', impact_time, UpsertStrategy.KEEP_MIN)
 
         insert_stmt = insert(MatchResult).values(match_results)
         assignment, where_clause = self.build_upsert_clauses(
@@ -85,6 +85,9 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
             last_synced_time
         )
         self.logger.info(f"Mark {site.name} {team_name} {season}-{season+1} match results as synced")
+
+        self.elo_rating_synchronizer.set_impact_time(session, impact_time, UpsertStrategy.KEEP_MIN)
+
 
     def _sync_match_fixtures(
         self,
