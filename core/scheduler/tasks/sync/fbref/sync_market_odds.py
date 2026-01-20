@@ -98,7 +98,7 @@ class SyncMarketOdds(BaseTask):
                     )
                 except Exception as e:
                     self.logger.error(f"Failed to sync {comp_name} {season} market odds: {e}")
-                    seen_failed = True
+                    # seen_failed = True
 
     def prepare_dataset_file(self, comp_name: str, season: int) -> Path:
         season_range = f"{season % 100:02d}{(season + 1) % 100:02d}"
