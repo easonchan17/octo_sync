@@ -9,7 +9,8 @@ from core.scheduler.tasks.sync.fbref import (
     SyncPassing,
     SyncShooting,
     SyncPlayerMatchStats,
-    SyncMarketOdds
+    SyncMarketOdds,
+    SyncEloRating
 )
 from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
@@ -76,6 +77,13 @@ def create_sync_fbref_market_odds_task(
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
     return Pipeline(SyncMarketOdds(site, payload))
+
+@Registry.factory('sync.fbref.elo_rating')
+def create_sync_fbref_elo_rating_task(
+    site: Site,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    return Pipeline(SyncEloRating(site, payload))
 
 @Registry.factory('sync.fbref.batch')
 def create_sync_fbref_batch_task(

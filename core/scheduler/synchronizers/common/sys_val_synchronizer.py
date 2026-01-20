@@ -1,6 +1,7 @@
 from sqlalchemy import or_
 from sqlalchemy.sql import func
 from typing import Optional, Any
+from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from core.domain.enums import UpsertStrategy
 from core.store.postgres.models import SysVal, Status
@@ -39,16 +40,21 @@ class SysValSynchronizer(BaseSynchronizer):
     def sync(self, *args, **kwargs) -> None:
         pass
 
-    def get_val(self, key: str) -> Optional[Any]:
-        with self.db.get_session() as session:
-            variable = session.query(SysVal).filter(
+    def get_val(self, key: str, session: Optional[Session] = None, for_update: bool = False) -> Optional[Any]:
+        with self.db.get_session(session=session) as session:
+            query = session.query(SysVal).filter(
                 SysVal.key == key,
                 SysVal.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value
-            ).first()
+            )
+
+            if for_update:
+                query = query.with_for_update()
+
+            variable = query.first()
             return variable.value if variable else None
 
-    def set_val(self, key: str, value: Any, strategy: UpsertStrategy) -> bool:
-        with self.db.get_session() as session:
+    def set_val(self, key: str, value: Any, strategy: UpsertStrategy, session: Optional[Session] = None) -> bool:
+        with self.db.get_session(session=session) as session:
             variable = SysVal(key=key)
             variable.set_value(value)
 
@@ -74,8 +80,8 @@ class SysValSynchronizer(BaseSynchronizer):
             result = session.execute(upsert_stmt)
             return result.rowcount > 0
 
-    def del_val(self, key: str) -> int:
-        with self.db.get_session() as session:
+    def del_val(self, key: str, session: Optional[Session] = None) -> int:
+        with self.db.get_session(session=session) as session:
             row_count = session.query(SysVal).filter(
                 SysVal.key == key,
                 SysVal.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value

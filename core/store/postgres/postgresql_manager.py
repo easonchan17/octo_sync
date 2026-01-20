@@ -1,7 +1,7 @@
 import os
 from typing import Generator
 from sqlalchemy import text
-from typing import List, Any
+from typing import List, Any, Optional
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -78,7 +78,11 @@ class PostgreSQLManager(Singleton):
                         self.logger.info(f"Table {table_name} created successfully")
 
     @contextmanager
-    def get_session(self, schema_name: str = None) -> Generator[Session, None, None]:
+    def get_session(self, schema_name: Optional[str] = None, session: Optional[Session] = None) -> Generator[Session, None, None]:
+        if session:
+            yield session
+            return
+
         session = self.session_maker()
         if schema_name:
             options = {"schema_translate_map": {"{schema}": schema_name}}

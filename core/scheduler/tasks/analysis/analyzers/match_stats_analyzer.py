@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from core.utils.parsing import normalize_team_name, normalize_season_range
 from core.store.postgres.models import (
     MatchResult, GoalAndShotCreation, Passing, Shooting,
-    DefensiveAction, GoalKeeping, MarketOdds
+    DefensiveAction, GoalKeeping, MarketOdds, EloRating
 )
 from ..feature_engineering import (
     FeatureSelector,
@@ -231,6 +231,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
             defensive_away = aliased(DefensiveAction)
             goalkeeping_home = aliased(GoalKeeping)
             goalkeeping_away = aliased(GoalKeeping)
+            elo_rating_home = aliased(EloRating)
+            elo_rating_away = aliased(EloRating)
 
             market_odds = aliased(MarketOdds)
 
@@ -246,6 +248,8 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                 defensive_away,
                 goalkeeping_home,
                 goalkeeping_away,
+                elo_rating_home,
+                elo_rating_away,
                 market_odds
             ).outerjoin(
                 gca_home,
@@ -308,6 +312,18 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                     MatchResult.away_code == goalkeeping_away.team_code
                 )
             ).outerjoin(
+                elo_rating_home,
+                and_(
+                    MatchResult.match_code == elo_rating_home.match_code,
+                    MatchResult.home_code == elo_rating_home.team_code
+                )
+            ).outerjoin(
+                elo_rating_away,
+                and_(
+                    MatchResult.match_code == elo_rating_away.match_code,
+                    MatchResult.away_code == elo_rating_away.team_code
+                )
+            ).outerjoin(
                 market_odds,
                 MatchResult.match_code == market_odds.match_code
             ).filter(
@@ -331,7 +347,9 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                 defensive_away_obj = row[8]
                 goalkeeping_home_obj = row[9]
                 goalkeeping_away_obj = row[10]
-                market_odds_obj = row[11]
+                elo_rating_home_obj = row[11]
+                elo_rating_away_obj = row[12]
+                market_odds_obj = row[13]
 
                 record = {
                     "match_code": match_result.match_code,
@@ -354,6 +372,22 @@ class MatchStatsAnalyzer(BaseAnalyzer):
                     "away_possession": match_result.away_possession,
                     "notes": match_result.notes
                 }
+
+                if elo_rating_home_obj:
+                    record.update({
+                        "home_pre_rating": float(elo_rating_home_obj.pre_rating),
+                        "home_post_rating": float(elo_rating_home_obj.post_rating),
+                        "home_expected_score": float(elo_rating_home_obj.expected_score),
+                        "home_game_count": elo_rating_home_obj.game_count
+                    })
+
+                if elo_rating_away_obj:
+                    record.update({
+                        "away_pre_rating": float(elo_rating_away_obj.pre_rating),
+                        "away_post_rating": float(elo_rating_away_obj.post_rating),
+                        "away_expected_score": float(elo_rating_away_obj.expected_score),
+                        "away_game_count": elo_rating_away_obj.game_count
+                    })
 
                 if gca_home_obj:
                     record.update({
