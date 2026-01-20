@@ -58,7 +58,7 @@ def sync_pinnacle_odds() -> None:
         }
     )
 
-@Registry.cron('cron.sync_fbref_batch', hour=9, minute=50, envs=['dev', 'prod'])
+@Registry.cron('cron.sync_fbref_batch', hour=16, minute=6, envs=['dev', 'prod'])
 def sync_fbref_batch() -> None:
     from core.server.services.site_service import SiteService
 
