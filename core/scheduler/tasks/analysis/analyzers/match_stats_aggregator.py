@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 from core.utils.pandas_utils import save_dataframe
-from core.config.league_config import get_league_metadata
+from core.config.league_registry import league_registry
 from core.scheduler.tasks.analysis.feature_engineering import FeatureSelector
 from core.scheduler.tasks.analysis.feature_engineering import FormulaDeriver
 from core.scheduler.tasks.analysis.feature_engineering.constants import (
@@ -120,8 +120,8 @@ class MatchStatsAggregator(BaseTask):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_metadata = get_league_metadata(league_id, self.site.name)
-        comp_code = league_metadata["id"]
+        league_config = league_registry.get_league_config(league_id, self.site.name)
+        comp_code = league_config["id"]
 
         output_format = self.payload.get("format", "csv")
         output_path = self.config_manager.get_config(

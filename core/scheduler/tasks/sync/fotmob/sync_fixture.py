@@ -4,7 +4,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
 from core.store.cache.global_store import GlobalStore
 from core.browser.intercept_policy import InterceptPolicy
-from core.config.league_config import get_league_metadata
+from core.config.league_registry import league_registry
 from core.browser.components.receivers.fotmob.fixture_receiver import FixtureReceiver
 from core.scheduler.synchronizers.fotmob.fixture_synchronizer import FixtureSynchronizer
 from core.browser.components.senders.fotmob.search_fixture_sender import SearchFixtureSender
@@ -35,9 +35,9 @@ class SyncFixture(BaseTask):
         try:
             league_id = self.get_required_param("league_id")
 
-            league_metadata = get_league_metadata(league_id, self.site.name)
-            comp_code = league_metadata["id"]
-            comp_name = league_metadata["name"]
+            league_config = league_registry.get_league_config(league_id, self.site.name)
+            comp_code = league_config["id"]
+            comp_name = league_config["name"]
 
             page_url = intercept_policy.url.format(league_id=comp_code, league_name=comp_name)
             future = self.interceptor.submit_task(

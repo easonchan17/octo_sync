@@ -4,14 +4,14 @@ from ..base_model import Base, StatusMixin, DictMixin, Status
 from core.domain.enums import SiteName
 
 class Fixture(Base, StatusMixin, DictMixin):
-    __tablename__ = 'pinnacle_matches'
+    __tablename__ = 'pinnacle_fixtures'
     __table_args__ = (
-        Index('idx_pinnacle_matches_kickoff_time', 'kickoff_time'),
-        Index('idx_pinnacle_matches_league_id', 'league_id'),
-        Index('idx_pinnacle_matches_home_team', 'home_team'),
-        Index('idx_pinnacle_matches_away_team', 'away_team'),
-        Index('idx_pinnacle_matches_created_at', 'created_at'),
-        Index('idx_pinnacle_matches_updated_at', 'updated_at'),
+        Index('idx_pinnacle_fixtures_kickoff_time', 'kickoff_time'),
+        Index('idx_pinnacle_fixtures_league_id', 'league_id'),
+        Index('idx_pinnacle_fixtures_home_team', 'home_team'),
+        Index('idx_pinnacle_fixtures_away_team', 'away_team'),
+        Index('idx_pinnacle_fixtures_created_at', 'created_at'),
+        Index('idx_pinnacle_fixtures_updated_at', 'updated_at'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
     )
 
@@ -25,7 +25,7 @@ class Fixture(Base, StatusMixin, DictMixin):
     home_team = Column(String(100), nullable=False)
     away_team = Column(String(100), nullable=False)
 
-    fixture_id = Column(Integer, nullable=False, unique=True)
+    fixture_id = Column(Integer, nullable=True, unique=True, comment='References fotmob_fixtures.match_id')
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())

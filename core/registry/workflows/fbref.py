@@ -13,6 +13,7 @@ from core.scheduler.tasks.sync.fbref import (
     SyncEloRating
 )
 from core.store.postgres.models import Site
+from core.scheduler.tasks.mapping.fbref import FixtureMapper
 from core.scheduler.tasks.base_task import BaseTask, Pipeline
 
 @Registry.factory('sync.fbref.comp_teams')
@@ -84,6 +85,13 @@ def create_sync_fbref_elo_rating_task(
     payload: Optional[Dict[str, Any]]
 ) -> BaseTask:
     return Pipeline(SyncEloRating(site, payload))
+
+@Registry.factory('sync.fbref.map_fixtures')
+def create_fbref_map_fixtures_task(
+    site: Site,
+    payload: Optional[Dict[str, Any]]
+) -> BaseTask:
+    return Pipeline(FixtureMapper())
 
 @Registry.factory('sync.fbref.batch')
 def create_sync_fbref_batch_task(

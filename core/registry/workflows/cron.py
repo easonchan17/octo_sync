@@ -58,7 +58,25 @@ def sync_pinnacle_odds() -> None:
         }
     )
 
-@Registry.cron('cron.sync_fbref_batch', hour=16, minute=6, envs=['dev', 'prod'])
+@Registry.cron('cron.map_fbref_fixtures', minute="0", envs=['dev', 'prod'])
+def map_fbref_fixtures() -> None:
+    from core.server.services.site_service import SiteService
+    SiteService.get_instance().start_sync(
+        'fbref',
+        'map_fixtures',
+        {}
+    )
+
+@Registry.cron('cron.map_pinnacle_fixtures', minute="0", envs=['dev', 'prod'])
+def map_pinnacle_fixtures() -> None:
+    from core.server.services.site_service import SiteService
+    SiteService.get_instance().start_sync(
+        'pinnacle',
+        'map_fixtures',
+        {}
+    )
+
+@Registry.cron('cron.sync_fbref_batch', hour=9, minute=30, envs=['dev', 'prod'])
 def sync_fbref_batch() -> None:
     from core.server.services.site_service import SiteService
 
