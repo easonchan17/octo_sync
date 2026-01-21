@@ -6,17 +6,17 @@ from core.domain.enums import SiteName
 
 
 class Fixture(Base, StatusMixin, DictMixin):
-    __tablename__ = 'fixtures'
+    __tablename__ = 'fotmob_fixtures'
     __table_args__ = (
-        Index('idx_fixtures_created_at', 'created_at'),
-        Index('idx_fixtures_updated_at', 'updated_at'),
-        Index('idx_fixtures_home_team', 'home_team'),
-        Index('idx_fixtures_home_id', 'home_id'),
-        Index('idx_fixtures_away_team', 'away_team'),
-        Index('idx_fixtures_away_id', 'away_id'),
-        Index('idx_fixtures_league_name', 'league_name'),
-        Index('idx_fixtures_league_id', 'league_id'),
-        Index('idx_fixtures_kickoff_time', 'kickoff_time'),
+        Index('idx_fotmob_fixtures_created_at', 'created_at'),
+        Index('idx_fotmob_fixtures_updated_at', 'updated_at'),
+        Index('idx_fotmob_fixtures_home_team', 'home_team'),
+        Index('idx_fotmob_fixtures_home_id', 'home_id'),
+        Index('idx_fotmob_fixtures_away_team', 'away_team'),
+        Index('idx_fotmob_fixtures_away_id', 'away_id'),
+        Index('idx_fotmob_fixtures_league_name', 'league_name'),
+        Index('idx_fotmob_fixtures_league_id', 'league_id'),
+        Index('idx_fotmob_fixtures_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
     )
 

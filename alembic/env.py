@@ -16,6 +16,7 @@ from alembic.config import Config
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 MIGRATIONS_DIR = project_root / "core/store/postgres/migrations"
+VERSIONS_DIR = project_root / "alembic/versions"
 
 # Import models after sys.path setup
 from core.store.postgres.models import Base
@@ -71,30 +72,43 @@ def prepare_migration_sql_path(config: Config, schema: str) -> Optional[Path]:
 def make_filters(target_schema: str) -> Tuple[Callable, Callable]:
     def include_name(name, type_, parent_names):
         if type_ == "schema":
-            return name in [target_schema, 'public']
+            if name is None and target_schema == 'public':
+                return True
+
+            return name == target_schema
 
         if type_ == "table":
+            if name.startswith('alembic_version_'):
+                return False
+
             schema_name = parent_names.get("schema")
+
+            if schema_name is None:
+                return True
+
             if schema_name == 'public':
-                # Allow version table specific to this schema
-                if name.startswith('alembic_version_'):
-                    return name == f'alembic_version_{target_schema}'
-                # Allow shared public tables if we are targeting public
                 return target_schema == 'public'
-            return schema_name == target_schema or schema_name is None
+
+            return schema_name == target_schema
+
         return True
 
     def include_object(object, name, type_, reflected, compare_to):
         if type_ == "table":
-            if getattr(object, 'schema', None) == 'public':
-                if name.startswith('alembic_version_'):
-                    return name == f'alembic_version_{target_schema}'
+            if name.startswith('alembic_version_'):
+                return False
+
+            schema_name = getattr(object, 'schema', None)
+
+            if schema_name is None:
+                return True
+
+            if schema_name == 'public':
                 return target_schema == 'public'
 
-            # Filter based on 'sites' info defined in SQLAlchemy models
-            allowed_sites = object.info.get('sites')
-            if allowed_sites is not None and target_schema not in allowed_sites:
-                return False
+            allowed_sites = object.info.get('sites', [])
+            return target_schema in allowed_sites
+
         return True
 
     return include_name, include_object
@@ -105,14 +119,35 @@ def make_process_revision_directives(target_schema: str) -> Callable:
             return
 
         script = directives[0]
-        if script.message and script.message.strip():
-            return
-
-        auto_message = f"upgrade_{target_schema}"
-        print(f"⚠️ [Alembic] No message provided. Auto-naming to: '{auto_message}'", file=sys.stderr)
-        script.message = auto_message
+        if not script.message or not script.message.strip():
+            auto_message = f"upgrade_{target_schema}"
+            print(f"⚠️ [Alembic] No message provided. Auto-naming to: '{auto_message}'", file=sys.stderr)
+            script.message = auto_message
 
     return process_revision_directives
+
+def init_version_locations(config: Config, schema: str) -> None:
+    version_dir = str(VERSIONS_DIR / schema)
+    os.makedirs(version_dir, exist_ok=True)
+
+    if hasattr(context, 'script') and context.script:
+        context.script.version_locations = [version_dir]
+
+    config.set_main_option("version_locations", version_dir)
+    print(f"📂 [Alembic] Final Version Directory: {version_dir}")
+
+def build_target_metadata(target_schema: str) -> MetaData:
+    target_metadata = MetaData()
+
+    for table in Base.metadata.tables.values():
+        schema = table.schema
+
+        if target_schema != 'public' and table.schema == '{schema}':
+            schema = target_schema
+
+        table.to_metadata(target_metadata, schema=schema)
+
+    return target_metadata
 
 def run_migrations_offline(config: Config, metadata: MetaData, schema: str) -> None:
     url = config.get_main_option("sqlalchemy.url")
@@ -153,7 +188,7 @@ def run_migrations_online(config: Config, metadata: MetaData, schema: str) -> No
 
     with connectable.connect() as connection:
         connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
-        connection.execute(text(f"SET search_path TO {schema}, public"))
+        # connection.execute(text(f"SET search_path TO {schema}, public"))
         connection.commit()
 
         include_name, include_object = make_filters(schema)
@@ -180,16 +215,16 @@ alembic_config = context.config
 if alembic_config.config_file_name is not None:
     fileConfig(alembic_config.config_file_name)
 
-# 1. Init Schema
+# Init Schema
 target_schema = require_target_schema()
 
-# 2. Dynamic Metadata Generation
-target_metadata = MetaData()
-for table in Base.metadata.tables.values():
-    effective_schema = target_schema if table.schema == '{schema}' else table.schema
-    table.to_metadata(target_metadata, schema=effective_schema)
+# Configure version locations based on schema
+init_version_locations(alembic_config, target_schema)
 
-# 3. Dispatch
+# Dynamic Metadata Generation
+target_metadata = build_target_metadata(target_schema)
+
+# Dispatch
 if context.is_offline_mode():
     run_migrations_offline(alembic_config, target_metadata, target_schema)
 else:

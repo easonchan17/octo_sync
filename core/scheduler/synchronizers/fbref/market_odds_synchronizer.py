@@ -8,25 +8,6 @@ from .comp_level_synchronizer import CompLevelSynchronizer
 
 
 class MarketOddsSynchronizer(CompLevelSynchronizer):
-    TARGET_SITE = SiteName.FBREF.value
-
-    def get_target_matches(self, comp_code: str, start_time: datetime) -> List[MatchResult]:
-        target_site = self.get_site(self.TARGET_SITE)
-        if not target_site:
-            self.logger.error(f"Target site not found: {self.TARGET_SITE}")
-            return []
-
-        with self.db.get_session(target_site.get_namespace()) as session:
-            matches = session.query(MatchResult).filter(
-                MatchResult.comp_code == comp_code,
-                MatchResult.kickoff_time >= start_time
-            ).order_by(MatchResult.kickoff_time).all()
-
-            if matches:
-                session.expunge_all()
-
-            return matches
-
     def sync(
         self,
         site: Site,
