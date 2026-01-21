@@ -4,14 +4,14 @@ from core.browser.interceptor import TaskType
 from typing import Any, Dict, Optional, List, Tuple
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
-from core.browser.components.receivers.pinnacle.fixture_receiver import FixtureReceiver
-from core.browser.components.receivers.pinnacle.odds_receiver import OddsReceiver
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
+from core.browser.components.receivers.pinnacle.odds_receiver import OddsReceiver
+from core.browser.components.receivers.pinnacle.fixture_receiver import FixtureReceiver
 from core.scheduler.synchronizers.pinnacle.fixture_synchronizer import FixtureSynchronizer
 from core.scheduler.synchronizers.pinnacle.moneyline_synchronizer import MoneylineSynchronizer
 from core.scheduler.synchronizers.pinnacle.spread_synchronizer import SpreadSynchronizer
-from core.store.postgres.models.pinnacle.fixture import Fixture
 from core.store.postgres.models.pinnacle.moneyline import Moneyline
+from core.store.postgres.models.pinnacle.fixture import Fixture
 from core.store.postgres.models.pinnacle.spread import Spread
 
 class SyncOdds(BaseTask):
@@ -101,16 +101,6 @@ class SyncOdds(BaseTask):
         for match_id, match_data in matches.items():
             match_id = int(match_id)
             match_records.append(self._build_match_record(match_id, match_data))
-
-        match_records.sort(key=lambda x: x[Fixture.kickoff_time.key])
-        target_matches = self.fixture_synchronizer.get_target_matches(
-            match_records[0][Fixture.league_id.key],
-            match_records[0][Fixture.kickoff_time.key]
-        )
-        self.team_resolver.resolve(match_records, target_matches, with_target=True)
-
-        for record in match_records:
-            record[Fixture.fixture_id.key] = record.pop('target').match_id
 
         for odds_type, match_odds in odds.items():
             for match_id, odds_data in match_odds.items():

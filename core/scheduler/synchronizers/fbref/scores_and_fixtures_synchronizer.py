@@ -1,5 +1,5 @@
-from sqlalchemy import or_, and_, tuple_
 from datetime import datetime
+from sqlalchemy import or_, tuple_
 from sqlalchemy.orm import Session
 from core.domain.enums import UpsertStrategy
 from typing import List, Dict, Any, Optional
@@ -108,6 +108,7 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
                     Fixture.kickoff_time.key,
                     Fixture.home_code.key,
                     Fixture.away_code.key,
+                    Fixture.fixture_id.key,
                     Fixture.updated_at.key
                 }
             )

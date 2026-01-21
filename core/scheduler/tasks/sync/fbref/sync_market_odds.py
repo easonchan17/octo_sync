@@ -1,14 +1,15 @@
 import pandas as pd
 from pathlib import Path
-from core.domain.enums import SiteName
 from functools import cached_property
+from core.domain.enums import SiteName
 from core.store.postgres.models import Site
 from core.utils.downloader import FileDownloader
 from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
 from typing import Any, Dict, List, Optional, Tuple
-from core.config.league_config import get_league_metadata
+from core.config.league_registry import league_registry
 from core.store.postgres.models.fbref.market_odds import MarketOdds
+from core.store.postgres.models.fbref import Fixture as FbrefFixture
 from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
 from core.scheduler.synchronizers.fbref.market_odds_synchronizer import MarketOddsSynchronizer
@@ -59,10 +60,10 @@ class SyncMarketOdds(BaseTask):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_metadata = get_league_metadata(league_id, SiteName.FOOTBALL_DATA.value)
-        comp_code = league_metadata["id"]
-        comp_name = league_metadata["name"]
-        timezone = league_metadata["timezone"]
+        league_config = league_registry.get_league_config(league_id, SiteName.FOOTBALL_DATA.value)
+        comp_code = league_config["id"]
+        comp_name = league_config["name"]
+        timezone = league_config["timezone"]
 
         seen_failed = True
 
@@ -77,24 +78,26 @@ class SyncMarketOdds(BaseTask):
             seen_failed = False
             for season in tasks:
                 try:
-                    source_matches = self.load_dataset(comp_name, season, timezone)
-                    if not source_matches:
-                        self.logger.warning(f"No source matches loaded for {comp_name} {season}")
+                    odds_records = self.load_dataset(comp_name, season, timezone)
+                    if not odds_records:
+                        self.logger.warning(f"No records loaded for {comp_name} {season} market odds")
                         continue
+
+                    self.team_resolver.resolve(
+                        odds_records,
+                        SiteName.FBREF.value,
+                        FbrefFixture,
+                        attach_ref=True
+                    )
 
                     kickoff_time_key = MarketOdds.kickoff_time.key
                     match_code_key = MarketOdds.match_code.key
+                    for record in odds_records:
+                        record[match_code_key] = record.pop('ref_obj').match_code
 
-                    first_synced_time = source_matches[0].get(kickoff_time_key)
-                    target_matches = self.synchronizer.get_target_matches(comp_code, first_synced_time)
-                    self.team_resolver.resolve(source_matches, target_matches, with_target=True)
-
-                    for record in source_matches:
-                        record[match_code_key] = record.pop('target').match_code
-
-                    last_synced_time = source_matches[-1].get(kickoff_time_key)
+                    last_synced_time = odds_records[-1].get(kickoff_time_key)
                     self.synchronizer.sync(
-                        self.site, comp_code, season, last_synced_time, source_matches
+                        self.site, comp_code, season, last_synced_time, odds_records
                     )
                 except Exception as e:
                     self.logger.error(f"Failed to sync {comp_name} {season} market odds: {e}")
