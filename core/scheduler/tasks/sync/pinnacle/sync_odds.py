@@ -1,10 +1,10 @@
 from decimal import Decimal
+from core.registry import Registry
 from core.store.postgres.models import Site
 from core.browser.interceptor import TaskType
 from typing import Any, Dict, Optional, List, Tuple
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
-from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
 from core.browser.components.receivers.pinnacle.odds_receiver import OddsReceiver
 from core.browser.components.receivers.pinnacle.fixture_receiver import FixtureReceiver
 from core.scheduler.synchronizers.pinnacle.fixture_synchronizer import FixtureSynchronizer
@@ -14,6 +14,7 @@ from core.store.postgres.models.pinnacle.moneyline import Moneyline
 from core.store.postgres.models.pinnacle.fixture import Fixture
 from core.store.postgres.models.pinnacle.spread import Spread
 
+@Registry.task('sync.pinnacle.odds')
 class SyncOdds(BaseTask):
     POLICY_CONFIG = {
         "url_template": "https://www.pinnacle.com/en/soccer/{country_name}-{league_name}/matchups/#all",
@@ -39,7 +40,6 @@ class SyncOdds(BaseTask):
         self.fixture_synchronizer = FixtureSynchronizer()
         self.moneyline_synchronizer = MoneylineSynchronizer()
         self.spread_synchronizer = SpreadSynchronizer()
-        self.team_resolver = TeamResolver()
 
     def execute(self, *args, **kwargs) -> None:
         country_name = self.payload.get("country_name") or ""

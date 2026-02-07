@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 from typing import Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
-from core.domain.enums import UpsertStrategy
+from core.types.enums import UpsertStrategy
 from core.store.postgres.models import SysVal, Status
 from ..base_synchronizer import BaseSynchronizer
 
@@ -37,9 +37,6 @@ class SysValQueryBuilder:
         raise ValueError("Invalid update strategy")
 
 class SysValSynchronizer(BaseSynchronizer):
-    def sync(self, *args, **kwargs) -> None:
-        pass
-
     def get_val(self, key: str, session: Optional[Session] = None, for_update: bool = False) -> Optional[Any]:
         with self.db.get_session(session=session) as session:
             query = session.query(SysVal).filter(

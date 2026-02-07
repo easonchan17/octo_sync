@@ -11,5 +11,4 @@ class SyncEloRating(BaseTask):
         self.synchronizer = EloRatingSynchronizer()
 
     def execute(self, *args, **kwargs) -> None:
-        elo_options = self.payload.get("elo_options")
-        self.synchronizer.sync(self.site, elo_options)
+        self.synchronizer.sync(self.site)

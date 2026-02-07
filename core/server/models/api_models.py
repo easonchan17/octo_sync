@@ -110,12 +110,27 @@ class ModelResponse(BaseModel):
     train_score: float
     test_score: float
     is_loaded: bool
+    feature_names: List[str]
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 class PredictionResponse(BaseModel):
+    fixture_id: int
     model_version: str
     probabilities: Dict[str, float]
     prediction: int
+
+
+# ==============================================================================
+# League Models
+# ==============================================================================
+class LeagueResponse(BaseModel):
+    id: int
+    name: str
+    is_popular: bool
+    priority: int
+
+    class Config:
+        from_attributes = True

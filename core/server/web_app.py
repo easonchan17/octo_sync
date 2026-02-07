@@ -3,11 +3,13 @@ from typing import Any
 from fastapi import FastAPI, Request
 from core.config.env_manager import env_manager
 from core.logger.logger_manager import LoggerManager
-from core.server.controllers.site_controller import SiteController
-from core.server.controllers.training_controller import TrainingController
-from core.server.controllers.inference_controller import InferenceController
-from core.server.controllers.fixture_controller import FixtureController
-from core.server.controllers.cron_controller import CronController
+from core.server.controllers.system.site_controller import SiteController
+from core.server.controllers.system.task_controller import TaskController
+from core.server.controllers.system.model_controller import ModelController
+from core.server.controllers.app.prediction_controller import PredictionController
+from core.server.controllers.app.fixture_controller import FixtureController
+from core.server.controllers.app.league_controller import LeagueController
+from core.server.controllers.system.cron_controller import CronController
 
 class WebApp:
     def __init__(self) -> None:
@@ -32,14 +34,20 @@ class WebApp:
         site_controller = SiteController()
         self.app.include_router(site_controller.router, prefix="/api", tags=["sites"])
 
-        training_controller = TrainingController()
-        self.app.include_router(training_controller.router, prefix="/api", tags=["training"])
+        task_controller = TaskController()
+        self.app.include_router(task_controller.router, prefix="/api", tags=["tasks"])
 
-        inference_controller = InferenceController()
-        self.app.include_router(inference_controller.router, prefix="/api", tags=["inference"])
+        model_controller = ModelController()
+        self.app.include_router(model_controller.router, prefix="/api", tags=["models"])
+
+        prediction_controller = PredictionController()
+        self.app.include_router(prediction_controller.router, prefix="/api", tags=["predictions"])
 
         fixture_controller = FixtureController()
         self.app.include_router(fixture_controller.router, prefix="/api", tags=["fixtures"])
+
+        league_controller = LeagueController()
+        self.app.include_router(league_controller.router, prefix="/api", tags=["leagues"])
 
         cron_controller = CronController()
         self.app.include_router(cron_controller.router, prefix="/api", tags=["cron"])

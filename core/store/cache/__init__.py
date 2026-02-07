@@ -1,5 +1,6 @@
-from .global_store import GlobalStore
+from .global_store import GlobalStore, get_global_store
 
 __all__ = [
-    'GlobalStore'
+    'GlobalStore',
+    'get_global_store'
 ]

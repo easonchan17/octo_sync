@@ -1,7 +1,7 @@
 import uuid
 from threading import Event
-from typing import Any, List, Optional
 from abc import ABC, abstractmethod
+from typing import Any, List, Optional, Callable
 from core.logger.logger_manager import LoggerManager
 from core.config.config_manager import ConfigManager
 from core.browser.interceptor import Interceptor
@@ -14,7 +14,6 @@ class BaseTask(ABC):
         self.config_manager = ConfigManager.get_instance()
         self.interceptor = Interceptor.get_instance()
         self.cancel_event = Event()
-        self.on_complete: callable = None
         self.payload = None
         self.is_async = False
         self.is_force = False
@@ -38,6 +37,12 @@ class BaseTask(ABC):
     def should_stop(self) -> bool:
         return self.cancel_event.is_set()
 
+    def enable_force_mode(self) -> None:
+        self.is_force = True
+
+    def enable_async_mode(self) -> None:
+        self.is_async = True
+
     @abstractmethod
     def execute(self, *args, **kwargs) -> Any:
         pass
@@ -57,21 +62,26 @@ class Pipeline(BaseTask):
         for task in self.tasks:
             task.cancel()
 
+    def enable_force_mode(self) -> None:
+        for task in self.tasks:
+            task.enable_force_mode()
+        self.is_force = True
+
+    def enable_async_mode(self) -> None:
+        self.is_async = True
+
     def execute(self, *args, **kwargs) -> None:
         for i, task in enumerate(self.tasks):
             if self.should_stop():
                 break
 
             self.logger.info(f"Executing task {i+1}/{len(self.tasks)}: {task.name}")
-            task.is_force = self.is_force
             try:
                 task.execute(*args, **kwargs)
                 self.logger.info(f"Task {task.name} completed")
             except Exception as e:
                 self.logger.error(f"Task {task.name} failed: {e}", exc_info=True)
-
-        if self.on_complete:
-            self.on_complete()
+                raise e
 
     def __str__(self) -> str:
         task_names = [task.name for task in self.tasks]
@@ -92,6 +102,18 @@ class TaskWrapper(BaseTask):
             raise ValueError("Task is not set")
 
         self._task.cancel()
+
+    def enable_force_mode(self) -> None:
+        if self._task is None:
+            raise ValueError("Task is not set")
+
+        self._task.enable_force_mode()
+
+    def enable_async_mode(self) -> None:
+        if self._task is None:
+            raise ValueError("Task is not set")
+
+        self._task.enable_async_mode()
 
     def should_stop(self) -> bool:
         if self._task is None:
@@ -114,18 +136,26 @@ class TaskWrapper(BaseTask):
     def __repr__(self):
         return repr(self._task)
 
-class AsyncTask(TaskWrapper):
-    def __init__(self, task: BaseTask) -> None:
+class HookedTask(TaskWrapper):
+    def __init__(
+        self,
+        task: BaseTask,
+        pre_execute: Optional[Callable[[], None]] = None,
+        post_execute: Optional[Callable[[], None]] = None
+    ) -> None:
         super().__init__(task)
-        self._task.is_async = True
-
-class ForceTask(TaskWrapper):
-    def __init__(self, task):
-        super().__init__(task)
-        self._task.is_force = True
+        self._pre_execute = pre_execute
+        self._post_execute = post_execute
 
     def execute(self, *args, **kwargs) -> Any:
         if self._task is None:
             raise ValueError("Task is not set")
 
-        return self._task.execute(*args, **kwargs)
+        if self._pre_execute:
+            self._pre_execute()
+
+        try:
+            return self._task.execute(*args, **kwargs)
+        finally:
+            if self._post_execute:
+                self._post_execute()

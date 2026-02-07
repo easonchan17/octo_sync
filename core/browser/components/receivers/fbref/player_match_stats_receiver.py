@@ -3,8 +3,10 @@ from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.player_match_stats import PlayerMatchStats
-from core.utils.parsing import (
-    get_number, get_float, get_text,
+from core.utils.fbref_utils import (
+    get_number,
+    get_float,
+    get_text,
     is_table_header,
     extract_player_code_from_cell,
     extract_match_code_from_url
@@ -50,11 +52,16 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 pens_made = row.find("td", {"data-stat": "pens_made"})
                 shots = row.find("td", {"data-stat": "shots"})
                 shots_on_target = row.find("td", {"data-stat": "shots_on_target"})
+                # @deprecated: The data source has been removed from the website
                 npxg = row.find("td", {"data-stat": "npxg"})
+                # @deprecated: The data source has been removed from the website
                 xg_assist = row.find("td", {"data-stat": "xg_assist"})
+                # @deprecated: The data source has been removed from the website
                 shot_creating_actions = row.find("td", {"data-stat": "sca"})
+                # @deprecated: The data source has been removed from the website
                 tackles = row.find("td", {"data-stat": "tackles"})
                 interceptions = row.find("td", {"data-stat": "interceptions"})
+                # @deprecated: The data source has been removed from the website
                 blocks = row.find("td", {"data-stat": "blocks"})
 
                 player_stats_dict[player_code].update({
@@ -76,6 +83,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                     "blocks": get_number(blocks)
                 })
 
+        # @deprecated: The data source has been removed from the website
         passing_tables = soup.find_all("table", id=re.compile(r"^stats_[a-zA-Z0-9]{8}_passing$"))
         for stats_table in passing_tables:
             table_body = stats_table.find("tbody")
@@ -98,6 +106,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                     "key_passes": get_number(assisted_shots)
                 })
 
+        # @deprecated: The data source has been removed from the website
         possession_tables = soup.find_all("table", id=re.compile(r"^stats_[a-zA-Z0-9]{8}_possession$"))
         for stats_table in possession_tables:
             table_body = stats_table.find("tbody")
@@ -124,6 +133,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                     "miscontrols": get_number(miscontrols)
                 })
 
+        # @deprecated: The data source has been removed from the website
         defense_tables = soup.find_all("table", id=re.compile(r"^stats_[a-zA-Z0-9]{8}_defense$"))
         for stats_table in defense_tables:
             table_body = stats_table.find("tbody")
@@ -146,6 +156,7 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                     "challenges_lost": get_number(challenges_lost)
                 })
 
+        # @deprecated: The data source has been removed from the website
         misc_tables = soup.find_all("table", id=re.compile(r"^stats_[a-zA-Z0-9]{8}_misc$"))
         for stats_table in misc_tables:
             table_body = stats_table.find("tbody")
@@ -187,9 +198,13 @@ class PlayerMatchStatsReceiver(BaseReceiver):
                 player_code = extract_player_code_from_cell(player)
 
                 gk_goals_against = row.find("td", {"data-stat": "gk_goals_against"})
+                # @deprecated: The data source has been removed from the website
                 gk_psxg = row.find("td", {"data-stat": "gk_psxg"})
+                # @deprecated: The data source has been removed from the website
                 gk_crosses = row.find("td", {"data-stat": "gk_crosses"})
+                # @deprecated: The data source has been removed from the website
                 gk_crosses_stopped = row.find("td", {"data-stat": "gk_crosses_stopped"})
+                # @deprecated: The data source has been removed from the website
                 gk_def_actions_outside_pen_area = row.find("td", {"data-stat": "gk_def_actions_outside_pen_area"})
 
                 player_stats_dict[player_code].update({

@@ -2,7 +2,7 @@ import re
 from enum import StrEnum
 from collections import defaultdict
 from typing import Dict, List, Optional, Any, Type
-from core.utils.parsing import normalize_url
+from urllib.parse import urlparse
 
 class InterceptType(StrEnum):
     HTTP = "http"
@@ -67,7 +67,8 @@ class InterceptPolicy:
         if not url:
             return rules[0]
 
-        normalized_url = normalize_url(url)
+        res = urlparse(url)
+        normalized_url = f"{res.scheme}://{res.netloc}{res.path}"
         for rule in rules:
             if re.search(rule.pattern, normalized_url):
                 return rule

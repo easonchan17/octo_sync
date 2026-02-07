@@ -1,16 +1,16 @@
 import pandas as pd
 from pathlib import Path
 from functools import cached_property
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 from core.store.postgres.models import Site
 from core.utils.downloader import FileDownloader
 from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
 from typing import Any, Dict, List, Optional, Tuple
-from core.config.league_registry import league_registry
+from core.store.league_provider import league_provider
 from core.store.postgres.models.fbref.market_odds import MarketOdds
 from core.store.postgres.models.fbref import Fixture as FbrefFixture
-from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
+from core.scheduler.tasks.common.team_resolver import TeamResolver
 from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
 from core.scheduler.synchronizers.fbref.market_odds_synchronizer import MarketOddsSynchronizer
 
@@ -53,14 +53,14 @@ class SyncMarketOdds(BaseTask):
 
     @cached_property
     def dataset_path(self) -> Path:
-        return Path(self.config_manager.get_config("training.artifact.dataset"))
+        return Path(self.config_manager.get_config("artifact.dataset.training"))
 
     def execute(self, *args, **kwargs) -> None:
         league_id = self.get_required_param("league_id")
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_config = league_registry.get_league_config(league_id, SiteName.FOOTBALL_DATA.value)
+        league_config = league_provider.get_league(league_id, SiteName.FOOTBALL_DATA.value)
         comp_code = league_config["id"]
         comp_name = league_config["name"]
         timezone = league_config["timezone"]

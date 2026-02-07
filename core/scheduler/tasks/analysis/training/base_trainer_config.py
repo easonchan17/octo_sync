@@ -73,8 +73,8 @@ class BaseTrainerConfig(ABC):
 
     @cached_property
     def model_dir(self) -> Path:
-        return Path(self.get_param(config_key='training.artifact.model'))
+        return Path(self.get_param(config_key='artifact.model'))
 
     @cached_property
     def dataset_dir(self) -> Path:
-        return Path(self.get_param(config_key='training.artifact.dataset'))
+        return Path(self.get_param(config_key='artifact.dataset.training'))

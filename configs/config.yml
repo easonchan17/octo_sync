@@ -32,7 +32,7 @@ browser:
 
 http:
   host: "0.0.0.0"
-  port: 8080
+  port: 80
 
 database:
   db_host: "localhost"
@@ -46,10 +46,13 @@ database:
     pool_timeout: 30
     pool_recycle: 300
 
+artifact:
+  model: artifacts/models
+  dataset:
+    training: artifacts/dataset/training
+    prediction: artifacts/dataset/prediction
+
 training:
-  artifact:
-    model: artifacts/models
-    dataset: artifacts/dataset
   tasks:
     winball:
       objective:

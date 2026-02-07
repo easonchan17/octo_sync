@@ -3,7 +3,7 @@ from decimal import Decimal
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Numeric
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 
 class EloRating(Base, StatusMixin, DictMixin):
     __tablename__ = 'elo_ratings'

@@ -3,15 +3,15 @@ import pandas as pd
 from typing import Optional
 from .base_deriver import BaseDeriver
 from ..constants import DEFAULT_DECIMALS
-from core.domain.constants import EloConfig
+from core.types.params import EloParams
 
 class EloRatingDeriver(BaseDeriver):
     def __init__(
         self,
         df: pd.DataFrame,
-        base_rating=EloConfig.BASE_RATING,
-        home_advantage=EloConfig.HOME_ADVANTAGE,
-        min_game_for_stability=EloConfig.MIN_GAME_FOR_STABILITY
+        base_rating=EloParams.BASE_RATING,
+        home_advantage=EloParams.HOME_ADVANTAGE,
+        min_game_for_stability=EloParams.MIN_GAME_FOR_STABILITY
     ) -> None:
         super().__init__(df)
         self.base_rating = base_rating
@@ -23,7 +23,6 @@ class EloRatingDeriver(BaseDeriver):
         self.ensure_column_exists('away_pre_rating')
         self.ensure_column_exists('home_game_count')
         self.ensure_column_exists('away_game_count')
-        self.ensure_column_exists('home_expected_score')
 
         home_trust_factor = ((self.df['home_game_count'] - 1) / self.min_game_for_stability).clip(upper=1.0)
         home_elo_rating_series = self.df['home_pre_rating'] * home_trust_factor + self.base_rating * (1 - home_trust_factor)
@@ -34,7 +33,8 @@ class EloRatingDeriver(BaseDeriver):
         elo_rating_diff_series = home_elo_rating_series - away_elo_rating_series
         home_net_advantage_series = elo_rating_diff_series + self.home_advantage
         match_balance_series = 0.1 + 0.9 * np.exp(-1 * (home_net_advantage_series / 400) ** 2)
-        home_expected_score_series = self.df['home_expected_score']
+
+        home_expected_score_series = (1 / (1 + 10 ** (-home_net_advantage_series / 400))).clip(0.01, 0.99)
 
         if decimals is not None:
             home_elo_rating_series = np.round(home_elo_rating_series, decimals)

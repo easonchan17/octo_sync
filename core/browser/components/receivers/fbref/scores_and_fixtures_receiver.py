@@ -4,13 +4,18 @@ from ..base_receiver import BaseReceiver
 from typing import List, Any, Optional, Dict
 from core.store.postgres.models.fbref.fixture import Fixture
 from core.store.postgres.models.fbref.match_result import MatchResult
-from core.domain import MatchStatus
-from core.utils.parsing import (
-    get_text, get_float, get_number,
+from core.types.enums import MatchStatus
+from core.utils.fbref_utils import (
+    get_text,
+    get_float,
+    get_number,
+    is_table_header,
     extract_goals_from_cell,
-    is_table_header, extract_comp_code_from_cell,
-    extract_match_code_from_cell, extract_venue_epoch,
-    extract_team_code_from_cell, extract_match_report_url
+    extract_comp_code_from_cell,
+    extract_match_code_from_cell,
+    extract_venue_epoch,
+    extract_team_code_from_cell,
+    extract_match_report_url
 )
 
 class MatchRecord:
@@ -212,7 +217,9 @@ class ScoresAndFixturesReceiver(BaseReceiver):
             gf = row.find("td", {"data-stat": "goals_for"})
             ga = row.find("td", {"data-stat": "goals_against"})
             opponent = row.find("td", {"data-stat": "opponent"})
+            # @deprecated: The data source has been removed from the website
             xg_for = row.find("td", {"data-stat": "xg_for"})
+            # @deprecated: The data source has been removed from the website
             xg_against = row.find("td", {"data-stat": "xg_against"})
             possession = row.find("td", {"data-stat": "possession"})
             formation = row.find("td", {"data-stat": "formation"})

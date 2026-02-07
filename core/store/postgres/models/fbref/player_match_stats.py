@@ -1,7 +1,7 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, String, Boolean
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 
 class PlayerMatchStats(Base, StatusMixin, DictMixin):
     __tablename__ = 'player_match_stats'

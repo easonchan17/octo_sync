@@ -1,0 +1,52 @@
+from threading import Lock
+from typing import Optional, Dict, Any
+from core.utils.singleton import Singleton
+from core.scheduler.task_executor import TaskExecutor
+from core.server.services.base_service import BaseService
+from core.scheduler.tasks.base_task import BaseTask, HookedTask
+from core.registry import Registry
+
+class TaskService(BaseService, Singleton):
+    def __init__(self) -> None:
+        super().__init__()
+        self.tasks: Dict[str, BaseTask] = {}
+        self._lock = Lock()
+
+    def _cleanup_task(self, name: str) -> Optional[BaseTask]:
+        with self._lock:
+            task = self.tasks.pop(name, None)
+            if not task:
+                self.logger.warning(f"Task {name} not found")
+                return None
+
+            self.logger.info(f"Task {name} cleaned up")
+            return task
+
+    def start_task(self, action: str, site_name: str, resource: str, payload: Optional[Dict[str, Any]], is_force: Optional[bool] = False) -> str:
+        with self._lock:
+            name = f"{action}.{site_name}.{resource}"
+            if name in self.tasks:
+                return ""
+
+            site = self.get_site(site_name)
+            task = Registry.get_target(name)(site, payload)
+            task = HookedTask(task, post_execute=lambda: self._cleanup_task(name))
+            task.enable_async_mode()
+
+            if is_force:
+                task.enable_force_mode()
+
+            self.tasks[name] = task
+            return TaskExecutor.get_instance().submit(task)
+
+    def stop_task(self, action: str, site_name: str, resource: str) -> str:
+        with self._lock:
+            name = f"{action}.{site_name}.{resource}"
+            task = self.tasks.get(name, None)
+
+            if not task:
+                self.logger.warning(f"Task {name} not found")
+                return ""
+
+            task.cancel()
+            return task.id

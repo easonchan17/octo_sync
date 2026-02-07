@@ -1,7 +1,7 @@
 import math
 from typing import List, Dict, Any, Optional
 from core.store.postgres.models import MatchResult
-from core.domain.constants import EloConfig
+from core.types.params import EloParams
 
 class EloRatingCalculator:
     def __init__(
@@ -10,11 +10,11 @@ class EloRatingCalculator:
         seasons: Dict[str, int],
         game_counts: Dict[str, int],
         matches: List[MatchResult],
-        base_rating: float = EloConfig.BASE_RATING,
-        k_factor: float = EloConfig.K_FACTOR,
-        home_advantage: float = EloConfig.HOME_ADVANTAGE,
-        reversion_rate: float = EloConfig.REVERSION_RATE,
-        min_game_for_stability: int = EloConfig.MIN_GAME_FOR_STABILITY
+        base_rating: float = EloParams.BASE_RATING,
+        k_factor: float = EloParams.K_FACTOR,
+        home_advantage: float = EloParams.HOME_ADVANTAGE,
+        reversion_rate: float = EloParams.REVERSION_RATE,
+        min_game_for_stability: int = EloParams.MIN_GAME_FOR_STABILITY
     ) -> None:
         self.matches = matches
         self.ratings = dict(ratings)
@@ -70,7 +70,7 @@ class EloRatingCalculator:
                 "venue": match.venue or "Home",
                 "goal_diff": goal_diff,
                 "pre_rating": float(pre_home_rating),
-                "expected_score": float(expected_score),
+                # "expected_score": float(expected_score),
                 "post_rating": float(post_home_rating),
                 "game_count": self.game_counts[home_code]
             })
@@ -83,7 +83,7 @@ class EloRatingCalculator:
                 "venue": match.venue or "Away",
                 "goal_diff": -goal_diff,
                 "pre_rating": float(pre_away_rating),
-                "expected_score": 1.0 - float(expected_score),
+                # "expected_score": 1.0 - float(expected_score),
                 "post_rating": float(post_away_rating),
                 "game_count": self.game_counts[away_code]
             })
