@@ -20,7 +20,7 @@ VERSIONS_DIR = project_root / "alembic/versions"
 
 # Import models after sys.path setup
 from core.store.postgres.models import Base
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 
 def require_target_schema() -> str:
     schema = os.getenv('DB_SCHEMA')
@@ -81,7 +81,7 @@ def make_filters(target_schema: str) -> Tuple[Callable, Callable]:
             if name.startswith('alembic_version_'):
                 return False
 
-            schema_name = parent_names.get("schema")
+            schema_name = parent_names.get("schema_name") or parent_names.get("schema")
 
             if schema_name is None:
                 return True
@@ -105,6 +105,9 @@ def make_filters(target_schema: str) -> Tuple[Callable, Callable]:
 
             if schema_name == 'public':
                 return target_schema == 'public'
+
+            if reflected:
+                return schema_name == target_schema
 
             allowed_sites = object.info.get('sites', [])
             return target_schema in allowed_sites
@@ -140,8 +143,11 @@ def build_target_metadata(target_schema: str) -> MetaData:
     target_metadata = MetaData()
 
     for table in Base.metadata.tables.values():
+        if target_schema != 'public':
+            allowed_sites = table.info.get('sites', [])
+            if target_schema not in allowed_sites:
+                continue
         schema = table.schema
-
         if target_schema != 'public' and table.schema == '{schema}':
             schema = target_schema
 

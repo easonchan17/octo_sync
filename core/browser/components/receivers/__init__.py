@@ -12,9 +12,6 @@ from .fbref import (
 from .pinnacle import (
     OddsReceiver
 )
-from .fotmob import (
-    FixtureReceiver
-)
 
 __all__ = [
     'BaseReceiver',
@@ -26,6 +23,5 @@ __all__ = [
     'PassingReceiver',
     'PlayerMatchStatsReceiver',
     'ShootingReceiver',
-    'OddsReceiver',
-    'FixtureReceiver'
+    'OddsReceiver'
 ]

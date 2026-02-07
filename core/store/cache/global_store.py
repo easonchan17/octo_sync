@@ -1,41 +1,47 @@
 import copy
-from threading import RLock
+from threading import Lock
+from functools import lru_cache
 from typing import Dict, Any, Optional
-from core.utils.singleton import Singleton
+from types import MappingProxyType
 
-class GlobalStore(Singleton):
+class GlobalStore:
     def __init__(self):
-        self._lock = RLock()
+        self._lock = Lock()
         self._cache: Dict[str, Any] = {}
 
     def set(self, key: str, value: Any) -> None:
-        with self._lock:
-            keys = key.split('.')
-            current = self._cache
+        keys = key.split('.')
+        new_value = copy.deepcopy(value)
 
+        with self._lock:
+            current = self._cache
             for k in keys[:-1]:
                 if k not in current or not isinstance(current[k], dict):
                     current[k] = {}
                 current = current[k]
 
-            current[keys[-1]] = copy.deepcopy(value)
+            current[keys[-1]] = new_value
 
     def get(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
-        with self._lock:
-            keys = key.split('.')
-            current = self._cache
+        keys = key.split('.')
 
+        with self._lock:
+            current = self._cache
             for k in keys:
                 if isinstance(current, dict) and k in current:
                     current = current[k]
                 else:
                     return default
 
-            return copy.deepcopy(current)
+            if isinstance(current, dict):
+                return MappingProxyType(current)
+
+            return current
 
     def remove(self, key: str) -> None:
+        keys = key.split('.')
+
         with self._lock:
-            keys = key.split('.')
             current = self._cache
 
             if len(keys) == 1:
@@ -54,3 +60,7 @@ class GlobalStore(Singleton):
     def clear(self) -> None:
         with self._lock:
             self._cache.clear()
+
+@lru_cache(maxsize=None)
+def get_global_store() -> GlobalStore:
+    return GlobalStore()

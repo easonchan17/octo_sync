@@ -1,5 +1,6 @@
 from copy import deepcopy
 from skopt import BayesSearchCV
+from core.registry import Registry
 from typing import Dict, Any, Optional
 from core.store.postgres.models import Site
 from core.scheduler.tasks.analysis.models.xgboost_classifier import XGBoostClassifier
@@ -9,6 +10,7 @@ from skopt.space import Real, Integer
 from ..base_trainer import BaseTrainer
 from ..base_tracker import BaseTracker
 
+@Registry.task('winball.training')
 class WinballTrainer(BaseTrainer):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()

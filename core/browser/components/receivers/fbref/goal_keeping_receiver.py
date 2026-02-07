@@ -4,10 +4,12 @@ from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.goal_keeping import GoalKeeping
-from core.utils.parsing import (
-    get_number,is_table_header,
+from core.utils.fbref_utils import (
+    get_number,
+    is_table_header,
+    get_float,
     extract_match_code_from_cell,
-    get_float, extract_venue_epoch,
+    extract_venue_epoch,
     extract_team_code_from_cell,
     extract_team_code_from_url
 )
@@ -53,12 +55,19 @@ class GoalkeepingReceiver(BaseReceiver):
                 gk_shots_on_target_against = row.find("td", {"data-stat": "gk_shots_on_target_against"})
                 gk_saves = row.find("td", {"data-stat": "gk_saves"})
                 gk_save_pct = row.find("td", {"data-stat": "gk_save_pct"})
+                # @deprecated: The data source has been removed from the website
                 gk_psxg = row.find("td", {"data-stat": "gk_psxg"})
+                # @deprecated: The data source has been removed from the website
                 gk_psxg_net = row.find("td", {"data-stat": "gk_psxg_net"}) # Post-shot expected goals - ga
+                # @deprecated: The data source has been removed from the website
                 gk_crosses = row.find("td", {"data-stat": "gk_crosses"})
+                # @deprecated: The data source has been removed from the website
                 gk_crosses_stopped = row.find("td", {"data-stat": "gk_crosses_stopped"})
+                # @deprecated: The data source has been removed from the website
                 gk_crosses_stopped_pct = row.find("td", {"data-stat": "gk_crosses_stopped_pct"})
+                # @deprecated: The data source has been removed from the website
                 gk_def_actions_outside_pen_area = row.find("td", {"data-stat": "gk_def_actions_outside_pen_area"})
+                # @deprecated: The data source has been removed from the website
                 gk_avg_distance_def_actions = row.find("td", {"data-stat": "gk_avg_distance_def_actions"})
                 kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 

@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
+from datetime import datetime
+from sqlalchemy import and_, or_
 from typing import Any, Dict, List, Optional
+from core.types.enums import MatchStatus
 from core.store.postgres.models import (
     MatchResult, PlayerMatchStats
 )
@@ -12,14 +15,14 @@ from ..feature_engineering import (
     PlayerTimeSeriesDeriver
 )
 from ..feature_engineering import OutfieldFeatureBenchmark, GoalkeeperFeatureBenchmark
-from .base_analyzer import BaseAnalyzer
+from .base_stats_analyzer import BaseStatsAnalyzer
 from ..feature_engineering.constants import (
     EPSILON, POSITION_COL, PRIMARY_POSITION_COL,
-    TEAM_CODE_COL, HOME_CODE_COL, NOTES_COL,
+    TEAM_CODE_COL, HOME_CODE_COL,
     HOME_POSSESSION_COL, AWAY_POSSESSION_COL
 )
 
-class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
+class OutfieldPlayerStatsAnalyzer(BaseStatsAnalyzer):
     TIME_SCALE_BASED_FEATURES = [
         "non_penalty_goals", "shots", "shots_on_target", "npxg",
         "xg_assist", "shot_creating_actions", "progressive_passes", "key_passes",
@@ -112,7 +115,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
         # "aerials_lost_per_90_ema_5", "aerials_lost_per_90_ema_20"
     ]
 
-    def query_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
+    def query_batch_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
         with self.db.get_session(self.site.get_namespace()) as session:
             query = session.query(
                 PlayerMatchStats,
@@ -124,6 +127,7 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
                 MatchResult.comp_code == comp_code,
                 MatchResult.season >= min_season,
                 MatchResult.season <= max_season,
+                MatchResult.match_status.in_(MatchStatus.natural_finals()),
                 ~PlayerMatchStats.position.like('GK%')
             ).order_by(MatchResult.kickoff_time, PlayerMatchStats.player_code)
 
@@ -181,16 +185,111 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
 
             return data
 
-    def do_feature_engineering(
-        self,
-        stats: List[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Optional[pd.DataFrame]:
+    def query_single_raw_data(self, home_code: str, away_code: str, kickoff_time: datetime) -> List[Dict[str, Any]]:
+        with self.db.get_session(self.site.get_namespace()) as session:
+            home_stmt = session.query(MatchResult.match_code).filter(
+                or_(MatchResult.home_code == home_code, MatchResult.away_code == home_code),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(20)
+
+            away_stmt = session.query(MatchResult.match_code).filter(
+                or_(MatchResult.home_code == away_code, MatchResult.away_code == away_code),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(20)
+
+            h2h_stmt = session.query(MatchResult.match_code).filter(
+                or_(
+                    and_(MatchResult.home_code == home_code, MatchResult.away_code == away_code),
+                    and_(MatchResult.home_code == away_code, MatchResult.away_code == home_code)
+                ),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(5)
+
+            final_id_query = home_stmt.union(away_stmt, h2h_stmt)
+            match_codes = session.execute(final_id_query).scalars().all()
+
+            current_match = {
+                "home_code": home_code,
+                "away_code": away_code,
+                "kickoff_time": kickoff_time
+            }
+            if not match_codes:
+                return [current_match]
+
+            history_matches = self._query_player_stats_by_match_codes(session, match_codes)
+            return history_matches + [current_match]
+
+    def _query_player_stats_by_match_codes(self, session, match_codes: List[str]) -> List[Dict[str, Any]]:
+        query = session.query(
+            PlayerMatchStats,
+            MatchResult
+        ).join(
+            MatchResult,
+            PlayerMatchStats.match_code == MatchResult.match_code
+        ).filter(
+            MatchResult.match_code.in_(match_codes),
+            ~PlayerMatchStats.position.like('GK%')
+        ).order_by(MatchResult.kickoff_time, PlayerMatchStats.player_code)
+
+        results = query.all()
+
+        data = []
+        for row in results:
+            player_stat = row[0]
+            match_result = row[1]
+
+            record = {
+                "match_code": match_result.match_code,
+                "season": match_result.season,
+                "comp_name": match_result.comp_name,
+                "kickoff_time": match_result.kickoff_time,
+                "venue": match_result.venue,
+                "home_team": match_result.home_team,
+                "home_code": match_result.home_code,
+                "away_team": match_result.away_team,
+                "away_code": match_result.away_code,
+                "home_possession": match_result.home_possession,
+                "away_possession": match_result.away_possession,
+                "notes": match_result.notes,
+                "player_code": player_stat.player_code,
+                "team_code": player_stat.team_code,
+                "player_name": player_stat.player_name,
+                "position": player_stat.position,
+                "minutes": player_stat.minutes,
+                "is_starter": player_stat.is_starter,
+                "goals": player_stat.goals,
+                "penalties_made": player_stat.penalties_made,
+                "shots": player_stat.shots,
+                "shots_on_target": player_stat.shots_on_target,
+                "npxg": player_stat.npxg,
+                "xg_assist": player_stat.xg_assist,
+                "shot_creating_actions": player_stat.shot_creating_actions,
+                "progressive_passes": player_stat.progressive_passes,
+                "key_passes": player_stat.key_passes,
+                "progressive_carries": player_stat.progressive_carries,
+                "take_ons_won": player_stat.take_ons_won,
+                "fouls_drawn": player_stat.fouls_drawn,
+                "dispossessed": player_stat.dispossessed,
+                "miscontrols": player_stat.miscontrols,
+                "tackles": player_stat.tackles,
+                "tackles_won": player_stat.tackles_won,
+                "blocks": player_stat.blocks,
+                "interceptions": player_stat.interceptions,
+                "ball_recoveries": player_stat.ball_recoveries,
+                "challenges_lost": player_stat.challenges_lost,
+                "aerials_won": player_stat.aerials_won,
+                "aerials_lost": player_stat.aerials_lost
+            }
+
+            data.append(record)
+
+        return data
+
+    def do_feature_engineering(self, stats: List[Dict[str, Any]], is_single: bool = False) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
-        df = FeatureSelector(df).filter_rows(
-            NOTES_COL,
-            lambda x: x.str.startswith(("Match Postponed", "Match Cancelled", "Match awarded to"), na=False)
-        )
 
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         FormulaDeriver(df).derive("non_penalty_goals", "goals - penalties_made")
@@ -218,11 +317,10 @@ class OutfieldPlayerStatsAnalyzer(BaseAnalyzer):
             FormulaDeriver(df).derive(f"{name}_form", form_formula)
             FormulaDeriver(df).derive(f"{name}_ability", ability_formula)
 
-        required_features = options.get("required_features", self.REQUIRED_FEATURES)
-        return FeatureSelector(df).select_columns(required_features)
+        return FeatureSelector(df).select_columns(self.REQUIRED_FEATURES)
 
 
-class GoalkeeperStatsAnalyzer(BaseAnalyzer):
+class GoalkeeperStatsAnalyzer(BaseStatsAnalyzer):
     TIME_SCALE_BASED_FEATURES = [
         "gk_goals_against", "gk_psxg", "gk_crosses",
         "gk_crosses_stopped", "gk_def_actions_outside_pen_area"
@@ -248,7 +346,8 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         "home_team", "home_code", "away_team", "away_code",
         "player_code", "team_code", "player_name",
         "rest_days", "is_starter", "minutes",
-        "gk_form", "gk_ability"
+        "gk_form",
+        "gk_ability"
         # "gk_goals_against_per_90_ema_5", "gk_goals_against_per_90_ema_20",
         # "gk_psxg_per_90_ema_5", "gk_psxg_per_90_ema_20",
         # "gk_crosses_per_90_ema_5", "gk_crosses_per_90_ema_20",
@@ -256,7 +355,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
         # "gk_def_actions_outside_pen_area_per_90_ema_5", "gk_def_actions_outside_pen_area_per_90_ema_20"
     ]
 
-    def query_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
+    def query_batch_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
         with self.db.get_session(self.site.get_namespace()) as session:
             query = session.query(
                 PlayerMatchStats,
@@ -268,6 +367,7 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
                 MatchResult.comp_code == comp_code,
                 MatchResult.season >= min_season,
                 MatchResult.season <= max_season,
+                MatchResult.match_status.in_(MatchStatus.natural_finals()),
                 PlayerMatchStats.position.like('GK%')
             ).order_by(MatchResult.kickoff_time, PlayerMatchStats.player_code)
 
@@ -290,7 +390,6 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
                     "away_code": match_result.away_code,
                     "home_possession": match_result.home_possession,
                     "away_possession": match_result.away_possession,
-                    "notes": match_result.notes,
                     "player_code": player_stat.player_code,
                     "team_code": player_stat.team_code,
                     "player_name": player_stat.player_name,
@@ -308,16 +407,94 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
 
             return data
 
-    def do_feature_engineering(
-        self,
-        stats: List[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Optional[pd.DataFrame]:
+    def query_single_raw_data(self, home_code: str, away_code: str, kickoff_time: datetime) -> List[Dict[str, Any]]:
+        with self.db.get_session(self.site.get_namespace()) as session:
+            home_stmt = session.query(MatchResult.match_code).filter(
+                or_(MatchResult.home_code == home_code, MatchResult.away_code == home_code),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(20)
+
+            away_stmt = session.query(MatchResult.match_code).filter(
+                or_(MatchResult.home_code == away_code, MatchResult.away_code == away_code),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(20)
+
+            h2h_stmt = session.query(MatchResult.match_code).filter(
+                or_(
+                    and_(MatchResult.home_code == home_code, MatchResult.away_code == away_code),
+                    and_(MatchResult.home_code == away_code, MatchResult.away_code == home_code)
+                ),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(5)
+
+            final_id_query = home_stmt.union(away_stmt, h2h_stmt)
+            match_codes = session.execute(final_id_query).scalars().all()
+
+            current_match = {
+                "home_code": home_code,
+                "away_code": away_code,
+                "kickoff_time": kickoff_time
+            }
+            if not match_codes:
+                return [current_match]
+
+            history_matches = self._query_gk_stats_by_match_codes(session, match_codes)
+            return history_matches + [current_match]
+
+    def _query_gk_stats_by_match_codes(self, session, match_codes: List[str]) -> List[Dict[str, Any]]:
+        query = session.query(
+            PlayerMatchStats,
+            MatchResult
+        ).join(
+            MatchResult,
+            PlayerMatchStats.match_code == MatchResult.match_code
+        ).filter(
+            MatchResult.match_code.in_(match_codes),
+            PlayerMatchStats.position.like('GK%')
+        ).order_by(MatchResult.kickoff_time, PlayerMatchStats.player_code)
+
+        results = query.all()
+
+        data = []
+        for row in results:
+            player_stat = row[0]
+            match_result = row[1]
+
+            record = {
+                "match_code": match_result.match_code,
+                "season": match_result.season,
+                "comp_name": match_result.comp_name,
+                "kickoff_time": match_result.kickoff_time,
+                "venue": match_result.venue,
+                "home_team": match_result.home_team,
+                "home_code": match_result.home_code,
+                "away_team": match_result.away_team,
+                "away_code": match_result.away_code,
+                "home_possession": match_result.home_possession,
+                "away_possession": match_result.away_possession,
+                "notes": match_result.notes,
+                "player_code": player_stat.player_code,
+                "team_code": player_stat.team_code,
+                "player_name": player_stat.player_name,
+                "position": player_stat.position,
+                "minutes": player_stat.minutes,
+                "is_starter": player_stat.is_starter,
+                "gk_goals_against": player_stat.gk_goals_against,
+                "gk_psxg": player_stat.gk_psxg,
+                "gk_crosses": player_stat.gk_crosses,
+                "gk_crosses_stopped": player_stat.gk_crosses_stopped,
+                "gk_def_actions_outside_pen_area": player_stat.gk_def_actions_outside_pen_area
+            }
+
+            data.append(record)
+
+        return data
+
+    def do_feature_engineering(self, stats: List[Dict[str, Any]], is_single: bool = False) -> Optional[pd.DataFrame]:
         df = pd.DataFrame(stats)
-        df = FeatureSelector(df).filter_rows(
-            NOTES_COL,
-            lambda x: x.str.startswith(("Match Postponed", "Match Cancelled", "Match awarded to"), na=False)
-        )
 
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         DefaultImputer(df).impute("gk_def_actions_outside_pen_area", 0)
@@ -338,5 +515,4 @@ class GoalkeeperStatsAnalyzer(BaseAnalyzer):
             FormulaDeriver(df).derive(f"{name}_form", form_formula)
             FormulaDeriver(df).derive(f"{name}_ability", ability_formula)
 
-        required_features = options.get("required_features", self.REQUIRED_FEATURES)
-        return FeatureSelector(df).select_columns(required_features)
+        return FeatureSelector(df).select_columns(self.REQUIRED_FEATURES)

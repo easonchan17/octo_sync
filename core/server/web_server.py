@@ -4,7 +4,7 @@ from core.utils.thread import Thread
 from core.utils.singleton import Singleton
 from core.config.config_manager import ConfigManager
 
-class WebServer(Thread, Singleton):
+class WebServer(Thread, Singleton): #TODO remove singleton, support multiple instances 8080 8000
     def __init__(self) -> None:
         super().__init__()
         self.host = None

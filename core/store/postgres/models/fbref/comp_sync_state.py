@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import Column, Integer, DateTime, Index, CHAR, BigInteger
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 
 class CompSyncFlag(IntFlag):
     TEAMS = 1

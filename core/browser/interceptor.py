@@ -10,7 +10,7 @@ from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, List, Optional, Any
-from core.utils.parsing import is_valid_url
+from urllib.parse import urlparse
 from core.browser.rate_limiter import RateLimiter
 from core.config.config_manager import ConfigManager
 from core.browser.intercept_monitor import InterceptMonitor
@@ -277,18 +277,27 @@ class Interceptor(Thread, Singleton):
         except Exception as e:
             self.logger.error(f"Failed to process page content from {url} {dom_rule.receiver}: {e}", exc_info=True)
 
+    def _is_valid_url(self, url: str) -> bool:
+        if not url or not isinstance(url, str):
+            return False
+        try:
+            res = urlparse(url)
+            return bool(res.scheme and res.netloc)
+        except Exception:
+            return False
+
     async def _open_page(
         self,
         url: str,
         policy: Optional[InterceptPolicy] = None,
         query_params: Optional[dict[str, Any]] = None
     ) -> Optional[List[Any]]:
-        if not is_valid_url(url):
-            self.logger.error(f"Invalid URL: {url}")
-            return None
-
         if policy is None:
             self.logger.error(f"Policy is None for URL: {url}")
+            return None
+
+        if not self._is_valid_url(url):
+            self.logger.error(f"Invalid URL: {url}")
             return None
 
         retry_count = policy.retry_count

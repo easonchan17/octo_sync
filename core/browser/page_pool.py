@@ -17,7 +17,7 @@ class PagePool:
     def _safe_release(self, *args) -> None:
         try:
             self._semaphore.release()
-            self.logger.info(f"Released semaphore successfully.")
+            self.logger.debug(f"Released semaphore successfully.")
         except Exception as e:
             self.logger.error(f"Error releasing semaphore: {e}")
 

@@ -255,7 +255,7 @@ class TurnstileSolver:
         max_attempts: int = 12
     ) -> bool:
         if not await self._is_challenge(page_context, timeout=timeout):
-            self.logger.info(">>> No challenge detected")
+            self.logger.debug(">>> No challenge detected")
             return True
 
         return await self._try_click_checkbox(

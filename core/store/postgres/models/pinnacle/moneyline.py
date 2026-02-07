@@ -1,7 +1,7 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, BigInteger, Integer, DateTime, Index, Numeric
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 
 class Moneyline(Base, StatusMixin, DictMixin):
     __tablename__ = 'pinnacle_moneyline'

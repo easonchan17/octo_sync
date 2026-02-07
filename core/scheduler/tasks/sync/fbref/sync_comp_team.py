@@ -3,7 +3,7 @@ from core.store.postgres.models import Site
 from core.browser.interceptor import TaskType
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.intercept_policy import InterceptPolicy
-from core.config.league_registry import league_registry
+from core.store.league_provider import league_provider
 from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
 from core.browser.components.receivers.fbref.comp_team_receiver import CompTeamReceiver
 from core.scheduler.synchronizers.fbref.comp_team_synchronizer import CompTeamSynchronizer
@@ -33,7 +33,7 @@ class SyncCompTeam(BaseTask):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_config = league_registry.get_league_config(league_id, self.site.name)
+        league_config = league_provider.get_league(league_id, self.site.name)
         comp_code = league_config["id"]
         comp_name = league_config["name"]
         comp_name_with_dash = comp_name.replace(" ", "-")

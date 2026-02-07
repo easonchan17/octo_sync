@@ -3,8 +3,7 @@ from typing import Optional, List, Tuple
 from datetime import datetime, timedelta, timezone
 from core.server.services.base_service import BaseService
 from core.store.postgres.models.fotmob import Fixture
-from core.domain import MatchStatus
-from core.config.league_config import LEAGUE_METADATA
+from core.types.enums import MatchStatus
 from core.server.models.api_models import FixtureStatus
 
 

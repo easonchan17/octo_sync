@@ -2,8 +2,7 @@ from sqlalchemy.sql import func
 from typing import Dict, Any, List
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float, Text
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from core.domain import MatchStatus
-from core.domain.enums import SiteName
+from core.types.enums import MatchStatus, SiteName
 
 
 class MatchResult(Base, StatusMixin, DictMixin):

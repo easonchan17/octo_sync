@@ -1,16 +1,20 @@
-
+import sys
 import signal
 import argparse
 from threading import Event
-from core.scheduler.worker import Worker
 from core.server.web_server import WebServer
 from core.browser.interceptor import Interceptor
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
-from core.registry.workflows.cron import init_cron_jobs
+from core.scheduler.task_executor import TaskExecutor
 from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.scheduler.cron_manager import get_cron_manager
+from core.scheduler.poll_manager import get_poll_manager
 from core.config.env_manager import env_manager
-from core.scheduler.cron import Cron
+
+if sys.version_info < (3, 11):
+    sys.exit("Python 3.14 or higher is required")
+
 
 logger = LoggerManager.get_instance().get_logger(__name__)
 shutdown_event = Event()
@@ -18,17 +22,21 @@ shutdown_event = Event()
 def signal_handler(signum, frame) -> None:
     logger.info(f"Received signal {signum}, shutting down gracefully...")
 
+    logger.info("🔧 Stopping poll manager...")
+    get_poll_manager().stop()
+    logger.info("✅ Poll manager stopped")
+
     logger.info("🔧 Stopping cron...")
-    Cron.get_instance().stop()
+    get_cron_manager().stop()
     logger.info("✅ Cron stopped")
 
     logger.info("🔧 Stopping web server...")
     WebServer.get_instance().stop()
     logger.info("✅ Web server stopped")
 
-    logger.info("🔧 Stopping worker...")
-    Worker.get_instance().stop()
-    logger.info("✅ Worker stopped")
+    logger.info("🔧 Stopping task executor...")
+    TaskExecutor.get_instance().stop()
+    logger.info("✅ TaskExecutor stopped")
 
     if not env_manager.is_ml:
         logger.info("🔧 Stopping network interceptor...")
@@ -76,17 +84,17 @@ def run_app() -> None:
         Interceptor.get_instance().start()
         logger.info("✅ Network interceptor started")
 
-    logger.info("🔧 Starting worker...")
-    Worker.get_instance().start()
-    logger.info("✅ Worker started")
+    logger.info("🔧 Starting task executor...")
+    TaskExecutor.get_instance().start()
+    logger.info("✅ TaskExecutor started")
 
     logger.info("🔧 Starting cron...")
-    Cron.get_instance().start()
+    get_cron_manager().start()
     logger.info("✅ Cron started")
 
-    logger.info("🔧 Initializing cron jobs...")
-    init_cron_jobs()
-    logger.info("✅ Cron jobs initialized")
+    logger.info("🔧 Starting poll manager...")
+    get_poll_manager().start()
+    logger.info("✅ Poll manager started")
 
     logger.info("🌐 Starting web server...")
     WebServer.get_instance().start()

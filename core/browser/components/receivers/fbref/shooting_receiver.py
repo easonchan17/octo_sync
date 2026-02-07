@@ -4,8 +4,10 @@ from typing import List, Any, Dict
 from datetime import datetime, timezone
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.shooting import Shooting
-from core.utils.parsing import (
-    get_number, get_float,is_table_header,
+from core.utils.fbref_utils import (
+    get_number,
+    get_float,
+    is_table_header,
     extract_match_code_from_cell,
     extract_venue_epoch,
     extract_team_code_from_cell,
@@ -54,11 +56,15 @@ class ShootingReceiver(BaseReceiver):
                 shots = row.find("td", {"data-stat": "shots"})
                 shots_on_target = row.find("td", {"data-stat": "shots_on_target"})
                 shots_on_target_pct = row.find("td", {"data-stat": "shots_on_target_pct"})
+                # @deprecated: The data source has been removed from the website
                 average_shot_distance = row.find("td", {"data-stat": "average_shot_distance"})
+                # @deprecated: The data source has been removed from the website
                 shots_free_kicks = row.find("td", {"data-stat": "shots_free_kicks"})
                 pens_made = row.find("td", {"data-stat": "pens_made"})
                 pens_att = row.find("td", {"data-stat": "pens_att"})
+                # @deprecated: The data source has been removed from the website
                 xg = row.find("td", {"data-stat": "xg"})
+                # @deprecated: The data source has been removed from the website
                 npxg = row.find("td", {"data-stat": "npxg"})
                 kickoff_time = datetime.fromtimestamp(int(venue_epoch), tz=timezone.utc)
 
