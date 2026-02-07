@@ -1,5 +1,5 @@
 from typing import Any
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 from core.store.postgres.models import FbrefFixture, FotmobFixture
 from ..base_mapper import BaseMapper
 

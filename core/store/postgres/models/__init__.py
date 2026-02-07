@@ -1,8 +1,8 @@
 # PostgreSQL models package
 from .base_model import Base, Status, StatusMixin, DictMixin
-from .common import Site, TrainingRecord, SysVal
+from .common import Site, TrainingRecord, SysVal, League
 from .pinnacle import Fixture as PinnacleFixture, Moneyline, Spread
-from .fotmob import Fixture as FotmobFixture, Lineup
+from .fotmob import Fixture as FotmobFixture, MatchLineup
 
 from .fbref import (
     CompTeam,
@@ -52,6 +52,7 @@ __all__ = [
     'MarketOdds',
     'EloRating',
     'FotmobFixture',
-    'Lineup',
-    'SysVal'
+    'MatchLineup',
+    'SysVal',
+    'League'
 ]

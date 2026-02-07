@@ -2,7 +2,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 
 class DefensiveAction(Base, StatusMixin, DictMixin):
     __tablename__ = 'defensive_actions'

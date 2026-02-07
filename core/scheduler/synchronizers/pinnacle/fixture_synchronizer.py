@@ -1,11 +1,7 @@
-from typing import List, Dict, Any
-from datetime import datetime
-from sqlalchemy.dialects.postgresql import insert
+from typing import List, Any
 from core.store.postgres.models import Site
-from core.store.postgres.models.fotmob.fixture import Fixture as FotmobFixture
-from core.store.postgres.models.pinnacle.fixture import Fixture as PinnacleFixture
-from core.domain.enums import SiteName
-from core.scheduler.tasks.sync.common.team_resolver import TeamResolver
+from sqlalchemy.dialects.postgresql import insert
+from core.store.postgres.models.pinnacle.fixture import Fixture
 from ..base_synchronizer import BaseSynchronizer
 
 class FixtureSynchronizer(BaseSynchronizer):
@@ -15,19 +11,20 @@ class FixtureSynchronizer(BaseSynchronizer):
             return
 
         with self.db.get_session(site.get_namespace()) as session:
-            insert_stmt = insert(PinnacleFixture).values(matches)
+            insert_stmt = insert(Fixture).values(matches)
             assignment, where_clause = self.build_upsert_clauses(
-                PinnacleFixture,
+                Fixture,
                 insert_stmt,
                 {
-                    PinnacleFixture.id.key,
-                    PinnacleFixture.created_at.key,
-                    PinnacleFixture.match_id.key,
-                    PinnacleFixture.updated_at.key
+                    Fixture.id.key,
+                    Fixture.created_at.key,
+                    Fixture.match_id.key,
+                    Fixture.updated_at.key,
+                    Fixture.fixture_id.key
                 }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=[PinnacleFixture.match_id.key],
+                index_elements=[Fixture.match_id.key],
                 set_=assignment,
                 where=where_clause
             )

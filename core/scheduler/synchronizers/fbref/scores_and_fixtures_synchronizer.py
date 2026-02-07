@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import or_, tuple_
 from sqlalchemy.orm import Session
-from core.domain.enums import UpsertStrategy
+from core.types.enums import UpsertStrategy
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import MatchResult, Site, MatchStatsSyncFlag

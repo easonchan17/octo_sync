@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 from ..base_model import Base, StatusMixin, DictMixin, Status
 from sqlalchemy import Column, Integer, String, DateTime, Index, BigInteger
-from core.domain.enums import SiteName
+from core.types.enums import SiteName
 
 class MatchStatsSyncFlag(IntFlag):
     MATCH_RESULT = 1

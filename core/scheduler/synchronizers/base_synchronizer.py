@@ -1,6 +1,8 @@
-from typing import List, Any, Dict, Set, Tuple
-from abc import ABC, abstractmethod
+import json
+from abc import ABC
 from sqlalchemy import func, or_
+from typing import List, Any, Dict, Set, Tuple
+from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
 from core.logger.logger_manager import LoggerManager
@@ -33,13 +35,24 @@ class BaseSynchronizer(ABC):
         self,
         model: Any,
         insert_stmt: insert,
-        immutable_cols: Set[str]
+        immutable_cols: Set[str],
+        preserve_existing: bool = True
     ) -> Tuple[Dict[str, Any], Any]:
-        assignment = {
-            col.name: getattr(insert_stmt.excluded, col.name)
-            for col in model.__table__.columns
-            if col.name not in immutable_cols
-        }
+        if preserve_existing:
+            assignment = {
+                col.name: coalesce(
+                    getattr(insert_stmt.excluded, col.name),
+                    getattr(model, col.name)
+                )
+                for col in model.__table__.columns
+                if col.name not in immutable_cols
+            }
+        else:
+            assignment = {
+                col.name: getattr(insert_stmt.excluded, col.name)
+                for col in model.__table__.columns
+                if col.name not in immutable_cols
+            }
         assignment['updated_at'] = func.now()
 
         update_conditions = [
@@ -51,6 +64,28 @@ class BaseSynchronizer(ABC):
 
         return assignment, where_clause
 
-    @abstractmethod
+    def validate_batch_duplicates(
+        self,
+        unique_key_columns: List[str],
+        records: List[Dict[str, Any]]
+    ) -> None:
+        seen_records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+
+        for record in records:
+            key_values = tuple(record.get(col) for col in unique_key_columns)
+
+            if key_values in seen_records:
+                first_record = seen_records[key_values]
+                formatted_first = json.dumps(first_record, indent=2, default=str)
+                formatted_duplicate = json.dumps(record, indent=2, default=str)
+                self.logger.error(
+                    f"Batch integrity error: Duplicate key within batch. "
+                    f"key_columns={unique_key_columns}. "
+                    f"first_record:\n{formatted_first}\nduplicate_record:\n{formatted_duplicate}"
+                )
+                return
+
+            seen_records[key_values] = record
+
     def sync(self, site, *args, **kwargs) -> None:
         pass

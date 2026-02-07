@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import TrainingRecord
+from core.store.postgres.postgresql_manager import PostgreSQLManager
 
 class BasePredictor(ABC):
     def __init__(self) -> None:
@@ -38,9 +39,9 @@ class BasePredictor(ABC):
         return df
 
     @abstractmethod
-    def load_model(self, record: TrainingRecord) -> bool:
+    def load(self, record: TrainingRecord) -> bool:
         pass
 
     @abstractmethod
-    def predict(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(self, fixture_id: int) -> Dict[str, Any]:
         pass

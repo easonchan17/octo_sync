@@ -1,8 +1,7 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Text
 from ..base_model import Base, StatusMixin, DictMixin, Status
-from core.domain import MatchStatus
-from core.domain.enums import SiteName
+from core.types.enums import MatchStatus, SiteName
 
 
 class Fixture(Base, StatusMixin, DictMixin):

@@ -1,5 +1,7 @@
-from .fixture_synchronizer import FixtureSynchronizer
+from .fixture_data_synchronizer import FixtureDataSynchronizer
+from .match_data_synchronizer import MatchDataSynchronizer
 
 __all__ = [
-    'FixtureSynchronizer'
+    'FixtureDataSynchronizer',
+    'MatchDataSynchronizer'
 ]

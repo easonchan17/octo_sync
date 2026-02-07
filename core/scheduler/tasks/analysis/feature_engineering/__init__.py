@@ -10,7 +10,8 @@ from .derivers import (
     TeamTimeSeriesDeriver,
     PlayerTimeSeriesDeriver,
     EloRatingDeriver,
-    EntropyDeriver
+    EntropyDeriver,
+    OddsDeriver
 )
 
 __all__ = [
@@ -30,5 +31,6 @@ __all__ = [
     'TeamTimeSeriesDeriver',
     'PlayerTimeSeriesDeriver',
     'EloRatingDeriver',
-    'EntropyDeriver'
+    'EntropyDeriver',
+    'OddsDeriver'
 ]

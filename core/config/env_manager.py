@@ -34,7 +34,7 @@ class EnvManager(BaseSettings):
     def value(self) -> str:
         return self.ENV.value
 
-@lru_cache()
+@lru_cache(maxsize=None)
 def get_env_manager() -> EnvManager:
     return EnvManager()
 

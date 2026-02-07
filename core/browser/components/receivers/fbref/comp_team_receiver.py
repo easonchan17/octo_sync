@@ -3,10 +3,7 @@ from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.comp_team import CompTeam
-from core.utils.parsing import (
-    get_text, is_table_header,
-    extract_team_code_from_cell, extract_comp_info_from_url
-)
+from core.utils.fbref_utils import get_text, is_table_header, extract_team_code_from_cell, extract_comp_info_from_url
 
 class CompTeamReceiver(BaseReceiver):
     async def process(self, page_context: Any, url: str, timeout: float) -> List[Dict[str, Any]]:

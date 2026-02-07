@@ -4,14 +4,16 @@ from typing import List, Any, Dict
 from bs4 import BeautifulSoup
 from ..base_receiver import BaseReceiver
 from core.store.postgres.models.fbref.defensive_action import DefensiveAction
-from core.utils.parsing import (
-    get_number,is_table_header,
+from core.utils.fbref_utils import (
+    get_number,
+    is_table_header,
+    get_float,
     extract_match_code_from_cell,
-    get_float, extract_venue_epoch,
+    extract_venue_epoch,
     extract_team_code_from_cell,
     extract_team_code_from_url
 )
-
+# @deprecated: The data source has been removed from the website
 class DefensiveActionReceiver(BaseReceiver):
     async def process(self, page_context: Any, url: str, timeout: float) -> List[Dict[str, Any]]:
         await self.wait_for_ready(page_context, 'table[id="matchlogs_for"] tbody tr', timeout)

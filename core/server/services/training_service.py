@@ -1,14 +1,14 @@
 from threading import Lock
 from typing import Dict, Any, Optional
-from core.scheduler.worker import Worker
+from core.scheduler.task_executor import TaskExecutor
 from core.server.services.base_service import BaseService
-from core.scheduler.tasks.base_task import BaseTask, AsyncTask
+from core.scheduler.tasks.base_task import BaseTask, HookedTask
 from core.registry import Registry
 
 class TrainingService(BaseService):
     def __init__(self):
         super().__init__()
-        self.tasks: Dict[str, Dict[str, Any]] = {}
+        self.tasks: Dict[str, Dict[str, Any]] = {} # TODO implement like predictor_manager
         self._lock = Lock()
 
     def _cleanup_task(self, name: str, task_id: str) -> Optional[BaseTask]:
@@ -28,21 +28,22 @@ class TrainingService(BaseService):
             self.logger.info(f"Task {name} {task_id} cleaned up")
             return task
 
-    def start_training(self, model: str, payload: Dict[str, Any]) -> str:
+    def start_training(self, family: str, payload: Dict[str, Any]) -> str:
         with self._lock:
-            name = f"{model}.training"
+            name = f"{family}.training"
             if name not in self.tasks:
                 self.tasks[name] = {}
 
-            task = Registry.call(name, None, payload)
-            task.on_complete = lambda: self._cleanup_task(name, task.id)
+            task = Registry.get_target(name)(None, payload)
+            task = HookedTask(task, post_execute=lambda: self._cleanup_task(name, task.id))
+            task.enable_async_mode()
 
             self.tasks[name][task.id] = task
-            return Worker.get_instance().submit(AsyncTask(task))
+            return TaskExecutor.get_instance().submit(task)
 
-    def stop_training(self, model: str, task_id: str) -> str:
+    def stop_training(self, family: str, task_id: str) -> str:
         with self._lock:
-            name = f"{model}.training"
+            name = f"{family}.training"
             task_group = self.tasks.get(name)
 
             if task_group:
@@ -55,9 +56,10 @@ class TrainingService(BaseService):
             task.cancel()
             return task_id
 
-    def create_samples(self, model: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
+    def create_dataset(self, family: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
         site = self.get_site(site_name)
 
-        name = f"{model}.{site_name}.samples"
-        task = Registry.call(name, site, payload)
-        return Worker.get_instance().submit(AsyncTask(task))
+        name = f"{family}.{site_name}.samples"
+        task = Registry.get_target(name)(site, payload)
+        task.enable_async_mode()
+        return TaskExecutor.get_instance().submit(task)

@@ -1,7 +1,7 @@
 from .base_sender import BaseSender
-from .fotmob import SearchFixtureSender
+from .common import NoCacheSender
 
 __all__ = [
     'BaseSender',
-    'SearchFixtureSender'
+    'NoCacheSender'
 ]

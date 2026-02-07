@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
-from core.domain.enums import UpsertStrategy
+from core.types.enums import UpsertStrategy
 from sqlalchemy.dialects.postgresql import insert
 from typing import List, Dict, Any, Optional, Tuple
 from core.domain.calculators import EloRatingCalculator
@@ -25,7 +25,7 @@ class EloRatingSynchronizer(BaseSynchronizer):
 
         return self.sys_val_synchronizer.set_val(self.ELO_IMPACT_TIME_KEY, impact_time, strategy, session)
 
-    def sync(self, site: Site, elo_options: Dict[str, Any] = None) -> None:
+    def sync(self, site: Site) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             impact_time = self.lock_impact_time(session)
             if not impact_time:
@@ -40,8 +40,7 @@ class EloRatingSynchronizer(BaseSynchronizer):
             self.logger.info(f"Found {len(matches)} match results to calculate Elo ratings since {impact_time}")
 
             ratings, seasons, game_counts = self._get_elo_snapshot(session, impact_time)
-            elo_options = elo_options or {}
-            elo_ratings = EloRatingCalculator(ratings, seasons, game_counts, matches, **elo_options).calculate()
+            elo_ratings = EloRatingCalculator(ratings, seasons, game_counts, matches).calculate()
 
             if not elo_ratings:
                 self.logger.warning(f"No Elo ratings calculated. Skipping Elo rating sync")
