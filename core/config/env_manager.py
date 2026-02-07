@@ -1,5 +1,6 @@
 from enum import Enum
 from functools import lru_cache
+from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,6 +11,8 @@ class EnvType(str, Enum):
 
 class EnvManager(BaseSettings):
     ENV: EnvType = Field(..., description="Run environment")
+    DOCS_USERNAME: Optional[str] = Field(default=None, description="HTTP Basic username for /docs and /redoc; set with DOCS_PASSWORD to enable docs")
+    DOCS_PASSWORD: Optional[str] = Field(default=None, description="HTTP Basic password for docs; set with DOCS_USERNAME to enable docs")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -17,6 +20,12 @@ class EnvManager(BaseSettings):
         extra="ignore",
         case_sensitive=False
     )
+
+    @property
+    def docs_enabled(self) -> bool:
+        username = (self.DOCS_USERNAME or "").strip()
+        password = (self.DOCS_PASSWORD or "").strip()
+        return bool(username and password)
 
     @property
     def is_dev(self) -> bool:

@@ -1,38 +1,31 @@
+from datetime import timedelta
+from typing import List, Optional
 from fastapi import HTTPException, Query
+from core.utils.datetime_utils import begin_time_of_date
 from core.server.services.fixture_service import FixtureService
 from core.server.controllers.base_controller import BaseController
-from core.server.models.api_models import Pagination, Paginated, FixtureResponse, FixtureStatus
+from core.server.models.api_models import FixtureResponse
 
 class FixtureController(BaseController):
     def __init__(self) -> None:
         super().__init__()
         self.fixture_service = FixtureService()
-        self.router.get("/v1/fixtures", response_model=Paginated[FixtureResponse])(self.get_fixtures)
+        self.router.get("/v1/fixtures", response_model=List[FixtureResponse])(self.get_fixtures)
 
     def get_fixtures(
         self,
-        status: FixtureStatus = Query(..., description="Match status: 0=finished, 1=live, 2=upcoming"),
-        page: int = Query(1, ge=1, description="Page number"),
-        page_size: int = Query(20, ge=1, le=100, description="Page size")
-    ) -> Paginated[FixtureResponse]:
+        match_date: str = Query(..., alias="date", description="Match date (YYYYMMDD), calendar day in given timezone"),
+        timezone: Optional[str] = Query(None, description="IANA timezone e.g. Asia/Shanghai; default UTC")
+    ) -> List[FixtureResponse]:
         try:
-            total, fixtures = self.fixture_service.get_fixtures(
-                status=status,
-                page=page,
-                page_size=page_size
-            )
+            start_time = begin_time_of_date(match_date, "%Y%m%d", timezone)
+            end_time = start_time + timedelta(days=1)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
-            items = [FixtureResponse.model_validate(f) for f in fixtures]
-
-            return Paginated[FixtureResponse](
-                pagination=Pagination(
-                    page=page,
-                    page_size=page_size,
-                    total=total
-                ),
-                items=items
-            )
-
+        try:
+            fixtures = self.fixture_service.get_fixtures(start_time=start_time, end_time=end_time)
+            return [FixtureResponse.model_validate(fixture) for fixture in fixtures]
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
