@@ -237,9 +237,9 @@ class MatchDataParser:
             result["player_stats"] = self._parse_player_stats(match_id, raw_player_stats)
 
         status = json_body.get('header', {}).get('status')
-        match_status, _, _, _ = extract_status(status)
+        match_status, kickoff_time, _, _ = extract_status(status)
         result["match_status"] = match_status
-
+        result["kickoff_time"] = kickoff_time
         return result
 
     def _create_lineup_record(
@@ -375,8 +375,11 @@ class ParseMatchData(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
+                start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.LOOKAHEAD_HOURS)
                 items = self.synchronizer.get_pending_parse_items(
                     self.site,
+                    start_time,
+                    end_time,
                     MatchCrawlParams.PARSE_MAX_RETRIES,
                     MatchCrawlParams.RAW_DATA_QUERY_LIMIT
                 )
@@ -397,13 +400,17 @@ class ParseMatchData(PollTask):
 
                         self.synchronizer.sync_parsed_data(self.site, parsed_data)
 
+                        new_kickoff_time = datetime.fromisoformat(parsed_data["kickoff_time"])
+                        if new_kickoff_time != kickoff_time:
+                            assert False, f"match {match_id} kickoff time mismatch {kickoff_time} != {new_kickoff_time}"
+
                         match_status = parsed_data["match_status"]
                         if MatchStatus(match_status).is_finalized:
                             count = self.calculate_confirm_count(kickoff_time, last_fetched_at)
                             self.synchronizer.set_confirm_count(self.site, match_id, count)
 
                         self.synchronizer.mark_as_parsed(self.site, match_id, match_status)
-                        self.logger.info(f"Parsed {self.site.name} match: match_id={match_id} kickoff_time={kickoff_time}")
+                        self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_parse_failed(self.site, match_id, full_stack_trace)

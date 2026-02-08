@@ -93,7 +93,7 @@ class BaseSyncMatchData(PollTask):
                                 "json_body": json_body
                             })
                         self.synchronizer.mark_as_fetched(self.site, match_id)
-                        self.logger.info(f"Synced {self.site.name} match: match_id={match_id} kickoff_time={kickoff_time}")
+                        self.logger.info(f"Synced match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_fetch_failed(
@@ -108,9 +108,12 @@ class BaseSyncMatchData(PollTask):
 @Registry.poll('sync.fotmob.match_data')
 class SyncMatchData(BaseSyncMatchData):
     def get_pending_fetch_items(self) -> List[Any]:
+        start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.LOOKAHEAD_HOURS)
+
         return self.synchronizer.get_pending_fetch_items(
             self.site,
-            MatchCrawlParams.LOOKAHEAD_HOURS,
+            start_time,
+            end_time,
             MatchCrawlParams.FETCH_MAX_RETRIES,
             MatchCrawlParams.META_DATA_QUERY_LIMIT
         )
@@ -118,9 +121,12 @@ class SyncMatchData(BaseSyncMatchData):
 @Registry.poll('resync.fotmob.match_data')
 class ResyncMatchData(BaseSyncMatchData):
     def get_pending_fetch_items(self) -> List[Any]:
+        start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.LOOKAHEAD_HOURS)
+
         records = self.synchronizer.get_pending_refetch_items(
             self.site,
-            MatchCrawlParams.LOOKAHEAD_HOURS,
+            start_time,
+            end_time,
             MatchCrawlParams.REQUIRED_CONFIRM_COUNT,
             MatchCrawlParams.META_DATA_QUERY_LIMIT
         )
