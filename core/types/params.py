@@ -10,7 +10,8 @@ class EloParams:
 
 
 class BaseCrawlParams:
-    QUERY_LIMIT = 100
+    RAW_DATA_QUERY_LIMIT = 100
+    META_DATA_QUERY_LIMIT = 1000
     FETCH_MAX_RETRIES = 3
     PARSE_MAX_RETRIES = 3
 

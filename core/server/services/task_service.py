@@ -50,3 +50,12 @@ class TaskService(BaseService, Singleton):
 
             task.cancel()
             return task.id
+
+    def wake_task(self, task_key: str) -> bool:
+        with self._lock:
+            task = self.tasks.get(task_key)
+            if task is None:
+                return False
+
+            task.wake_idle()
+            return True

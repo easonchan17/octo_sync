@@ -15,7 +15,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
         site: Site,
         lookahead_hours: int,
         max_retries: int,
-        limit: int = MatchCrawlParams.QUERY_LIMIT
+        limit: int
     ) -> List[Any]:
         lookahead_time = datetime.now(timezone.utc) + timedelta(hours=lookahead_hours)
         with self.db.get_session(site.get_namespace()) as session:
@@ -44,7 +44,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
         self,
         site: Site,
         max_retries: int,
-        limit: int = MatchCrawlParams.QUERY_LIMIT
+        limit: int
     ) -> List[Any]:
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
@@ -67,7 +67,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
         site: Site,
         lookahead_hours: int,
         required_confirm_count: int,
-        limit: int = MatchCrawlParams.QUERY_LIMIT
+        limit: int
     ) -> List[Any]:
         lookahead_time = datetime.now(timezone.utc) + timedelta(hours=lookahead_hours)
         with self.db.get_session(site.get_namespace()) as session:

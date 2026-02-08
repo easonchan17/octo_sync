@@ -42,7 +42,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
         self,
         site: Site,
         max_retries: int,
-        limit: int = FixtureCrawlParams.QUERY_LIMIT
+        limit: int
     ) -> List[Any]:
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(

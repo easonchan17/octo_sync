@@ -377,7 +377,8 @@ class ParseMatchData(PollTask):
             try:
                 items = self.synchronizer.get_pending_parse_items(
                     self.site,
-                    MatchCrawlParams.PARSE_MAX_RETRIES
+                    MatchCrawlParams.PARSE_MAX_RETRIES,
+                    MatchCrawlParams.RAW_DATA_QUERY_LIMIT
                 )
 
                 if not items:
