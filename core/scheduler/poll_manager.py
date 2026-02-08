@@ -26,6 +26,9 @@ class PollManager:
             name = entry["name"]
             self.task_service.stop_task(*name.split("."))
 
+    def wake(self, task_key: str) -> bool:
+        return self.task_service.wake_task(task_key)
+
 @lru_cache(maxsize=None)
 def get_poll_manager() -> PollManager:
     return PollManager()

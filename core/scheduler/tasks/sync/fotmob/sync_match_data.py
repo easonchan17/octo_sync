@@ -111,7 +111,8 @@ class SyncMatchData(BaseSyncMatchData):
         return self.synchronizer.get_pending_fetch_items(
             self.site,
             MatchCrawlParams.LOOKAHEAD_HOURS,
-            MatchCrawlParams.FETCH_MAX_RETRIES
+            MatchCrawlParams.FETCH_MAX_RETRIES,
+            MatchCrawlParams.META_DATA_QUERY_LIMIT
         )
 
 @Registry.poll('resync.fotmob.match_data')
@@ -120,7 +121,8 @@ class ResyncMatchData(BaseSyncMatchData):
         records = self.synchronizer.get_pending_refetch_items(
             self.site,
             MatchCrawlParams.LOOKAHEAD_HOURS,
-            MatchCrawlParams.REQUIRED_CONFIRM_COUNT
+            MatchCrawlParams.REQUIRED_CONFIRM_COUNT,
+            MatchCrawlParams.META_DATA_QUERY_LIMIT
         )
 
         now = datetime.now(timezone.utc)

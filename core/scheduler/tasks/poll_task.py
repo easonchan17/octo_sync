@@ -16,18 +16,11 @@ class PollTask(BaseTask):
         self.wake_idle()
 
     def wake_idle(self) -> None:
-        self.logger.warning(f"Wake idle")
         self._idle_wake_event.set()
 
     def idle_sleep(self) -> None:
-        start_time = time.time()
-        self.logger.warning(f"Begin of Idle sleep at {int(start_time)}")
-
         timeout = self.get_idle_timeout_seconds()
         self._idle_wake_event.wait(timeout=timeout)
 
         if not self.should_stop():
             self._idle_wake_event.clear()
-
-        end_time = time.time()
-        self.logger.warning(f"End of Idle sleep from {int(start_time)} to {int(end_time)} for {int(end_time - start_time)} seconds")
