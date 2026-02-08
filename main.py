@@ -22,6 +22,11 @@ shutdown_event = Event()
 def signal_handler(signum, frame) -> None:
     logger.info(f"Received signal {signum}, shutting down gracefully...")
 
+    if not env_manager.is_ml:
+        logger.info("🔧 Stopping network interceptor...")
+        Interceptor.get_instance().stop()
+        logger.info("✅ Network interceptor stopped")
+
     logger.info("🔧 Stopping poll manager...")
     get_poll_manager().stop()
     logger.info("✅ Poll manager stopped")
@@ -37,11 +42,6 @@ def signal_handler(signum, frame) -> None:
     logger.info("🔧 Stopping task executor...")
     TaskExecutor.get_instance().stop()
     logger.info("✅ TaskExecutor stopped")
-
-    if not env_manager.is_ml:
-        logger.info("🔧 Stopping network interceptor...")
-        Interceptor.get_instance().stop()
-        logger.info("✅ Network interceptor stopped")
 
     logger.info("🔧 Cleaning up PostgreSQL manager...")
     PostgreSQLManager.get_instance().cleanup()

@@ -33,19 +33,19 @@ class Interceptor(Thread, Singleton):
         return self.page_pool
 
     def submit_task(self, task_type: TaskType, **kwargs) -> Optional[Future]:
-        if self.task_queue is None:
-            self.logger.error("Task queue is not initialized")
-            return None
-
         future = Future()
+
+        if self.task_queue is None:
+            future.set_exception(RuntimeError("Task queue is not initialized"))
+            return future
+
+        if self.stop_event.is_set():
+            future.set_exception(RuntimeError("Interceptor is stopped"))
+            return future
+
         self.task_queue.sync_q.put((task_type, future, kwargs))
         return future
 
-    def stop(self) -> None:
-        if self.task_queue is not None:
-            self.task_queue.sync_q.put(None)
-
-        super().stop()
 
     def _run(self) -> None:
         loop = asyncio.new_event_loop()
@@ -61,6 +61,25 @@ class Interceptor(Thread, Singleton):
             loop.close()
 
     async def _async_run(self) -> None:
+        try:
+            await self._async_run_loop()
+        finally:
+            await self._drain_pending_tasks()
+
+    async def _drain_pending_tasks(self) -> None:
+        while True:
+            try:
+                task_data = self.task_queue.async_q.get_nowait()
+            except Exception:
+                break
+
+            _, future, _ = task_data
+            if not future.done():
+                future.set_exception(RuntimeError("Interceptor or browser stopped"))
+
+            self.task_queue.async_q.task_done()
+
+    async def _async_run_loop(self) -> None:
         config = ConfigManager.get_instance().get_config("browser")
 
         options = config.get("options", {})
@@ -68,24 +87,22 @@ class Interceptor(Thread, Singleton):
         page_limit = config['page_limit']
         viewport = config['viewport']
 
-        should_exit = False
-
-        while not self.stop_event.is_set() and not should_exit:
+        while not self.stop_event.is_set():
             intercepted_pages = 0
 
             async with AsyncCamoufox(**options) as browser:
                 context = await browser.new_context(viewport=viewport)
                 self.page_pool = PagePool(context, page_pool_size)
 
-                while not self.stop_event.is_set() and not should_exit:
-                    task_data = await self.task_queue.async_q.get()
-                    if task_data is None:
-                        self.task_queue.async_q.task_done()
-                        should_exit = True
-                        break
+                while not self.stop_event.is_set():
+                    try:
+                        task_data = await asyncio.wait_for(self.task_queue.async_q.get(), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        continue
 
                     task_type, future, payload = task_data
                     await self._process_task(task_type, future, payload)
+                    self.task_queue.async_q.task_done()
 
                     intercepted_pages += 1
                     if intercepted_pages >= page_limit:
@@ -94,29 +111,6 @@ class Interceptor(Thread, Singleton):
 
                 self.logger.info(f"Page pool cleanup.")
                 self.page_pool = None
-
-
-    async def _drain_tasks(self, active_tasks: set[asyncio.Task], timeout: float) -> None:
-        if not active_tasks:
-            return
-
-        try:
-            self.logger.info(f"Draining {len(active_tasks)} active tasks with {timeout}s timeout...")
-            await asyncio.wait_for(
-                asyncio.gather(*active_tasks, return_exceptions=True),
-                timeout=timeout
-            )
-            self.logger.info(f"Drained all active tasks")
-
-        except asyncio.TimeoutError:
-            self.logger.error(f"Draining timed out after {timeout}s!")
-
-            for task in list(active_tasks):
-                if not task.done():
-                    task.cancel()
-
-        except Exception as e:
-            self.logger.error(f"Error draining tasks: {e}", exc_info=True)
 
     async def _process_task(self, task_type: TaskType, future: Future, payload: dict[str, Any]) -> None:
         try:
@@ -135,8 +129,6 @@ class Interceptor(Thread, Singleton):
             self.logger.error(f"Error processing task {task_type}: {e}", exc_info=True)
             if not future.done():
                 future.set_exception(e)
-        finally:
-            self.task_queue.async_q.task_done()
 
     async def _handle_open_page(self, payload: dict[str, Any]) -> Tuple[Optional[List[Any]], None]:
         url = payload.get("url")
@@ -384,4 +376,6 @@ class Interceptor(Thread, Singleton):
 
         except asyncio.TimeoutError:
             self.logger.error(f"Timeout while acquiring page for URL: {url}")
+        except Exception as e:
+            self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
         return False, collected_datas

@@ -1,11 +1,10 @@
-import time
 import traceback
 from core.registry import Registry
+from datetime import datetime, timedelta
 from core.types.enums import MatchStatus
 from core.store.postgres.models import Site
 from core.utils.fotmob_utils import parse_pair
-from datetime import datetime, timezone, timedelta
-from core.scheduler.tasks.base_task import BaseTask
+from core.scheduler.tasks.poll_task import PollTask
 from core.logger.logger_manager import LoggerManager
 from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.store.postgres.models.fotmob.match_data import MatchLineup, MatchStat, MatchPlayerStat
@@ -355,7 +354,7 @@ class MatchDataParser:
         return records
 
 @Registry.poll('parse.fotmob.match_data')
-class ParseMatchData(BaseTask):
+class ParseMatchData(PollTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.site = site
@@ -368,7 +367,7 @@ class ParseMatchData(BaseTask):
         post_match_duration = fetched_time - kickoff_time - match_duration
 
         if post_match_duration.total_seconds() <= 0:
-            return 0
+            return 1
 
         confirm_interval = timedelta(hours=MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
         return int(post_match_duration / confirm_interval) + 1
@@ -382,10 +381,13 @@ class ParseMatchData(BaseTask):
                 )
 
                 if not items:
-                    time.sleep(5)
+                    self.idle_sleep()
                     continue
 
                 for match_id, kickoff_time, last_fetched_at, json_body in items:
+                    if self.should_stop():
+                        return
+
                     try:
                         parsed_data = self.parser.parse(json_body)
                         if parsed_data is None:
@@ -407,4 +409,4 @@ class ParseMatchData(BaseTask):
                         self.logger.error(f"Failed to parse match data for match {match_id}: {e}", exc_info=True)
             except Exception as e:
                 self.logger.error(f"Failed to parse match data: {e}", exc_info=True)
-                time.sleep(5)
+                self.idle_sleep()
