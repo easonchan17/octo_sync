@@ -4,7 +4,7 @@ from core.registry import Registry
 from core.store.postgres.models import Site
 from core.browser.interceptor import TaskType
 from typing import Any, Dict, List, Optional, Tuple
-from core.scheduler.tasks.base_task import BaseTask
+from core.scheduler.tasks.poll_task import PollTask
 from datetime import date, datetime, timedelta, timezone
 from core.browser.intercept_policy import InterceptPolicy
 from core.browser.components.senders.common.no_cache_sender import NoCacheSender
@@ -12,7 +12,7 @@ from core.browser.components.receivers.common.json_receiver import JsonReceiver
 from core.scheduler.synchronizers.fotmob.fixture_data_synchronizer import FixtureDataSynchronizer
 from core.types.params import FixtureCrawlParams
 
-class BaseSyncFixtureData(BaseTask):
+class BaseSyncFixtureData(PollTask):
     POLICY_CONFIG = {
         "url_template": "https://www.fotmob.com/?date={date}",
         "debug": False,
@@ -41,18 +41,18 @@ class BaseSyncFixtureData(BaseTask):
     def get_pending_fetch_items(self) -> List[Any]:
         pass
 
-    def get_interval_seconds(self) -> int:
-        return FixtureCrawlParams.POLL_INTERVAL_SECONDS
+    def get_idle_timeout_seconds(self) -> float:
+        return FixtureCrawlParams.POLL_IDLE_SECONDS
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
-            intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
-
             try:
                 items = self.get_pending_fetch_items()
                 if not items:
-                    time.sleep(self.get_interval_seconds())
+                    self.idle_sleep()
                     continue
+
+                intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
                 for cur_date in items:
                     if self.should_stop():
@@ -94,7 +94,7 @@ class BaseSyncFixtureData(BaseTask):
 
             except Exception as e:
                 self.logger.error(f"Failed to sync fixtures from {self.site.name}: {e}")
-                time.sleep(5)
+                self.idle_sleep()
 
 @Registry.poll('sync.fotmob.fixture_data')
 class SyncFixtureData(BaseSyncFixtureData):

@@ -6,7 +6,7 @@ from core.types.enums import MatchStatus
 from core.store.postgres.models import Site
 from core.browser.interceptor import TaskType
 from datetime import datetime, timedelta, timezone
-from core.scheduler.tasks.base_task import BaseTask
+from core.scheduler.tasks.poll_task import PollTask
 from typing import Any, Dict, Optional, List, Tuple
 from core.browser.intercept_policy import InterceptPolicy
 from core.browser.components.receivers.common.json_receiver import JsonReceiver
@@ -14,7 +14,7 @@ from core.scheduler.synchronizers.fotmob.match_data_synchronizer import MatchDat
 from core.browser.components.senders.common.no_cache_sender import NoCacheSender
 from core.types.params import MatchCrawlParams
 
-class BaseSyncMatchData(BaseTask):
+class BaseSyncMatchData(PollTask):
     POLICY_CONFIG = {
         "url_template": "https://www.fotmob.com{page_url}",
         "debug": False,
@@ -44,8 +44,8 @@ class BaseSyncMatchData(BaseTask):
     def get_pending_fetch_items(self) -> List[Any]:
         pass
 
-    def get_interval_seconds(self) -> int:
-        return MatchCrawlParams.POLL_INTERVAL_SECONDS
+    def get_idle_timeout_seconds(self) -> float:
+        return MatchCrawlParams.POLL_IDLE_SECONDS
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
@@ -53,7 +53,7 @@ class BaseSyncMatchData(BaseTask):
                 items = self.get_pending_fetch_items()
 
                 if not items:
-                    time.sleep(self.get_interval_seconds())
+                    self.idle_sleep()
                     continue
 
                 intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
@@ -72,13 +72,17 @@ class BaseSyncMatchData(BaseTask):
                         responses, _ = future.result()
                         if not responses:
                             self.logger.error(f"No response for {match_detail_url}")
-                            self.synchronizer.mark_fetch_failed(self.site, match_id, "No response for match detail")
+                            self.synchronizer.mark_fetch_failed(
+                                self.site, match_id, kickoff_time, "No response for match detail"
+                            )
                             continue
 
                         json_body = responses[0]
                         if json_body is None:
                             self.logger.warning(f"No match detail data for {match_detail_url}")
-                            self.synchronizer.mark_fetch_failed(self.site, match_id, "No match detail data")
+                            self.synchronizer.mark_fetch_failed(
+                                self.site, match_id, kickoff_time, "No match detail data"
+                            )
                             continue
 
                         self.synchronizer.sync_raw_data(
@@ -92,12 +96,14 @@ class BaseSyncMatchData(BaseTask):
                         self.logger.info(f"Synced {self.site.name} match: match_id={match_id} kickoff_time={kickoff_time}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.synchronizer.mark_fetch_failed(self.site, match_id, full_stack_trace)
+                        self.synchronizer.mark_fetch_failed(
+                            self.site, match_id, kickoff_time, full_stack_trace
+                        )
                         self.logger.error(f"Failed to sync match detail for match {match_id} from {match_detail_url}: {e}")
 
             except Exception as e:
                 self.logger.error(f"Failed to sync match detail: {e}")
-                time.sleep(5)
+                self.idle_sleep()
 
 @Registry.poll('sync.fotmob.match_data')
 class SyncMatchData(BaseSyncMatchData):
