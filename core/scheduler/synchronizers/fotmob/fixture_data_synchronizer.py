@@ -12,16 +12,16 @@ class FixtureDataSynchronizer(BaseSynchronizer):
     def get_pending_fetch_items(
         self,
         site: Site,
-        from_date: date,
-        to_date: date,
+        start_date: date,
+        end_date: date,
         max_retries: int,
     ) -> List[date]:
         with self.db.get_session(site.get_namespace()) as session:
             ignore_rows = session.query(
                 FixtureRawData.match_date
             ).filter(
-                FixtureRawData.match_date >= from_date,
-                FixtureRawData.match_date <= to_date,
+                FixtureRawData.match_date >= start_date,
+                FixtureRawData.match_date <= end_date,
                 or_(
                     FixtureRawData.is_fetched == True,
                     and_(
@@ -32,8 +32,8 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             ).all()
             ignore_dates = {row[0] for row in ignore_rows}
 
-            total_days = (to_date - from_date).days + 1
-            all_dates = {from_date + timedelta(days=i) for i in range(total_days)}
+            total_days = (end_date - start_date).days + 1
+            all_dates = {start_date + timedelta(days=i) for i in range(total_days)}
 
             pending_dates = all_dates - ignore_dates
             return sorted(list(pending_dates), reverse=True)
@@ -41,6 +41,8 @@ class FixtureDataSynchronizer(BaseSynchronizer):
     def get_pending_parse_items(
         self,
         site: Site,
+        start_date: date,
+        end_date: date,
         max_retries: int,
         limit: int
     ) -> List[Any]:
@@ -50,19 +52,21 @@ class FixtureDataSynchronizer(BaseSynchronizer):
                 FixtureRawData.last_fetched_at,
                 FixtureRawData.json_body
             ).filter(
+                FixtureRawData.match_date >= start_date,
+                FixtureRawData.match_date <= end_date,
                 FixtureRawData.is_fetched == True,
                 FixtureRawData.is_parsed == False,
                 FixtureRawData.parse_attempts < max_retries
             ).order_by(
-                FixtureRawData.match_date.desc()
+                FixtureRawData.match_date.asc()
             ).limit(limit)
             return query.all()
 
     def get_pending_refetch_items(
         self,
         site: Site,
-        from_date: date,
-        to_date: date,
+        start_date: date,
+        end_date: date,
         required_confirm_count: int
     ) -> List[Any]:
         with self.db.get_session(site.get_namespace()) as session:
@@ -71,8 +75,8 @@ class FixtureDataSynchronizer(BaseSynchronizer):
                 FixtureRawData.last_fetched_at,
                 FixtureRawData.confirm_count
             ).filter(
-                FixtureRawData.match_date >= from_date,
-                FixtureRawData.match_date <= to_date,
+                FixtureRawData.match_date >= start_date,
+                FixtureRawData.match_date <= end_date,
                 FixtureRawData.is_parsed == True,
                 FixtureRawData.confirm_count < required_confirm_count
             ).order_by(
@@ -88,7 +92,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
                 cast(Fixture.kickoff_time, Date).label('d')
             ).filter(
                 Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time <= end_time
+                Fixture.kickoff_time < end_time
             ).distinct().all()
 
             return {row[0] for row in rows}

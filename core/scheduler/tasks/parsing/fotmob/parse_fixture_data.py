@@ -125,8 +125,11 @@ class ParseFixtureData(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
+                start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.LOOKAHEAD_DAYS)
                 items = self.synchronizer.get_pending_parse_items(
                     self.site,
+                    start_date,
+                    end_date,
                     FixtureCrawlParams.PARSE_MAX_RETRIES,
                     FixtureCrawlParams.RAW_DATA_QUERY_LIMIT
                 )
@@ -145,6 +148,9 @@ class ParseFixtureData(PollTask):
                             self.synchronizer.mark_parse_failed(self.site, match_date, "Fixture data is None")
                             continue
 
+                        for fixture in parsed_data:
+                            fixture[Fixture.raw_fetch_date.key] = match_date
+
                         self.synchronizer.sync_parsed_data(self.site, match_date, parsed_data)
 
                         is_finalized, last_kickoff_time = self.get_daily_summary(parsed_data)
@@ -153,7 +159,7 @@ class ParseFixtureData(PollTask):
                             self.synchronizer.set_confirm_count(self.site, match_date, count)
 
                         self.synchronizer.mark_as_parsed(self.site, match_date, last_kickoff_time)
-                        self.logger.info(f"Parsed {self.site.name} fixtures: match_date={match_date} last_kickoff_time={last_kickoff_time}")
+                        self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_parse_failed(self.site, match_date, full_stack_trace)

@@ -32,12 +32,6 @@ class BaseSyncFixtureData(PollTask):
         self.payload = payload or {}
         self.synchronizer = FixtureDataSynchronizer()
 
-    @property
-    def fetch_date_range(self) -> Tuple[date, date]:
-        start_date = datetime(2026, 2, 1, tzinfo=timezone.utc)
-        finish_date = datetime.now(timezone.utc) + timedelta(days=6)
-        return start_date.date(), finish_date.date()
-
     def get_pending_fetch_items(self) -> List[Any]:
         pass
 
@@ -86,7 +80,7 @@ class BaseSyncFixtureData(PollTask):
                                 "json_body": json_body
                             })
                         self.synchronizer.mark_as_fetched(self.site, cur_date)
-                        self.logger.info(f"Synced {self.site.name} fixtures: match_date={cur_date}")
+                        self.logger.info(f"Synced fixtures: match_date={cur_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_fetch_failed(self.site, cur_date, full_stack_trace)
@@ -99,28 +93,28 @@ class BaseSyncFixtureData(PollTask):
 @Registry.poll('sync.fotmob.fixture_data')
 class SyncFixtureData(BaseSyncFixtureData):
     def get_pending_fetch_items(self) -> List[date]:
-        start_date, finish_date = self.fetch_date_range
+        start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.LOOKAHEAD_DAYS)
 
         return self.synchronizer.get_pending_fetch_items(
             self.site,
             start_date,
-            finish_date,
+            end_date,
             FixtureCrawlParams.FETCH_MAX_RETRIES
         )
 
 @Registry.poll('resync.fotmob.fixture_data')
 class ResyncFixtureData(BaseSyncFixtureData):
     def get_pending_fetch_items(self) -> List[date]:
-        start_date, _ = self.fetch_date_range
-        now = datetime.now(timezone.utc)
-        today = now.date()
-
+        start_date, end_date = self.get_fetch_date_range(0)
         records = self.synchronizer.get_pending_refetch_items(
             self.site,
             start_date,
-            today,
+            end_date,
             FixtureCrawlParams.REQUIRED_CONFIRM_COUNT
         )
+
+        now = datetime.now(timezone.utc)
+        today = now.date()
 
         refresh_threshold = now - timedelta(minutes=FixtureCrawlParams.REFRESH_INTERVAL_MINUTES)
         confirm_threshold = now - timedelta(hours=FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)

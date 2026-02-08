@@ -44,6 +44,7 @@ class Fixture(Base, StatusMixin, DictMixin):
         Index('idx_fixtures_league_name', 'league_name'),
         Index('idx_fixtures_league_id', 'league_id'),
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
+        Index('idx_fixtures_raw_fetch_date', 'raw_fetch_date'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
     )
 
@@ -65,6 +66,8 @@ class Fixture(Base, StatusMixin, DictMixin):
     away_score = Column(Integer, nullable=True)
 
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
+
+    raw_fetch_date = Column(Date, nullable=True)
 
     status = Column(Integer, default=Status.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=func.now())

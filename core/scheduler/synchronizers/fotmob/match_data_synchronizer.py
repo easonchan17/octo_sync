@@ -1,23 +1,22 @@
 from datetime import datetime
 from typing import List, Dict, Any
-from datetime import timedelta, timezone
 from sqlalchemy import func, and_, or_
 from core.store.postgres.models import Site
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models.fotmob.fixture_data import Fixture
+from core.store.postgres.models.fotmob.fixture_data import Fixture, FixtureRawData
 from core.store.postgres.models.fotmob.match_data import MatchRawData, MatchLineup, MatchStat, MatchPlayerStat
 from ..base_synchronizer import BaseSynchronizer
-from core.types.params import MatchCrawlParams
+from core.types.enums import MatchStatus
 
 class MatchDataSynchronizer(BaseSynchronizer):
     def get_pending_fetch_items(
         self,
         site: Site,
-        lookahead_hours: int,
+        start_time: datetime,
+        end_time: datetime,
         max_retries: int,
         limit: int
     ) -> List[Any]:
-        lookahead_time = datetime.now(timezone.utc) + timedelta(hours=lookahead_hours)
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
                 Fixture.match_id,
@@ -33,7 +32,9 @@ class MatchDataSynchronizer(BaseSynchronizer):
                         MatchRawData.fetch_attempts < max_retries
                     )
                 ),
-                Fixture.kickoff_time < lookahead_time
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time < end_time,
+                ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
             ).order_by(
                 Fixture.kickoff_time.desc()
             ).limit(limit)
@@ -43,21 +44,27 @@ class MatchDataSynchronizer(BaseSynchronizer):
     def get_pending_parse_items(
         self,
         site: Site,
+        start_time: datetime,
+        end_time: datetime,
         max_retries: int,
         limit: int
     ) -> List[Any]:
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
                 MatchRawData.match_id,
-                MatchRawData.kickoff_time,
+                Fixture.kickoff_time,
                 MatchRawData.last_fetched_at,
                 MatchRawData.json_body
+            ).join(
+                Fixture, MatchRawData.match_id == Fixture.match_id
             ).filter(
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time < end_time,
                 MatchRawData.is_fetched == True,
                 MatchRawData.is_parsed == False,
                 MatchRawData.parse_attempts < max_retries
             ).order_by(
-                MatchRawData.kickoff_time.desc()
+                Fixture.kickoff_time.asc()
             ).limit(limit)
 
             return query.all()
@@ -65,15 +72,15 @@ class MatchDataSynchronizer(BaseSynchronizer):
     def get_pending_refetch_items(
         self,
         site: Site,
-        lookahead_hours: int,
+        start_time: datetime,
+        end_time: datetime,
         required_confirm_count: int,
         limit: int
     ) -> List[Any]:
-        lookahead_time = datetime.now(timezone.utc) + timedelta(hours=lookahead_hours)
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
                 MatchRawData.match_id,
-                MatchRawData.kickoff_time,
+                Fixture.kickoff_time,
                 MatchRawData.match_status,
                 MatchRawData.confirm_count,
                 MatchRawData.last_fetched_at,
@@ -81,11 +88,12 @@ class MatchDataSynchronizer(BaseSynchronizer):
             ).join(
                 Fixture, MatchRawData.match_id == Fixture.match_id
             ).filter(
-                MatchRawData.kickoff_time < lookahead_time,
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time < end_time,
                 MatchRawData.is_parsed == True,
                 MatchRawData.confirm_count < required_confirm_count
             ).order_by(
-                MatchRawData.kickoff_time.asc()
+                Fixture.kickoff_time.asc()
             ).limit(limit)
 
             return query.all()
@@ -165,6 +173,32 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 MatchRawData.confirm_count: count,
                 MatchRawData.updated_at: func.now()
             }, synchronize_session=False)
+
+    def cleanup_on_kickoff_time_changed(
+        self,
+        site: Site,
+        match_id: int,
+        old_kickoff_time: datetime,
+        new_kickoff_time: datetime
+    ) -> None:
+        old_date = old_kickoff_time.date()
+        new_date = new_kickoff_time.date()
+        with self.db.get_session(site.get_namespace()) as session:
+            session.query(FixtureRawData).filter(
+                FixtureRawData.match_date == old_date
+            ).delete(synchronize_session=False)
+
+            session.query(FixtureRawData).filter(
+                FixtureRawData.match_date == new_date
+            ).delete(synchronize_session=False)
+
+            session.query(Fixture).filter(
+                Fixture.match_id == match_id
+            ).delete(synchronize_session=False)
+
+            session.query(MatchRawData).filter(
+                MatchRawData.match_id == match_id
+            ).delete(synchronize_session=False)
 
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
         with self.db.get_session(site.get_namespace()) as session:
