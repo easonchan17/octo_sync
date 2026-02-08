@@ -35,7 +35,7 @@ class RateLimiter:
         current_time = time.time()
         if target_time > current_time:
             wait_time = target_time - current_time
-            self.logger.info(f"Throttling request to {hostname}, waiting {wait_time:.2f}s")
+            self.logger.debug(f"Throttling request to {hostname}, waiting {wait_time:.2f}s")
             await asyncio.sleep(wait_time)
 
         self.last_request[hostname] = time.time()

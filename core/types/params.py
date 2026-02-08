@@ -8,11 +8,14 @@ class EloParams:
     # TODO: different home_advantage for different leagues
     # TODO: different reversion_rate for different leagues
 
+from datetime import datetime, timezone
 
 class BaseCrawlParams:
-    RAW_DATA_QUERY_LIMIT = 100
-    META_DATA_QUERY_LIMIT = 1000
-    FETCH_MAX_RETRIES = 3
+    GENESIS_AT = datetime(2026, 2, 1, tzinfo=timezone.utc)
+
+    RAW_DATA_QUERY_LIMIT = 300
+    META_DATA_QUERY_LIMIT = 2000
+    FETCH_MAX_RETRIES = 5
     PARSE_MAX_RETRIES = 3
 
     POLL_IDLE_SECONDS = 60
@@ -20,6 +23,8 @@ class BaseCrawlParams:
     MATCH_SAFE_DURATION_HOURS = 3
 
 class FixtureCrawlParams(BaseCrawlParams):
+    LOOKAHEAD_DAYS = 7
+
     CONFIRM_INTERVAL_HOURS = 1
     REFRESH_INTERVAL_MINUTES = 1
     CATCHUP_INTERVAL_HOURS = 2
