@@ -106,10 +106,11 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 MatchRawData.updated_at: func.now()
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, site: Site, match_id: int, error_msg: str) -> None:
+    def mark_fetch_failed(self, site: Site, match_id: int, kickoff_time: datetime, error_msg: str) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(MatchRawData).values(
                 match_id=match_id,
+                kickoff_time=kickoff_time,
                 is_fetched=False,
                 fetch_attempts=1,
                 last_fetch_error=(error_msg or "")[:2000],

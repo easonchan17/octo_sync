@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, List, Tuple
 from core.utils.fotmob_utils import extract_status
 from core.utils.fotmob_utils import PageUrlBuilder
 from datetime import datetime, timezone, timedelta
-from core.scheduler.tasks.base_task import BaseTask
+from core.scheduler.tasks.poll_task import PollTask
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models.fotmob.fixture_data import Fixture
 from core.scheduler.synchronizers.fotmob.fixture_data_synchronizer import FixtureDataSynchronizer
@@ -89,7 +89,7 @@ class FixtureDataParser:
 
 
 @Registry.poll("parse.fotmob.fixture_data")
-class ParseFixtureData(BaseTask):
+class ParseFixtureData(PollTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.site = site
@@ -118,7 +118,7 @@ class ParseFixtureData(BaseTask):
         post_match_duration = fetched_time - kickoff_time - match_duration
 
         if post_match_duration.total_seconds() <= 0:
-            return 0
+            return 1
 
         confirm_interval = timedelta(hours=FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
         return int(post_match_duration / confirm_interval) + 1
@@ -132,7 +132,7 @@ class ParseFixtureData(BaseTask):
                 )
 
                 if not items:
-                    time.sleep(5)
+                    self.idle_sleep()
                     continue
 
                 for match_date, last_fetched_at, json_body in items:
@@ -140,10 +140,6 @@ class ParseFixtureData(BaseTask):
                         return
 
                     try:
-                        if not json_body:
-                            self.synchronizer.mark_parse_failed(self.site, match_date, "json_body is empty")
-                            continue
-
                         parsed_data = self.parser.parse(json_body)
                         if parsed_data is None:
                             self.synchronizer.mark_parse_failed(self.site, match_date, "Fixture data is None")
@@ -165,4 +161,4 @@ class ParseFixtureData(BaseTask):
 
             except Exception as e:
                 self.logger.error(f"Failed to parse fixture data: {e}")
-                time.sleep(5)
+                self.idle_sleep()
