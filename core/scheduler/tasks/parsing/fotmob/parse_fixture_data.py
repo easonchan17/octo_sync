@@ -1,4 +1,3 @@
-import time
 import traceback
 from core.registry import Registry
 from core.store.postgres.models import Site
@@ -128,7 +127,8 @@ class ParseFixtureData(PollTask):
             try:
                 items = self.synchronizer.get_pending_parse_items(
                     self.site,
-                    FixtureCrawlParams.PARSE_MAX_RETRIES
+                    FixtureCrawlParams.PARSE_MAX_RETRIES,
+                    FixtureCrawlParams.RAW_DATA_QUERY_LIMIT
                 )
 
                 if not items:
