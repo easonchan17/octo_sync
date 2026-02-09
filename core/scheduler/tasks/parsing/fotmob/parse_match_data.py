@@ -237,7 +237,7 @@ class MatchDataParser:
             result["player_stats"] = self._parse_player_stats(match_id, raw_player_stats)
 
         status = json_body.get('header', {}).get('status')
-        match_status, kickoff_time, _, _ = extract_status(status)
+        match_status, kickoff_time, _, _ = extract_status(status, MatchCrawlParams.MATCH_SAFE_DURATION_HOURS)
         result["match_status"] = match_status
         result["kickoff_time"] = kickoff_time
         return result
