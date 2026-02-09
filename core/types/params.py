@@ -20,7 +20,7 @@ class BaseCrawlParams:
 
     POLL_IDLE_SECONDS = 60
     REQUIRED_CONFIRM_COUNT = 2
-    MATCH_SAFE_DURATION_HOURS = 3
+    MATCH_SAFE_DURATION_HOURS = 4
 
 class FixtureCrawlParams(BaseCrawlParams):
     LOOKAHEAD_DAYS = 7

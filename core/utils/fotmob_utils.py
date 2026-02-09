@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional, Tuple
 from core.types.enums import MatchStatus
 
@@ -43,7 +44,7 @@ def parse_scores(scores: str) -> Tuple[Optional[int], Optional[int]]:
     return None, None
 
 
-def extract_status(status: Dict[str, Any]) -> Tuple[int, Optional[str], Optional[int], Optional[int]]:
+def extract_status(status: Dict[str, Any], match_safe_duration_hours: int) -> Tuple[int, Optional[str], Optional[int], Optional[int]]:
     if not status:
         return MatchStatus.SCHEDULED.value, None, None, None
 
@@ -68,6 +69,12 @@ def extract_status(status: Dict[str, Any]) -> Tuple[int, Optional[str], Optional
     started = status.get('started', False)
     if started:
         return MatchStatus.IN_PROGRESS.value, utctime, home_score, away_score
+
+    post_match_duration = datetime.now(timezone.utc) - datetime.fromisoformat(utctime)
+    if post_match_duration.total_seconds() > match_safe_duration_hours * 3600:
+        first_half_started = status.get('halfs', {}).get('firstHalfStarted')
+        assert first_half_started is not None, "firstHalfStarted is required"
+        return MatchStatus.FINISHED.value, utctime, home_score, away_score
 
     return MatchStatus.TIMED.value, utctime, None, None
 

@@ -65,7 +65,7 @@ class FixtureDataParser:
             if not page_url:
                 page_url = PageUrlBuilder.build(match_id, home, away)
 
-            match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}))
+            match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), FixtureCrawlParams.MATCH_SAFE_DURATION_HOURS)
 
             fixture = {
                 Fixture.round.key: round,
