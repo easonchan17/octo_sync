@@ -19,12 +19,14 @@ class PollManager:
         for entry in entries:
             name = entry["name"]
             self.task_service.start_task(*name.split("."), payload={})
+            self.logger.info(f"Started poll task: {name}")
 
     def stop(self) -> None:
         entries = Registry.get_entries(RegistryKind.POLL)
         for entry in entries:
             name = entry["name"]
             self.task_service.stop_task(*name.split("."))
+            self.logger.info(f"Stopped poll task: {name}")
 
     def wake(self, task_key: str) -> bool:
         return self.task_service.wake_task(task_key)
