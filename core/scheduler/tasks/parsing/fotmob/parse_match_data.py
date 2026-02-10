@@ -1,9 +1,9 @@
 import traceback
 from core.registry import Registry
-from datetime import datetime, timedelta
 from core.types.enums import MatchStatus
 from core.store.postgres.models import Site
 from core.utils.fotmob_utils import parse_pair
+from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from core.logger.logger_manager import LoggerManager
 from typing import Dict, Any, Optional, List, Callable, Tuple
@@ -403,7 +403,9 @@ class ParseMatchData(PollTask):
                         match_status = parsed_data["match_status"]
 
                         if new_kickoff_time != kickoff_time:
-                            self.logger.critical(f"match {match_id} kickoff time mismatch {kickoff_time} != {new_kickoff_time}")
+                            self.logger.warning(
+                                f"match {match_id} kickoff time changed: {kickoff_time.astimezone(timezone.utc)} -> {new_kickoff_time}"
+                            )
 
                         self.synchronizer.sync_parsed_data(self.site, parsed_data)
                         self.synchronizer.mark_as_parsed(self.site, match_id, new_kickoff_time, match_status)
