@@ -81,8 +81,6 @@ class MatchDataSynchronizer(BaseSynchronizer):
             query = session.query(
                 MatchRawData.match_id,
                 Fixture.kickoff_time,
-                Fixture.match_status,
-                MatchRawData.confirm_count,
                 MatchRawData.last_fetched_at,
                 Fixture.page_url
             ).join(

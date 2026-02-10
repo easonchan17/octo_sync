@@ -85,6 +85,7 @@ class BaseSyncFixtureData(PollTask):
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_fetch_failed(self.site, cur_date, full_stack_trace)
                         self.logger.error(f"Failed to sync fixtures for {cur_date}: {e}")
+                        self.idle_sleep()
 
             except Exception as e:
                 self.logger.error(f"Failed to sync fixtures from {self.site.name}: {e}")
@@ -116,23 +117,23 @@ class ResyncFixtureData(BaseSyncFixtureData):
         now = datetime.now(timezone.utc)
         today = now.date()
 
-        refresh_threshold = now - timedelta(minutes=FixtureCrawlParams.REFRESH_INTERVAL_MINUTES)
-        confirm_threshold = now - timedelta(hours=FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
-        catchup_threshold = now - timedelta(hours=FixtureCrawlParams.CATCHUP_INTERVAL_HOURS)
+        refresh_chckpoint = now - timedelta(minutes=FixtureCrawlParams.REFRESH_INTERVAL_MINUTES)
+        confirm_checkpoint = now - timedelta(hours=FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
+        catchup_checkpoint = now - timedelta(hours=FixtureCrawlParams.CATCHUP_INTERVAL_HOURS)
         active_dates = self.synchronizer.get_active_match_dates(self.site, FixtureCrawlParams.MATCH_SAFE_DURATION_HOURS)
 
         items = []
         for match_date, last_confirm_at, confirm_count in records:
             if confirm_count > 0:
-                if last_confirm_at <= confirm_threshold:
+                if last_confirm_at <= confirm_checkpoint:
                     items.append(match_date)
                 continue
 
             if match_date in active_dates:
-                if last_confirm_at <= refresh_threshold:
+                if last_confirm_at <= refresh_chckpoint:
                     items.append(match_date)
             elif match_date < today:
-                if last_confirm_at <= catchup_threshold:
+                if last_confirm_at <= catchup_checkpoint:
                     items.append(match_date)
 
         return items
