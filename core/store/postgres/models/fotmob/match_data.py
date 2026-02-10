@@ -156,7 +156,7 @@ class MatchPlayerStat(Base, StatusMixin, DictMixin, IntrospectionMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_id = Column(Integer, nullable=False)
-    opta_id = Column(Integer, nullable=False)
+    opta_id = Column(String(64), nullable=False)
     player_id = Column(Integer, nullable=False)
     player_name = Column(String(128), nullable=False)
 
@@ -233,7 +233,7 @@ class MatchLineup(Base, StatusMixin, DictMixin, IntrospectionMixin):
 
     country_code = Column(String(3), nullable=True)
     country_name = Column(String(100), nullable=True)
-    opta_id = Column(Integer, nullable=True)
+    opta_id = Column(String(64), nullable=True)
 
     member_id = Column(Integer, nullable=False)
     member_name = Column(String(128), nullable=False)
