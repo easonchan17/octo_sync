@@ -73,8 +73,8 @@ def extract_status(status: Dict[str, Any], match_safe_duration_hours: int) -> Tu
     post_match_duration = datetime.now(timezone.utc) - datetime.fromisoformat(utctime)
     if post_match_duration.total_seconds() > match_safe_duration_hours * 3600:
         first_half_started = status.get('halfs', {}).get('firstHalfStarted')
-        assert first_half_started is not None, "firstHalfStarted is required"
-        return MatchStatus.FINISHED.value, utctime, home_score, away_score
+        if first_half_started is not None:
+            return MatchStatus.FINISHED.value, utctime, home_score, away_score
 
     return MatchStatus.TIMED.value, utctime, None, None
 
