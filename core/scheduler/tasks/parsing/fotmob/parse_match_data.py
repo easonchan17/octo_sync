@@ -362,16 +362,6 @@ class ParseMatchData(PollTask):
         self.synchronizer = MatchDataSynchronizer()
         self.parser = MatchDataParser()
 
-    def calculate_confirm_count(self, kickoff_time: datetime, fetched_time: datetime) -> int:
-        match_duration = timedelta(hours=MatchCrawlParams.MATCH_SAFE_DURATION_HOURS)
-        post_match_duration = fetched_time - kickoff_time - match_duration
-
-        if post_match_duration.total_seconds() <= 0:
-            return 1
-
-        confirm_interval = timedelta(hours=MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
-        return int(post_match_duration / confirm_interval) + 1
-
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
@@ -411,7 +401,7 @@ class ParseMatchData(PollTask):
                         self.synchronizer.mark_as_parsed(self.site, match_id, new_kickoff_time, match_status)
 
                         if MatchStatus(match_status).is_finalized:
-                            count = self.calculate_confirm_count(kickoff_time, last_fetched_at)
+                            count = self.calculate_confirm_count(kickoff_time, last_fetched_at, MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
                             self.synchronizer.set_confirm_count(self.site, match_id, count)
 
                         self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
