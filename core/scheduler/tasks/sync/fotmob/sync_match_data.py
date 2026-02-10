@@ -100,6 +100,7 @@ class BaseSyncMatchData(PollTask):
                             self.site, match_id, kickoff_time, full_stack_trace
                         )
                         self.logger.error(f"Failed to sync match detail for match {match_id} from {match_detail_url}: {e}")
+                        self.idle_sleep()
 
             except Exception as e:
                 self.logger.error(f"Failed to sync match detail: {e}")
