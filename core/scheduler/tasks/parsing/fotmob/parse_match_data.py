@@ -398,18 +398,20 @@ class ParseMatchData(PollTask):
                             self.synchronizer.mark_parse_failed(self.site, match_id, "match data is None")
                             continue
 
-                        self.synchronizer.sync_parsed_data(self.site, parsed_data)
 
                         new_kickoff_time = datetime.fromisoformat(parsed_data["kickoff_time"])
-                        if new_kickoff_time != kickoff_time:
-                            assert False, f"match {match_id} kickoff time mismatch {kickoff_time} != {new_kickoff_time}"
-
                         match_status = parsed_data["match_status"]
+
+                        if new_kickoff_time != kickoff_time:
+                            self.logger.critical(f"match {match_id} kickoff time mismatch {kickoff_time} != {new_kickoff_time}")
+
+                        self.synchronizer.sync_parsed_data(self.site, parsed_data)
+                        self.synchronizer.mark_as_parsed(self.site, match_id, new_kickoff_time, match_status)
+
                         if MatchStatus(match_status).is_finalized:
                             count = self.calculate_confirm_count(kickoff_time, last_fetched_at)
                             self.synchronizer.set_confirm_count(self.site, match_id, count)
 
-                        self.synchronizer.mark_as_parsed(self.site, match_id, match_status)
                         self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()

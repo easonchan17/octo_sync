@@ -180,7 +180,12 @@ class FixtureDataSynchronizer(BaseSynchronizer):
                     FixtureRawData.id.key,
                     FixtureRawData.created_at.key,
                     FixtureRawData.match_date.key,
-                    FixtureRawData.updated_at.key
+                    FixtureRawData.updated_at.key,
+                    FixtureRawData.last_fetched_at.key,
+                    FixtureRawData.last_parsed_at.key,
+                    FixtureRawData.total_fetch_count.key,
+                    FixtureRawData.total_parse_count.key,
+                    FixtureRawData.confirm_count.key
                 }
             )
 
