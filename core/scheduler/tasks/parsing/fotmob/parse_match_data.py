@@ -322,7 +322,7 @@ class MatchDataParser:
         match_id: int,
         player_id: int,
         player_name: str,
-        opta_id: int
+        opta_id: str
     ) -> Dict[str, Any]:
         keys = MatchPlayerStat.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
         record = {key: None for key in keys}
