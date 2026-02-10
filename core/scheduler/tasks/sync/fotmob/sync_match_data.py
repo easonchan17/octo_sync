@@ -134,40 +134,35 @@ class ResyncMatchData(BaseSyncMatchData):
         now = datetime.now(timezone.utc)
 
         # Time thresholds
-        fast_refresh_threshold = now - timedelta(minutes=MatchCrawlParams.FAST_REFRESH_INTERVAL_MINUTES)
-        slow_refresh_threshold = now - timedelta(hours=MatchCrawlParams.SLOW_REFRESH_INTERVAL_HOURS)
-        confirm_threshold = now - timedelta(hours=MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
-        finished_kickoff_threshold = now - timedelta(hours=MatchCrawlParams.MATCH_SAFE_DURATION_HOURS)
-
-        hot_zone_threshold = now + timedelta(hours=MatchCrawlParams.HOT_ZONE_HOURS)
+        fast_refresh_checkpoint = now - timedelta(minutes=MatchCrawlParams.FAST_REFRESH_INTERVAL_MINUTES)
+        slow_refresh_checkpoint = now - timedelta(hours=MatchCrawlParams.SLOW_REFRESH_INTERVAL_HOURS)
 
         items = []
-        for match_id, kickoff_time, match_status, confirm_count, last_confirm_at, page_url in records:
-            if confirm_count > 0:
-                if last_confirm_at <= confirm_threshold:
-                    items.append((match_id, kickoff_time, page_url))
-                continue
+        for match_id, kickoff_time, last_confirm_at, page_url in records:
+            archive_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS)
+            correction_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.CORRECTION_HOURS)
+            provisional_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.PROVISIONAL_HOURS)
 
-            status = MatchStatus(match_status)
+            lineup_checkpoint = kickoff_time - timedelta(hours=MatchCrawlParams.LINEUP_CONFIRM_HOURS)
 
-            if status.is_finished:
-                self.logger.critical(f"Match {match_id} state conflict.")
-
-            elif status.is_aborted:
-                if kickoff_time < finished_kickoff_threshold:
-                    if last_confirm_at <= fast_refresh_threshold:
-                        items.append((match_id, kickoff_time, page_url))
-
-            elif kickoff_time < finished_kickoff_threshold:     # Post-match
-                if last_confirm_at <= slow_refresh_threshold:
+            if now >= archive_checkpoint:        # Post-match: Archive
+                if last_confirm_at < archive_checkpoint:
                     items.append((match_id, kickoff_time, page_url))
 
-            elif kickoff_time >= now:                           # Pre-match
-                if kickoff_time <= hot_zone_threshold:              # Hot Zone: Within 2 hours (Fast Refresh)
-                    if last_confirm_at <= fast_refresh_threshold:
+            elif now >= correction_checkpoint:   # Post-match: Correction
+                if last_confirm_at < correction_checkpoint:
+                    items.append((match_id, kickoff_time, page_url))
+
+            elif now >= provisional_checkpoint:  # Post-match: Provisional
+                if last_confirm_at < provisional_checkpoint:
+                    items.append((match_id, kickoff_time, page_url))
+
+            elif now < kickoff_time:
+                if now >= lineup_checkpoint:  # Pre-match:Hot Zone
+                    if last_confirm_at <= fast_refresh_checkpoint:
                         items.append((match_id, kickoff_time, page_url))
-                else:                                           # Cold Zone: > 2 hours (Slow Refresh)
-                    if last_confirm_at <= slow_refresh_threshold:
+                else:                          # Pre-match: Cold Zone
+                    if last_confirm_at <= slow_refresh_checkpoint:
                         items.append((match_id, kickoff_time, page_url))
 
         return items
