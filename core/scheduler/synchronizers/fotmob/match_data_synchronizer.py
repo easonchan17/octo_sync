@@ -81,7 +81,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
             query = session.query(
                 MatchRawData.match_id,
                 Fixture.kickoff_time,
-                MatchRawData.match_status,
+                Fixture.match_status,
                 MatchRawData.confirm_count,
                 MatchRawData.last_fetched_at,
                 Fixture.page_url
@@ -91,7 +91,8 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 Fixture.kickoff_time >= start_time,
                 Fixture.kickoff_time < end_time,
                 MatchRawData.is_parsed == True,
-                MatchRawData.confirm_count < required_confirm_count
+                MatchRawData.confirm_count < required_confirm_count,
+                ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
             ).order_by(
                 Fixture.kickoff_time.asc()
             ).limit(limit)
