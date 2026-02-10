@@ -139,11 +139,12 @@ class MatchDataSynchronizer(BaseSynchronizer):
 
             session.execute(upsert_stmt)
 
-    def mark_as_parsed(self, site: Site, match_id: int, match_status: int) -> None:
+    def mark_as_parsed(self, site: Site, match_id: int, kickoff_time: datetime, match_status: int) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             session.query(MatchRawData).filter(
                 MatchRawData.match_id == match_id
             ).update({
+                MatchRawData.kickoff_time: kickoff_time,
                 MatchRawData.match_status: match_status,
                 MatchRawData.is_parsed: True,
                 MatchRawData.last_parse_error: None,
@@ -174,32 +175,6 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 MatchRawData.updated_at: func.now()
             }, synchronize_session=False)
 
-    def cleanup_on_kickoff_time_changed(
-        self,
-        site: Site,
-        match_id: int,
-        old_kickoff_time: datetime,
-        new_kickoff_time: datetime
-    ) -> None:
-        old_date = old_kickoff_time.date()
-        new_date = new_kickoff_time.date()
-        with self.db.get_session(site.get_namespace()) as session:
-            session.query(FixtureRawData).filter(
-                FixtureRawData.match_date == old_date
-            ).delete(synchronize_session=False)
-
-            session.query(FixtureRawData).filter(
-                FixtureRawData.match_date == new_date
-            ).delete(synchronize_session=False)
-
-            session.query(Fixture).filter(
-                Fixture.match_id == match_id
-            ).delete(synchronize_session=False)
-
-            session.query(MatchRawData).filter(
-                MatchRawData.match_id == match_id
-            ).delete(synchronize_session=False)
-
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(MatchRawData).values(raw_data)
@@ -210,7 +185,12 @@ class MatchDataSynchronizer(BaseSynchronizer):
                     MatchRawData.id.key,
                     MatchRawData.created_at.key,
                     MatchRawData.match_id.key,
-                    MatchRawData.updated_at.key
+                    MatchRawData.updated_at.key,
+                    MatchRawData.last_fetched_at.key,
+                    MatchRawData.last_parsed_at.key,
+                    MatchRawData.total_fetch_count.key,
+                    MatchRawData.total_parse_count.key,
+                    MatchRawData.confirm_count.key
                 }
             )
 
