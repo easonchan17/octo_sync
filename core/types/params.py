@@ -40,4 +40,4 @@ class MatchCrawlParams(BaseCrawlParams):
     LINEUP_CONFIRM_HOURS = 2
     PROVISIONAL_HOURS = 4
     CORRECTION_HOURS = 8
-    ARCHIVE_HOURS = 24
+    ARCHIVE_HOURS = 28

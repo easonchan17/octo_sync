@@ -112,16 +112,6 @@ class ParseFixtureData(PollTask):
 
         return True, last_kickoff_time
 
-    def calculate_confirm_count(self, kickoff_time: datetime, fetched_time: datetime) -> int:
-        match_duration = timedelta(hours=FixtureCrawlParams.MATCH_SAFE_DURATION_HOURS)
-        post_match_duration = fetched_time - kickoff_time - match_duration
-
-        if post_match_duration.total_seconds() <= 0:
-            return 1
-
-        confirm_interval = timedelta(hours=FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
-        return int(post_match_duration / confirm_interval) + 1
-
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
@@ -157,7 +147,7 @@ class ParseFixtureData(PollTask):
                         self.synchronizer.mark_as_parsed(self.site, match_date, last_kickoff_time)
 
                         if is_finalized:
-                            count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at)
+                            count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at, FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
                             self.synchronizer.set_confirm_count(self.site, match_date, count)
 
                         self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
