@@ -159,7 +159,7 @@ class ResyncMatchData(BaseSyncMatchData):
                         items.append((match_id, kickoff_time, page_url))
 
             elif kickoff_time < finished_kickoff_threshold:     # Post-match
-                if last_confirm_at <= fast_refresh_threshold:
+                if last_confirm_at <= slow_refresh_threshold:
                     items.append((match_id, kickoff_time, page_url))
 
             elif kickoff_time >= now:                           # Pre-match
