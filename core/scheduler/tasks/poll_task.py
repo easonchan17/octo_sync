@@ -36,3 +36,17 @@ class PollTask(BaseTask):
         start_time = BaseCrawlParams.GENESIS_AT
         end_time = datetime.now(timezone.utc) + timedelta(hours=lookahead_hours)
         return start_time, end_time
+
+    def calculate_confirm_count(
+        self,
+        kickoff_time: datetime,
+        fetched_time: datetime,
+        confirm_interval_hours: int
+    ) -> int:
+        safe_duration = timedelta(hours=BaseCrawlParams.MATCH_SAFE_DURATION_HOURS)
+        time_since_kickoff = fetched_time - kickoff_time
+        if time_since_kickoff < safe_duration:
+            return 0
+        active_duration = time_since_kickoff - safe_duration
+        confirm_interval = timedelta(hours=confirm_interval_hours)
+        return int(active_duration / confirm_interval) + 1
