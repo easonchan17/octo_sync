@@ -139,7 +139,7 @@ class ResyncMatchData(BaseSyncMatchData):
         slow_refresh_checkpoint = now - timedelta(hours=MatchCrawlParams.SLOW_REFRESH_INTERVAL_HOURS)
 
         items = []
-        for match_id, kickoff_time, last_confirm_at, page_url in records:
+        for match_id, kickoff_time, last_fetched_at, page_url in records:
             archive_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS)
             correction_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.CORRECTION_HOURS)
             provisional_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.PROVISIONAL_HOURS)
@@ -147,23 +147,23 @@ class ResyncMatchData(BaseSyncMatchData):
             lineup_checkpoint = kickoff_time - timedelta(hours=MatchCrawlParams.LINEUP_CONFIRM_HOURS)
 
             if now >= archive_checkpoint:        # Post-match: Archive
-                if last_confirm_at < archive_checkpoint:
+                if last_fetched_at < archive_checkpoint:
                     items.append((match_id, kickoff_time, page_url))
 
             elif now >= correction_checkpoint:   # Post-match: Correction
-                if last_confirm_at < correction_checkpoint:
+                if last_fetched_at < correction_checkpoint:
                     items.append((match_id, kickoff_time, page_url))
 
             elif now >= provisional_checkpoint:  # Post-match: Provisional
-                if last_confirm_at < provisional_checkpoint:
+                if last_fetched_at < provisional_checkpoint:
                     items.append((match_id, kickoff_time, page_url))
 
             elif now < kickoff_time:
                 if now >= lineup_checkpoint:  # Pre-match:Hot Zone
-                    if last_confirm_at <= fast_refresh_checkpoint:
+                    if last_fetched_at <= fast_refresh_checkpoint:
                         items.append((match_id, kickoff_time, page_url))
                 else:                          # Pre-match: Cold Zone
-                    if last_confirm_at <= slow_refresh_checkpoint:
+                    if last_fetched_at <= slow_refresh_checkpoint:
                         items.append((match_id, kickoff_time, page_url))
 
         return items

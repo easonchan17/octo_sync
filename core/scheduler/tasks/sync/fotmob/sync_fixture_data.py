@@ -123,17 +123,17 @@ class ResyncFixtureData(BaseSyncFixtureData):
         active_dates = self.synchronizer.get_active_match_dates(self.site, FixtureCrawlParams.MATCH_SAFE_DURATION_HOURS)
 
         items = []
-        for match_date, last_confirm_at, confirm_count in records:
+        for match_date, last_fetched_at, confirm_count in records:
             if confirm_count > 0:
-                if last_confirm_at <= confirm_checkpoint:
+                if last_fetched_at <= confirm_checkpoint:
                     items.append(match_date)
                 continue
 
             if match_date in active_dates:
-                if last_confirm_at <= refresh_chckpoint:
+                if last_fetched_at <= refresh_chckpoint:
                     items.append(match_date)
             elif match_date < today:
-                if last_confirm_at <= catchup_checkpoint:
+                if last_fetched_at <= catchup_checkpoint:
                     items.append(match_date)
 
         return items
