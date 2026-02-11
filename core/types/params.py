@@ -11,7 +11,7 @@ class EloParams:
 from datetime import datetime, timezone
 
 class BaseCrawlParams:
-    GENESIS_AT = datetime(2026, 2, 1, tzinfo=timezone.utc)
+    GENESIS_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
     RAW_DATA_QUERY_LIMIT = 300
     META_DATA_QUERY_LIMIT = 2000
