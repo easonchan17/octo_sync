@@ -225,7 +225,7 @@ class MatchLineup(Base):
     country_name = Column(String(100), nullable=True)
     opta_id = Column(String(64), nullable=True)
 
-    member_id = Column(Integer, nullable=False)
+    member_id = Column(Integer, nullable=True)
     member_name = Column(String(128), nullable=False)
 
     age = Column(Integer, nullable=True)
