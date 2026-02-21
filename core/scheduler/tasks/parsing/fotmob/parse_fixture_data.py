@@ -143,14 +143,16 @@ class ParseFixtureData(PollTask):
 
                         is_finalized, last_kickoff_time = self.get_daily_summary(parsed_data)
 
-                        self.synchronizer.sync_parsed_data(self.site, match_date, parsed_data)
-                        self.synchronizer.mark_as_parsed(self.site, match_date, last_kickoff_time)
-
+                        confirm_count = 0
                         if is_finalized:
-                            count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at, FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
-                            self.synchronizer.set_confirm_count(self.site, match_date, count)
+                            confirm_count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at, FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
+                        elif last_fetched_at - last_kickoff_time > timedelta(hours=FixtureCrawlParams.ARCHIVE_HOURS):
+                            confirm_count = -1
 
-                        self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
+                        self.synchronizer.sync_parsed_data(self.site, match_date, parsed_data)
+                        self.synchronizer.mark_as_parsed(self.site, match_date, last_kickoff_time, confirm_count)
+
+                        self.logger.info(f"Parsed fixtures: confirm_count={confirm_count} last_kickoff_time={last_kickoff_time} match_date={match_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_parse_failed(self.site, match_date, full_stack_trace)

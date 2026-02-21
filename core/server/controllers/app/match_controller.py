@@ -1,7 +1,7 @@
 from fastapi import HTTPException
-from core.server.services.match_service import MatchService
+from core.services.match_service import MatchService
 from core.server.controllers.base_controller import BaseController
-from core.server.models.api_models import (
+from core.server.schemas.api_models import (
     MatchDetailResponse,
     FixtureResponse,
     MatchStatResponse,

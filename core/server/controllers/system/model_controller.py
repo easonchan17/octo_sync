@@ -1,9 +1,9 @@
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, Query, Body
-from core.server.services.training_service import TrainingService
+from core.services.training_service import TrainingService
 from core.server.controllers.base_controller import BaseController
-from core.server.services.prediction_service import PredictionService
-from core.server.models.api_models import Paginated, Pagination, ModelResponse
+from core.services.prediction_service import PredictionService
+from core.server.schemas.api_models import Paginated, Pagination, ModelResponse
 
 class ModelController(BaseController):
     def __init__(self) -> None:

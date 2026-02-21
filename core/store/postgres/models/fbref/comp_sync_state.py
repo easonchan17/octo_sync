@@ -1,20 +1,21 @@
 from enum import IntFlag
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Column, Integer, DateTime, Index, CHAR, BigInteger
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, Index, CHAR, BigInteger, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
 class CompSyncFlag(IntFlag):
     TEAMS = 1
     MARKET_ODDS = 2
 
-class CompSyncState(Base, StatusMixin, DictMixin):
+class CompSyncState(Base):
     __tablename__ = 'comp_sync_state'
     __table_args__ = (
         Index('idx_comp_sync_state_created_at', 'created_at'),
         Index('idx_comp_sync_state_updated_at', 'updated_at'),
-        Index('idx_comp_sync_state_season_comp_code', 'season', 'comp_code', unique=True),
+        Index('idx_comp_sync_state_season_comp_code', 'season', 'comp_code'),
+        UniqueConstraint('season', 'comp_code', name='uq_comp_sync_state_season_comp_code'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
@@ -24,7 +25,3 @@ class CompSyncState(Base, StatusMixin, DictMixin):
     sync_flags = Column(BigInteger, nullable=False, default=0)
 
     last_synced_times = Column(JSONB(none_as_null=True), nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

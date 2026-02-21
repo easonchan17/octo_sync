@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Body
 from typing import Optional, Dict, Any
-from core.server.services.task_service import TaskService
+from core.services.task_service import TaskService
 from core.server.controllers.base_controller import BaseController
 
 class TaskController(BaseController):

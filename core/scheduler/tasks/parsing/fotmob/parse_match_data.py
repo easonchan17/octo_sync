@@ -396,15 +396,18 @@ class ParseMatchData(PollTask):
                             self.logger.warning(
                                 f"match {match_id} kickoff time changed: {kickoff_time.astimezone(timezone.utc)} -> {new_kickoff_time}"
                             )
+                            kickoff_time = new_kickoff_time
+
+                        confirm_count = 0
+                        if MatchStatus(match_status).is_finalized:
+                            confirm_count = self.calculate_confirm_count(kickoff_time, last_fetched_at, MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
+                        elif last_fetched_at - kickoff_time > timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS):
+                            confirm_count = -1
 
                         self.synchronizer.sync_parsed_data(self.site, parsed_data)
-                        self.synchronizer.mark_as_parsed(self.site, match_id, new_kickoff_time, match_status)
+                        self.synchronizer.mark_as_parsed(self.site, match_id, kickoff_time, match_status, confirm_count)
 
-                        if MatchStatus(match_status).is_finalized:
-                            count = self.calculate_confirm_count(kickoff_time, last_fetched_at, MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
-                            self.synchronizer.set_confirm_count(self.site, match_id, count)
-
-                        self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
+                        self.logger.info(f"Parsed match: confirm_count={confirm_count} kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_parse_failed(self.site, match_id, full_stack_trace)

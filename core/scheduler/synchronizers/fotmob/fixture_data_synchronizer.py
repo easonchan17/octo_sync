@@ -78,6 +78,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
                 FixtureRawData.match_date >= start_date,
                 FixtureRawData.match_date <= end_date,
                 FixtureRawData.is_parsed == True,
+                FixtureRawData.confirm_count >= 0,
                 FixtureRawData.confirm_count < required_confirm_count
             ).order_by(
                 FixtureRawData.match_date.asc()
@@ -96,6 +97,19 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             ).distinct().all()
 
             return {row[0] for row in rows}
+
+    def mark_as_not_modified(self, site: Site, match_date: date) -> None:
+        with self.db.get_session(site.get_namespace()) as session:
+            session.query(FixtureRawData).filter(
+                FixtureRawData.match_date == match_date
+            ).update({
+                FixtureRawData.is_fetched: True,
+                FixtureRawData.last_fetch_error: None,
+                FixtureRawData.last_fetched_at: func.now(),
+                FixtureRawData.total_fetch_count: FixtureRawData.total_fetch_count + 1,
+                FixtureRawData.fetch_attempts: 0,
+                FixtureRawData.updated_at: func.now()
+            }, synchronize_session=False)
 
     def mark_as_fetched(self, site: Site, match_date: date) -> None:
         with self.db.get_session(site.get_namespace()) as session:
@@ -135,13 +149,14 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             )
             session.execute(upsert_stmt)
 
-    def mark_as_parsed(self, site: Site, match_date: date, last_kickoff_time: datetime) -> None:
+    def mark_as_parsed(self, site: Site, match_date: date, last_kickoff_time: datetime, confirm_count: int) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             session.query(FixtureRawData).filter(
                 FixtureRawData.match_date == match_date
             ).update({
                 FixtureRawData.last_kickoff_time: last_kickoff_time,
                 FixtureRawData.is_parsed: True,
+                FixtureRawData.confirm_count: confirm_count,
                 FixtureRawData.last_parse_error: None,
                 FixtureRawData.parse_attempts: 0,
                 FixtureRawData.total_parse_count: FixtureRawData.total_parse_count + 1,
@@ -161,14 +176,14 @@ class FixtureDataSynchronizer(BaseSynchronizer):
                 FixtureRawData.updated_at: func.now()
             }, synchronize_session=False)
 
-    def set_confirm_count(self, site: Site, match_date: date, count: int) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
-            session.query(FixtureRawData).filter(
-                FixtureRawData.match_date == match_date
-            ).update({
-                FixtureRawData.confirm_count: count,
-                FixtureRawData.updated_at: func.now()
-            }, synchronize_session=False)
+    # def set_confirm_count(self, site: Site, match_date: date, count: int) -> None:
+    #     with self.db.get_session(site.get_namespace()) as session:
+    #         session.query(FixtureRawData).filter(
+    #             FixtureRawData.match_date == match_date
+    #         ).update({
+    #             FixtureRawData.confirm_count: count,
+    #             FixtureRawData.updated_at: func.now()
+    #         }, synchronize_session=False)
 
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
         with self.db.get_session(site.get_namespace()) as session:

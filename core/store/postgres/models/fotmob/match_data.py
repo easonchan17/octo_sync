@@ -1,11 +1,11 @@
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Column, Integer, DateTime, Index, text, Float, String, Boolean
-from ..base_model import Base, StatusMixin, DictMixin, CrawlStatusMixin, RawJsonMixin, IntrospectionMixin, Status
+from sqlalchemy import Column, Integer, DateTime, Index, text, Float, String, Boolean, UniqueConstraint
+from ..base_model import Base, CrawlStatusMixin, RawJsonMixin
 from core.types.enums import SiteName
 
 
-class MatchRawData(Base, StatusMixin, DictMixin, CrawlStatusMixin, RawJsonMixin):
+class MatchRawData(Base, CrawlStatusMixin, RawJsonMixin):
     __tablename__ = 'match_raw_data'
     __table_args__ = (
         Index('idx_match_raw_data_created_at', 'created_at'),
@@ -32,12 +32,8 @@ class MatchRawData(Base, StatusMixin, DictMixin, CrawlStatusMixin, RawJsonMixin)
 
     match_status = Column(Integer, nullable=True)
 
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
-
-class MatchStat(Base, StatusMixin, DictMixin, IntrospectionMixin):
+class MatchStat(Base):
     __tablename__ = 'match_stats'
     __table_args__ = (
         Index('idx_match_stats_created_at', 'created_at'),
@@ -140,17 +136,14 @@ class MatchStat(Base, StatusMixin, DictMixin, IntrospectionMixin):
     home_red_cards = Column(Integer, nullable=True)
     away_red_cards = Column(Integer, nullable=True)
 
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
-
-class MatchPlayerStat(Base, StatusMixin, DictMixin, IntrospectionMixin):
+class MatchPlayerStat(Base):
     __tablename__ = 'match_player_stats'
     __table_args__ = (
         Index('idx_match_player_stats_created_at', 'created_at'),
         Index('idx_match_player_stats_updated_at', 'updated_at'),
-        Index('idx_match_player_stats_match_id_opta_id_player_id_player_name', 'match_id', 'opta_id', 'player_id', 'player_name', unique=True),
+        Index('idx_match_player_stats_match_id_opta_id_player_id_player_name', 'match_id', 'opta_id', 'player_id', 'player_name'),
+        UniqueConstraint('match_id', 'opta_id', 'player_id', 'player_name', name='uq_match_player_stats_match_id_opta_id_player_id_player_name'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
     )
 
@@ -211,18 +204,15 @@ class MatchPlayerStat(Base, StatusMixin, DictMixin, IntrospectionMixin):
     punches = Column(Integer, nullable=True)
     throws = Column(Integer, nullable=True)
 
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
-
-class MatchLineup(Base, StatusMixin, DictMixin, IntrospectionMixin):
+class MatchLineup(Base):
     __tablename__ = 'match_lineups'
     __table_args__ = (
         Index('idx_match_lineups_created_at', 'created_at'),
         Index('idx_match_lineups_updated_at', 'updated_at'),
         Index('idx_match_lineups_match_id_team_id', 'match_id', 'team_id'),
-        Index('idx_match_lineups_match_team_opta_member', 'match_id', 'team_id', 'opta_id', 'member_id', 'member_name', unique=True),
+        Index('idx_match_lineups_match_team_opta_member', 'match_id', 'team_id', 'opta_id', 'member_id', 'member_name'),
+        UniqueConstraint('match_id', 'team_id', 'opta_id', 'member_id', 'member_name', name='uq_match_lineups_match_team_opta_member'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
     )
 
@@ -253,7 +243,3 @@ class MatchLineup(Base, StatusMixin, DictMixin, IntrospectionMixin):
 
     horizontal_layout = Column(JSONB(none_as_null=True), nullable=True)
     vertical_layout = Column(JSONB(none_as_null=True), nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

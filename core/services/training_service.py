@@ -1,7 +1,7 @@
 from threading import Lock
 from typing import Dict, Any, Optional
 from core.scheduler.task_executor import TaskExecutor
-from core.server.services.base_service import BaseService
+from core.services.base_service import BaseService
 from core.scheduler.tasks.base_task import BaseTask, HookedTask
 from core.registry import Registry
 

@@ -1,8 +1,9 @@
 import time
 import janus
 import asyncio
-from enum import Enum
+from enum import Enum, auto
 from contextlib import suppress
+from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
 from core.utils.singleton import Singleton
@@ -10,16 +11,18 @@ from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, List, Optional, Any
-from urllib.parse import urlparse
 from core.browser.rate_limiter import RateLimiter
 from core.config.config_manager import ConfigManager
-from core.browser.intercept_monitor import InterceptMonitor
 from core.browser.turnstile_solver import TurnstileSolver
+from core.browser.intercept_monitor import InterceptMonitor
 from core.browser.intercept_policy import InterceptType, InterceptPolicy
 
 class TaskType(Enum):
     OPEN_PAGE = 1
     CLOSE_PAGE = 2
+
+class FetchState(Enum):
+    NOT_MODIFIED = auto()
 
 class Interceptor(Thread, Singleton):
     def __init__(self) -> None:
@@ -44,6 +47,7 @@ class Interceptor(Thread, Singleton):
             return future
 
         self.task_queue.sync_q.put((task_type, future, kwargs))
+        # self.logger.info(f"Submitted task: {task_type} {kwargs}")
         return future
 
 
@@ -79,7 +83,35 @@ class Interceptor(Thread, Singleton):
 
             self.task_queue.async_q.task_done()
 
+    def _asyncio_exception_handler(self, loop: Any, context: dict) -> None:
+        exc = context.get("exception")
+
+        if exc is not None:
+            exc_name = type(exc).__name__
+            if "TargetClosedError" in exc_name or "ConnectionClosed" in exc_name:
+                return
+
+        task_info = ""
+        task_or_future = context.get("task") or context.get("future")
+        if task_or_future is not None:
+            try:
+                if hasattr(task_or_future, "get_coro"):
+                    task_info = f" | Coro: {task_or_future.get_coro()}"
+                else:
+                    task_info = f" | Task/Future: {task_or_future!r}"
+            except Exception:
+                pass
+
+        msg = context.get("message", "Unhandled exception")
+        self.logger.error(
+            f"Asyncio unhandled: {msg}{task_info}",
+            exc_info=exc if exc is not None else False
+        )
+
     async def _async_run_loop(self) -> None:
+        loop = asyncio.get_running_loop()
+        loop.set_exception_handler(self._asyncio_exception_handler)
+
         config = ConfigManager.get_instance().get_config("browser")
 
         options = config.get("options", {})
@@ -179,11 +211,6 @@ class Interceptor(Thread, Singleton):
 
             if policy.has_receivers(InterceptType.HTTP):
                 async def _http_response_handler(response) -> None:
-                    if not response.ok:
-                        if policy.debug:
-                            self.logger.info(f"Skipping non-OK response: {response.url} {response.status}")
-                        return
-
                     http_rule = policy.find_rule(
                         type=InterceptType.HTTP,
                         url=response.url
@@ -191,6 +218,12 @@ class Interceptor(Thread, Singleton):
                     if http_rule is None or http_rule.receiver is None:
                         if policy.debug:
                             self.logger.warning(f"No receiver found for HTTP rule: {response.url}")
+                        return
+
+                    if not response.ok:
+                        if response.status == 304:
+                            collected_datas.append(FetchState.NOT_MODIFIED)
+                            monitor.mark_completed(response.url)
                         return
 
                     try:
@@ -355,11 +388,33 @@ class Interceptor(Thread, Singleton):
                         self.rate_limiter.activate_backoff(url)
                         return False, collected_datas
 
-                    if not await self.turnstile_solver.solve(page_context, timeout=timeout):
-                        self.logger.error(f"Failed to solve turnstile for URL: {url}")
-                        return False, collected_datas
+                    # if not await self.turnstile_solver.solve(page_context, timeout=timeout):
+                    #     self.logger.error(f"Failed to solve turnstile for URL: {url}")
+                    #     return False, collected_datas
 
-                    await intercept_monitor.wait(timeout)
+                    async def turnstile_daemon():
+                        while True:
+                            try:
+                                if await self.turnstile_solver.solve(page_context):
+                                    break
+
+                                await asyncio.sleep(1)
+                            except asyncio.CancelledError:
+                                break
+                            except Exception as e:
+                                self.logger.debug(f"Turnstile daemon check skipped/error: {e}")
+
+                    daemon_task = asyncio.create_task(turnstile_daemon())
+                    try:
+                        await intercept_monitor.wait(timeout)
+                    finally:
+                        daemon_task.cancel()
+                        try:
+                            await daemon_task
+                        except asyncio.CancelledError:
+                            pass
+                        except Exception as e:
+                            self.logger.debug(f"Turnstile daemon finished: {e}")
 
                     elapsed_time = time.time() - start_time
                     self.logger.info(f"Page loaded: {url} in {elapsed_time:.2f}s")

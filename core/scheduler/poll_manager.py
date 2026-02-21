@@ -1,7 +1,7 @@
 from functools import lru_cache
 from core.registry import RegistryKind
 from core.logger.logger_manager import LoggerManager
-from core.server.services.task_service import TaskService
+from core.services.task_service import TaskService
 from core.registry import Registry
 
 import core.scheduler.tasks.parsing.fotmob  # noqa: F401

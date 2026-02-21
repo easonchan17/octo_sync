@@ -73,6 +73,13 @@ class FixtureResponse(BaseModel):
         from_attributes = True
 
 
+class GroupedFixturesResponse(BaseModel):
+    league_id: int
+    league_name: str
+    priority: int
+    fixtures: List[FixtureResponse]
+
+
 # ==============================================================================
 # Match Detail Models
 # ==============================================================================
@@ -188,7 +195,6 @@ class PredictionResponse(BaseModel):
 class LeagueResponse(BaseModel):
     id: int
     name: str
-    is_popular: bool
     priority: int
 
     class Config:

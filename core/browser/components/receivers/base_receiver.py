@@ -69,8 +69,11 @@ class BaseReceiver(ABC):
         mimetype = ''
         charset = ''
 
-        # Example: Content-Type: text/html; charset=utf-8; charset=gbk
-        content_type = response.headers.get('content-type', '').lower()
+        headers = getattr(response, 'headers', None)
+        if headers is None:
+            return mimetype, charset
+
+        content_type = headers.get('content-type', '').lower()
         if not content_type:
             return mimetype, charset
 

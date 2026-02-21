@@ -1,6 +1,6 @@
 from fastapi import HTTPException
-from core.server.services.site_service import SiteService
-from core.server.models.api_models import SiteRequest, SiteResponse
+from core.services.site_service import SiteService
+from core.server.schemas.api_models import SiteRequest, SiteResponse
 from core.server.controllers.base_controller import BaseController
 
 class SiteController(BaseController):

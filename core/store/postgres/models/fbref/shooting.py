@@ -1,14 +1,15 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
-class Shooting(Base, StatusMixin, DictMixin):
+class Shooting(Base):
     __tablename__ = 'shooting'
     __table_args__ = (
         Index('idx_shooting_created_at', 'created_at'),
         Index('idx_shooting_updated_at', 'updated_at'),
-        Index('idx_shooting_match_team', 'match_code', 'team_code', unique=True),
+        Index('idx_shooting_match_team', 'match_code', 'team_code'),
+        UniqueConstraint('match_code', 'team_code', name='uq_shooting_match_team'),
         Index('idx_shooting_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
@@ -31,7 +32,3 @@ class Shooting(Base, StatusMixin, DictMixin):
 
     xg = Column(Float, nullable=True)
     npxg = Column(Float, nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

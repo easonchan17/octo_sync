@@ -1,11 +1,11 @@
 from sqlalchemy.sql import func
 from typing import Dict, Any, List
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float, Text
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, Status
 from core.types.enums import MatchStatus, SiteName
 
 
-class MatchResult(Base, StatusMixin, DictMixin):
+class MatchResult(Base):
     __tablename__ = 'match_results'
     __table_args__ = (
         Index('idx_match_results_created_at', 'created_at'),
@@ -51,14 +51,6 @@ class MatchResult(Base, StatusMixin, DictMixin):
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
     match_report = Column(String(512), nullable=False)
     notes = Column(Text, nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
-
-
-    def __repr__(self) -> str:
-        return f"<MatchResult {self.match_code} {self.kickoff_time} {self.home_team} {self.away_team}>"
 
     def is_same(self, data: Dict[str, Any], fields: List[str]) -> bool:
         for field in fields:
