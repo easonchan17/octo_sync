@@ -269,7 +269,7 @@ class MatchDataParser:
             groups = [
                 (starters, "starter", "is_starter"),
                 (subs, "sub", "is_sub"),
-                ([coach] if coach is not None and coach.get("id") is not None else [], "coach", "is_coach")
+                ([coach] if coach is not None else [], "coach", "is_coach")
             ]
             records = []
             for members, role, flag in groups:
