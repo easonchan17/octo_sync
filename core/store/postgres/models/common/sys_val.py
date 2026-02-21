@@ -3,9 +3,9 @@ from sqlalchemy import Column, Integer, String, DateTime, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, Any
 from datetime import datetime
-from ..base_model import Base, DictMixin, StatusMixin, Status
+from ..base_model import Base, Status
 
-class SysVal(Base, StatusMixin, DictMixin):
+class SysVal(Base):
     __tablename__ = 'sys_vals'
     __table_args__ = (
         Index('idx_sys_vals_created_at', 'created_at'),
@@ -18,13 +18,6 @@ class SysVal(Base, StatusMixin, DictMixin):
     val_datetime = Column(DateTime(timezone=True), nullable=True)
     val_int = Column(Integer, nullable=True)
     val_json = Column(JSONB(none_as_null=True), nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
-
-    def __repr__(self) -> str:
-        return f"<SysVal(key='{self.key}', val_datetime={self.val_datetime}, val_int={self.val_int}, val_json={self.val_json})>"
 
     @property
     def is_comparable(self) -> bool:

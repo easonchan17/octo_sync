@@ -2,10 +2,10 @@ import json
 from thefuzz import fuzz
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Type
-from core.logger.logger_manager import LoggerManager
-from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.services.base_service import BaseService
 
-class TeamResolver:
+
+class TeamResolver(BaseService):
     SIMILARITY_THRESHOLD = 80
 
     TEAM_ALIAS = {
@@ -14,10 +14,6 @@ class TeamResolver:
         "Wolves": "Wolverhampton Wanderers",
         "Nott'ham Forest": "Nottingham Forest"
     }
-
-    def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
-        self.db = PostgreSQLManager.get_instance()
 
     def resolve(
         self,

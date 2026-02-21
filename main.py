@@ -10,6 +10,7 @@ from core.scheduler.task_executor import TaskExecutor
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.scheduler.cron_manager import get_cron_manager
 from core.scheduler.poll_manager import get_poll_manager
+from core.services.league.service import league_service
 from core.config.env_manager import env_manager
 
 if sys.version_info < (3, 11):
@@ -91,6 +92,10 @@ def run_app() -> None:
     logger.info("🔧 Starting cron...")
     get_cron_manager().start()
     logger.info("✅ Cron started")
+
+    logger.info("🔧 Loading league service...")
+    league_service.reload()
+    logger.info("✅ League service loaded")
 
     logger.info("🔧 Starting poll manager...")
     get_poll_manager().start()

@@ -1,17 +1,15 @@
-import time
 import traceback
 from datetime import date
 from core.registry import Registry
-from core.types.enums import MatchStatus
 from core.store.postgres.models import Site
-from core.browser.interceptor import TaskType
 from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from typing import Any, Dict, Optional, List, Tuple
+from core.services.league import get_league_service
 from core.browser.intercept_policy import InterceptPolicy
+from core.browser.interceptor import TaskType, FetchState
 from core.browser.components.receivers.common.json_receiver import JsonReceiver
 from core.scheduler.synchronizers.fotmob.match_data_synchronizer import MatchDataSynchronizer
-from core.browser.components.senders.common.no_cache_sender import NoCacheSender
 from core.types.params import MatchCrawlParams
 
 class BaseSyncMatchData(PollTask):
@@ -22,7 +20,7 @@ class BaseSyncMatchData(PollTask):
             {
                 "type": "http",
                 "pattern": "https://www.fotmob.com/api/data/matchDetails",
-                "sender": NoCacheSender,
+                # "sender": NoCacheSender,
                 "receiver": JsonReceiver
             }
         ]
@@ -33,6 +31,7 @@ class BaseSyncMatchData(PollTask):
         self.site = site
         self.payload = payload or {}
         self.synchronizer = MatchDataSynchronizer()
+        self.league_service = get_league_service()
 
     @property
     def fetch_date_range(self) -> Tuple[date, date]:
@@ -77,12 +76,16 @@ class BaseSyncMatchData(PollTask):
                             )
                             continue
 
-                        json_body = responses[0]
-                        if json_body is None:
+                        data = responses[0]
+                        if data is None:
                             self.logger.warning(f"No match detail data for {match_detail_url}")
                             self.synchronizer.mark_fetch_failed(
                                 self.site, match_id, kickoff_time, "No match detail data"
                             )
+                            continue
+
+                        if data is FetchState.NOT_MODIFIED:
+                            self.synchronizer.mark_as_not_modified(self.site, match_id)
                             continue
 
                         self.synchronizer.sync_raw_data(
@@ -90,7 +93,7 @@ class BaseSyncMatchData(PollTask):
                                 "source_url": match_detail_url,
                                 "match_id": match_id,
                                 "kickoff_time": kickoff_time,
-                                "json_body": json_body
+                                "json_body": data
                             })
                         self.synchronizer.mark_as_fetched(self.site, match_id)
                         self.logger.info(f"Synced match: kickoff_time={kickoff_time} match_id={match_id}")
@@ -139,7 +142,7 @@ class ResyncMatchData(BaseSyncMatchData):
         slow_refresh_checkpoint = now - timedelta(hours=MatchCrawlParams.SLOW_REFRESH_INTERVAL_HOURS)
 
         items = []
-        for match_id, kickoff_time, last_fetched_at, page_url in records:
+        for match_id, kickoff_time, last_fetched_at, page_url, league_id, league_name in records:
             archive_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS)
             correction_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.CORRECTION_HOURS)
             provisional_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.PROVISIONAL_HOURS)
@@ -149,21 +152,28 @@ class ResyncMatchData(BaseSyncMatchData):
             if now >= archive_checkpoint:        # Post-match: Archive
                 if last_fetched_at < archive_checkpoint:
                     items.append((match_id, kickoff_time, page_url))
+                continue
 
-            elif now >= correction_checkpoint:   # Post-match: Correction
-                if last_fetched_at < correction_checkpoint:
-                    items.append((match_id, kickoff_time, page_url))
+            ref_league = self.league_service.resolve(self.site.name, league_id, league_name)
+            if ref_league is None:
+                self.logger.error(f"Failed to add site league: {league_id} {league_name}")
+                continue
 
-            elif now >= provisional_checkpoint:  # Post-match: Provisional
-                if last_fetched_at < provisional_checkpoint:
-                    items.append((match_id, kickoff_time, page_url))
-
-            elif now < kickoff_time:
-                if now >= lineup_checkpoint:  # Pre-match:Hot Zone
-                    if last_fetched_at <= fast_refresh_checkpoint:
+            if ref_league.is_major:
+                if now >= correction_checkpoint:   # Post-match: Correction
+                    if last_fetched_at < correction_checkpoint:
                         items.append((match_id, kickoff_time, page_url))
-                else:                          # Pre-match: Cold Zone
-                    if last_fetched_at <= slow_refresh_checkpoint:
+
+                elif now >= provisional_checkpoint:  # Post-match: Provisional
+                    if last_fetched_at < provisional_checkpoint:
                         items.append((match_id, kickoff_time, page_url))
+
+                elif now < kickoff_time:
+                    if now >= lineup_checkpoint:  # Pre-match:Hot Zone
+                        if last_fetched_at <= fast_refresh_checkpoint:
+                            items.append((match_id, kickoff_time, page_url))
+                    else:                          # Pre-match: Cold Zone
+                        if last_fetched_at <= slow_refresh_checkpoint:
+                            items.append((match_id, kickoff_time, page_url))
 
         return items

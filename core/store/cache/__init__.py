@@ -1,6 +1,6 @@
-from .global_store import GlobalStore, get_global_store
+from .memory_cache import MemoryCache, get_memory_cache
 
 __all__ = [
-    'GlobalStore',
-    'get_global_store'
+    'MemoryCache',
+    'get_memory_cache',
 ]

@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, List, Type
-from core.scheduler.tasks.common.team_resolver import TeamResolver
+from core.services.team_resolver import TeamResolver
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.scheduler.tasks.base_task import BaseTask
 from sqlalchemy import update

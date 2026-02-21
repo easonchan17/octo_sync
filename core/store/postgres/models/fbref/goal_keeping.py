@@ -1,14 +1,15 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
-class GoalKeeping(Base, StatusMixin, DictMixin):
+class GoalKeeping(Base):
     __tablename__ = 'goal_keeping'
     __table_args__ = (
         Index('idx_goal_keeping_created_at', 'created_at'),
         Index('idx_goal_keeping_updated_at', 'updated_at'),
-        Index('idx_goal_keeping_match_team', 'match_code', 'team_code', unique=True),
+        Index('idx_goal_keeping_match_team', 'match_code', 'team_code'),
+        UniqueConstraint('match_code', 'team_code', name='uq_goal_keeping_match_team'),
         Index('idx_goal_keeping_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
@@ -32,7 +33,3 @@ class GoalKeeping(Base, StatusMixin, DictMixin):
 
     def_actions_outside_pen_area = Column(Integer, nullable=True)
     avg_distance_def_actions = Column(Float, nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

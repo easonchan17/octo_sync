@@ -3,7 +3,7 @@ from core.store.postgres.models import Site
 from core.scheduler.tasks.base_task import BaseTask
 from core.browser.interceptor import TaskType
 from core.browser.intercept_policy import InterceptPolicy
-from core.store.league_provider import league_provider
+from core.services.league import league_service
 from core.store.postgres.models.fbref.player_stats_sync_state import PlayerStatsSyncFlag
 from core.browser.components.receivers.fbref.player_match_stats_receiver import PlayerMatchStatsReceiver
 from core.scheduler.synchronizers.fbref.player_match_stats_synchronizer import PlayerMatchStatsSynchronizer
@@ -33,9 +33,9 @@ class SyncPlayerMatchStats(BaseTask):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_config = league_provider.get_league(league_id, self.site.name)
-        comp_code = league_config["id"]
-        comp_name = league_config["name"]
+        league_config = league_service.get(league_id).site_leagues.get(self.site.name)
+        comp_code = league_config.league_id
+        comp_name = league_config.league_name
         team_code = self.payload.get("team_code")
 
         seen_failed = True

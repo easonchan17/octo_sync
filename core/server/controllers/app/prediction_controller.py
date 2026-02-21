@@ -1,7 +1,7 @@
 from fastapi import HTTPException
-from core.server.models.api_models import PredictionResponse
+from core.server.schemas.api_models import PredictionResponse
 from core.server.controllers.base_controller import BaseController
-from core.server.services.prediction_service import PredictionService
+from core.services.prediction_service import PredictionService
 
 class PredictionController(BaseController):
     def __init__(self) -> None:

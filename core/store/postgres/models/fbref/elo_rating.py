@@ -1,11 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Numeric
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Numeric, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
-class EloRating(Base, StatusMixin, DictMixin):
+class EloRating(Base):
     __tablename__ = 'elo_ratings'
     __table_args__ = (
         Index('idx_elo_ratings_season', 'season'),
@@ -13,7 +13,8 @@ class EloRating(Base, StatusMixin, DictMixin):
         Index('idx_elo_ratings_updated_at', 'updated_at'),
         Index('idx_elo_ratings_kickoff_time', 'kickoff_time'),
         Index('idx_elo_ratings_team_time', 'team_code', 'kickoff_time'),
-        Index('idx_elo_ratings_team_match', 'team_code', 'match_code', unique=True),
+        Index('idx_elo_ratings_team_match', 'team_code', 'match_code'),
+        UniqueConstraint('team_code', 'match_code', name='uq_elo_ratings_team_match'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
@@ -31,7 +32,3 @@ class EloRating(Base, StatusMixin, DictMixin):
     expected_score = Column[Decimal](Numeric(10, 4), nullable=False)
     post_rating = Column[Decimal](Numeric(10, 4), nullable=False)
     game_count = Column(Integer, nullable=False)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

@@ -7,10 +7,10 @@ from core.utils.downloader import FileDownloader
 from core.utils.pandas_utils import load_dataframe
 from core.scheduler.tasks.base_task import BaseTask
 from typing import Any, Dict, List, Optional, Tuple
-from core.store.league_provider import league_provider
+from core.services.league import league_service
 from core.store.postgres.models.fbref.market_odds import MarketOdds
 from core.store.postgres.models.fbref import Fixture as FbrefFixture
-from core.scheduler.tasks.common.team_resolver import TeamResolver
+from core.services.team_resolver import TeamResolver
 from core.store.postgres.models.fbref.comp_sync_state import CompSyncFlag
 from core.scheduler.synchronizers.fbref.market_odds_synchronizer import MarketOddsSynchronizer
 
@@ -60,10 +60,10 @@ class SyncMarketOdds(BaseTask):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_config = league_provider.get_league(league_id, SiteName.FOOTBALL_DATA.value)
-        comp_code = league_config["id"]
-        comp_name = league_config["name"]
-        timezone = league_config["timezone"]
+        league_config = league_service.get(league_id).site_leagues.get(SiteName.FOOTBALL_DATA.value)
+        comp_code = league_config.league_id
+        comp_name = league_config.league_name
+        timezone = league_config.extra_data.get("timezone")
 
         seen_failed = True
 

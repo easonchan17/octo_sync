@@ -1,10 +1,10 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, BigInteger, Integer, Boolean, DateTime, Index, Numeric
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, Status
 from core.types.enums import SiteName
 
 
-class Spread(Base, StatusMixin, DictMixin):
+class Spread(Base):
     __tablename__ = 'pinnacle_spreads'
     __table_args__ = (
         Index('idx_pinnacle_spreads_match_id', 'match_id'),
@@ -27,6 +27,3 @@ class Spread(Base, StatusMixin, DictMixin):
 
     is_alternate = Column(Boolean, nullable=False)
 
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

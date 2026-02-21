@@ -1,15 +1,15 @@
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
-class DefensiveAction(Base, StatusMixin, DictMixin):
+class DefensiveAction(Base):
     __tablename__ = 'defensive_actions'
     __table_args__ = (
         Index('idx_defensive_actions_created_at', 'created_at'),
         Index('idx_defensive_actions_updated_at', 'updated_at'),
-        Index('idx_defensive_actions_match_team', 'match_code', 'team_code', unique=True),
+        Index('idx_defensive_actions_match_team', 'match_code', 'team_code'),
+        UniqueConstraint('match_code', 'team_code', name='uq_defensive_actions_match_team'),
         Index('idx_defensive_actions_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
@@ -38,7 +38,3 @@ class DefensiveAction(Base, StatusMixin, DictMixin):
     interceptions = Column(Integer, nullable=True)
     clearances = Column(Integer, nullable=True)
     errors_shot = Column(Integer, nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

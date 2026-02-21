@@ -2,12 +2,11 @@ import time
 import traceback
 from core.registry import Registry
 from core.store.postgres.models import Site
-from core.browser.interceptor import TaskType
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from core.scheduler.tasks.poll_task import PollTask
 from datetime import date, datetime, timedelta, timezone
 from core.browser.intercept_policy import InterceptPolicy
-from core.browser.components.senders.common.no_cache_sender import NoCacheSender
+from core.browser.interceptor import TaskType, FetchState
 from core.browser.components.receivers.common.json_receiver import JsonReceiver
 from core.scheduler.synchronizers.fotmob.fixture_data_synchronizer import FixtureDataSynchronizer
 from core.types.params import FixtureCrawlParams
@@ -20,7 +19,7 @@ class BaseSyncFixtureData(PollTask):
             {
                 "type": "http",
                 "pattern": "https://www.fotmob.com/api/data/matches",
-                "sender": NoCacheSender,
+                # "sender": NoCacheSender,
                 "receiver": JsonReceiver
             }
         ]
@@ -67,17 +66,21 @@ class BaseSyncFixtureData(PollTask):
                             self.synchronizer.mark_fetch_failed(self.site, cur_date, "No response for fixture data")
                             continue
 
-                        json_body = responses[0]
-                        if not json_body:
+                        data = responses[0]
+                        if data is None:
                             self.logger.warning(f"No fixture data for {page_url}")
                             self.synchronizer.mark_fetch_failed(self.site, cur_date, "No fixture data")
+                            continue
+
+                        if data is FetchState.NOT_MODIFIED:
+                            self.synchronizer.mark_as_not_modified(self.site, cur_date)
                             continue
 
                         self.synchronizer.sync_raw_data(
                             self.site, {
                                 "source_url": page_url,
                                 "match_date": cur_date,
-                                "json_body": json_body
+                                "json_body": data
                             })
                         self.synchronizer.mark_as_fetched(self.site, cur_date)
                         self.logger.info(f"Synced fixtures: match_date={cur_date}")

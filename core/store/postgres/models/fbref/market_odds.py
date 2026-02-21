@@ -1,10 +1,10 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, Status
 from core.types.enums import SiteName
 
 
-class MarketOdds(Base, StatusMixin, DictMixin):
+class MarketOdds(Base):
     __tablename__ = 'market_odds'
     __table_args__ = (
         Index('idx_market_odds_created_at', 'created_at'),
@@ -37,7 +37,3 @@ class MarketOdds(Base, StatusMixin, DictMixin):
     ah_line_close = Column(Float, nullable=False)
     ah_home_close = Column(Float, nullable=False)
     ah_away_close = Column(Float, nullable=False)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
