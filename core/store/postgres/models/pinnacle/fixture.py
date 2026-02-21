@@ -1,9 +1,9 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, BigInteger, Integer, String, DateTime, Index
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, Status
 from core.types.enums import SiteName
 
-class Fixture(Base, StatusMixin, DictMixin):
+class Fixture(Base):
     __tablename__ = 'pinnacle_fixtures'
     __table_args__ = (
         Index('idx_pinnacle_fixtures_kickoff_time', 'kickoff_time'),
@@ -27,6 +27,3 @@ class Fixture(Base, StatusMixin, DictMixin):
 
     fixture_id = Column(Integer, nullable=True, unique=True, comment='References fotmob_fixtures.match_id')
 
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

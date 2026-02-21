@@ -1,15 +1,15 @@
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Float
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
-class Passing(Base, StatusMixin, DictMixin):
+class Passing(Base):
     __tablename__ = 'passing'
     __table_args__ = (
         Index('idx_passing_created_at', 'created_at'),
         Index('idx_passing_updated_at', 'updated_at'),
-        Index('idx_passing_match_team', 'match_code', 'team_code', unique=True),
+        Index('idx_passing_match_team', 'match_code', 'team_code'),
+        UniqueConstraint('match_code', 'team_code', name='uq_passing_match_team'),
         Index('idx_passing_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
@@ -47,7 +47,3 @@ class Passing(Base, StatusMixin, DictMixin):
     passes_into_penalty_area = Column(Integer, nullable=True)
     crosses_into_penalty_area = Column(Integer, nullable=True)
     progressive_passes = Column(Integer, nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

@@ -1,6 +1,4 @@
 from datetime import datetime
-
-
 from enum import IntFlag
 from typing import Tuple, List
 from functools import lru_cache
@@ -10,12 +8,14 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 from sqlalchemy.dialects.postgresql import JSONB
 
-
 class Status(IntFlag):
     ACTIVE = 1
-    SYNED = 2
 
-class StatusMixin:
+class Base(DeclarativeBase):
+    status = Column(Integer, default=Status.ACTIVE.value)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
+
     def is_active(self) -> bool:
         return bool(self.status & Status.ACTIVE)
 
@@ -27,28 +27,36 @@ class StatusMixin:
         self.status &= ~Status.ACTIVE
         self.updated_at = func.now()
 
-class DictMixin:
-    def to_dict(self) -> dict:
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-
-class IntrospectionMixin:
     @classmethod
     @lru_cache(maxsize=128)
     def get_column_keys(cls, exclude_pk: bool = True, exclude: Tuple[str, ...] = ()) -> List[str]:
         mapper = inspect(cls)
         columns = []
-
         for column in mapper.columns:
             if exclude_pk and column.primary_key:
                 continue
-
             if column.key in exclude:
                 continue
-
             columns.append(column.key)
-
         return columns
+
+    def to_dict(self) -> dict:
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+    def __repr__(self) -> str:
+        state = inspect(self)
+        repr_columns = [col for col in state.mapper.columns if col.info.get('repr')]
+        if not repr_columns:
+            return f"<{self.__class__.__name__} at {hex(id(self))}>"
+
+        parts = []
+        for c in repr_columns:
+            if c.key not in state.unloaded:
+                val = getattr(self, c.key, None)
+                parts.append(f"{c.key}={val!r}")
+            else:
+                parts.append(f"{c.key}=<lazy>")
+        return f"<{self.__class__.__name__}({', '.join(parts)})>"
 
 class CrawlStatusMixin:
     source_url = Column(String(512), nullable=True)
@@ -72,9 +80,7 @@ class CrawlStatusMixin:
 class RawJsonMixin:
     json_body = Column(JSONB, nullable=False)
 
+
 class RawHtmlMixin:
     html_body = Column(Text, nullable=False)
     encoding = Column(String(20), default='utf-8')
-
-class Base(DeclarativeBase):
-    pass

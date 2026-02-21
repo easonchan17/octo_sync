@@ -1,0 +1,43 @@
+from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Integer, Index, ForeignKey, UniqueConstraint, BigInteger
+from core.types.enums import LeaguePriority
+from ..base_model import Base
+
+
+class League(Base):
+    __tablename__ = 'leagues'
+    __table_args__ = (
+        Index('idx_leagues_created_at', 'created_at'),
+        Index('idx_leagues_updated_at', 'updated_at'),
+        Index('idx_leagues_priority', 'priority'),
+        {'schema': 'public'}
+    )
+
+    id = Column(BigInteger, primary_key=True)
+    name = Column(String(200), nullable=False, unique=True, info={'repr': True})
+    priority = Column(Integer, default=LeaguePriority.LEVEL_BASIC.value, info={'repr': True})
+
+    site_leagues = relationship("SiteLeague", back_populates="ref_league", lazy="selectin")
+
+
+class SiteLeague(Base):
+    __tablename__ = 'site_leagues'
+    __table_args__ = (
+        Index('idx_site_leagues_created_at', 'created_at'),
+        Index('idx_site_leagues_updated_at', 'updated_at'),
+        UniqueConstraint('site_name', 'league_id', name='uq_site_league_site_code'),
+        UniqueConstraint('ref_league_id', 'site_name', name='uq_site_league_league_id_site'),
+        {'schema': 'public'}
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    site_name = Column(String(100), nullable=False, info={'repr': True})
+
+    league_id = Column(String(100), nullable=False, info={'repr': True})
+    league_name = Column(String(200), nullable=True)
+
+    extra_data = Column(JSONB(none_as_null=True), nullable=True)
+
+    ref_league_id = Column(BigInteger, ForeignKey('public.leagues.id'), nullable=True)
+    ref_league = relationship("League", back_populates="site_leagues", foreign_keys=[ref_league_id])

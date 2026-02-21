@@ -29,6 +29,8 @@ class FixtureCrawlParams(BaseCrawlParams):
     REFRESH_INTERVAL_MINUTES = 1
     CATCHUP_INTERVAL_HOURS = 2
 
+    ARCHIVE_HOURS = 28
+
 class MatchCrawlParams(BaseCrawlParams):
     POLL_IDLE_SECONDS = 60 * 10
     LOOKAHEAD_HOURS = 48

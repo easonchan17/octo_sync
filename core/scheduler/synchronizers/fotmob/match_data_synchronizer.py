@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from sqlalchemy import func, and_, or_
 from core.store.postgres.models import Site
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models.fotmob.fixture_data import Fixture, FixtureRawData
+from core.store.postgres.models.fotmob.fixture_data import Fixture
 from core.store.postgres.models.fotmob.match_data import MatchRawData, MatchLineup, MatchStat, MatchPlayerStat
 from ..base_synchronizer import BaseSynchronizer
 from core.types.enums import MatchStatus
@@ -80,22 +80,38 @@ class MatchDataSynchronizer(BaseSynchronizer):
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
                 MatchRawData.match_id,
-                Fixture.kickoff_time,
+                MatchRawData.kickoff_time,
                 MatchRawData.last_fetched_at,
-                Fixture.page_url
+                Fixture.page_url,
+                Fixture.league_id,
+                Fixture.league_name
             ).join(
                 Fixture, MatchRawData.match_id == Fixture.match_id
             ).filter(
-                Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time < end_time,
+                MatchRawData.kickoff_time >= start_time,
+                MatchRawData.kickoff_time < end_time,
                 MatchRawData.is_parsed == True,
+                MatchRawData.confirm_count >= 0,
                 MatchRawData.confirm_count < required_confirm_count,
-                ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
+                ~MatchRawData.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
             ).order_by(
-                Fixture.kickoff_time.asc()
+                MatchRawData.kickoff_time.asc()
             ).limit(limit)
 
             return query.all()
+
+    def mark_as_not_modified(self, site: Site, match_id: int) -> None:
+        with self.db.get_session(site.get_namespace()) as session:
+            session.query(MatchRawData).filter(
+                MatchRawData.match_id == match_id
+            ).update({
+                MatchRawData.is_fetched: True,
+                MatchRawData.last_fetch_error: None,
+                MatchRawData.last_fetched_at: func.now(),
+                MatchRawData.total_fetch_count: MatchRawData.total_fetch_count + 1,
+                MatchRawData.fetch_attempts: 0,
+                MatchRawData.updated_at: func.now()
+            }, synchronize_session=False)
 
     def mark_as_fetched(self, site: Site, match_id: int) -> None:
         with self.db.get_session(site.get_namespace()) as session:
@@ -138,7 +154,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
 
             session.execute(upsert_stmt)
 
-    def mark_as_parsed(self, site: Site, match_id: int, kickoff_time: datetime, match_status: int) -> None:
+    def mark_as_parsed(self, site: Site, match_id: int, kickoff_time: datetime, match_status: int, confirm_count: int) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             session.query(MatchRawData).filter(
                 MatchRawData.match_id == match_id
@@ -146,6 +162,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 MatchRawData.kickoff_time: kickoff_time,
                 MatchRawData.match_status: match_status,
                 MatchRawData.is_parsed: True,
+                MatchRawData.confirm_count: confirm_count,
                 MatchRawData.last_parse_error: None,
                 MatchRawData.parse_attempts: 0,
                 MatchRawData.total_parse_count: MatchRawData.total_parse_count + 1,
@@ -165,14 +182,14 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 MatchRawData.updated_at: func.now()
             }, synchronize_session=False)
 
-    def set_confirm_count(self, site: Site, match_id: int, count: int) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
-            session.query(MatchRawData).filter(
-                MatchRawData.match_id == match_id
-            ).update({
-                MatchRawData.confirm_count: count,
-                MatchRawData.updated_at: func.now()
-            }, synchronize_session=False)
+    # def set_confirm_count(self, site: Site, match_id: int, count: int) -> None:
+    #     with self.db.get_session(site.get_namespace()) as session:
+    #         session.query(MatchRawData).filter(
+    #             MatchRawData.match_id == match_id
+    #         ).update({
+    #             MatchRawData.confirm_count: count,
+    #             MatchRawData.updated_at: func.now()
+    #         }, synchronize_session=False)
 
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
         with self.db.get_session(site.get_namespace()) as session:

@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Any, Dict, Optional, Tuple
 from core.utils.pandas_utils import save_dataframe
-from core.store.league_provider import league_provider
+from core.services.league import league_service
 from .base_stats_aggregator import BaseStatsAggregator
 from .match_stats_analyzer2 import MatchStatsAnalyzer2
 
@@ -24,8 +24,8 @@ class BatchStatsAggregator2(BaseStatsAggregator):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_config = league_provider.get_league(league_id, self.site.name)
-        comp_code = league_config["id"]
+        league_config = league_service.get(league_id).site_leagues.get(self.site.name)
+        comp_code = league_config.league_id
 
         output_format = self.payload.get("format", "csv")
         output_path = self.config_manager.get_config(

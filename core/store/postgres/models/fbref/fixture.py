@@ -1,10 +1,10 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Text
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, UniqueConstraint
 from core.types.enums import MatchStatus, SiteName
+from ..base_model import Base
 
 
-class Fixture(Base, StatusMixin, DictMixin):
+class Fixture(Base):
     __tablename__ = 'fbref_fixtures'
     __table_args__ = (
         Index('idx_fbref_fixtures_created_at', 'created_at'),
@@ -14,7 +14,8 @@ class Fixture(Base, StatusMixin, DictMixin):
         Index('idx_fbref_fixtures_comp_code', 'comp_code'),
         Index('idx_fbref_fixtures_home_code_season', 'home_code', 'season'),
         Index('idx_fbref_fixtures_away_code_season', 'away_code', 'season'),
-        Index('idx_fbref_fixtures_time_home_away', 'kickoff_time', 'home_code', 'away_code', unique=True),
+        Index('idx_fbref_fixtures_time_home_away', 'kickoff_time', 'home_code', 'away_code'),
+        UniqueConstraint('kickoff_time', 'home_code', 'away_code', name='uq_fbref_fixtures_time_home_away'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
 
@@ -35,10 +36,3 @@ class Fixture(Base, StatusMixin, DictMixin):
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
 
     fixture_id = Column(Integer, nullable=True, unique=True, comment='References fotmob_fixtures.match_id')
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
-
-    def __repr__(self) -> str:
-        return f"<Fixture {self.kickoff_time} {self.home_team} {self.away_team}>"

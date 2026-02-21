@@ -1,15 +1,15 @@
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, DateTime, Index, CHAR, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
-class GoalAndShotCreation(Base, StatusMixin, DictMixin):
+class GoalAndShotCreation(Base):
     __tablename__ = 'gca'
     __table_args__ = (
         Index('idx_gca_created_at', 'created_at'),
         Index('idx_gca_updated_at', 'updated_at'),
-        Index('idx_gca_match_team', 'match_code', 'team_code', unique=True),
+        Index('idx_gca_match_team', 'match_code', 'team_code'),
+        UniqueConstraint('match_code', 'team_code', name='uq_gca_match_team'),
         Index('idx_gca_kickoff_time', 'kickoff_time'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
@@ -35,7 +35,3 @@ class GoalAndShotCreation(Base, StatusMixin, DictMixin):
     gca_shots = Column(Integer, nullable=True)
     gca_fouled = Column(Integer, nullable=True)
     gca_defense = Column(Integer, nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

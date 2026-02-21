@@ -1,9 +1,9 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, BigInteger, Integer, DateTime, Index, Numeric
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, Status
 from core.types.enums import SiteName
 
-class Moneyline(Base, StatusMixin, DictMixin):
+class Moneyline(Base):
     __tablename__ = 'pinnacle_moneyline'
     __table_args__ = (
         Index('idx_pinnacle_moneyline_match_id', 'match_id'),
@@ -25,6 +25,3 @@ class Moneyline(Base, StatusMixin, DictMixin):
     away_price = Column(Integer, nullable=False)
     away_odds = Column(Numeric(7, 3), nullable=False)
 
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

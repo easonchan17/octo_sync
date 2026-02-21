@@ -7,14 +7,26 @@ class UpsertStrategy(str, Enum):
     KEEP_MAX = "keep_max"
 
 class SiteName(str, Enum):
+    SYSTEM = 'system'
     FBREF = 'fbref'
     FOTMOB = 'fotmob'
     PINNACLE = 'pinnacle'
     FOOTBALL_DATA = 'football-data'
 
 class LeagueID(IntEnum):
-    EPL = 101
-    LALIGA = 102
+    UNKNOWN = 0
+    PREMIER_LEAGUE = 101
+    LA_LIGA = 102
+    SERIE_A = 103
+    BUNDESLIGA = 104
+    LIGUE_1 = 105
+
+class LeaguePriority(IntEnum):
+    LEVEL_GLOBAL = 1000
+    LEVEL_MAJOR = 500
+    LEVEL_REGIONAL = 100
+    LEVEL_BASIC = 50
+    LEVEL_NONE = 0
 
 class MatchStatus(IntEnum):
     SCHEDULED = 0

@@ -1,7 +1,7 @@
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import insert
 from core.utils.singleton import Singleton
-from core.server.services.base_service import BaseService
+from core.services.base_service import BaseService
 from core.store.postgres.models import (
     Site, TrainingRecord, SysVal, FotmobFixture, MatchLineup, PinnacleFixture, Moneyline, Spread, CompTeam, CompSyncState,
     MatchStatsSyncState, MatchResult, FbrefFixture, GoalAndShotCreation, Passing,

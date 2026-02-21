@@ -1,9 +1,9 @@
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, String, DateTime, Index, Float, Text
 from sqlalchemy.dialects.postgresql import JSONB
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from ..base_model import Base, Status
 
-class TrainingRecord(Base, StatusMixin, DictMixin):
+class TrainingRecord(Base):
     __tablename__ = 'training_records'
     __table_args__ = (
         Index('idx_training_records_created_at', 'created_at'),
@@ -29,7 +29,3 @@ class TrainingRecord(Base, StatusMixin, DictMixin):
     best_params = Column(JSONB(none_as_null=True), nullable=False)
     train_score = Column(Float, nullable=False)
     test_score = Column(Float, nullable=False)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

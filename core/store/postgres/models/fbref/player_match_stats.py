@@ -1,14 +1,15 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, DateTime, Index, CHAR, Float, String, Boolean
-from ..base_model import Base, StatusMixin, DictMixin, Status
+from sqlalchemy import Column, Integer, Index, CHAR, Float, String, Boolean, UniqueConstraint
 from core.types.enums import SiteName
+from ..base_model import Base
 
-class PlayerMatchStats(Base, StatusMixin, DictMixin):
+class PlayerMatchStats(Base):
     __tablename__ = 'player_match_stats'
     __table_args__ = (
         Index('idx_player_match_stats_created_at', 'created_at'),
         Index('idx_player_match_stats_updated_at', 'updated_at'),
-        Index('idx_player_match_stats_match_player', 'match_code', 'player_code', unique=True),
+        Index('idx_player_match_stats_match_player', 'match_code', 'player_code'),
+        UniqueConstraint('match_code', 'player_code', name='uq_player_match_stats_match_player'),
         Index('idx_player_match_stats_team_code', 'team_code'),
         {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
     )
@@ -54,7 +55,3 @@ class PlayerMatchStats(Base, StatusMixin, DictMixin):
     gk_crosses = Column(Integer, nullable=True)
     gk_crosses_stopped = Column(Integer, nullable=True)
     gk_def_actions_outside_pen_area = Column(Integer, nullable=True)
-
-    status = Column(Integer, default=Status.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=func.now())
-    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
