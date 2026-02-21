@@ -52,19 +52,17 @@ class MatchDataSynchronizer(BaseSynchronizer):
         with self.db.get_session(site.get_namespace()) as session:
             query = session.query(
                 MatchRawData.match_id,
-                Fixture.kickoff_time,
+                MatchRawData.kickoff_time,
                 MatchRawData.last_fetched_at,
                 MatchRawData.json_body
-            ).join(
-                Fixture, MatchRawData.match_id == Fixture.match_id
             ).filter(
-                Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time < end_time,
+                MatchRawData.kickoff_time >= start_time,
+                MatchRawData.kickoff_time < end_time,
                 MatchRawData.is_fetched == True,
                 MatchRawData.is_parsed == False,
                 MatchRawData.parse_attempts < max_retries
             ).order_by(
-                Fixture.kickoff_time.asc()
+                MatchRawData.kickoff_time.asc()
             ).limit(limit)
 
             return query.all()

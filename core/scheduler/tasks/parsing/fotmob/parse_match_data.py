@@ -388,7 +388,6 @@ class ParseMatchData(PollTask):
                             self.synchronizer.mark_parse_failed(self.site, match_id, "match data is None")
                             continue
 
-
                         new_kickoff_time = datetime.fromisoformat(parsed_data["kickoff_time"])
                         match_status = parsed_data["match_status"]
 
