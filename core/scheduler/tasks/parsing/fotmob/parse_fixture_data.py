@@ -10,19 +10,15 @@ from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models.fotmob.fixture_data import Fixture
 from core.scheduler.synchronizers.fotmob.fixture_data_synchronizer import FixtureDataSynchronizer
 from core.types.params import FixtureCrawlParams
-from core.types.enums import MatchStatus
+from core.types.enums import MatchStatus, SiteName
+from core.services.league import league_service
 
 class FixtureDataParser:
-    def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
-
     def parse(self, json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         if not json_data:
-            self.logger.error(f"Json data is empty")
             return None
 
-        match_id_key = Fixture.match_id.key
-        records: Dict[int, Dict[str, Any]] = {}
+        results = {}
 
         leagues = json_data.get('leagues', [])
         sorted_leagues = sorted(
@@ -30,6 +26,7 @@ class FixtureDataParser:
             key=lambda league: league.get('id'),
             reverse=True
         )
+        match_id_key = Fixture.match_id.key
         for league in sorted_leagues:
             league_id = league.get('id')
             league_name = league.get('name')
@@ -39,11 +36,12 @@ class FixtureDataParser:
             for fixture in league_fixtures:
                 match_id = fixture[match_id_key]
 
-                if match_id in records:
+                if match_id in results:
                     continue
-                records[match_id] = fixture
 
-        return list(records.values())
+                results[match_id] = fixture
+
+        return list(results.values())
 
     def _parse_fixtures(
         self,
@@ -87,6 +85,26 @@ class FixtureDataParser:
         return fixtures
 
 
+class LeagueDataParser:
+    def parse(self, json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+        if not json_data:
+            return None
+
+        results = []
+        leagues = json_data.get('leagues', [])
+        for league in leagues:
+            league_id = league['id']
+            league_name = league['name']
+            country_code = league['ccode']
+
+            results.append({
+                "league_id": league_id,
+                "league_name": league_name,
+                "country_code": country_code
+            })
+        return results
+
+
 @Registry.poll("parse.fotmob.fixture_data")
 class ParseFixtureData(PollTask):
     def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
@@ -94,7 +112,8 @@ class ParseFixtureData(PollTask):
         self.site = site
         self.payload = payload or {}
         self.synchronizer = FixtureDataSynchronizer()
-        self.parser = FixtureDataParser()
+        self.league_parser = LeagueDataParser()
+        self.fixture_parser = FixtureDataParser()
 
     def get_daily_summary(self, parsed_data: List[Dict[str, Any]]) -> Tuple[bool, datetime]:
         match_status_key = Fixture.match_status.key
@@ -133,15 +152,28 @@ class ParseFixtureData(PollTask):
                         return
 
                     try:
-                        parsed_data = self.parser.parse(json_body)
-                        if parsed_data is None:
+                        parsed_leagues = self.league_parser.parse(json_body)
+                        if parsed_leagues is None:
+                            self.synchronizer.mark_parse_failed(self.site, match_date, "League data is None")
+                            continue
+
+                        for league in parsed_leagues:
+                            league_service.resolve(
+                                SiteName.FOTMOB.value,
+                                league['league_id'],
+                                league['league_name'],
+                                country_code=league['country_code']
+                            )
+
+                        parsed_fixtures = self.fixture_parser.parse(json_body)
+                        if parsed_fixtures is None:
                             self.synchronizer.mark_parse_failed(self.site, match_date, "Fixture data is None")
                             continue
 
-                        for fixture in parsed_data:
+                        for fixture in parsed_fixtures:
                             fixture[Fixture.raw_fetch_date.key] = match_date
 
-                        is_finalized, last_kickoff_time = self.get_daily_summary(parsed_data)
+                        is_finalized, last_kickoff_time = self.get_daily_summary(parsed_fixtures)
 
                         confirm_count = 0
                         if is_finalized:
@@ -149,7 +181,7 @@ class ParseFixtureData(PollTask):
                         elif last_fetched_at - last_kickoff_time > timedelta(hours=FixtureCrawlParams.ARCHIVE_HOURS):
                             confirm_count = -1
 
-                        self.synchronizer.sync_parsed_data(self.site, match_date, parsed_data)
+                        self.synchronizer.sync_parsed_data(self.site, match_date, parsed_fixtures)
                         self.synchronizer.mark_as_parsed(self.site, match_date, last_kickoff_time, confirm_count)
 
                         self.logger.info(f"Parsed fixtures: confirm_count={confirm_count} last_kickoff_time={last_kickoff_time} match_date={match_date}")

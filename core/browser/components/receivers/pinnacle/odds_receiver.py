@@ -11,7 +11,6 @@ class OddsReceiver(BaseReceiver):
             self.logger.error(f"Failed to decode json body: {response}")
             return None
 
-        # self.logger.info(f"Raw odds:\n{json.dumps(json_data, indent=2)}")
 
         match_odds: Dict[str, Any] = {}
 

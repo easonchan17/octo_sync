@@ -43,3 +43,8 @@ class MatchCrawlParams(BaseCrawlParams):
     PROVISIONAL_HOURS = 4
     CORRECTION_HOURS = 8
     ARCHIVE_HOURS = 28
+
+class LeagueCrawlParams(BaseCrawlParams):
+    POLL_IDLE_SECONDS = 60 * 10
+
+    REFRESH_INTERVAL_HOURS = 24

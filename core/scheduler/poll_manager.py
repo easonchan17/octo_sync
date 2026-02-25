@@ -5,9 +5,11 @@ from core.services.task_service import TaskService
 from core.registry import Registry
 
 import core.scheduler.tasks.parsing.fotmob  # noqa: F401
+import core.scheduler.tasks.parsing.pinnacle2  # noqa: F401
 import core.scheduler.tasks.sync.fbref  # noqa: F401
 import core.scheduler.tasks.sync.fotmob  # noqa: F401
 import core.scheduler.tasks.sync.pinnacle  # noqa: F401
+import core.scheduler.tasks.sync.pinnacle2  # noqa: F401
 
 class PollManager:
     def __init__(self) -> None:

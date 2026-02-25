@@ -1,3 +1,3 @@
-from .sync_odds import SyncOdds
+from .sync_match_odds import SyncMatchOdds
 
-__all__ = ['SyncOdds']
+__all__ = ['SyncMatchOdds']

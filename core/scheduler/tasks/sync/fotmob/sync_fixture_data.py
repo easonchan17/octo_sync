@@ -1,4 +1,3 @@
-import time
 import traceback
 from core.registry import Registry
 from core.store.postgres.models import Site
@@ -6,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from core.scheduler.tasks.poll_task import PollTask
 from datetime import date, datetime, timedelta, timezone
 from core.browser.intercept_policy import InterceptPolicy
-from core.browser.interceptor import TaskType, FetchState
+from core.browser.interceptor import TaskType
 from core.browser.components.receivers.common.json_receiver import JsonReceiver
 from core.scheduler.synchronizers.fotmob.fixture_data_synchronizer import FixtureDataSynchronizer
 from core.types.params import FixtureCrawlParams
@@ -30,12 +29,10 @@ class BaseSyncFixtureData(PollTask):
         self.site = site
         self.payload = payload or {}
         self.synchronizer = FixtureDataSynchronizer()
+        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
     def get_pending_fetch_items(self) -> List[Any]:
         pass
-
-    def get_idle_timeout_seconds(self) -> float:
-        return FixtureCrawlParams.POLL_IDLE_SECONDS
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
@@ -45,34 +42,32 @@ class BaseSyncFixtureData(PollTask):
                     self.idle_sleep()
                     continue
 
-                intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
-
                 for cur_date in items:
                     if self.should_stop():
                         return
 
                     try:
-                        page_url = intercept_policy.url.format(date=cur_date.strftime("%Y%m%d"))
+                        page_url = self.intercept_policy.url.format(date=cur_date.strftime("%Y%m%d"))
 
                         future = self.interceptor.submit_task(
                             TaskType.OPEN_PAGE,
                             url=page_url,
-                            intercept_policy=intercept_policy
+                            intercept_policy=self.intercept_policy
                         )
 
-                        responses, _ = future.result()
-                        if not responses:
+                        result_set = future.result()
+                        if result_set is None:
                             self.logger.error(f"No response for {page_url}")
-                            self.synchronizer.mark_fetch_failed(self.site, cur_date, "No response for fixture data")
+                            self.synchronizer.mark_fetch_failed(self.site, cur_date, "No response")
                             continue
 
-                        data = responses[0]
-                        if data is None:
-                            self.logger.warning(f"No fixture data for {page_url}")
-                            self.synchronizer.mark_fetch_failed(self.site, cur_date, "No fixture data")
+                        if result_set.is_empty():
+                            self.logger.error(f"No fixture data for {page_url}")
+                            self.synchronizer.mark_fetch_failed(self.site, cur_date, "No data")
                             continue
 
-                        if data is FetchState.NOT_MODIFIED:
+                        if result_set.is_not_modified():
+                            self.logger.warning(f"Fixture data is not modified for {page_url}")
                             self.synchronizer.mark_as_not_modified(self.site, cur_date)
                             continue
 
@@ -80,7 +75,7 @@ class BaseSyncFixtureData(PollTask):
                             self.site, {
                                 "source_url": page_url,
                                 "match_date": cur_date,
-                                "json_body": data
+                                "json_body": result_set.first()
                             })
                         self.synchronizer.mark_as_fetched(self.site, cur_date)
                         self.logger.info(f"Synced fixtures: match_date={cur_date}")

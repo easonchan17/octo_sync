@@ -4,17 +4,25 @@ from abc import ABC, abstractmethod
 from core.logger.logger_manager import LoggerManager
 
 class BaseReceiver(ABC):
+    CONTENT_TYPE = 'application/json'
+
+    CHARSETS = [
+        'utf-8', 'utf-8-sig', 'gbk', 'gb2312', 'big5',
+        'latin-1', 'cp1252', 'iso-8859-1', 'ascii',
+        'utf-16le', 'utf-16be', 'utf-32le', 'utf-32be'
+    ]
+
+    _instance_counter = 0
+
     def __init__(self):
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
-        self.content_types = [
-            'application/json'
-        ]
 
-        self.charsets = [
-            'utf-8', 'utf-8-sig', 'gbk', 'gb2312', 'big5',
-            'latin-1', 'cp1252', 'iso-8859-1', 'ascii',
-            'utf-16le', 'utf-16be', 'utf-32le', 'utf-32be'
-        ]
+        BaseReceiver._instance_counter += 1
+        self._instance_id = BaseReceiver._instance_counter
+
+    @property
+    def instance_id(self) -> int:
+        return self._instance_id
 
     @abstractmethod
     async def process(self, *args, **kwargs) -> Optional[Any]:
@@ -32,7 +40,7 @@ class BaseReceiver(ABC):
     async def decode_json_body(self, response: Any) -> Optional[Any]:
         try:
             mime_type, body = await self._decode_body(response)
-            if mime_type != 'application/json':
+            if mime_type != self.CONTENT_TYPE:
                 self.logger.error(f"Failed to parse json from {mime_type}")
                 return None
 
@@ -58,7 +66,7 @@ class BaseReceiver(ABC):
         if header_charset and self._try_decode(body, header_charset):
             return mime_type, body.decode(header_charset)
 
-        for charset in self.charsets:
+        for charset in self.CHARSETS:
             if charset != header_charset and self._try_decode(body, charset):
                 return mime_type, body.decode(charset)
 

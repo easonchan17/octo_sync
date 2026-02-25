@@ -25,10 +25,9 @@ class SyncPlayerMatchStats(BaseTask):
         self.site = site
         self.payload = payload
         self.synchronizer = PlayerMatchStatsSynchronizer()
+        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
     def execute(self, *args, **kwargs) -> None:
-        intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
-
         league_id = self.get_required_param("league_id")
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
@@ -60,20 +59,25 @@ class SyncPlayerMatchStats(BaseTask):
                     continue
 
                 try:
-                    page_url = intercept_policy.url.format(match_report_url=match_report_url)
+                    page_url = self.intercept_policy.url.format(match_report_url=match_report_url)
                     future = self.interceptor.submit_task(
                         TaskType.OPEN_PAGE,
                         url=page_url,
-                        intercept_policy=intercept_policy
+                        intercept_policy=self.intercept_policy
                     )
 
-                    responses, _ = future.result()
-                    if not responses:
+                    result_set = future.result()
+                    if result_set is None:
                         self.logger.error(f"No response for {page_url}")
                         seen_failed = True
                         continue
 
-                    player_stats = responses[0]
+                    if result_set.is_empty():
+                        self.logger.error(f"No player stats data for {page_url}")
+                        seen_failed = True
+                        continue
+
+                    player_stats = result_set.first()
                     if not player_stats:
                         self.logger.warning(f"No player stats for {page_url}")
                         continue

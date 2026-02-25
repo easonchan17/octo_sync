@@ -119,10 +119,10 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 MatchRawData.is_fetched: True,
                 MatchRawData.last_fetch_error: None,
                 MatchRawData.last_fetched_at: func.now(),
+                MatchRawData.fetch_attempts: 0,
                 MatchRawData.total_fetch_count: MatchRawData.total_fetch_count + 1,
                 MatchRawData.is_parsed: False,
                 MatchRawData.last_parse_error: None,
-                MatchRawData.fetch_attempts: 0,
                 MatchRawData.parse_attempts: 0,
                 MatchRawData.updated_at: func.now()
             }, synchronize_session=False)
@@ -180,38 +180,20 @@ class MatchDataSynchronizer(BaseSynchronizer):
                 MatchRawData.updated_at: func.now()
             }, synchronize_session=False)
 
-    # def set_confirm_count(self, site: Site, match_id: int, count: int) -> None:
-    #     with self.db.get_session(site.get_namespace()) as session:
-    #         session.query(MatchRawData).filter(
-    #             MatchRawData.match_id == match_id
-    #         ).update({
-    #             MatchRawData.confirm_count: count,
-    #             MatchRawData.updated_at: func.now()
-    #         }, synchronize_session=False)
-
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(MatchRawData).values(raw_data)
-            assignment, where_clause = self.build_upsert_clauses(
-                MatchRawData,
-                insert_stmt,
-                {
-                    MatchRawData.id.key,
-                    MatchRawData.created_at.key,
-                    MatchRawData.match_id.key,
-                    MatchRawData.updated_at.key,
-                    MatchRawData.last_fetched_at.key,
-                    MatchRawData.last_parsed_at.key,
-                    MatchRawData.total_fetch_count.key,
-                    MatchRawData.total_parse_count.key,
-                    MatchRawData.confirm_count.key
-                }
-            )
+
+            update_values = {
+                MatchRawData.source_url.key: raw_data["source_url"],
+                MatchRawData.kickoff_time.key: raw_data["kickoff_time"],
+                MatchRawData.json_body.key: raw_data["json_body"],
+                MatchRawData.updated_at.key: func.now()
+            }
 
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[MatchRawData.match_id.key],
-                set_=assignment,
-                where=where_clause
+                set_=update_values
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
