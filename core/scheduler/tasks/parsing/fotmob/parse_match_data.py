@@ -411,6 +411,7 @@ class ParseMatchData(PollTask):
                         full_stack_trace = traceback.format_exc()
                         self.synchronizer.mark_parse_failed(self.site, match_id, full_stack_trace)
                         self.logger.error(f"Failed to parse match data for match {match_id}: {e}", exc_info=True)
+
             except Exception as e:
                 self.logger.error(f"Failed to parse match data: {e}", exc_info=True)
                 self.idle_sleep()

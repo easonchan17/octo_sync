@@ -10,19 +10,19 @@ from core.utils.singleton import Singleton
 from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
-from typing import Tuple, List, Optional, Any
+from typing import Tuple, Optional, Any
 from core.browser.rate_limiter import RateLimiter
 from core.config.config_manager import ConfigManager
 from core.browser.turnstile_solver import TurnstileSolver
 from core.browser.intercept_monitor import InterceptMonitor
+from core.browser.intercept_result_set import InterceptResultSet, FetchState
 from core.browser.intercept_policy import InterceptType, InterceptPolicy
+
 
 class TaskType(Enum):
     OPEN_PAGE = 1
     CLOSE_PAGE = 2
 
-class FetchState(Enum):
-    NOT_MODIFIED = auto()
 
 class Interceptor(Thread, Singleton):
     def __init__(self) -> None:
@@ -154,30 +154,29 @@ class Interceptor(Thread, Singleton):
             if not handler:
                 raise ValueError(f"No handler found for task type: {task_type}")
 
-            result = await handler(payload)
+            result_set = await handler(payload)
             if not future.done():
-                future.set_result(result)
+                future.set_result(result_set)
         except Exception as e:
             self.logger.error(f"Error processing task {task_type}: {e}", exc_info=True)
             if not future.done():
                 future.set_exception(e)
 
-    async def _handle_open_page(self, payload: dict[str, Any]) -> Tuple[Optional[List[Any]], None]:
+    async def _handle_open_page(self, payload: dict[str, Any]) -> Optional[InterceptResultSet]:
         url = payload.get("url")
         policy = payload.get("intercept_policy")
         query_params = payload.get("query_params")
 
-        result = await self._open_page(url, policy, query_params)
-        return (result, None)
+        return await self._open_page(url, policy, query_params)
 
     async def _register_handlers(
         self,
         page_context: Any,
         policy: InterceptPolicy,
         monitor: InterceptMonitor,
-        collected_datas: List[Any],
+        result_set: InterceptResultSet,
         query_params: Optional[dict[str, Any]] = None
-    ) -> Tuple[Any, Any, Any]:
+    ) -> Tuple[Optional[Any], Optional[Any], Optional[Any]]:
 
         http_request_handler = None
         http_response_handler = None
@@ -222,7 +221,7 @@ class Interceptor(Thread, Singleton):
 
                     if not response.ok:
                         if response.status == 304:
-                            collected_datas.append(FetchState.NOT_MODIFIED)
+                            result_set.set(http_rule.receiver.instance_id, FetchState.NOT_MODIFIED)
                             monitor.mark_completed(response.url)
                         return
 
@@ -231,7 +230,7 @@ class Interceptor(Thread, Singleton):
                         if parsed_data is None:
                             return
 
-                        collected_datas.append(parsed_data)
+                        result_set.set(http_rule.receiver.instance_id, parsed_data)
                         monitor.mark_completed(response.url)
                     except Exception as e:
                         self.logger.error(f"Failed to process response from {response.url} {response.request.method} {http_rule.receiver}: {e}", exc_info=True)
@@ -267,7 +266,6 @@ class Interceptor(Thread, Singleton):
                 ws.on("framereceived", _framereceived_handler)
 
             page_context.on("websocket", _ws_connect_handler)
-            collected_datas.append(page_context)
             ws_connect_handler = _ws_connect_handler
 
         return http_request_handler, http_response_handler, ws_connect_handler
@@ -277,7 +275,7 @@ class Interceptor(Thread, Singleton):
         page_context: Any,
         url: str,
         policy: InterceptPolicy,
-        collected_datas: List[Any]
+        result_set: InterceptResultSet
     ) -> None:
         if not policy.has_rules(InterceptType.DOM):
             return
@@ -298,7 +296,7 @@ class Interceptor(Thread, Singleton):
             if parsed_data is None:
                 return
 
-            collected_datas.append(parsed_data)
+            result_set.set(dom_rule.receiver.instance_id, parsed_data)
         except Exception as e:
             self.logger.error(f"Failed to process page content from {url} {dom_rule.receiver}: {e}", exc_info=True)
 
@@ -316,7 +314,7 @@ class Interceptor(Thread, Singleton):
         url: str,
         policy: Optional[InterceptPolicy] = None,
         query_params: Optional[dict[str, Any]] = None
-    ) -> Optional[List[Any]]:
+    ) -> Optional[InterceptResultSet]:
         if policy is None:
             self.logger.error(f"Policy is None for URL: {url}")
             return None
@@ -333,14 +331,14 @@ class Interceptor(Thread, Singleton):
 
             await self.rate_limiter.throttle(url, policy.page_delay)
 
-            success, collected_responses = await self._intercept(
+            success, result_set = await self._intercept(
                 url=url,
                 policy=policy,
                 query_params=query_params
             )
 
             if success:
-                return collected_responses
+                return result_set
 
             if idx >= retry_count:
                 self.logger.error(f"Failed to intercept page {url} after {retry_count} retries")
@@ -353,8 +351,8 @@ class Interceptor(Thread, Singleton):
         url: str,
         policy: InterceptPolicy,
         query_params: Optional[dict[str, Any]] = None
-    ) -> Tuple[bool, Optional[List[Any]]]:
-        collected_datas: List[Any] = []
+    ) -> Tuple[bool, InterceptResultSet]:
+        result_set = InterceptResultSet()
         timeout = policy.timeout
 
         try:
@@ -373,7 +371,7 @@ class Interceptor(Thread, Singleton):
                         page_context,
                         policy,
                         intercept_monitor,
-                        collected_datas,
+                        result_set,
                         query_params
                     )
 
@@ -382,15 +380,11 @@ class Interceptor(Thread, Singleton):
                     response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
                     if response is None:
                         self.logger.warning(f"Navigation to {url} returned None, no response available")
-                        return False, collected_datas
+                        return False, result_set
 
                     if await self.rate_limiter.is_rate_limited(response):
                         self.rate_limiter.activate_backoff(url)
-                        return False, collected_datas
-
-                    # if not await self.turnstile_solver.solve(page_context, timeout=timeout):
-                    #     self.logger.error(f"Failed to solve turnstile for URL: {url}")
-                    #     return False, collected_datas
+                        return False, result_set
 
                     async def turnstile_daemon():
                         while True:
@@ -419,13 +413,13 @@ class Interceptor(Thread, Singleton):
                     elapsed_time = time.time() - start_time
                     self.logger.info(f"Page loaded: {url} in {elapsed_time:.2f}s")
 
-                    await self._process_dom(page_context, url, policy, collected_datas)
+                    await self._process_dom(page_context, url, policy, result_set)
                     self.rate_limiter.reset_backoff(url)
 
                     if policy.has_rules(InterceptType.WS):
                         page_context.detach()
 
-                    return True, collected_datas
+                    return True, result_set
                 except Exception as e:
                     self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
 
@@ -433,4 +427,4 @@ class Interceptor(Thread, Singleton):
             self.logger.error(f"Timeout while acquiring page for URL: {url}")
         except Exception as e:
             self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
-        return False, collected_datas
+        return False, result_set

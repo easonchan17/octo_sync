@@ -10,12 +10,10 @@ from core.browser.components.receivers.pinnacle.fixture_receiver import FixtureR
 from core.scheduler.synchronizers.pinnacle.fixture_synchronizer import FixtureSynchronizer
 from core.scheduler.synchronizers.pinnacle.moneyline_synchronizer import MoneylineSynchronizer
 from core.scheduler.synchronizers.pinnacle.spread_synchronizer import SpreadSynchronizer
-from core.store.postgres.models.pinnacle.moneyline import Moneyline
-from core.store.postgres.models.pinnacle.fixture import Fixture
-from core.store.postgres.models.pinnacle.spread import Spread
+from core.store.postgres.models.pinnacle import Fixture, Moneyline, Spread
 
 @Registry.task('sync.pinnacle.odds')
-class SyncOdds(BaseTask):
+class SyncMatchOdds(BaseTask):
     POLICY_CONFIG = {
         "url_template": "https://www.pinnacle.com/en/soccer/{country_name}-{league_name}/matchups/#all",
         "debug": False,
@@ -66,12 +64,17 @@ class SyncOdds(BaseTask):
                 intercept_policy=intercept_policy
             )
 
-            responses, _ = future.result()
-            if not responses:
+            result_set = future.result()
+            if result_set is None:
                 self.logger.error(f"No response for {page_url}")
                 return
 
-            match_records, moneyline_records, spread_records = self._clean_and_build(responses)
+            if result_set.is_empty():
+                self.logger.error(f"No odds data for {page_url}")
+                return
+
+            data = result_set.to_list()
+            match_records, moneyline_records, spread_records = self._clean_and_build(data)
 
             self.fixture_synchronizer.sync(self.site, match_records)
             self.moneyline_synchronizer.sync(self.site, moneyline_records)

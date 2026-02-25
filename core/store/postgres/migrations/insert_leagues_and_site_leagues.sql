@@ -24,3 +24,10 @@ ON CONFLICT (site_name, league_id) DO UPDATE SET
     league_name = EXCLUDED.league_name,
     ref_league_id = EXCLUDED.ref_league_id,
     updated_at = NOW();
+
+
+UPDATE public.site_leagues SET ref_league_id = 101 WHERE league_id = '1980' and site_name = 'pinnacle';
+UPDATE public.site_leagues SET ref_league_id = 102 WHERE league_id = '2196' and site_name = 'pinnacle';
+UPDATE public.site_leagues SET ref_league_id = 103 WHERE league_id = '2436' and site_name = 'pinnacle';
+UPDATE public.site_leagues SET ref_league_id = 104 WHERE league_id = '9320' and site_name = 'pinnacle';
+UPDATE public.site_leagues SET ref_league_id = 105 WHERE league_id = '2036' and site_name = 'pinnacle';

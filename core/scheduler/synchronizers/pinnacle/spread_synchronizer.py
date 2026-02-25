@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models import Site
-from core.store.postgres.models.pinnacle.spread import Spread
+from core.store.postgres.models.pinnacle import Spread
 from ..base_synchronizer import BaseSynchronizer
 
 class SpreadSynchronizer(BaseSynchronizer):

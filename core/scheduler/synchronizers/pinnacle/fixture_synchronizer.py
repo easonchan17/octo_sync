@@ -1,7 +1,7 @@
 from typing import List, Any
 from core.store.postgres.models import Site
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models.pinnacle.fixture import Fixture
+from core.store.postgres.models.pinnacle import Fixture
 from ..base_synchronizer import BaseSynchronizer
 
 class FixtureSynchronizer(BaseSynchronizer):

@@ -1,12 +1,12 @@
-from sqlalchemy import or_, and_, func, cast
 from sqlalchemy.types import Date
 from typing import List, Dict, Any, Set
 from core.store.postgres.models import Site
-from datetime import date, timedelta, datetime, timezone
+from sqlalchemy import or_, and_, func, cast
 from sqlalchemy.dialects.postgresql import insert
+from datetime import date, timedelta, datetime, timezone
 from core.store.postgres.models.fotmob.fixture_data import Fixture, FixtureRawData
-from core.types.params import FixtureCrawlParams
 from ..base_synchronizer import BaseSynchronizer
+from core.types.enums import SiteName
 
 class FixtureDataSynchronizer(BaseSynchronizer):
     def get_pending_fetch_items(
@@ -176,38 +176,19 @@ class FixtureDataSynchronizer(BaseSynchronizer):
                 FixtureRawData.updated_at: func.now()
             }, synchronize_session=False)
 
-    # def set_confirm_count(self, site: Site, match_date: date, count: int) -> None:
-    #     with self.db.get_session(site.get_namespace()) as session:
-    #         session.query(FixtureRawData).filter(
-    #             FixtureRawData.match_date == match_date
-    #         ).update({
-    #             FixtureRawData.confirm_count: count,
-    #             FixtureRawData.updated_at: func.now()
-    #         }, synchronize_session=False)
-
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
         with self.db.get_session(site.get_namespace()) as session:
             insert_stmt = insert(FixtureRawData).values(raw_data)
-            assignment, where_clause = self.build_upsert_clauses(
-                FixtureRawData,
-                insert_stmt,
-                {
-                    FixtureRawData.id.key,
-                    FixtureRawData.created_at.key,
-                    FixtureRawData.match_date.key,
-                    FixtureRawData.updated_at.key,
-                    FixtureRawData.last_fetched_at.key,
-                    FixtureRawData.last_parsed_at.key,
-                    FixtureRawData.total_fetch_count.key,
-                    FixtureRawData.total_parse_count.key,
-                    FixtureRawData.confirm_count.key
-                }
-            )
+
+            update_values = {
+                FixtureRawData.source_url.key: raw_data["source_url"],
+                FixtureRawData.json_body.key: raw_data["json_body"],
+                FixtureRawData.updated_at.key: func.now()
+            }
 
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[FixtureRawData.match_date.key],
-                set_=assignment,
-                where=where_clause
+                set_=update_values
             )
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
@@ -234,3 +215,32 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
             self.logger.debug(f"Sync {site.name} match date={match_date} fixtures completed. upserted: {upserted_count}")
+
+    def get_league_next_fixtures(self, site_name: str, league_ids: List[int], lookahead_hours: int) -> List[Any]:
+        with self.db.get_session(site_name) as session:
+            now = datetime.now(timezone.utc)
+            lookahead = now + timedelta(hours=lookahead_hours)
+
+            subquery = session.query(
+                Fixture.league_id,
+                func.min(Fixture.kickoff_time).label('next_kickoff')
+            ).filter(
+                Fixture.kickoff_time > now,
+                Fixture.kickoff_time <= lookahead,
+                Fixture.league_id.in_(league_ids)
+            ).group_by(
+                Fixture.league_id
+            ).subquery()
+
+            query = session.query(
+                Fixture.league_id,
+                Fixture.kickoff_time
+            ).join(
+                subquery,
+                and_(
+                    Fixture.league_id == subquery.c.league_id,
+                    Fixture.kickoff_time == subquery.c.next_kickoff
+                )
+            )
+
+            return query.all()

@@ -15,7 +15,10 @@ class League(Base):
     )
 
     id = Column(BigInteger, primary_key=True)
-    name = Column(String(200), nullable=False, unique=True, info={'repr': True})
+    country_code = Column(String(3), nullable=True)
+    country_name = Column(String(100), nullable=True)
+
+    name = Column(String(200), nullable=False, info={'repr': True})
     priority = Column(Integer, default=LeaguePriority.LEVEL_BASIC.value, info={'repr': True})
 
     site_leagues = relationship("SiteLeague", back_populates="ref_league", lazy="selectin")
@@ -34,8 +37,11 @@ class SiteLeague(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     site_name = Column(String(100), nullable=False, info={'repr': True})
 
+    country_code = Column(String(3), nullable=True)
+    country_name = Column(String(100), nullable=True)
+
     league_id = Column(String(100), nullable=False, info={'repr': True})
-    league_name = Column(String(200), nullable=True)
+    league_name = Column(String(200), nullable=False)
 
     extra_data = Column(JSONB(none_as_null=True), nullable=True)
 

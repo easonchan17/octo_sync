@@ -1,6 +1,6 @@
 from typing import Any, Optional, Dict
 from ..base_receiver import BaseReceiver
-from core.store.postgres.models.pinnacle.fixture import Fixture
+from core.store.postgres.models.pinnacle import Fixture
 
 class FixtureReceiver(BaseReceiver):
     async def process(self, response: Any) -> Optional[Dict[str, Any]]:
