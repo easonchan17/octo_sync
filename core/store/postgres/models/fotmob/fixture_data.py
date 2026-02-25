@@ -1,5 +1,5 @@
 from sqlalchemy.sql import func
-from ..base_model import Base, Status
+from ..base_model import Base
 from sqlalchemy import Column, Integer, String, DateTime, Index, Date, text
 from core.store.postgres.models.base_model import CrawlStatusMixin, RawJsonMixin
 from core.types.enums import MatchStatus, SiteName
@@ -26,8 +26,6 @@ class FixtureRawData(Base, CrawlStatusMixin, RawJsonMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_date = Column(Date, nullable=False, unique=True)
     last_kickoff_time = Column(DateTime(timezone=True), nullable=True)
-
-
 
 class Fixture(Base):
     __tablename__ = 'fixtures'

@@ -7,7 +7,7 @@ from core.scheduler.tasks.poll_task import PollTask
 from typing import Any, Dict, Optional, List, Tuple
 from core.services.league import get_league_service
 from core.browser.intercept_policy import InterceptPolicy
-from core.browser.interceptor import TaskType, FetchState
+from core.browser.interceptor import TaskType
 from core.browser.components.receivers.common.json_receiver import JsonReceiver
 from core.scheduler.synchronizers.fotmob.match_data_synchronizer import MatchDataSynchronizer
 from core.types.params import MatchCrawlParams
@@ -32,6 +32,7 @@ class BaseSyncMatchData(PollTask):
         self.payload = payload or {}
         self.synchronizer = MatchDataSynchronizer()
         self.league_service = get_league_service()
+        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
     @property
     def fetch_date_range(self) -> Tuple[date, date]:
@@ -55,36 +56,31 @@ class BaseSyncMatchData(PollTask):
                     self.idle_sleep()
                     continue
 
-                intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
                 for match_id, kickoff_time, page_url in items:
                     if self.should_stop():
                         return
 
                     try:
-                        match_detail_url = intercept_policy.url.format(page_url=page_url)
+                        match_detail_url = self.intercept_policy.url.format(page_url=page_url)
                         future = self.interceptor.submit_task(
                             TaskType.OPEN_PAGE,
                             url=match_detail_url,
-                            intercept_policy=intercept_policy
+                            intercept_policy=self.intercept_policy
                         )
 
-                        responses, _ = future.result()
-                        if not responses:
+                        result_set = future.result()
+                        if result_set is None:
                             self.logger.error(f"No response for {match_detail_url}")
-                            self.synchronizer.mark_fetch_failed(
-                                self.site, match_id, kickoff_time, "No response for match detail"
-                            )
+                            self.synchronizer.mark_fetch_failed(self.site, match_id, kickoff_time, "No response")
                             continue
 
-                        data = responses[0]
-                        if data is None:
-                            self.logger.warning(f"No match detail data for {match_detail_url}")
-                            self.synchronizer.mark_fetch_failed(
-                                self.site, match_id, kickoff_time, "No match detail data"
-                            )
+                        if result_set.is_empty():
+                            self.logger.error(f"No match detail data for {match_detail_url}")
+                            self.synchronizer.mark_fetch_failed(self.site, match_id, kickoff_time, "No data")
                             continue
 
-                        if data is FetchState.NOT_MODIFIED:
+                        if result_set.is_not_modified():
+                            self.logger.warning(f"Match detail data is not modified for {match_detail_url}")
                             self.synchronizer.mark_as_not_modified(self.site, match_id)
                             continue
 
@@ -93,7 +89,7 @@ class BaseSyncMatchData(PollTask):
                                 "source_url": match_detail_url,
                                 "match_id": match_id,
                                 "kickoff_time": kickoff_time,
-                                "json_body": data
+                                "json_body": result_set.first()
                             })
                         self.synchronizer.mark_as_fetched(self.site, match_id)
                         self.logger.info(f"Synced match: kickoff_time={kickoff_time} match_id={match_id}")

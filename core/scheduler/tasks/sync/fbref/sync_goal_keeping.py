@@ -27,10 +27,9 @@ class SyncGoalKeeping(BaseTask):
         self.site = site
         self.payload = payload
         self.synchronizer = GoalKeepingSynchronizer()
+        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
     def execute(self, *args, **kwargs) -> None:
-        intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
-
         league_id = self.get_required_param("league_id")
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
@@ -60,7 +59,7 @@ class SyncGoalKeeping(BaseTask):
                 team_name, team_name_with_dash = normalize_team_name(team_name)
 
                 try:
-                    page_url = intercept_policy.url.format(
+                    page_url = self.intercept_policy.url.format(
                         team_code=team_code,
                         season_range=season_range,
                         team_name=team_name_with_dash
@@ -68,16 +67,21 @@ class SyncGoalKeeping(BaseTask):
                     future = self.interceptor.submit_task(
                         TaskType.OPEN_PAGE,
                         url=page_url,
-                        intercept_policy=intercept_policy
+                        intercept_policy=self.intercept_policy
                     )
 
-                    responses, _ = future.result()
-                    if not responses:
+                    result_set = future.result()
+                    if result_set is None:
                         self.logger.error(f"No response for {page_url}")
                         seen_failed = True
                         continue
 
-                    goal_keepings = responses[0]
+                    if result_set.is_empty():
+                        self.logger.error(f"No goal keeping data for {page_url}")
+                        seen_failed = True
+                        continue
+
+                    goal_keepings = result_set.first()
                     if not goal_keepings:
                         self.logger.warning(f"No goal keeping for {page_url}")
                         continue

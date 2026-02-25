@@ -58,11 +58,15 @@ class OfficialLoader:
             id=league.id,
             name=league.name,
             priority=league.priority,
+            country_code=league.country_code,
+            country_name=league.country_name,
             site_leagues={
                 site_league.site_name: SiteLeagueData(
                     site_name=site_league.site_name,
                     league_id=site_league.league_id,
                     league_name=site_league.league_name,
+                    country_code=site_league.country_code,
+                    country_name=site_league.country_name,
                     ref_league_id=site_league.ref_league_id,
                     extra_data=dict(site_league.extra_data or {})
                 )
@@ -91,11 +95,15 @@ class OrphanLoader:
             id=id,
             name=league.league_name,
             priority=LeaguePriority.LEVEL_BASIC.value,
+            country_code=league.country_code,
+            country_name=league.country_name,
             site_leagues={
                 league.site_name: SiteLeagueData(
                     site_name=league.site_name,
                     league_id=league.league_id,
                     league_name=league.league_name,
+                    country_code=league.country_code,
+                    country_name=league.country_name,
                     ref_league_id=id,
                     extra_data=dict(league.extra_data or {}),
                 )
@@ -112,15 +120,35 @@ class OrphanLoader:
             )
         ]
 
-    def add(self, session: Session, site_name: str, league_id: str, league_name: str) -> SystemLeagueData:
+    def add(
+        self,
+        session: Session,
+        site_name: str,
+        league_id: str, league_name: str,
+        country_code: Optional[str] = None,
+        country_name: Optional[str] = None
+    ) -> SystemLeagueData:
         insert_stmt = insert(SiteLeague).values(
             site_name=site_name,
             league_id=league_id,
-            league_name=league_name
+            league_name=league_name,
+            country_code=country_code,
+            country_name=country_name
         )
+
+        update_values = {
+            SiteLeague.league_name.key: league_name
+        }
+
+        if country_code is not None:
+            update_values[SiteLeague.country_code.key] = country_code
+
+        if country_name is not None:
+            update_values[SiteLeague.country_name.key] = country_name
+
         upsert_stmt = insert_stmt.on_conflict_do_update(
             index_elements=[SiteLeague.site_name, SiteLeague.league_id],
-            set_={'league_name': league_name}
+            set_=update_values
         ).returning(SiteLeague)
 
         result = session.execute(upsert_stmt)
@@ -184,16 +212,30 @@ class LeagueService(BaseService):
 
         return self._cache.get(SiteName.SYSTEM.value, str(id))
 
-    def resolve(self, site_name: str, league_id: str, league_name: str) -> Optional[SystemLeagueData]:
+    def resolve(
+        self,
+        site_name: str,
+        league_id: str,
+        league_name: str,
+        country_code: Optional[str] = None,
+        country_name: Optional[str] = None
+    ) -> Optional[SystemLeagueData]:
         if self._cache is None:
             return None
 
         ref_league_id = self._cache.get(site_name, str(league_id))
         if ref_league_id is not None:
-            return self.get(ref_league_id)
+            if country_code is None and country_name is None:
+                return self.get(ref_league_id)
+
+            site_league = self.get(ref_league_id).site_leagues.get(site_name) # TODO
+            if site_league.country_code == country_code and site_league.country_name == country_name:
+                return self.get(ref_league_id)
 
         with self.db.get_session() as session:
-            orphan = self._orphan_loader.add(session, site_name, league_id, league_name)
+            orphan = self._orphan_loader.add(
+                session, site_name, league_id, league_name, country_code, country_name
+            )
             self._cache.set(orphan)
             return orphan
 
