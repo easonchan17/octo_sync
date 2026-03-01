@@ -43,7 +43,7 @@ class PollTask(BaseTask):
         fetched_time: datetime,
         confirm_interval_hours: int
     ) -> int:
-        safe_duration = timedelta(hours=BaseCrawlParams.MATCH_SAFE_DURATION_HOURS)
+        safe_duration = timedelta(hours=BaseCrawlParams.MATCH_LIFESPAN_HOURS)
         time_since_kickoff = fetched_time - kickoff_time
         if time_since_kickoff < safe_duration:
             return 0

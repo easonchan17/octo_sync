@@ -16,7 +16,7 @@ class Fixture(Base):
         Index('idx_fbref_fixtures_away_code_season', 'away_code', 'season'),
         Index('idx_fbref_fixtures_time_home_away', 'kickoff_time', 'home_code', 'away_code'),
         UniqueConstraint('kickoff_time', 'home_code', 'away_code', name='uq_fbref_fixtures_time_home_away'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

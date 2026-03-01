@@ -15,7 +15,7 @@ class EloRating(Base):
         Index('idx_elo_ratings_team_time', 'team_code', 'kickoff_time'),
         Index('idx_elo_ratings_team_match', 'team_code', 'match_code'),
         UniqueConstraint('team_code', 'match_code', name='uq_elo_ratings_team_match'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

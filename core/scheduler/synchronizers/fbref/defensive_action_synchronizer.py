@@ -20,7 +20,7 @@ class DefensiveActionSynchronizer(TeamLevelSynchronizer):
             self.logger.warning(f"No {team_name} {season_range} defensive actions to sync from {site.name}")
             return
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(DefensiveAction).values(defensive_actions)
             assignment, where_clause = self.build_upsert_clauses(
                 DefensiveAction,

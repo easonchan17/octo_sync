@@ -237,7 +237,7 @@ class MatchDataParser:
             result["player_stats"] = self._parse_player_stats(match_id, raw_player_stats)
 
         status = json_body.get('header', {}).get('status')
-        match_status, kickoff_time, _, _ = extract_status(status, MatchCrawlParams.MATCH_SAFE_DURATION_HOURS)
+        match_status, kickoff_time, _, _ = extract_status(status, MatchCrawlParams.MATCH_LIFESPAN_HOURS)
         result["match_status"] = match_status
         result["kickoff_time"] = kickoff_time
         return result
@@ -365,7 +365,7 @@ class ParseMatchData(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.LOOKAHEAD_HOURS)
+                start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.EARLY_HOURS_TO_KICKOFF)
                 items = self.synchronizer.get_pending_parse_items(
                     self.site,
                     start_time,
@@ -400,7 +400,7 @@ class ParseMatchData(PollTask):
                         confirm_count = 0
                         if MatchStatus(match_status).is_finalized:
                             confirm_count = self.calculate_confirm_count(kickoff_time, last_fetched_at, MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
-                        elif last_fetched_at - kickoff_time > timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS):
+                        elif last_fetched_at - kickoff_time > timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS_AFTER_KICKOFF):
                             confirm_count = -1
 
                         self.synchronizer.sync_parsed_data(self.site, parsed_data)

@@ -20,7 +20,7 @@ class ShootingSynchronizer(TeamLevelSynchronizer):
             self.logger.warning(f"No {team_name} {season_range} shootings to sync from {site.name}")
             return
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(Shooting).values(shootings)
             assignment, where_clause = self.build_upsert_clauses(
                 Shooting,

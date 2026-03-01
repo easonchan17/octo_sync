@@ -63,7 +63,7 @@ class FixtureDataParser:
             if not page_url:
                 page_url = PageUrlBuilder.build(match_id, home, away)
 
-            match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), FixtureCrawlParams.MATCH_SAFE_DURATION_HOURS)
+            match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), FixtureCrawlParams.MATCH_LIFESPAN_HOURS)
 
             fixture = {
                 Fixture.round.key: round,
@@ -134,7 +134,7 @@ class ParseFixtureData(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.LOOKAHEAD_DAYS)
+                start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.UPCOMING_WINDOW_DAYS)
                 items = self.synchronizer.get_pending_parse_items(
                     self.site,
                     start_date,
@@ -178,7 +178,7 @@ class ParseFixtureData(PollTask):
                         confirm_count = 0
                         if is_finalized:
                             confirm_count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at, FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
-                        elif last_fetched_at - last_kickoff_time > timedelta(hours=FixtureCrawlParams.ARCHIVE_HOURS):
+                        elif last_fetched_at - last_kickoff_time > timedelta(hours=FixtureCrawlParams.ARCHIVE_HOURS_AFTER_KICKOFF):
                             confirm_count = -1
 
                         self.synchronizer.sync_parsed_data(self.site, match_date, parsed_fixtures)

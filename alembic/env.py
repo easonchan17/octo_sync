@@ -27,16 +27,16 @@ def require_target_schema() -> str:
     valid_sites = [site.value for site in SiteName] + ['public']
 
     if not schema:
-        print("\n❌ [ERROR] Missing environment variable: DB_SCHEMA", file=sys.stderr)
+        print("\n [ERROR] Missing environment variable: DB_SCHEMA", file=sys.stderr)
         print(f"   Valid:   {valid_sites}", file=sys.stderr)
         sys.exit(1)
 
     if schema not in valid_sites:
-        print(f"\n❌ [ERROR] Invalid schema: '{schema}'", file=sys.stderr)
+        print(f"\n [ERROR] Invalid schema: '{schema}'", file=sys.stderr)
         print(f"   Valid:   {valid_sites}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"🚀 [Alembic] Target Schema: {schema}")
+    print(f" [Alembic] Target Schema: {schema}")
     return schema
 
 def prepare_migration_sql_path(config: Config, schema: str) -> Optional[Path]:
@@ -72,23 +72,14 @@ def prepare_migration_sql_path(config: Config, schema: str) -> Optional[Path]:
 def make_filters(target_schema: str) -> Tuple[Callable, Callable]:
     def include_name(name, type_, parent_names):
         if type_ == "schema":
-            if name is None and target_schema == 'public':
-                return True
-
-            return name == target_schema
+            schema_name = name or 'public'
+            return schema_name == target_schema
 
         if type_ == "table":
             if name.startswith('alembic_version_'):
                 return False
 
-            schema_name = parent_names.get("schema_name") or parent_names.get("schema")
-
-            if schema_name is None:
-                return True
-
-            if schema_name == 'public':
-                return target_schema == 'public'
-
+            schema_name = parent_names.get("schema_name") or parent_names.get("schema") or 'public'
             return schema_name == target_schema
 
         return True
@@ -98,19 +89,8 @@ def make_filters(target_schema: str) -> Tuple[Callable, Callable]:
             if name.startswith('alembic_version_'):
                 return False
 
-            schema_name = getattr(object, 'schema', None)
-
-            if schema_name is None:
-                return True
-
-            if schema_name == 'public':
-                return target_schema == 'public'
-
-            if reflected:
-                return schema_name == target_schema
-
-            allowed_sites = object.info.get('sites', [])
-            return target_schema in allowed_sites
+            schema_name = object.schema or 'public'
+            return schema_name == target_schema
 
         return True
 
@@ -124,7 +104,7 @@ def make_process_revision_directives(target_schema: str) -> Callable:
         script = directives[0]
         if not script.message or not script.message.strip():
             auto_message = f"upgrade_{target_schema}"
-            print(f"⚠️ [Alembic] No message provided. Auto-naming to: '{auto_message}'", file=sys.stderr)
+            print(f" [Alembic] No message provided. Auto-naming to: '{auto_message}'", file=sys.stderr)
             script.message = auto_message
 
     return process_revision_directives
@@ -137,21 +117,16 @@ def init_version_locations(config: Config, schema: str) -> None:
         context.script.version_locations = [version_dir]
 
     config.set_main_option("version_locations", version_dir)
-    print(f"📂 [Alembic] Final Version Directory: {version_dir}")
+    print(f" [Alembic] Final Version Directory: {version_dir}")
 
 def build_target_metadata(target_schema: str) -> MetaData:
     target_metadata = MetaData()
 
     for table in Base.metadata.tables.values():
-        if target_schema != 'public':
-            allowed_sites = table.info.get('sites', [])
-            if target_schema not in allowed_sites:
-                continue
-        schema = table.schema
-        if target_schema != 'public' and table.schema == '{schema}':
-            schema = target_schema
+        table_schema = table.schema or 'public'
 
-        table.to_metadata(target_metadata, schema=schema)
+        if table_schema == target_schema:
+            table.to_metadata(target_metadata, schema=table.schema)
 
     return target_metadata
 
@@ -160,10 +135,10 @@ def run_migrations_offline(config: Config, metadata: MetaData, schema: str) -> N
     file_path = prepare_migration_sql_path(config, schema)
 
     if not file_path:
-        print("❌ [Alembic] No revisions found to generate SQL for.", file=sys.stderr)
+        print(" [Alembic] No revisions found to generate SQL for.", file=sys.stderr)
         return
 
-    print(f"📄 [Alembic] Generating SQL to: {file_path}", file=sys.stderr)
+    print(f" [Alembic] Generating SQL to: {file_path}", file=sys.stderr)
 
     with open(file_path, "w", encoding="utf-8") as f:
         include_name, include_object = make_filters(schema)
@@ -193,9 +168,9 @@ def run_migrations_online(config: Config, metadata: MetaData, schema: str) -> No
     )
 
     with connectable.connect() as connection:
-        connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
-        # connection.execute(text(f"SET search_path TO {schema}, public"))
-        connection.commit()
+        if schema != 'public':
+            connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+            connection.commit()
 
         include_name, include_object = make_filters(schema)
         process_revision_directives = make_process_revision_directives(schema)

@@ -8,7 +8,7 @@ class OddsRawData(Base, CrawlStatusMixin, RawJsonMixin):
     __table_args__ = (
         Index('idx_odds_raw_data_created_at', 'created_at'),
         Index('idx_odds_raw_data_updated_at', 'updated_at'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
+        {'schema': SiteName.PINNACLE.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -16,15 +16,15 @@ class OddsRawData(Base, CrawlStatusMixin, RawJsonMixin):
 
 
 class Fixture(Base):
-    __tablename__ = 'pinnacle_fixtures'
+    __tablename__ = 'fixtures'
     __table_args__ = (
-        Index('idx_pinnacle_fixtures_kickoff_time', 'kickoff_time'),
-        Index('idx_pinnacle_fixtures_league_id', 'league_id'),
-        Index('idx_pinnacle_fixtures_home_team', 'home_team'),
-        Index('idx_pinnacle_fixtures_away_team', 'away_team'),
-        Index('idx_pinnacle_fixtures_created_at', 'created_at'),
-        Index('idx_pinnacle_fixtures_updated_at', 'updated_at'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
+        Index('idx_fixtures_kickoff_time', 'kickoff_time'),
+        Index('idx_fixtures_league_id', 'league_id'),
+        Index('idx_fixtures_home_team', 'home_team'),
+        Index('idx_fixtures_away_team', 'away_team'),
+        Index('idx_fixtures_created_at', 'created_at'),
+        Index('idx_fixtures_updated_at', 'updated_at'),
+        {'schema': SiteName.PINNACLE.value}
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -38,12 +38,12 @@ class Fixture(Base):
 
 
 class Moneyline(Base):
-    __tablename__ = 'pinnacle_moneyline'
+    __tablename__ = 'moneylines'
     __table_args__ = (
-        Index('idx_pinnacle_moneyline_match_id', 'match_id'),
-        Index('idx_pinnacle_moneyline_created_at', 'created_at'),
-        Index('idx_pinnacle_moneyline_updated_at', 'updated_at'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
+        Index('idx_moneylines_match_id', 'match_id'),
+        Index('idx_moneylines_created_at', 'created_at'),
+        Index('idx_moneylines_updated_at', 'updated_at'),
+        {'schema': SiteName.PINNACLE.value}
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -58,12 +58,12 @@ class Moneyline(Base):
 
 
 class Spread(Base):
-    __tablename__ = 'pinnacle_spreads'
+    __tablename__ = 'spreads'
     __table_args__ = (
-        Index('idx_pinnacle_spreads_match_id', 'match_id'),
-        Index('idx_pinnacle_spreads_created_at', 'created_at'),
-        Index('idx_pinnacle_spreads_updated_at', 'updated_at'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
+        Index('idx_spreads_match_id', 'match_id'),
+        Index('idx_spreads_created_at', 'created_at'),
+        Index('idx_spreads_updated_at', 'updated_at'),
+        {'schema': SiteName.PINNACLE.value}
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)

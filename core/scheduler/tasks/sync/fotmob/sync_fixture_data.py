@@ -92,7 +92,7 @@ class BaseSyncFixtureData(PollTask):
 @Registry.poll('sync.fotmob.fixture_data')
 class SyncFixtureData(BaseSyncFixtureData):
     def get_pending_fetch_items(self) -> List[date]:
-        start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.LOOKAHEAD_DAYS)
+        start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.UPCOMING_WINDOW_DAYS)
 
         return self.synchronizer.get_pending_fetch_items(
             self.site,
@@ -118,7 +118,7 @@ class ResyncFixtureData(BaseSyncFixtureData):
         refresh_chckpoint = now - timedelta(minutes=FixtureCrawlParams.REFRESH_INTERVAL_MINUTES)
         confirm_checkpoint = now - timedelta(hours=FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
         catchup_checkpoint = now - timedelta(hours=FixtureCrawlParams.CATCHUP_INTERVAL_HOURS)
-        active_dates = self.synchronizer.get_active_match_dates(self.site, FixtureCrawlParams.MATCH_SAFE_DURATION_HOURS)
+        active_dates = self.synchronizer.get_active_match_dates(self.site, FixtureCrawlParams.MATCH_LIFESPAN_HOURS)
 
         items = []
         for match_date, last_fetched_at, confirm_count in records:

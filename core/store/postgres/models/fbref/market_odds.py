@@ -12,7 +12,7 @@ class MarketOdds(Base):
         Index('idx_market_odds_kickoff_time', 'kickoff_time'),
         Index('idx_market_odds_home_team', 'home_team'),
         Index('idx_market_odds_away_team', 'away_team'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

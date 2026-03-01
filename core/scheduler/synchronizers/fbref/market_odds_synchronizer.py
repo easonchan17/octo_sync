@@ -21,7 +21,7 @@ class MarketOddsSynchronizer(CompLevelSynchronizer):
             self.logger.warning(f"No market odds to sync for {site.name} {season_range}")
             return
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(MarketOdds).values(records)
             assignment, where_clause = self.build_upsert_clauses(
                 MarketOdds,

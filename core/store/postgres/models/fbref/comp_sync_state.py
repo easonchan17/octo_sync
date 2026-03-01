@@ -16,7 +16,7 @@ class CompSyncState(Base):
         Index('idx_comp_sync_state_updated_at', 'updated_at'),
         Index('idx_comp_sync_state_season_comp_code', 'season', 'comp_code'),
         UniqueConstraint('season', 'comp_code', name='uq_comp_sync_state_season_comp_code'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
