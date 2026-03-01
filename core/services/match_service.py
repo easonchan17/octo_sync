@@ -2,12 +2,11 @@ from typing import List, Optional, Tuple
 from core.services.base_service import BaseService
 from core.store.postgres.models.fotmob import Fixture
 from core.store.postgres.models.fotmob.match_data import MatchStat, MatchLineup, MatchPlayerStat
-from core.types.enums import SiteName
 
 
 class MatchService(BaseService):
     def get_match_detail(self, match_id: int) -> Tuple[Fixture, Optional[MatchStat], List[MatchLineup], List[MatchPlayerStat]]:
-        with self.db.get_session(SiteName.FOTMOB.value) as session:
+        with self.db.get_session() as session:
             fixture = session.query(Fixture).filter(
                 Fixture.match_id == match_id
             ).first()

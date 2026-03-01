@@ -12,7 +12,7 @@ class FixtureService(BaseService):
         end_time: datetime,
         league_ids: List[int],
     ) -> List[Fixture]:
-        with self.db.get_session(SiteName.FOTMOB) as session:
+        with self.db.get_session() as session:
             fixtures = session.query(
                 Fixture.id,
                 Fixture.league_id,

@@ -10,7 +10,7 @@ class CompTeamSynchronizer(CompLevelSynchronizer):
             self.logger.warning(f"No teams to sync for {site.name}")
             return
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(CompTeam).values(teams)
             assignment, where_clause = self.build_upsert_clauses(
                 CompTeam,
@@ -37,7 +37,7 @@ class CompTeamSynchronizer(CompLevelSynchronizer):
             self.logger.info(f"Mark {site.name} {comp_name} {season} teams as synced")
 
     def load_teams(self, site: Site, comp_code: str, season: int) -> List[CompTeam]:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             return session.query(CompTeam.team_code).filter(
                 CompTeam.comp_code == comp_code,
                 CompTeam.season == season,

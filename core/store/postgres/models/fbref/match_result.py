@@ -18,7 +18,7 @@ class MatchResult(Base):
         Index('idx_match_results_comp_code', 'comp_code'),
         Index('idx_match_results_kickoff_time', 'kickoff_time'),
         Index('idx_match_results_season', 'season'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

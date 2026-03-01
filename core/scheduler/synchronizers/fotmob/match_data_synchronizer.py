@@ -17,7 +17,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
         max_retries: int,
         limit: int
     ) -> List[Any]:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             query = session.query(
                 Fixture.match_id,
                 Fixture.kickoff_time,
@@ -49,7 +49,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
         max_retries: int,
         limit: int
     ) -> List[Any]:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             query = session.query(
                 MatchRawData.match_id,
                 MatchRawData.kickoff_time,
@@ -75,7 +75,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
         required_confirm_count: int,
         limit: int
     ) -> List[Any]:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             query = session.query(
                 MatchRawData.match_id,
                 MatchRawData.kickoff_time,
@@ -99,7 +99,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
             return query.all()
 
     def mark_as_not_modified(self, site: Site, match_id: int) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(MatchRawData).filter(
                 MatchRawData.match_id == match_id
             ).update({
@@ -112,7 +112,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def mark_as_fetched(self, site: Site, match_id: int) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(MatchRawData).filter(
                 MatchRawData.match_id == match_id
             ).update({
@@ -128,7 +128,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def mark_fetch_failed(self, site: Site, match_id: int, kickoff_time: datetime, error_msg: str) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(MatchRawData).values(
                 match_id=match_id,
                 kickoff_time=kickoff_time,
@@ -153,7 +153,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
             session.execute(upsert_stmt)
 
     def mark_as_parsed(self, site: Site, match_id: int, kickoff_time: datetime, match_status: int, confirm_count: int) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(MatchRawData).filter(
                 MatchRawData.match_id == match_id
             ).update({
@@ -169,7 +169,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def mark_parse_failed(self, site: Site, match_id: int, error_msg: str) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(MatchRawData).filter(
                 MatchRawData.match_id == match_id
             ).update({
@@ -181,7 +181,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(MatchRawData).values(raw_data)
 
             update_values = {
@@ -205,7 +205,7 @@ class MatchDataSynchronizer(BaseSynchronizer):
         match_stats = parsed_data.get("match_stats")
         player_stats = parsed_data.get("player_stats")
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             if lineup:
                 home_lineup = lineup.get("home_lineup")
                 away_lineup = lineup.get("away_lineup")

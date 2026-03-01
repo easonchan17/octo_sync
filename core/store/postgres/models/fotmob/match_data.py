@@ -22,7 +22,7 @@ class MatchRawData(Base, CrawlStatusMixin, RawJsonMixin):
             postgresql_where=text("is_fetched = false")
         ),
         Index('idx_match_raw_data_refetch', 'is_parsed', 'confirm_count', 'kickoff_time'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
+        {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -39,7 +39,7 @@ class MatchStat(Base):
         Index('idx_match_stats_created_at', 'created_at'),
         Index('idx_match_stats_updated_at', 'updated_at'),
         Index('idx_match_stats_match_id', 'match_id'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
+        {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -144,7 +144,7 @@ class MatchPlayerStat(Base):
         Index('idx_match_player_stats_updated_at', 'updated_at'),
         Index('idx_match_player_stats_match_id_opta_id_player_id_player_name', 'match_id', 'opta_id', 'player_id', 'player_name'),
         UniqueConstraint('match_id', 'opta_id', 'player_id', 'player_name', name='uq_match_player_stats_match_id_opta_id_player_id_player_name'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
+        {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -213,7 +213,7 @@ class MatchLineup(Base):
         Index('idx_match_lineups_match_id_team_id', 'match_id', 'team_id'),
         Index('idx_match_lineups_match_team_opta_member', 'match_id', 'team_id', 'opta_id', 'member_id', 'member_name'),
         UniqueConstraint('match_id', 'team_id', 'opta_id', 'member_id', 'member_name', name='uq_match_lineups_match_team_opta_member'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
+        {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

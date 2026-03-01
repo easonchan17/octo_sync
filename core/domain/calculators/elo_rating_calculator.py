@@ -14,7 +14,7 @@ class EloRatingCalculator:
         k_factor: float = EloParams.K_FACTOR,
         home_advantage: float = EloParams.HOME_ADVANTAGE,
         reversion_rate: float = EloParams.REVERSION_RATE,
-        min_game_for_stability: int = EloParams.MIN_GAME_FOR_STABILITY
+        min_game_for_stability: int = EloParams.MIN_GAMES_FOR_STABILITY
     ) -> None:
         self.matches = matches
         self.ratings = dict(ratings)

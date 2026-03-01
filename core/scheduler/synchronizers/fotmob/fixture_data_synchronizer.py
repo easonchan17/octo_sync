@@ -16,7 +16,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
         end_date: date,
         max_retries: int,
     ) -> List[date]:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             ignore_rows = session.query(
                 FixtureRawData.match_date
             ).filter(
@@ -46,7 +46,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
         max_retries: int,
         limit: int
     ) -> List[Any]:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             query = session.query(
                 FixtureRawData.match_date,
                 FixtureRawData.last_fetched_at,
@@ -69,7 +69,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
         end_date: date,
         required_confirm_count: int
     ) -> List[Any]:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             query = session.query(
                 FixtureRawData.match_date,
                 FixtureRawData.last_fetched_at,
@@ -88,7 +88,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
     def get_active_match_dates(self, site: Site, lookback_hours: int) -> Set[date]:
         end_time = datetime.now(timezone.utc)
         start_time = end_time - timedelta(hours=lookback_hours)
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             rows = session.query(
                 cast(Fixture.kickoff_time, Date).label('d')
             ).filter(
@@ -99,7 +99,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             return {row[0] for row in rows}
 
     def mark_as_not_modified(self, site: Site, match_date: date) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(FixtureRawData).filter(
                 FixtureRawData.match_date == match_date
             ).update({
@@ -112,7 +112,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def mark_as_fetched(self, site: Site, match_date: date) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(FixtureRawData).filter(
                 FixtureRawData.match_date == match_date
             ).update({
@@ -128,7 +128,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def mark_fetch_failed(self, site: Site, match_date: date, error_msg: str) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(FixtureRawData).values(
                 match_date=match_date,
                 is_fetched=False,
@@ -150,7 +150,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             session.execute(upsert_stmt)
 
     def mark_as_parsed(self, site: Site, match_date: date, last_kickoff_time: datetime, confirm_count: int) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(FixtureRawData).filter(
                 FixtureRawData.match_date == match_date
             ).update({
@@ -165,7 +165,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def mark_parse_failed(self, site: Site, match_date: date, error_msg: str) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             session.query(FixtureRawData).filter(
                 FixtureRawData.match_date == match_date
             ).update({
@@ -177,7 +177,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             }, synchronize_session=False)
 
     def sync_raw_data(self, site: Site, raw_data: Dict[str, Any]) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(FixtureRawData).values(raw_data)
 
             update_values = {
@@ -195,7 +195,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             self.logger.debug(f"Sync {site.name} fixture raw data completed. upserted: {upserted_count}")
 
     def sync_parsed_data(self, site: Site, match_date: date, parsed_data: List[Dict[str, Any]]) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(Fixture).values(parsed_data)
             assignment, where_clause = self.build_upsert_clauses(
                 Fixture,
@@ -217,7 +217,7 @@ class FixtureDataSynchronizer(BaseSynchronizer):
             self.logger.debug(f"Sync {site.name} match date={match_date} fixtures completed. upserted: {upserted_count}")
 
     def get_league_next_fixtures(self, site_name: str, league_ids: List[int], lookahead_hours: int) -> List[Any]:
-        with self.db.get_session(site_name) as session:
+        with self.db.get_session() as session:
             now = datetime.now(timezone.utc)
             lookahead = now + timedelta(hours=lookahead_hours)
 

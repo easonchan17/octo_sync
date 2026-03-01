@@ -7,7 +7,7 @@ class LeagueRawData(Base, CrawlStatusMixin, RawJsonMixin):
     __table_args__ = (
         Index('idx_league_raw_data_created_at', 'created_at'),
         Index('idx_league_raw_data_updated_at', 'updated_at'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.PINNACLE.value]}}
+        {'schema': SiteName.PINNACLE.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

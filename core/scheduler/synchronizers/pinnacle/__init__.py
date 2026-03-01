@@ -1,5 +1,4 @@
-from .fixture_synchronizer import FixtureSynchronizer
-from .moneyline_synchronizer import MoneylineSynchronizer
-from .spread_synchronizer import SpreadSynchronizer
+from .match_odds_synchronizer import MatchOddsSynchronizer
+from .league_data_synchronizer import LeagueDataSynchronizer
 
-__all__ = ['FixtureSynchronizer', 'MoneylineSynchronizer', 'SpreadSynchronizer']
+__all__ = ['MatchOddsSynchronizer', 'LeagueDataSynchronizer']

@@ -20,7 +20,7 @@ class MatchStatsSyncState(Base):
         Index('idx_match_stats_sync_state_updated_at', 'updated_at'),
         Index('idx_match_stats_sync_state_team_code_season', 'team_code', 'season'),
         UniqueConstraint('team_code', 'season', name='uq_match_stats_sync_state_team_code_season'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

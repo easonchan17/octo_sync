@@ -12,7 +12,7 @@ class BaseMapper(BaseTask, ABC):
         self.team_resolver = TeamResolver()
 
     def _get_unmapped_fixtures(self, raw_site: str, raw_model: Type[Any]) -> List[Dict]:
-        with self.db.get_session(raw_site) as session:
+        with self.db.get_session() as session:
             rows = session.query(
                 raw_model.id,
                 raw_model.kickoff_time,
@@ -42,7 +42,7 @@ class BaseMapper(BaseTask, ABC):
         return update_mappings
 
     def _update_fixtures(self, raw_site: str, raw_model: Type[Any], mappings: List[Dict]) -> None:
-        with self.db.get_session(raw_site) as session:
+        with self.db.get_session() as session:
             session.execute(update(raw_model), mappings)
 
     def _map_fixtures(

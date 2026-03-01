@@ -20,7 +20,7 @@ class FixtureRawData(Base, CrawlStatusMixin, RawJsonMixin):
             postgresql_where=text("is_fetched = false")
         ),
         Index('idx_fixture_raw_data_refetch', 'is_parsed', 'confirm_count', 'match_date'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
+        {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -37,7 +37,7 @@ class Fixture(Base):
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
         Index('idx_fixtures_raw_fetch_date', 'raw_fetch_date'),
         Index('idx_fixtures_league_id_kickoff_time', 'league_id', 'kickoff_time'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FOTMOB.value]}}
+        {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
