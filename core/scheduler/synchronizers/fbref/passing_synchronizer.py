@@ -20,7 +20,7 @@ class PassingSynchronizer(TeamLevelSynchronizer):
             self.logger.warning(f"No {team_name} {season_range} passings to sync from {site.name}")
             return
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(Passing).values(passings)
             assignment, where_clause = self.build_upsert_clauses(
                 Passing,

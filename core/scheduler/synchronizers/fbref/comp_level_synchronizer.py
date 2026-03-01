@@ -22,7 +22,7 @@ class CompLevelSynchronizer(BaseSynchronizer):
         if is_force:
             return sorted(all_seasons)
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             synced_seasons = {
                 row[0] for row in session.query(CompSyncState.season).filter(
                     CompSyncState.comp_code == comp_code,

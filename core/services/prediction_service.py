@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict, Any, Optional
 from core.services.base_service import BaseService
 from core.store.postgres.models import TrainingRecord, Status
-from core.scheduler.tasks.analysis.inference.predictor_manager import get_predictor_manager
+from core.services.ml.inference.predictor_manager import get_predictor_manager
 
 class PredictionService(BaseService):
     def __init__(self):

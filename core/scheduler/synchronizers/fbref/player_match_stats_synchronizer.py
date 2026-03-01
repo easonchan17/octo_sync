@@ -20,7 +20,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
         if not comp_code and not team_code:
             raise ValueError("Either comp_code or team_code must be provided")
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             query = session.query(
                 MatchResult.match_code,
                 MatchResult.home_team,
@@ -58,7 +58,7 @@ class PlayerMatchStatsSynchronizer(BaseSynchronizer):
             self.logger.warning(f"No player match stats to sync for match {match_tag} from {site.name}")
             return
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(PlayerMatchStats).values(player_stats)
             assignment, where_clause = self.build_upsert_clauses(
                 PlayerMatchStats,

@@ -33,7 +33,7 @@ class ScoresAndFixturesSynchronizer(TeamLevelSynchronizer):
         match_results: List[Dict[str, Any]],
         match_fixtures: List[Dict[str, Any]]
     ) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             self._sync_match_results(session, site, team_name, team_code, season, match_results)
             self._sync_match_fixtures(session, site, team_name, team_code, season, match_fixtures)
 

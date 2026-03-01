@@ -108,7 +108,7 @@ class BaseSyncMatchData(PollTask):
 @Registry.poll('sync.fotmob.match_data')
 class SyncMatchData(BaseSyncMatchData):
     def get_pending_fetch_items(self) -> List[Any]:
-        start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.LOOKAHEAD_HOURS)
+        start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.EARLY_HOURS_TO_KICKOFF)
 
         return self.synchronizer.get_pending_fetch_items(
             self.site,
@@ -121,7 +121,7 @@ class SyncMatchData(BaseSyncMatchData):
 @Registry.poll('resync.fotmob.match_data')
 class ResyncMatchData(BaseSyncMatchData):
     def get_pending_fetch_items(self) -> List[Any]:
-        start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.LOOKAHEAD_HOURS)
+        start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.EARLY_HOURS_TO_KICKOFF)
 
         records = self.synchronizer.get_pending_refetch_items(
             self.site,
@@ -134,16 +134,16 @@ class ResyncMatchData(BaseSyncMatchData):
         now = datetime.now(timezone.utc)
 
         # Time thresholds
-        fast_refresh_checkpoint = now - timedelta(minutes=MatchCrawlParams.FAST_REFRESH_INTERVAL_MINUTES)
-        slow_refresh_checkpoint = now - timedelta(hours=MatchCrawlParams.SLOW_REFRESH_INTERVAL_HOURS)
+        high_refresh_checkpoint = now - timedelta(minutes=MatchCrawlParams.ACTIVE_REFRESH_INTERVAL_MINUTES)
+        low_refresh_checkpoint = now - timedelta(hours=MatchCrawlParams.EARLY_REFRESH_INTERVAL_HOURS)
 
         items = []
         for match_id, kickoff_time, last_fetched_at, page_url, league_id, league_name in records:
-            archive_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS)
-            correction_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.CORRECTION_HOURS)
-            provisional_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.PROVISIONAL_HOURS)
+            archive_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS_AFTER_KICKOFF)
+            correction_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.CORRECTION_HOURS_AFTER_KICKOFF)
+            provisional_checkpoint = kickoff_time + timedelta(hours=MatchCrawlParams.PROVISIONAL_HOURS_AFTER_KICKOFF)
 
-            lineup_checkpoint = kickoff_time - timedelta(hours=MatchCrawlParams.LINEUP_CONFIRM_HOURS)
+            lineup_checkpoint = kickoff_time - timedelta(hours=MatchCrawlParams.ACTIVE_HOURS_TO_KICKOFF)
 
             if now >= archive_checkpoint:        # Post-match: Archive
                 if last_fetched_at < archive_checkpoint:
@@ -166,10 +166,10 @@ class ResyncMatchData(BaseSyncMatchData):
 
                 elif now < kickoff_time:
                     if now >= lineup_checkpoint:  # Pre-match:Hot Zone
-                        if last_fetched_at <= fast_refresh_checkpoint:
+                        if last_fetched_at <= high_refresh_checkpoint:
                             items.append((match_id, kickoff_time, page_url))
                     else:                          # Pre-match: Cold Zone
-                        if last_fetched_at <= slow_refresh_checkpoint:
+                        if last_fetched_at <= low_refresh_checkpoint:
                             items.append((match_id, kickoff_time, page_url))
 
         return items

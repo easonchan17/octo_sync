@@ -26,7 +26,7 @@ class EloRatingSynchronizer(BaseSynchronizer):
         return self.sys_val_synchronizer.set_val(self.ELO_IMPACT_TIME_KEY, impact_time, strategy, session)
 
     def sync(self, site: Site) -> None:
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             impact_time = self.lock_impact_time(session)
             if not impact_time:
                 self.logger.warning(f"No impact time found. Skipping Elo rating sync")

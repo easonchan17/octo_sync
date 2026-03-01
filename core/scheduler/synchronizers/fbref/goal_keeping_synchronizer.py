@@ -20,7 +20,7 @@ class GoalKeepingSynchronizer(TeamLevelSynchronizer):
             self.logger.warning(f"No {team_name} {season_range} goal keepings to sync from {site.name}")
             return
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             insert_stmt = insert(GoalKeeping).values(goal_keepings)
             assignment, where_clause = self.build_upsert_clauses(
                 GoalKeeping,

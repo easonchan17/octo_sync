@@ -11,7 +11,7 @@ class GoalKeeping(Base):
         Index('idx_goal_keeping_match_team', 'match_code', 'team_code'),
         UniqueConstraint('match_code', 'team_code', name='uq_goal_keeping_match_team'),
         Index('idx_goal_keeping_kickoff_time', 'kickoff_time'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

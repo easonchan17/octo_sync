@@ -12,7 +12,7 @@ class PlayerStatsSyncState(Base):
     __table_args__ = (
         Index('idx_player_stats_sync_state_created_at', 'created_at'),
         Index('idx_player_stats_sync_state_updated_at', 'updated_at'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

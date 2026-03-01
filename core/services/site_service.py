@@ -43,6 +43,6 @@ class SiteService(BaseService, Singleton):
 
         namespace = site.get_namespace()
         self.db.create_schema(namespace)
-        self.db.create_tables(self.SITE_TABLES.get(site_name), namespace)
+        self.db.create_tables(self.SITE_TABLES.get(site_name))
 
         return site

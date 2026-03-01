@@ -11,7 +11,7 @@ class PlayerMatchStats(Base):
         Index('idx_player_match_stats_match_player', 'match_code', 'player_code'),
         UniqueConstraint('match_code', 'player_code', name='uq_player_match_stats_match_player'),
         Index('idx_player_match_stats_team_code', 'team_code'),
-        {'schema': '{schema}', 'info': {'sites': [SiteName.FBREF.value]}}
+        {'schema': SiteName.FBREF.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

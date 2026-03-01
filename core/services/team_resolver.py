@@ -61,7 +61,7 @@ class TeamResolver(BaseService):
                 raw_match['ref_obj'] = best_ref
 
     def _get_matches(self, site_name: str, model_class: Type[Any], start_time: datetime) -> List[Any]:
-        with self.db.get_session(site_name) as session:
+        with self.db.get_session() as session:
             matches = session.query(model_class).filter(
                 model_class.kickoff_time >= start_time
             ).order_by(model_class.kickoff_time).all()

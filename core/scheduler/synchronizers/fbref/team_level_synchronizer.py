@@ -21,7 +21,7 @@ class TeamLevelSynchronizer(BaseSynchronizer):
         if not comp_code and not team_code:
             raise ValueError("Either comp_code or team_code must be provided")
 
-        with self.db.get_session(site.get_namespace()) as session:
+        with self.db.get_session() as session:
             query = session.query(
                 CompTeam.season,
                 CompTeam.team_name,
