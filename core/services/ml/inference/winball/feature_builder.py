@@ -34,8 +34,7 @@ class FeatureBuilder:
         away_code = fbref_fixture.away_code
         self.logger.info(f"Teams: home={home_code}, away={away_code}")
 
-        aggregator = SingleSampleBuilder(
-            Site(name=SiteName.FBREF.value), {
+        aggregator = SingleSampleBuilder({
                 "home_code": home_code,
                 "away_code": away_code,
                 "kickoff_time": kickoff_time,

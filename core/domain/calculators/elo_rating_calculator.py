@@ -1,6 +1,5 @@
 import math
 from typing import List, Dict, Any, Optional
-from core.store.postgres.models import MatchResult
 from core.types.params import EloParams
 
 class EloRatingCalculator:
@@ -9,7 +8,7 @@ class EloRatingCalculator:
         ratings: Dict[str, float],
         seasons: Dict[str, int],
         game_counts: Dict[str, int],
-        matches: List[MatchResult],
+        matches: List[Any],
         base_rating: float = EloParams.BASE_RATING,
         k_factor: float = EloParams.K_FACTOR,
         home_advantage: float = EloParams.HOME_ADVANTAGE,

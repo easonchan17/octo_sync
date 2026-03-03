@@ -1,7 +1,9 @@
-from .sync_fixture_data import SyncFixtureData
-from .sync_match_data import SyncMatchData
+from .sync_fixture import SyncFixture
+from .sync_match import SyncMatch
+from .sync_elo_rating import SyncEloRating
 
 __all__ = [
-    'SyncFixtureData',
-    'SyncMatchData'
+    'SyncFixture',
+    'SyncMatch',
+    'SyncEloRating'
 ]

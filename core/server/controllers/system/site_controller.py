@@ -6,7 +6,7 @@ from core.server.controllers.base_controller import BaseController
 class SiteController(BaseController):
     def __init__(self) -> None:
         super().__init__()
-        self.site_service = SiteService.get_instance()
+        self.site_service = SiteService()
         self.router.post("/sites", response_model=SiteResponse, status_code=201)(self.add_site)
         self.router.get("/sites/{site_name}", response_model=SiteResponse)(self.get_site)
 

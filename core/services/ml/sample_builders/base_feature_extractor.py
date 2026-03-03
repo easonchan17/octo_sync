@@ -1,15 +1,13 @@
 import pandas as pd
 from abc import ABC, abstractmethod
 from datetime import datetime
-from core.store.postgres.models import Site
 from typing import Any, Dict, Optional, List, Tuple
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 
 class BaseFeatureExtractor(ABC):
-    def __init__(self, site: Site, payload: Optional[Dict[str, Any]]) -> None:
-        self.site = site
-        self.payload = payload
+    def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
+        self.payload = payload or {}
         self.db = PostgreSQLManager.get_instance()
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
 

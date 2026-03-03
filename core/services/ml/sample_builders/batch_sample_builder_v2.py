@@ -4,6 +4,7 @@ from core.utils.pandas_utils import save_dataframe
 from core.services.league import league_service
 from .base_sample_builder import BaseSampleBuilder
 from .match_feature_extractor_v2 import MatchFeatureExtractorV2
+from core.types.enums import SiteName
 
 
 class BatchSampleBuilderV2(BaseSampleBuilder):
@@ -11,9 +12,9 @@ class BatchSampleBuilderV2(BaseSampleBuilder):
     Aggregator using FotMob data sources.
     Currently only supports MatchFeatureExtractorV2.
     """
-    def __init__(self, site, payload: Optional[Dict[str, Any]]) -> None:
-        super().__init__(site, payload)
-        self.match_feature_extractor = MatchFeatureExtractorV2(site, payload)
+    def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(payload=payload)
+        self.match_feature_extractor = MatchFeatureExtractorV2(self.payload)
         # TODO: Implement and swap PlayerStatsAnalyzer for FotMob
         # self.outfield_player_stats_analyzer = OutfieldPlayerStatsAnalyzer2(site, payload)
         # self.goalkeeper_stats_analyzer = GoalkeeperStatsAnalyzer2(site, payload)
@@ -23,7 +24,7 @@ class BatchSampleBuilderV2(BaseSampleBuilder):
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_config = league_service.get(league_id).site_leagues.get(self.site.name)
+        league_config = league_service.get(league_id).site_leagues.get(SiteName.FOTMOB.value)
         comp_code = league_config.league_id
 
         output_format = self.payload.get("format", "csv")

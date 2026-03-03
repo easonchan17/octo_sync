@@ -1,4 +1,2 @@
 # Scheduler package
-from .synchronizers import (
-    BaseSynchronizer
-)
+from core.store.postgres.daos import BaseDao

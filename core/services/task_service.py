@@ -28,8 +28,7 @@ class TaskService(BaseService, Singleton):
             if name in self.tasks:
                 return ""
 
-            site = self.get_site(site_name)
-            task = Registry.get_target(name)(site, payload)
+            task = Registry.get_target(name)(payload)
             task = HookedTask(task, post_execute=lambda: self._cleanup_task(name))
             task.enable_async_mode()
 
