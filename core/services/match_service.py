@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple
 from core.services.base_service import BaseService
 from core.store.postgres.models.fotmob import Fixture
-from core.store.postgres.models.fotmob.match_data import MatchStat, MatchLineup, MatchPlayerStat
+from core.store.postgres.models.fotmob.match import MatchStat, MatchLineup, MatchPlayerStat
 
 
 class MatchService(BaseService):

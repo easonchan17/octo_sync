@@ -2,53 +2,19 @@
 from .base_model import Base, Status
 from .common import Site, TrainingRecord, SysVal, League, SiteLeague
 from .pinnacle import Fixture as PinnacleFixture, Moneyline, Spread
-from .fotmob import Fixture as FotmobFixture, MatchLineup
-
-from .fbref import (
-    CompTeam,
-    CompSyncState,
-    CompSyncFlag,
-    MatchStatsSyncState,
-    MatchStatsSyncFlag,
-    DefensiveAction,
-    MatchResult,
-    Fixture as FbrefFixture,
-    GoalAndShotCreation,
-    GoalKeeping,
-    PlayerStatsSyncState,
-    PlayerStatsSyncFlag,
-    Passing,
-    PlayerMatchStats,
-    Shooting,
-    MarketOdds,
-    EloRating
-)
+from .fotmob import Fixture as FotmobFixture, MatchLineup, EloRating
+from .football_data import MarketOdds
 
 __all__ = [
     'Base',
     'Status',
     'Site',
-    'CompTeam',
-    'CompSyncState',
-    'CompSyncFlag',
-    'MatchStatsSyncState',
-    'MatchStatsSyncFlag',
-    'DefensiveAction',
-    'MatchResult',
-    'FbrefFixture',
-    'GoalAndShotCreation',
-    'GoalKeeping',
-    'PlayerStatsSyncState',
-    'PlayerStatsSyncFlag',
-    'Passing',
-    'PlayerMatchStats',
-    'Shooting',
     'TrainingRecord',
     'PinnacleFixture',
     'Moneyline',
     'Spread',
-    'MarketOdds',
     'EloRating',
+    'MarketOdds',
     'FotmobFixture',
     'MatchLineup',
     'SysVal',

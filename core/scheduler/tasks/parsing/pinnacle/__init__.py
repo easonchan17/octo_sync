@@ -1,4 +1,4 @@
-from .parse_match_odds import ParseMatchOdds
-from .parse_league_data import ParseLeagueData
+from .parse_odds import ParseOdds
+from .parse_league import ParseLeague
 
-__all__ = ['ParseMatchOdds', 'ParseLeagueData']
+__all__ = ['ParseOdds', 'ParseLeague']

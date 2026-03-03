@@ -1,4 +1,4 @@
-from .parse_match_data import ParseMatchData
-from .parse_fixture_data import ParseFixtureData
+from .parse_match import ParseMatch
+from .parse_fixture import ParseFixture
 
-__all__ = ['ParseMatchData', 'ParseFixtureData']
+__all__ = ['ParseMatch', 'ParseFixture']

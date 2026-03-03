@@ -11,7 +11,7 @@ class BaseMapper(BaseTask, ABC):
         self.db = PostgreSQLManager.get_instance()
         self.team_resolver = TeamResolver()
 
-    def _get_unmapped_fixtures(self, raw_site: str, raw_model: Type[Any]) -> List[Dict]:
+    def _get_unmapped_fixtures(self, raw_model: Type[Any]) -> List[Dict]:
         with self.db.get_session() as session:
             rows = session.query(
                 raw_model.id,
@@ -41,27 +41,20 @@ class BaseMapper(BaseTask, ABC):
             })
         return update_mappings
 
-    def _update_fixtures(self, raw_site: str, raw_model: Type[Any], mappings: List[Dict]) -> None:
+    def _update_fixtures(self, raw_model: Type[Any], mappings: List[Dict]) -> None:
         with self.db.get_session() as session:
             session.execute(update(raw_model), mappings)
 
-    def _map_fixtures(
-        self,
-        raw_site: str,
-        raw_model: Type[Any],
-        ref_site: str,
-        ref_model: Type[Any]
-    ) -> None:
+    def _map_fixtures(self, raw_model: Type[Any], ref_model: Type[Any]) -> None:
         try:
-            raw_matches = self._get_unmapped_fixtures(raw_site, raw_model)
+            raw_matches = self._get_unmapped_fixtures(raw_model)
 
             if not raw_matches:
-                self.logger.info(f"[{raw_site}] No unmapped fixtures found for {raw_model.__name__}")
+                self.logger.info(f"No unmapped fixtures found for {raw_model.__name__}")
                 return
 
             self.team_resolver.resolve(
                 raw_matches,
-                ref_site,
                 ref_model,
                 attach_ref=True
             )
@@ -69,10 +62,10 @@ class BaseMapper(BaseTask, ABC):
             update_mappings = self._build_update_mappings(raw_matches)
 
             if not update_mappings:
-                self.logger.info(f"[{raw_site}] No valid matches from {ref_site} for {raw_model.__name__}")
+                self.logger.info(f"No valid matches for {raw_model.__name__}")
                 return
 
-            self._update_fixtures(raw_site, raw_model, update_mappings)
-            self.logger.info(f"[{raw_site} -> {ref_site}] Successfully mapped {len(update_mappings)} fixtures")
+            self._update_fixtures(raw_model, update_mappings)
+            self.logger.info(f"Successfully mapped {len(update_mappings)} fixtures")
         except Exception as e:
             self.logger.exception(f"Mapping flow failed for {raw_model.__name__}: {e}")

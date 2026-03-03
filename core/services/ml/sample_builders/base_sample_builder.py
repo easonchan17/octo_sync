@@ -161,13 +161,12 @@ class BaseSampleBuilder(BaseTask, ABC):
         'home_point'
     ]
 
-    def __init__(self, site, payload: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, payload: Optional[Dict[str, Any]]) -> None:
         super().__init__()
-        self.site = site
         self.payload = payload
-        self.match_feature_extractor = MatchFeatureExtractor(site, payload)
-        self.outfield_player_feature_extractor = OutfieldPlayerFeatureExtractor(site, payload)
-        self.goalkeeper_feature_extractor = GoalkeeperFeatureExtractor(site, payload)
+        self.match_feature_extractor = MatchFeatureExtractor(payload)
+        self.outfield_player_feature_extractor = OutfieldPlayerFeatureExtractor(payload)
+        self.goalkeeper_feature_extractor = GoalkeeperFeatureExtractor(payload)
 
     def build_output_file(self, tag: str, comp_code: str, min_season: int, max_season: int, output_format: str) -> str:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

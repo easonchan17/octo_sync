@@ -1,4 +1,4 @@
-from .odds_data import OddsRawData, Fixture, Moneyline, Spread
-from .league_data import LeagueRawData
+from .odds import OddsRaw, Fixture, Moneyline, Spread
+from .league import LeagueRaw
 
-__all__ = ['OddsRawData', 'LeagueRawData', 'Fixture', 'Moneyline', 'Spread']
+__all__ = ['OddsRaw', 'LeagueRaw', 'Fixture', 'Moneyline', 'Spread']

@@ -34,7 +34,7 @@ class TrainingService(BaseService):
             if name not in self.tasks:
                 self.tasks[name] = {}
 
-            task = Registry.get_target(name)(None, payload)
+            task = Registry.get_target(name)(payload)
             task = HookedTask(task, post_execute=lambda: self._cleanup_task(name, task.id))
             task.enable_async_mode()
 
@@ -57,9 +57,7 @@ class TrainingService(BaseService):
             return task_id
 
     def create_dataset(self, family: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
-        site = self.get_site(site_name)
-
         name = f"{family}.{site_name}.samples"
-        task = Registry.get_target(name)(site, payload)
+        task = Registry.get_target(name)(payload)
         task.enable_async_mode()
         return TaskExecutor.get_instance().submit(task)

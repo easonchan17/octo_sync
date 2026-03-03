@@ -2,7 +2,6 @@ from copy import deepcopy
 from skopt import BayesSearchCV
 from core.registry import Registry
 from typing import Dict, Any, Optional
-from core.store.postgres.models import Site
 from core.services.ml.models.xgboost_classifier import XGBoostClassifier
 from sklearn.model_selection import TimeSeriesSplit
 from .winball_config import WinballConfig
@@ -12,7 +11,7 @@ from ..base_tracker import BaseTracker
 
 @Registry.task('winball.training')
 class WinballTrainer(BaseTrainer):
-    def __init__(self, site: Site, payload: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.config = WinballConfig(payload)
         self.tracker = BaseTracker(self.config)

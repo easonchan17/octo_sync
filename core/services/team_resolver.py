@@ -15,20 +15,14 @@ class TeamResolver(BaseService):
         "Nott'ham Forest": "Nottingham Forest"
     }
 
-    def resolve(
-        self,
-        raw_matches: List[Dict],
-        ref_site: str,
-        ref_model: Type[Any],
-        attach_ref: bool = False
-    ) -> None:
+    def resolve(self, raw_matches: List[Dict], ref_model: Type[Any], attach_ref: bool = False) -> None:
         if not raw_matches:
             raise ValueError("No raw matches")
 
         raw_matches.sort(key=lambda x: x['kickoff_time'])
         start_time = raw_matches[0]['kickoff_time']
 
-        ref_matches = self._get_matches(ref_site, ref_model, start_time)
+        ref_matches = self._get_matches(ref_model, start_time)
         if not ref_matches:
             raise ValueError("No ref matches")
 
@@ -60,7 +54,7 @@ class TeamResolver(BaseService):
             if attach_ref:
                 raw_match['ref_obj'] = best_ref
 
-    def _get_matches(self, site_name: str, model_class: Type[Any], start_time: datetime) -> List[Any]:
+    def _get_matches(self, model_class: Type[Any], start_time: datetime) -> List[Any]:
         with self.db.get_session() as session:
             matches = session.query(model_class).filter(
                 model_class.kickoff_time >= start_time
