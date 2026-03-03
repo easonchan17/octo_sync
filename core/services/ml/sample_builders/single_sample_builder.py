@@ -5,9 +5,6 @@ from core.utils.pandas_utils import save_dataframe
 from .base_sample_builder import BaseSampleBuilder
 
 class SingleSampleBuilder(BaseSampleBuilder):
-    def __init__(self, site, payload: Optional[Dict[str, Any]]) -> None:
-        super().__init__(site, payload)
-
     def execute(self) -> Optional[Tuple[pd.DataFrame, pd.DataFrame]]:
         home_code = self.get_required_param("home_code")
         away_code = self.get_required_param("away_code")

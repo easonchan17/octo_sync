@@ -1,21 +1,19 @@
 import pandas as pd
 from core.registry import Registry
-from typing import Any, Dict, Optional, Tuple
+from typing import Optional, Tuple
 from core.utils.pandas_utils import save_dataframe
 from core.services.league import league_service
 from .base_sample_builder import BaseSampleBuilder
+from core.types.enums import SiteName
 
-@Registry.task('winball.fbref.samples')
+@Registry.task('winball.fotmob.samples')
 class BatchSampleBuilder(BaseSampleBuilder):
-    def __init__(self, site, payload: Optional[Dict[str, Any]]) -> None:
-        super().__init__(site, payload)
-
     def execute(self) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         league_id = self.get_required_param("league_id")
         min_season = self.get_required_param("min_season")
         max_season = self.get_required_param("max_season")
 
-        league_config = league_service.get(league_id).site_leagues.get(self.site.name)
+        league_config = league_service.get(league_id).site_leagues.get(SiteName.FOTMOB.value)
         comp_code = league_config.league_id
 
         output_format = self.payload.get("format", "csv")

@@ -9,7 +9,7 @@ from core.types.enums import MatchStatus
 from core.store.postgres.models import (
     MatchResult, MarketOdds, EloRating
 )
-from core.store.postgres.models.fotmob.match_data import MatchStat
+from core.store.postgres.models.fotmob.match import MatchStat
 from .feature_engineering import (
     FeatureSelector,
     MeanImputer,

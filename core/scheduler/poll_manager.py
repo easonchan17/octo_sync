@@ -6,7 +6,6 @@ from core.registry import Registry
 
 import core.scheduler.tasks.parsing.fotmob  # noqa: F401
 import core.scheduler.tasks.parsing.pinnacle  # noqa: F401
-import core.scheduler.tasks.sync.fbref  # noqa: F401
 import core.scheduler.tasks.sync.fotmob  # noqa: F401
 import core.scheduler.tasks.sync.football_data  # noqa: F401
 import core.scheduler.tasks.sync.pinnacle  # noqa: F401

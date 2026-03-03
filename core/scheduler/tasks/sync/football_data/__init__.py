@@ -1,5 +1,5 @@
-from .sync_historical_odds import SyncHistoricalOdds
+from .sync_odds import SyncOdds
 
 __all__ = [
-    'SyncHistoricalOdds'
+    'SyncOdds'
 ]
