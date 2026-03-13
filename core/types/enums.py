@@ -12,6 +12,7 @@ class SiteName(str, Enum):
     FOTMOB = 'fotmob'
     PINNACLE = 'pinnacle'
     FOOTBALL_DATA = 'football_data'
+    ODDSPORTAL = 'oddsportal'
 
 class LeagueID(IntEnum):
     UNKNOWN = 0

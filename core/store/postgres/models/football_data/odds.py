@@ -1,20 +1,42 @@
-from sqlalchemy import Column, Integer, String, DateTime, Index, CHAR, Numeric, UniqueConstraint
+from sqlalchemy.sql import text
+from sqlalchemy import Column, Integer, String, DateTime, Index, Numeric, Text, UniqueConstraint
 from core.types.enums import SiteName
-from ..base_model import Base
+from ..base_model import Base, CrawlStatusMixin
 
-class MarketOdds(Base):
-    __tablename__ = 'market_odds'
+class OddsRaw(Base, CrawlStatusMixin):
+    __tablename__ = 'odds_raw'
     __table_args__ = (
-        UniqueConstraint('match_code', name='uq_market_odds_match_code'),
-        Index('idx_market_odds_match_code', 'match_code'),
-        Index('idx_market_odds_kickoff_time', 'kickoff_time'),
-        Index('idx_market_odds_created_at', 'created_at'),
-        Index('idx_market_odds_updated_at', 'updated_at'),
+        UniqueConstraint('season', 'league_id', name='uq_odds_raw_season_league'),
+        Index('idx_odds_raw_created_at', 'created_at'),
+        Index('idx_odds_raw_updated_at', 'updated_at'),
+        Index(
+            'idx_odds_raw_not_parsed',
+            'is_parsed',
+            postgresql_where=text("is_fetched = true and is_parsed = false")
+        ),
         {'schema': SiteName.FOOTBALL_DATA.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    match_code = Column(CHAR(8), nullable=False)
+    season = Column(Integer, nullable=False)
+    league_id = Column(String(100), nullable=False)
+
+
+class Odds(Base):
+    __tablename__ = 'odds'
+    __table_args__ = (
+        UniqueConstraint('match_id', name='uq_match_odds_match_id'),
+        Index('idx_match_odds_match_id', 'match_id'),
+        Index('idx_match_odds_match_code', 'match_code'),
+        Index('idx_match_odds_kickoff_time', 'kickoff_time'),
+        Index('idx_match_odds_created_at', 'created_at'),
+        Index('idx_match_odds_updated_at', 'updated_at'),
+        {'schema': SiteName.FOOTBALL_DATA.value}
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    match_id = Column(Integer, nullable=False)
+    match_code = Column(String(64), nullable=True)
     kickoff_time = Column(DateTime(timezone=True), nullable=False)
     home_team = Column(String(64), nullable=True)
     away_team = Column(String(64), nullable=True)

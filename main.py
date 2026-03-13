@@ -2,6 +2,7 @@ import sys
 import signal
 import argparse
 from threading import Event
+from core.types.enums import SiteName
 from core.server.web_server import WebServer
 from core.browser.interceptor import Interceptor
 from core.config.config_manager import ConfigManager
@@ -98,7 +99,7 @@ def run_app() -> None:
     logger.info("✅ League service loaded")
 
     logger.info("🔧 Starting poll manager...")
-    get_poll_manager().start()
+    get_poll_manager().start("sync.oddsportal.league")
     logger.info("✅ Poll manager started")
 
     logger.info("🌐 Starting web server...")

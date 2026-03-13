@@ -5,8 +5,8 @@ from core.browser.interceptor import TaskType
 from core.types.params import LeagueCrawlParams
 from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
-from core.browser.intercept_policy import InterceptPolicy
-from core.browser.components.receivers.common.json_receiver import JsonReceiver
+from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.browser.handlers.receivers import JsonReceiver
 from core.store.postgres.daos.pinnacle import LeagueDao
 
 @Registry.poll('sync.pinnacle.league')
@@ -15,12 +15,12 @@ class SyncLeague(PollTask):
     SPORT_NAME = "soccer"
 
     POLICY_CONFIG = {
-        "url_template": f"https://www.pinnacle.com/en/{SPORT_NAME}/leagues/",
+        "url_template": "https://www.pinnacle.com/en/{sport_name}/leagues/",
         "debug": False,
         "rules": [
             {
-                "type": "http",
-                "pattern": f"https://guest.api.arcadia.pinnacle.com/.*/sports/{SPORT_ID}/leagues",
+                "type": InterceptType.HTTP,
+                "pattern": "https://guest.api.arcadia.pinnacle.com/.*/sports/{SPORT_ID}/leagues",
                 "receiver": JsonReceiver
             }
         ]
@@ -38,7 +38,7 @@ class SyncLeague(PollTask):
     def execute(self, *args, **kwargs) -> None:
         sport_id = self.SPORT_ID
         sport_name = self.SPORT_NAME
-        page_url = self.intercept_policy.url
+        page_url = self.intercept_policy.url.format(sport_name=sport_name)
 
         while not self.should_stop():
             try:

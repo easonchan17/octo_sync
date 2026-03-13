@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from typing import Any, Dict, Optional, List, Tuple
 from core.services.league import get_league_service
-from core.browser.intercept_policy import InterceptPolicy
+from core.browser.intercept_policy import InterceptPolicy, InterceptType
 from core.browser.interceptor import TaskType
 from core.types.enums import SiteName
-from core.browser.components.receivers.common.json_receiver import JsonReceiver
+from core.browser.handlers.receivers import JsonReceiver
 from core.store.postgres.daos.fotmob import MatchDao
 from core.types.params import MatchCrawlParams
 
@@ -18,9 +18,8 @@ class BaseSyncMatch(PollTask):
         "debug": False,
         "rules": [
             {
-                "type": "http",
+                "type": InterceptType.HTTP,
                 "pattern": "https://www.fotmob.com/api/data/matchDetails",
-                # "sender": NoCacheSender,
                 "receiver": JsonReceiver
             }
         ]

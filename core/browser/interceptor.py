@@ -1,7 +1,7 @@
 import time
 import janus
 import asyncio
-from enum import Enum, auto
+from enum import Enum
 from contextlib import suppress
 from urllib.parse import urlparse
 from core.utils.thread import Thread
@@ -11,10 +11,9 @@ from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, Optional, Any
-from core.browser.rate_limiter import RateLimiter
+from core.browser.security import RateLimiter
 from core.config.config_manager import ConfigManager
-from core.browser.turnstile_solver import TurnstileSolver
-from core.browser.intercept_monitor import InterceptMonitor
+from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook, TurnstileHook, JsHook
 from core.browser.intercept_result_set import InterceptResultSet, FetchState
 from core.browser.intercept_policy import InterceptType, InterceptPolicy
 
@@ -29,7 +28,6 @@ class Interceptor(Thread, Singleton):
         super().__init__()
         self.page_pool = None
         self.task_queue: Optional[janus.Queue] = None
-        self.turnstile_solver = TurnstileSolver()
         self.rate_limiter = RateLimiter()
 
     def get_page_pool(self) -> Optional[PagePool]:
@@ -169,137 +167,6 @@ class Interceptor(Thread, Singleton):
 
         return await self._open_page(url, policy, query_params)
 
-    async def _register_handlers(
-        self,
-        page_context: Any,
-        policy: InterceptPolicy,
-        monitor: InterceptMonitor,
-        result_set: InterceptResultSet,
-        query_params: Optional[dict[str, Any]] = None
-    ) -> Tuple[Optional[Any], Optional[Any], Optional[Any]]:
-
-        http_request_handler = None
-        http_response_handler = None
-        ws_connect_handler = None
-
-        if policy.has_rules(InterceptType.HTTP):
-            if policy.has_senders(InterceptType.HTTP):
-                async def _http_request_handler(route, request) -> None:
-                    try:
-                        rule = policy.find_rule(InterceptType.HTTP, request.url)
-                        if rule and rule.sender:
-                            overrides = await rule.sender.process(request, query_params)
-
-                            if overrides is not None:
-                                await route.continue_(**overrides)
-                                return
-                    except Exception as e:
-                        self.logger.error(f"Failed to send request: {e}")
-
-                    try:
-                        if policy.debug:
-                            self.logger.info(f"Continuing request without modification: {request.url}")
-                        await route.continue_()
-                    except Exception as e:
-                        self.logger.error(f"Failed to continue request: {e}")
-                        with suppress(Exception):
-                            await route.abort("failed")
-
-                await page_context.route("**/*", _http_request_handler)
-                http_request_handler = _http_request_handler
-
-            if policy.has_receivers(InterceptType.HTTP):
-                async def _http_response_handler(response) -> None:
-                    http_rule = policy.find_rule(
-                        type=InterceptType.HTTP,
-                        url=response.url
-                    )
-                    if http_rule is None or http_rule.receiver is None:
-                        if policy.debug:
-                            self.logger.warning(f"No receiver found for HTTP rule: {response.url}")
-                        return
-
-                    if not response.ok:
-                        if response.status == 304:
-                            result_set.set(http_rule.receiver.instance_id, FetchState.NOT_MODIFIED)
-                            monitor.mark_completed(response.url)
-                        return
-
-                    try:
-                        parsed_data = await http_rule.receiver.process(response)
-                        if parsed_data is None:
-                            return
-
-                        result_set.set(http_rule.receiver.instance_id, parsed_data)
-                        monitor.mark_completed(response.url)
-                    except Exception as e:
-                        self.logger.error(f"Failed to process response from {response.url} {response.request.method} {http_rule.receiver}: {e}", exc_info=True)
-
-                page_context.on("response", _http_response_handler)
-                http_response_handler = _http_response_handler
-
-        if policy.has_rules(InterceptType.WS):
-            async def _ws_connect_handler(ws: WebSocket):
-                ws_rule = policy.find_rule(
-                    type=InterceptType.WS,
-                    url=ws.url
-                )
-                if not ws_rule or not ws_rule.receiver:
-                    return
-
-                async def _framereceived_handler(frame):
-                    try:
-                        await ws_rule.receiver.process(frame)
-                    except Exception as e:
-                        self.logger.error(f"Failed to process ws frame from {ws.url}: {e}")
-
-                async def _close_handler(code):
-                    self.logger.info(f"ws closed: {ws.url}, code {code}")
-
-                async def _error_handler(error):
-                    self.logger.error(f"ws error: {ws.url} {error}")
-
-                self.logger.info(f"ws opened: {ws.url}")
-
-                ws.on("close", _close_handler)
-                ws.on("error", _error_handler)
-                ws.on("framereceived", _framereceived_handler)
-
-            page_context.on("websocket", _ws_connect_handler)
-            ws_connect_handler = _ws_connect_handler
-
-        return http_request_handler, http_response_handler, ws_connect_handler
-
-    async def _process_dom(
-        self,
-        page_context: Any,
-        url: str,
-        policy: InterceptPolicy,
-        result_set: InterceptResultSet
-    ) -> None:
-        if not policy.has_rules(InterceptType.DOM):
-            return
-
-        dom_rule = policy.find_rule(type=InterceptType.DOM)
-        if dom_rule is None or dom_rule.receiver is None:
-            if policy.debug:
-                self.logger.warning(f"No receiver found for DOM rule: {url}")
-            return
-
-        try:
-            parsed_data = await dom_rule.receiver.process(
-                page_context=page_context,
-                url=url,
-                timeout=policy.timeout
-            )
-
-            if parsed_data is None:
-                return
-
-            result_set.set(dom_rule.receiver.instance_id, parsed_data)
-        except Exception as e:
-            self.logger.error(f"Failed to process page content from {url} {dom_rule.receiver}: {e}", exc_info=True)
-
     def _is_valid_url(self, url: str) -> bool:
         if not url or not isinstance(url, str):
             return False
@@ -357,27 +224,31 @@ class Interceptor(Thread, Singleton):
 
         try:
             async with self.page_pool.acquire(timeout) as page_context:
-                http_request_handler = None
-                http_response_handler = None
-
                 try:
-                    intercept_monitor = InterceptMonitor(policy, InterceptType.HTTP)
+                    hooks = [TurnstileHook()]
+                    if policy.has_rules(InterceptType.HTTP):
+                        hooks.append(HttpHook())
+                    if policy.has_rules(InterceptType.JS):
+                        hooks.append(JsHook())
+                    if policy.has_rules(InterceptType.DOM):
+                        hooks.append(DomHook())
+                    if policy.has_rules(InterceptType.WS):
+                        hooks.append(WsHook())
+                    hook_chain = HookChain(hooks)
 
-                    (
-                        http_request_handler,
-                        http_response_handler,
-                        _
-                    ) = await self._register_handlers(
-                        page_context,
-                        policy,
-                        intercept_monitor,
-                        result_set,
-                        query_params
+                    ctx = HookContext(
+                        page_context=page_context,
+                        target_url=url,
+                        policy=policy,
+                        query_params=query_params,
+                        result_set=result_set,
                     )
 
-                    start_time = time.time()
+                    await hook_chain.setup(ctx)
 
-                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout*1000)
+                    start_time = time.time()
+                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
+
                     if response is None:
                         self.logger.warning(f"Navigation to {url} returned None, no response available")
                         return False, result_set
@@ -386,38 +257,18 @@ class Interceptor(Thread, Singleton):
                         self.rate_limiter.activate_backoff(url)
                         return False, result_set
 
-                    async def turnstile_daemon():
-                        while True:
-                            try:
-                                if await self.turnstile_solver.solve(page_context):
-                                    break
-
-                                await asyncio.sleep(1)
-                            except asyncio.CancelledError:
-                                break
-                            except Exception as e:
-                                self.logger.debug(f"Turnstile daemon check skipped/error: {e}")
-
-                    daemon_task = asyncio.create_task(turnstile_daemon())
                     try:
-                        await intercept_monitor.wait(timeout)
+                        success = await hook_chain.execute(ctx)
                     finally:
-                        daemon_task.cancel()
-                        try:
-                            await daemon_task
-                        except asyncio.CancelledError:
-                            pass
-                        except Exception as e:
-                            self.logger.debug(f"Turnstile daemon finished: {e}")
+                        await hook_chain.destroy(ctx)
+
+                    if not success:
+                        return False, result_set
+
+                    self.rate_limiter.reset_backoff(url)
 
                     elapsed_time = time.time() - start_time
                     self.logger.info(f"Page loaded: {url} in {elapsed_time:.2f}s")
-
-                    await self._process_dom(page_context, url, policy, result_set)
-                    self.rate_limiter.reset_backoff(url)
-
-                    if policy.has_rules(InterceptType.WS):
-                        page_context.detach()
 
                     return True, result_set
                 except Exception as e:
