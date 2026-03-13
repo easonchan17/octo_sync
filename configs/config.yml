@@ -13,7 +13,7 @@ task_thread_pool:
 
 browser:
   options:
-    headless: true
+    headless: false
     geoip: false
     os:
       - "windows"
@@ -51,6 +51,7 @@ artifact:
   dataset:
     training: artifacts/dataset/training
     prediction: artifacts/dataset/prediction
+    odds: artifacts/dataset/odds
 
 training:
   tasks:

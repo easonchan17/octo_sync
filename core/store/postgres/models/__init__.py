@@ -3,7 +3,8 @@ from .base_model import Base, Status
 from .common import Site, TrainingRecord, SysVal, League, SiteLeague
 from .pinnacle import Fixture as PinnacleFixture, Moneyline, Spread
 from .fotmob import Fixture as FotmobFixture, MatchLineup, EloRating
-from .football_data import MarketOdds
+from .football_data import Odds
+from .oddsportal import LeagueRaw
 
 __all__ = [
     'Base',
@@ -14,10 +15,11 @@ __all__ = [
     'Moneyline',
     'Spread',
     'EloRating',
-    'MarketOdds',
+    'Odds',
     'FotmobFixture',
     'MatchLineup',
     'SysVal',
     'League',
-    'SiteLeague'
+    'SiteLeague',
+    'LeagueRaw',
 ]

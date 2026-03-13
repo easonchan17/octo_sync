@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from core.types.enums import MatchStatus
 from core.store.postgres.models import (
     MatchResult, GoalAndShotCreation, Passing, Shooting,
-    DefensiveAction, GoalKeeping, MarketOdds, EloRating
+    DefensiveAction, GoalKeeping, Odds, EloRating
 )
 from .feature_engineering import (
     FeatureSelector,
@@ -201,7 +201,7 @@ class MatchFeatureExtractor(BaseFeatureExtractor):
             elo_rating_home = aliased(EloRating)
             elo_rating_away = aliased(EloRating)
 
-            market_odds = aliased(MarketOdds)
+            match_odds = aliased(Odds)
 
             query = session.query(
                 MatchResult,
@@ -217,7 +217,7 @@ class MatchFeatureExtractor(BaseFeatureExtractor):
                 goalkeeping_away,
                 elo_rating_home,
                 elo_rating_away,
-                market_odds
+                match_odds
             ).outerjoin(
                 gca_home,
                 and_(
@@ -291,8 +291,8 @@ class MatchFeatureExtractor(BaseFeatureExtractor):
                     MatchResult.away_code == elo_rating_away.team_code
                 )
             ).outerjoin(
-                market_odds,
-                MatchResult.match_code == market_odds.match_code
+                match_odds,
+                MatchResult.match_code == match_odds.match_code
             ).filter(
                 MatchResult.comp_code == comp_code,
                 MatchResult.season >= min_season,
@@ -317,7 +317,7 @@ class MatchFeatureExtractor(BaseFeatureExtractor):
                 goalkeeping_away_obj = row[10]
                 elo_rating_home_obj = row[11]
                 elo_rating_away_obj = row[12]
-                market_odds_obj = row[13]
+                match_odds_obj = row[13]
 
                 record = {
                     "match_code": match_result.match_code,
@@ -481,20 +481,20 @@ class MatchFeatureExtractor(BaseFeatureExtractor):
                         "away_gk_avg_distance_def_actions": goalkeeping_away_obj.avg_distance_def_actions if goalkeeping_away_obj.avg_distance_def_actions else 0
                     })
 
-                if market_odds_obj:
+                if match_odds_obj:
                     record.update({
-                        "home_open_odds": market_odds_obj.home_open,
-                        "draw_open_odds": market_odds_obj.draw_open,
-                        "away_open_odds": market_odds_obj.away_open,
-                        "home_close_odds": market_odds_obj.home_close,
-                        "draw_close_odds": market_odds_obj.draw_close,
-                        "away_close_odds": market_odds_obj.away_close,
-                        "ah_line_open": market_odds_obj.ah_line_open,
-                        "ah_home_open_odds": market_odds_obj.ah_home_open,
-                        "ah_away_open_odds": market_odds_obj.ah_away_open,
-                        "ah_line_close": market_odds_obj.ah_line_close,
-                        "ah_home_close_odds": market_odds_obj.ah_home_close,
-                        "ah_away_close_odds": market_odds_obj.ah_away_close
+                        "home_open_odds": match_odds_obj.home_open,
+                        "draw_open_odds": match_odds_obj.draw_open,
+                        "away_open_odds": match_odds_obj.away_open,
+                        "home_close_odds": match_odds_obj.home_close,
+                        "draw_close_odds": match_odds_obj.draw_close,
+                        "away_close_odds": match_odds_obj.away_close,
+                        "ah_line_open": match_odds_obj.ah_line_open,
+                        "ah_home_open_odds": match_odds_obj.ah_home_open,
+                        "ah_away_open_odds": match_odds_obj.ah_away_open,
+                        "ah_line_close": match_odds_obj.ah_line_close,
+                        "ah_home_close_odds": match_odds_obj.ah_home_close,
+                        "ah_away_close_odds": match_odds_obj.ah_away_close
                     })
 
                 data.append(record)
