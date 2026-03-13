@@ -7,11 +7,11 @@ from typing import Any, Dict, Optional, List
 from core.services.league import league_service
 from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
-from core.browser.intercept_policy import InterceptPolicy
+from core.browser.intercept_policy import InterceptPolicy, InterceptType
 from core.browser.intercept_result_set import InterceptResultSet
 from core.store.postgres.daos.pinnacle import OddsDao
 from core.store.postgres.daos.fotmob import FixtureDao
-from core.browser.components.receivers.common.json_receiver import JsonReceiver
+from core.browser.handlers.receivers import JsonReceiver
 from core.types.params import OddsCrawlParams
 from core.types.enums import LeaguePriority
 
@@ -23,12 +23,12 @@ class SyncOdds(PollTask):
         "debug": False,
         "rules": [
             {
-                "type": "http",
+                "type": InterceptType.HTTP,
                 "pattern": "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/matchups",
                 "receiver": JsonReceiver
             },
             {
-                "type": "http",
+                "type": InterceptType.HTTP,
                 "pattern": "https://guest.api.arcadia.pinnacle.com/.*/leagues/.*/markets/straight",
                 "receiver": JsonReceiver
             }

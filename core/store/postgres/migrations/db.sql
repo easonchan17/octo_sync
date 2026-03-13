@@ -47,3 +47,11 @@ ALTER TABLE fotmob.fixture_raw_data RENAME TO fixture_raw;
 
 -- 4. Fotmob Match Raw
 ALTER TABLE fotmob.match_raw_data RENAME TO match_raw;
+
+
+-- football_data site_leagues: set ref_league_id for the 5 major leagues
+UPDATE public.site_leagues SET ref_league_id = 101 WHERE league_id = 'E0'  AND site_name = 'football_data';  -- Premier League (England)
+UPDATE public.site_leagues SET ref_league_id = 102 WHERE league_id = 'SP1' AND site_name = 'football_data';  -- LaLiga (Spain)
+UPDATE public.site_leagues SET ref_league_id = 103 WHERE league_id = 'I1'  AND site_name = 'football_data';  -- Serie A (Italy)
+UPDATE public.site_leagues SET ref_league_id = 104 WHERE league_id = 'D1'  AND site_name = 'football_data';  -- Bundesliga (Germany)
+UPDATE public.site_leagues SET ref_league_id = 105 WHERE league_id = 'F1'  AND site_name = 'football_data';  -- Ligue 1 (France)

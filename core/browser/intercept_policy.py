@@ -8,6 +8,7 @@ class InterceptType(StrEnum):
     HTTP = "http"
     DOM = "dom"
     WS = "ws"
+    JS = "js"
 
 class InterceptRule:
     def __init__(
@@ -15,15 +16,17 @@ class InterceptRule:
         type: str,
         pattern: Optional[str] = None,
         receiver: Optional[Type[Any]] = None,
-        sender: Optional[Type[Any]] = None
+        sender: Optional[Type[Any]] = None,
+        hook_script: Optional[str] = None
     ) -> None:
         self.type = InterceptType(type)
-        if not self.is_dom() and pattern is None:
+        if not self.is_dom() and not self.is_js() and pattern is None:
             raise ValueError("pattern is required for non-dom intercept rules")
 
         self.pattern = pattern
         self.receiver = receiver() if receiver else None
         self.sender = sender() if sender else None
+        self.hook_script = hook_script
 
     def is_http(self) -> bool:
         return self.type == InterceptType.HTTP
@@ -33,6 +36,9 @@ class InterceptRule:
 
     def is_ws(self) -> bool:
         return self.type == InterceptType.WS
+
+    def is_js(self) -> bool:
+        return self.type == InterceptType.JS
 
 class InterceptPolicy:
     def __init__(self) -> None:
@@ -101,7 +107,8 @@ class InterceptPolicy:
                 type=rule.get("type"),
                 pattern=rule.get("pattern"),
                 receiver=rule.get("receiver"),
-                sender=rule.get("sender"))
+                sender=rule.get("sender"),
+                hook_script=rule.get("hook_script"))
             )
         policy.debug = debug
         policy.timeout = timeout

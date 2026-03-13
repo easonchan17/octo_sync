@@ -7,7 +7,7 @@ from sqlalchemy.orm import aliased
 from typing import Any, Dict, List, Optional, Tuple
 from core.types.enums import MatchStatus
 from core.store.postgres.models import (
-    MatchResult, MarketOdds, EloRating
+    MatchResult, Odds, EloRating
 )
 from core.store.postgres.models.fotmob.match import MatchStat
 from .feature_engineering import (
@@ -125,14 +125,14 @@ class MatchFeatureExtractorV2(BaseFeatureExtractor):
             match_stats = aliased(MatchStat)
             elo_rating_home = aliased(EloRating)
             elo_rating_away = aliased(EloRating)
-            market_odds = aliased(MarketOdds)
+            match_odds = aliased(Odds)
 
             query = session.query(
                 MatchResult,
                 match_stats,
                 elo_rating_home,
                 elo_rating_away,
-                market_odds
+                match_odds
             ).outerjoin(
                 match_stats,
                 MatchResult.match_id == match_stats.match_id
@@ -149,8 +149,8 @@ class MatchFeatureExtractorV2(BaseFeatureExtractor):
                     MatchResult.away_code == elo_rating_away.team_code
                 )
             ).outerjoin(
-                market_odds,
-                MatchResult.match_code == market_odds.match_code
+                match_odds,
+                MatchResult.match_code == match_odds.match_code
             ).filter(
                 MatchResult.comp_code == comp_code,
                 MatchResult.season >= min_season,
@@ -227,7 +227,7 @@ class MatchFeatureExtractorV2(BaseFeatureExtractor):
             match_stats_obj = row[1]
             elo_rating_home_obj = row[2]
             elo_rating_away_obj = row[3]
-            market_odds_obj = row[4]
+            match_odds_obj = row[4]
 
             record = {
                 "match_code": match_result.match_code,
@@ -292,20 +292,20 @@ class MatchFeatureExtractorV2(BaseFeatureExtractor):
                     "away_game_count": elo_rating_away_obj.game_count
                 })
 
-            if market_odds_obj:
+            if match_odds_obj:
                 record.update({
-                    "home_open_odds": market_odds_obj.home_open,
-                    "draw_open_odds": market_odds_obj.draw_open,
-                    "away_open_odds": market_odds_obj.away_open,
-                    "home_close_odds": market_odds_obj.home_close,
-                    "draw_close_odds": market_odds_obj.draw_close,
-                    "away_close_odds": market_odds_obj.away_close,
-                    "ah_line_open": market_odds_obj.ah_line_open,
-                    "ah_home_open_odds": market_odds_obj.ah_home_open,
-                    "ah_away_open_odds": market_odds_obj.ah_away_open,
-                    "ah_line_close": market_odds_obj.ah_line_close,
-                    "ah_home_close_odds": market_odds_obj.ah_home_close,
-                    "ah_away_close_odds": market_odds_obj.ah_away_close
+                    "home_open_odds": match_odds_obj.home_open,
+                    "draw_open_odds": match_odds_obj.draw_open,
+                    "away_open_odds": match_odds_obj.away_open,
+                    "home_close_odds": match_odds_obj.home_close,
+                    "draw_close_odds": match_odds_obj.draw_close,
+                    "away_close_odds": match_odds_obj.away_close,
+                    "ah_line_open": match_odds_obj.ah_line_open,
+                    "ah_home_open_odds": match_odds_obj.ah_home_open,
+                    "ah_away_open_odds": match_odds_obj.ah_away_open,
+                    "ah_line_close": match_odds_obj.ah_line_close,
+                    "ah_home_close_odds": match_odds_obj.ah_home_close,
+                    "ah_away_close_odds": match_odds_obj.ah_away_close
                 })
 
             data.append(record)

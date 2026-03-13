@@ -42,7 +42,7 @@ class Fixture(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_id = Column(Integer, nullable=False, unique=True)
-    league_name = Column(String(100), nullable=False)
+    league_name = Column(String(200), nullable=False)
     league_id = Column(Integer, nullable=False)
 
     kickoff_time = Column(DateTime(timezone=True), nullable=False)

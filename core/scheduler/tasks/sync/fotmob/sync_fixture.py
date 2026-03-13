@@ -3,9 +3,9 @@ from core.registry import Registry
 from typing import Any, Dict, List, Optional
 from core.scheduler.tasks.poll_task import PollTask
 from datetime import date, datetime, timedelta, timezone
-from core.browser.intercept_policy import InterceptPolicy
+from core.browser.intercept_policy import InterceptPolicy, InterceptType
 from core.browser.interceptor import TaskType
-from core.browser.components.receivers.common.json_receiver import JsonReceiver
+from core.browser.handlers.receivers import JsonReceiver
 from core.store.postgres.daos.fotmob import FixtureDao
 from core.types.params import FixtureCrawlParams
 
@@ -15,9 +15,8 @@ class BaseSyncFixture(PollTask):
         "debug": False,
         "rules": [
             {
-                "type": "http",
+                "type": InterceptType.HTTP,
                 "pattern": "https://www.fotmob.com/api/data/matches",
-                # "sender": NoCacheSender,
                 "receiver": JsonReceiver
             }
         ]

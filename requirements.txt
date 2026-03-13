@@ -21,3 +21,4 @@ thefuzz==0.22.1
 apscheduler==3.11.2
 httpx==0.28.1
 alembic==1.18.1
+visidata==3.3

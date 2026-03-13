@@ -31,7 +31,7 @@ class Fixture(Base):
     match_id = Column(BigInteger, nullable=False, unique=True)
     kickoff_time = Column(DateTime(timezone=True), nullable=False)
     league_id = Column(Integer, nullable=False)
-    league_name = Column(String(100), nullable=False)
+    league_name = Column(String(200), nullable=False)
     home_team = Column(String(100), nullable=False)
     away_team = Column(String(100), nullable=False)
     fixture_id = Column(Integer, nullable=True, unique=True, comment='References fotmob_fixtures.match_id')
