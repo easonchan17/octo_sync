@@ -9,8 +9,7 @@ class SysVal(Base):
     __tablename__ = 'sys_vals'
     __table_args__ = (
         Index('idx_sys_vals_created_at', 'created_at'),
-        Index('idx_sys_vals_updated_at', 'updated_at'),
-        {'schema': 'public'}
+        Index('idx_sys_vals_updated_at', 'updated_at')
     )
 
     key = Column(String(128), primary_key=True)

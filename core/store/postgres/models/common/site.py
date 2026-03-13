@@ -7,8 +7,7 @@ class Site(Base):
     __table_args__ = (
         Index('idx_sites_created_at', 'created_at'),
         Index('idx_sites_updated_at', 'updated_at'),
-        Index('idx_sites_url', 'url'),
-        {'schema': 'public'}
+        Index('idx_sites_url', 'url')
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
