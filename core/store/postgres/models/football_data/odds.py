@@ -25,12 +25,12 @@ class OddsRaw(Base, CrawlStatusMixin):
 class Odds(Base):
     __tablename__ = 'odds'
     __table_args__ = (
-        UniqueConstraint('match_id', name='uq_match_odds_match_id'),
-        Index('idx_match_odds_match_id', 'match_id'),
-        Index('idx_match_odds_match_code', 'match_code'),
-        Index('idx_match_odds_kickoff_time', 'kickoff_time'),
-        Index('idx_match_odds_created_at', 'created_at'),
-        Index('idx_match_odds_updated_at', 'updated_at'),
+        UniqueConstraint('match_id', name='uq_odds_match_id'),
+        Index('idx_odds_match_id', 'match_id'),
+        Index('idx_odds_match_code', 'match_code'),
+        Index('idx_odds_kickoff_time', 'kickoff_time'),
+        Index('idx_odds_created_at', 'created_at'),
+        Index('idx_odds_updated_at', 'updated_at'),
         {'schema': SiteName.FOOTBALL_DATA.value}
     )
 
