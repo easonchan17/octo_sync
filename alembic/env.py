@@ -6,7 +6,7 @@ from typing import Optional, Callable
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from alembic.script import ScriptDirectory
 from alembic import context
 from alembic.config import Config
@@ -80,6 +80,12 @@ def run_migrations_offline(config: Config) -> None:
         with context.begin_transaction():
             context.run_migrations()
 
+def ensure_schemas(connection) -> None:
+    schemas = {t.schema for t in Base.metadata.tables.values() if t.schema}
+    for schema in schemas:
+        connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+    connection.commit()
+
 def run_migrations_online(config: Config) -> None:
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -88,6 +94,8 @@ def run_migrations_online(config: Config) -> None:
     )
 
     with connectable.connect() as connection:
+        ensure_schemas(connection)
+
         context.configure(
             connection=connection,
             target_metadata=Base.metadata,
