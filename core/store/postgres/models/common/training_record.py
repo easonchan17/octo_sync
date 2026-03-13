@@ -11,8 +11,7 @@ class TrainingRecord(Base):
         Index('idx_training_records_model_type', 'model_type'),
         Index('idx_training_records_dataset_name', 'dataset_name'),
         Index('idx_training_records_train_score', 'train_score'),
-        Index('idx_training_records_test_score', 'test_score'),
-        {'schema': 'public'}
+        Index('idx_training_records_test_score', 'test_score')
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

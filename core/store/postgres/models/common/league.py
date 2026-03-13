@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Column, String, Integer, Index, ForeignKey, UniqueConstraint, BigInteger
+from sqlalchemy import Column, String, Integer, Index, ForeignKey, ForeignKeyConstraint, UniqueConstraint, BigInteger
 from core.types.enums import LeaguePriority
 from ..base_model import Base
 
@@ -10,8 +10,7 @@ class League(Base):
     __table_args__ = (
         Index('idx_leagues_created_at', 'created_at'),
         Index('idx_leagues_updated_at', 'updated_at'),
-        Index('idx_leagues_priority', 'priority'),
-        {'schema': 'public'}
+        Index('idx_leagues_priority', 'priority')
     )
 
     id = Column(BigInteger, primary_key=True)
@@ -31,7 +30,7 @@ class SiteLeague(Base):
         Index('idx_site_leagues_updated_at', 'updated_at'),
         UniqueConstraint('site_name', 'league_id', name='uq_site_league_site_code'),
         UniqueConstraint('ref_league_id', 'site_name', name='uq_site_league_league_id_site'),
-        {'schema': 'public'}
+        ForeignKeyConstraint(['ref_league_id'], ['leagues.id'], name='site_leagues_ref_league_id_fkey')
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -45,5 +44,5 @@ class SiteLeague(Base):
 
     extra_data = Column(JSONB(none_as_null=True), nullable=True)
 
-    ref_league_id = Column(BigInteger, ForeignKey('public.leagues.id'), nullable=True)
+    ref_league_id = Column(BigInteger, nullable=True)
     ref_league = relationship("League", back_populates="site_leagues", foreign_keys=[ref_league_id])
