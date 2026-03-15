@@ -13,22 +13,18 @@ class SyncLeague(PollTask):
     SPORT = "football"
 
     HOOK_SCRIPT = """(function() {
-        const _origParse = JSON.parse;
+        var _origParse = JSON.parse;
         JSON.parse = function(text, reviver) {
-            const result = _origParse.call(this, text, reviver);
-
+            var result = _origParse.call(this, text, reviver);
             try {
-                if (result && typeof result === 'object') {
-                    if (result?.d?.football_all) {
-                        if (window.traceLog) {
-                            window.traceLog(text);
-                        }
-                    }
+                if (result && typeof result === 'object' && result.d && result.d.football_all) {
+                    fetch('/__app_trace__/leagues/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: text
+                    });
                 }
-            } catch (e) {
-                console.log('error')
-            }
-
+            } catch (e) {}
             return result;
         };
     })();"""
@@ -78,7 +74,7 @@ class SyncLeague(PollTask):
                 self.league_dao.sync_raw_data({
                     "source_url": page_url,
                     "sport": sport,
-                    "html_body": result_set.first(),
+                    "json_body": result_set.first(),
                 })
                 self.league_dao.mark_as_fetched(sport)
                 self.logger.info(f"Synced oddsportal leagues for sport={sport}")
