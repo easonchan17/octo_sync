@@ -20,7 +20,7 @@ class LeagueDao(BaseDao):
         with self.db.get_session() as session:
             return session.query(
                 LeagueRaw.sport,
-                LeagueRaw.html_body,
+                LeagueRaw.json_body,
             ).filter(
                 LeagueRaw.is_fetched == True,
                 LeagueRaw.is_parsed == False,
@@ -47,7 +47,7 @@ class LeagueDao(BaseDao):
         with self.db.get_session() as session:
             insert_stmt = insert(LeagueRaw).values(
                 sport=sport,
-                html_body='',
+                json_body='',
                 is_fetched=False,
                 fetch_attempts=1,
                 last_fetch_error=(error_msg or '')[:2000],
@@ -97,7 +97,7 @@ class LeagueDao(BaseDao):
                 index_elements=[LeagueRaw.sport.key],
                 set_={
                     LeagueRaw.source_url.key: insert_stmt.excluded.source_url,
-                    LeagueRaw.html_body.key: insert_stmt.excluded.html_body,
+                    LeagueRaw.json_body.key: insert_stmt.excluded.json_body,
                     LeagueRaw.updated_at.key: func.now(),
                 }
             )
