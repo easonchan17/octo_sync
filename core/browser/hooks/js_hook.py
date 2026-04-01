@@ -20,7 +20,8 @@ class JsHook(BaseHook):
 
         async def _trace_handler(route, request) -> None:
             try:
-                ctx.result_set.set(1, json.loads(request.post_data))
+                json_data = json.loads(request.post_data)
+                ctx.result_set.set(1, json_data)
                 self.logger.info(f"Trace data captured from: {request.url}")
             except Exception as e:
                 self.logger.error(f"Failed to process trace data from: {request.url}: {e}", exc_info=True)
@@ -32,30 +33,34 @@ class JsHook(BaseHook):
                 except Exception:
                     pass
 
+        await ctx.page_context.route(TRACE_ROUTE_PATTERN, _trace_handler)
+
         async def _js_inject_handler(route, request) -> None:
             if request.resource_type != "document":
                 await route.fallback()
                 return
 
             try:
-                response = await route.fetch()
-                body = await response.text()
+                response = await route.fetch(max_redirects=0)
+                if response.status in (301, 302, 303, 307, 308):
+                    self.logger.info(f"Redirect ({response.status}) detected for: {request.url}, letting browser follow")
+                    await route.fallback()
+                    return
 
+                body = await response.text()
                 script_tag = f"<script>{js_rule.hook_script}</script>"
                 modified_body = body.replace("<head>", f"<head>{script_tag}", 1)
-
-                await route.fulfill(response=response, body=modified_body,)
+                await route.fulfill(response=response, body=modified_body)
                 self.logger.info(f"Injected hook script into: {request.url}")
             except Exception as e:
                 self.logger.error(f"Failed to inject hook script into: {request.url}: {e}", exc_info=True)
                 await route.fallback()
-            finally:
-                try:
-                    await ctx.page_context.unroute("**/*", _js_inject_handler)
-                except Exception:
-                    pass
 
-        await ctx.page_context.route(TRACE_ROUTE_PATTERN, _trace_handler)
+            # try:
+            #     await ctx.page_context.unroute("**/*", _js_inject_handler)
+            # except Exception:
+            #     pass
+
         await ctx.page_context.route("**/*", _js_inject_handler)
 
     async def execute(self, ctx: HookContext) -> bool:
