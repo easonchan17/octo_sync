@@ -13,7 +13,7 @@ class SiteLeagueData:
     extra_data: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass(frozen=True)
-class SystemLeagueData:
+class CanonicalLeagueData:
     id: int
     name: str
     priority: int

@@ -1,0 +1,99 @@
+import bisect
+from thefuzz import fuzz
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Union
+from core.services.base_service import BaseService
+
+@dataclass
+class MatchItem:
+    match_key: Union[int, str]
+    league_id: int
+    kickoff_time: datetime
+    home_team: str
+    away_team: str
+
+    def __str__(self) -> str:
+        return f"[L:{self.league_id}|M:{self.match_key}] [{self.kickoff_time}] {self.home_team} vs {self.away_team}"
+
+class MatchResolver(BaseService):
+    def __init__(self, kickoff_tolerance: timedelta = timedelta(minutes=15), similarity_threshold: int = 60) -> None:
+        super().__init__()
+        self.kickoff_tolerance = kickoff_tolerance
+        self.similarity_threshold = similarity_threshold
+
+    def resolve(self, source_matches: List[MatchItem], target_matches: List[MatchItem]) -> Dict[Union[int, str], Union[int, str]]:
+        if not source_matches or not target_matches:
+            raise ValueError("No source or target matches provided for resolution")
+
+        target_index: Dict[datetime, List[MatchItem]] = {}
+        for target in target_matches:
+            target_index.setdefault(target.kickoff_time, []).append(target)
+
+        sorted_keys = sorted(target_index.keys())
+
+        def get_candidates(kickoff_time: datetime) -> List[MatchItem]:
+            lo = bisect.bisect_left(sorted_keys, kickoff_time - self.kickoff_tolerance)
+            hi = bisect.bisect_right(sorted_keys, kickoff_time + self.kickoff_tolerance)
+            return [target for kt in sorted_keys[lo:hi] for target in target_index[kt]]
+
+        seen_targets = set()
+        mappings: Dict[Union[int, str], Union[int, str]] = {}
+
+        for source_match in source_matches:
+            candidate_matches = get_candidates(source_match.kickoff_time)
+            if not candidate_matches:
+                self.logger.warning(f"No candidates found: {source_match}")
+                continue
+
+            best_target = self._find_best_match(source_match, candidate_matches)
+            if not best_target:
+                continue
+
+            if best_target.match_key in seen_targets:
+                self.logger.warning(f"Duplicate target match_key={best_target.match_key}, skipping source match_key={source_match.match_key}")
+                continue
+
+            mappings[source_match.match_key] = best_target.match_key
+            seen_targets.add(best_target.match_key)
+
+        return mappings
+
+    def _find_best_match(self, source: MatchItem, target_matches: List[MatchItem]) -> Optional[MatchItem]:
+        if not target_matches:
+            return None
+
+        best_score, best_target = max(
+            ((self._calc_similarity(source, target), target) for target in target_matches),
+            key=lambda item: item[0]
+        )
+
+        if best_score < self.similarity_threshold:
+            self.logger.warning(f"Low similarity: score={best_score}, source: {source}, target: {best_target}")
+            return None
+
+        return best_target
+
+
+    def _calc_similarity(self, source: MatchItem, target: MatchItem) -> int:
+        if source.league_id != target.league_id:
+            return 0
+
+        if source.home_team == target.home_team or source.away_team == target.away_team:
+            return 100
+
+        home_score = max(fuzz.token_set_ratio(source.home_team, target.home_team), self._acronym_score(source.home_team, target.home_team))
+        away_score = max(fuzz.token_set_ratio(source.away_team, target.away_team), self._acronym_score(source.away_team, target.away_team))
+
+        return (home_score + away_score) // 2
+
+    def _acronym_score(self, name_a: str, name_b: str) -> int:
+        if len(name_a) == len(name_b):
+            return 0
+
+        short, long = (name_a, name_b) if len(name_a) < len(name_b) else (name_b, name_a)
+
+        acronym = short.replace('.', '').replace('-', '').strip().upper()
+        initials = ''.join(word[0] for word in long.replace('-', ' ').split() if word).upper()
+
+        return 100 if acronym == initials else 0

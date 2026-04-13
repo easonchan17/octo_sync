@@ -1,4 +1,5 @@
 import time
+import random
 import asyncio
 from contextlib import suppress
 from urllib.parse import urlparse
@@ -30,7 +31,9 @@ class RateLimiter:
 
         backoff_time = self.backoff_until.get(hostname, 0)
         last_time = self.last_request.get(hostname, 0)
-        target_time = max(backoff_time, last_time + (delay or 3.0))
+
+        delay = (delay or 3.0) * random.uniform(1.2, 1.5)
+        target_time = max(backoff_time, last_time + delay)
 
         current_time = time.time()
         if target_time > current_time:
@@ -41,7 +44,7 @@ class RateLimiter:
         self.last_request[hostname] = time.time()
 
     async def is_rate_limited(self, response: Any) -> bool:
-        if response.status in [429, 503]:
+        if response.status in [429, 503, 504]:
             return True
 
         try:
@@ -56,7 +59,7 @@ class RateLimiter:
 
         return False
 
-    def activate_backoff(self, url: str, delay: Optional[float] = None) -> None:
+    def activate_backoff(self, url: str, status: int, delay: Optional[float] = None) -> None:
         hostname = urlparse(url).hostname
         if not hostname:
             raise ValueError(f"Invalid URL: {url}")
@@ -66,7 +69,7 @@ class RateLimiter:
 
         self.consecutive_errors[hostname] = count
         self.backoff_until[hostname] = time.time() + wait_time
-        self.logger.warning(f"Rate limit detected (429) for {hostname}, backing off for {wait_time}s")
+        self.logger.warning(f"Rate limit detected ({status}) for {hostname}, backing off for {wait_time}s")
 
     def reset_backoff(self, url: str) -> None:
         hostname = urlparse(url).hostname

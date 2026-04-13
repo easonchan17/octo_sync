@@ -7,9 +7,8 @@ from core.services.task_service import TaskService
 from core.registry import Registry
 
 import core.scheduler.tasks.sync.fotmob  # noqa: F401
-import core.scheduler.tasks.sync.football_data  # noqa: F401
-import core.scheduler.tasks.sync.pinnacle  # noqa: F401
 import core.scheduler.tasks.sync.oddsportal # noqa: F401
+import core.scheduler.tasks.mapping  # noqa: F401
 
 class PollManager:
     def __init__(self) -> None:

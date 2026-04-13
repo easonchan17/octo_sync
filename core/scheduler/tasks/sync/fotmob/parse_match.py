@@ -8,7 +8,7 @@ from core.logger.logger_manager import LoggerManager
 from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat
 from core.store.postgres.daos.fotmob import MatchDao
-from core.types.params import MatchCrawlParams
+from core.types.params import CrawlParams
 from core.utils.fotmob_utils import extract_status
 
 def make_actual_extractor(val_type: type, rate_type: type) -> Callable[[List[Optional[str]]], List[Optional[Any]]]:
@@ -203,17 +203,17 @@ class MatchParser:
     def __init__(self) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
 
-    def parse(self, json_body: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        if not json_body:
-            self.logger.error(f"Failed to decode json body: {json_body}")
+    def parse(self, json_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not json_data:
+            self.logger.error(f"json data is empty")
             return None
 
-        match_id = json_body.get('general', {}).get('matchId')
+        match_id = json_data.get('general', {}).get('matchId')
         if not match_id:
             self.logger.error(f"No match id found in response")
             return None
 
-        content = json_body.get('content', {})
+        content = json_data.get('content', {})
         if not content:
             self.logger.error(f"No content found in response")
             return None
@@ -235,8 +235,8 @@ class MatchParser:
         if raw_player_stats is not None:
             result["player_stats"] = self._parse_player_stats(match_id, raw_player_stats)
 
-        status = json_body.get('header', {}).get('status')
-        match_status, kickoff_time, _, _ = extract_status(status, MatchCrawlParams.MATCH_LIFESPAN_HOURS)
+        status = json_data.get('header', {}).get('status')
+        match_status, kickoff_time, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN_HOURS)
         result["match_status"] = match_status
         result["kickoff_time"] = kickoff_time
         return result
@@ -363,12 +363,12 @@ class ParseMatch(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                start_time, end_time = self.get_fetch_time_range(MatchCrawlParams.EARLY_HOURS_TO_KICKOFF)
+                start_time, end_time = self.get_fetch_time_range(CrawlParams.MATCH_LOOKAHEAD_DAYS)
                 items = self.match_dao.get_pending_parse_items(
                     start_time,
                     end_time,
-                    MatchCrawlParams.PARSE_MAX_RETRIES,
-                    MatchCrawlParams.RAW_DATA_QUERY_LIMIT
+                    CrawlParams.PARSE_MAX_RETRIES,
+                    CrawlParams.RAW_DATA_QUERY_LIMIT
                 )
 
                 if not items:
@@ -396,8 +396,8 @@ class ParseMatch(PollTask):
 
                         confirm_count = 0
                         if MatchStatus(match_status).is_finalized:
-                            confirm_count = self.calculate_confirm_count(kickoff_time, last_fetched_at, MatchCrawlParams.CONFIRM_INTERVAL_HOURS)
-                        elif last_fetched_at - kickoff_time > timedelta(hours=MatchCrawlParams.ARCHIVE_HOURS_AFTER_KICKOFF):
+                            confirm_count = self.calculate_confirm_count(kickoff_time, last_fetched_at, CrawlParams.MATCH_CONFIRMATION_HOURS)
+                        elif last_fetched_at - kickoff_time > timedelta(hours=CrawlParams.MATCH_CONFIRMATION_HOURS+CrawlParams.MATCH_LIFESPAN_HOURS):
                             confirm_count = -1
 
                         self.match_dao.sync_parsed_data(parsed_data)

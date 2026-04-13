@@ -44,7 +44,7 @@ class FixtureDao(BaseDao):
         limit: int
     ) -> List[Any]:
         with self.db.get_session() as session:
-            query = session.query(
+            return session.query(
                 FixtureRaw.match_date,
                 FixtureRaw.last_fetched_at,
                 FixtureRaw.json_body
@@ -55,27 +55,27 @@ class FixtureDao(BaseDao):
                 FixtureRaw.is_parsed == False,
                 FixtureRaw.parse_attempts < max_retries
             ).order_by(
-                FixtureRaw.match_date.asc()
-            ).limit(limit)
-            return query.all()
+                FixtureRaw.created_at.asc()
+            ).limit(limit).all()
 
     def get_pending_refetch_items(
         self,
         start_date: date,
         end_date: date,
-        required_confirm_count: int
+        required_confirm_count: int,
+        max_retries: int
     ) -> List[Any]:
         with self.db.get_session() as session:
             query = session.query(
                 FixtureRaw.match_date,
-                FixtureRaw.last_fetched_at,
-                FixtureRaw.confirm_count
+                FixtureRaw.last_fetched_at
             ).filter(
                 FixtureRaw.match_date >= start_date,
                 FixtureRaw.match_date <= end_date,
                 FixtureRaw.is_parsed == True,
                 FixtureRaw.confirm_count >= 0,
-                FixtureRaw.confirm_count < required_confirm_count
+                FixtureRaw.confirm_count < required_confirm_count,
+                FixtureRaw.fetch_attempts < max_retries
             ).order_by(
                 FixtureRaw.match_date.asc()
             )
@@ -240,3 +240,18 @@ class FixtureDao(BaseDao):
             )
 
             return query.all()
+
+    def get_fixtures(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.id,
+                Fixture.match_id,
+                Fixture.league_id,
+                Fixture.kickoff_time,
+                Fixture.home_team,
+                Fixture.away_team
+            ).filter(
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time <= end_time,
+                Fixture.league_id.in_(league_ids)
+            ).all()
