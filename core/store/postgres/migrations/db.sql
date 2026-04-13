@@ -25,33 +25,20 @@ ON CONFLICT (site_name, league_id) DO UPDATE SET
     ref_league_id = EXCLUDED.ref_league_id,
     updated_at = NOW();
 
-
-UPDATE public.site_leagues SET ref_league_id = 101 WHERE league_id = '1980' and site_name = 'pinnacle';
-UPDATE public.site_leagues SET ref_league_id = 102 WHERE league_id = '2196' and site_name = 'pinnacle';
-UPDATE public.site_leagues SET ref_league_id = 103 WHERE league_id = '2436' and site_name = 'pinnacle';
-UPDATE public.site_leagues SET ref_league_id = 104 WHERE league_id = '9320' and site_name = 'pinnacle';
-UPDATE public.site_leagues SET ref_league_id = 105 WHERE league_id = '2036' and site_name = 'pinnacle';
-
-
--- 1. Pinnacle Fixtures, Moneylines, Spreads, Odds Raw
+-- pinnacle rename tables
 ALTER TABLE pinnacle.pinnacle_fixtures RENAME TO fixtures;
 ALTER TABLE pinnacle.pinnacle_moneyline RENAME TO moneylines;
 ALTER TABLE pinnacle.pinnacle_spreads RENAME TO spreads;
 ALTER TABLE pinnacle.odds_raw_data RENAME TO odds_raw;
-
--- 2. Pinnacle League Raw
 ALTER TABLE pinnacle.league_raw_data RENAME TO league_raw;
 
--- 3. Fotmob Fixture Raw
+-- fotmob rename raw data tables
 ALTER TABLE fotmob.fixture_raw_data RENAME TO fixture_raw;
-
--- 4. Fotmob Match Raw
 ALTER TABLE fotmob.match_raw_data RENAME TO match_raw;
 
-
--- football_data site_leagues: set ref_league_id for the 5 major leagues
-UPDATE public.site_leagues SET ref_league_id = 101 WHERE league_id = 'E0'  AND site_name = 'football_data';  -- Premier League (England)
-UPDATE public.site_leagues SET ref_league_id = 102 WHERE league_id = 'SP1' AND site_name = 'football_data';  -- LaLiga (Spain)
-UPDATE public.site_leagues SET ref_league_id = 103 WHERE league_id = 'I1'  AND site_name = 'football_data';  -- Serie A (Italy)
-UPDATE public.site_leagues SET ref_league_id = 104 WHERE league_id = 'D1'  AND site_name = 'football_data';  -- Bundesliga (Germany)
-UPDATE public.site_leagues SET ref_league_id = 105 WHERE league_id = 'F1'  AND site_name = 'football_data';  -- Ligue 1 (France)
+-- oddsportal site_leagues: set ref_league_id for the 5 major leagues
+UPDATE public.site_leagues SET ref_league_id = 101 WHERE league_id = '91201' AND site_name = 'oddsportal';  -- Premier League (England)
+UPDATE public.site_leagues SET ref_league_id = 102 WHERE league_id = '93113' AND site_name = 'oddsportal';  -- LaLiga (Spain)
+UPDATE public.site_leagues SET ref_league_id = 103 WHERE league_id = '92615' AND site_name = 'oddsportal';  -- Serie A (Italy)
+UPDATE public.site_leagues SET ref_league_id = 104 WHERE league_id = '93299' AND site_name = 'oddsportal';  -- Bundesliga (Germany)
+UPDATE public.site_leagues SET ref_league_id = 105 WHERE league_id = '92251' AND site_name = 'oddsportal';  -- Ligue 1 (France)

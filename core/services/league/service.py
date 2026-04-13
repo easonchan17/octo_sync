@@ -1,4 +1,3 @@
-from core.services.league.schemas import SystemLeagueData
 import zlib
 from functools import lru_cache
 from dataclasses import dataclass
@@ -7,10 +6,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload, Session
 from core.services.base_service import BaseService
 from typing import Dict, List, Optional, Any, Union, Set
-from core.store.postgres.models import League, SiteLeague, Status
+from core.store.postgres.models import CanonicalLeague, SiteLeague, Status
 from core.store.cache.memory_cache import MemoryCache
 from core.types.enums import SiteName
-from .schemas import SystemLeagueData, SiteLeagueData
+from .schemas import CanonicalLeagueData, SiteLeagueData
 
 @dataclass(frozen=True)
 class SiteMeta:
@@ -53,8 +52,8 @@ class SiteConfig:
         ]
 
 class OfficialLoader:
-    def _build(self, league: League) -> SystemLeagueData:
-        return SystemLeagueData(
+    def _build(self, league: CanonicalLeague) -> CanonicalLeagueData:
+        return CanonicalLeagueData(
             id=league.id,
             name=league.name,
             priority=league.priority,
@@ -74,24 +73,24 @@ class OfficialLoader:
             },
         )
 
-    def get_all(self, session: Session) -> List[SystemLeagueData]:
+    def get_all(self, session: Session) -> List[CanonicalLeagueData]:
         return [
             self._build(league)
             for league in (
-                session.query(League)
-                .options(selectinload(League.site_leagues))
-                .filter(League.status == Status.ACTIVE.value)
+                session.query(CanonicalLeague)
+                .options(selectinload(CanonicalLeague.site_leagues))
+                .filter(CanonicalLeague.status == Status.ACTIVE.value)
                 .all()
             )
         ]
 
 class OrphanLoader:
-    def _build(self, league: SiteLeague) -> SystemLeagueData:
+    def _build(self, league: SiteLeague) -> CanonicalLeagueData:
         high_bits = SiteConfig.get_index(league.site_name) << 32
         low_bits = zlib.crc32(league.league_id.encode('utf-8')) & 0xFFFFFFFF
         id = high_bits | low_bits
 
-        return SystemLeagueData(
+        return CanonicalLeagueData(
             id=id,
             name=league.league_name,
             priority=LeaguePriority.LEVEL_BASIC.value,
@@ -110,7 +109,7 @@ class OrphanLoader:
             },
         )
 
-    def get_all(self, session: Session) -> List[SystemLeagueData]:
+    def get_all(self, session: Session) -> List[CanonicalLeagueData]:
         return [
             self._build(site_league)
             for site_league in (
@@ -127,7 +126,7 @@ class OrphanLoader:
         league_id: str, league_name: str,
         country_code: Optional[str] = None,
         country_name: Optional[str] = None
-    ) -> SystemLeagueData:
+    ) -> CanonicalLeagueData:
         insert_stmt = insert(SiteLeague).values(
             site_name=site_name,
             league_id=league_id,
@@ -166,10 +165,10 @@ class LeagueCache:
             SiteConfig.get_scope(site_name), str(league_id)
         )
 
-    def get_all(self, site_name: str) -> Optional[Dict[str, SystemLeagueData]]:
+    def get_all(self, site_name: str) -> Optional[Dict[str, CanonicalLeagueData]]:
         return self._cache.get_scope(SiteConfig.get_scope(site_name))
 
-    def set(self, system_league: SystemLeagueData) -> None:
+    def set(self, system_league: CanonicalLeagueData) -> None:
         for site_league in system_league.site_leagues.values():
             self._cache.set_item(
                 SiteConfig.get_scope(site_league.site_name),
@@ -206,7 +205,7 @@ class LeagueService(BaseService):
 
             self._cache = new_cache
 
-    def get(self, id: int) -> Optional[SystemLeagueData]:
+    def get(self, id: int) -> Optional[CanonicalLeagueData]:
         if self._cache is None:
             return None
 
@@ -219,7 +218,7 @@ class LeagueService(BaseService):
         league_name: str,
         country_code: Optional[str] = None,
         country_name: Optional[str] = None
-    ) -> Optional[SystemLeagueData]:
+    ) -> Optional[CanonicalLeagueData]:
         if self._cache is None:
             return None
 
@@ -239,7 +238,7 @@ class LeagueService(BaseService):
             self._cache.set(orphan)
             return orphan
 
-    def get_leagues(self, min_priority: Optional[int] = None) -> List[SystemLeagueData]:
+    def get_leagues(self, min_priority: Optional[int] = None) -> List[CanonicalLeagueData]:
         if self._cache is None:
             return []
 

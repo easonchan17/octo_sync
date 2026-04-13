@@ -1,6 +1,6 @@
 from sqlalchemy import or_
 from sqlalchemy.sql import func
-from typing import Optional, Any
+from typing import Dict, Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from core.types.enums import UpsertStrategy
@@ -39,9 +39,23 @@ class SysValQueryBuilder:
 
 
 class SysValDao(BaseDao):
-    def get_val(self, key: str, session: Optional[Session] = None, for_update: bool = False) -> Optional[Any]:
+    def get_vals(self, module: str) -> Optional[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            rows = session.query(SysVal).filter(
+                SysVal.module == module,
+                SysVal.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value
+            ).all()
+
+            if not rows:
+                return None
+
+            return {row.key: row.value for row in rows}
+
+
+    def get_val(self, module: str, key: str, session: Optional[Session] = None, for_update: bool = False) -> Optional[Any]:
         with self.db.get_session(session=session) as session:
             query = session.query(SysVal).filter(
+                SysVal.module == module,
                 SysVal.key == key,
                 SysVal.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value
             )
@@ -52,12 +66,13 @@ class SysValDao(BaseDao):
             variable = query.first()
             return variable.value if variable else None
 
-    def set_val(self, key: str, value: Any, strategy: UpsertStrategy, session: Optional[Session] = None) -> bool:
+    def set_val(self, module: str, key: str, value: Any, strategy: UpsertStrategy, session: Optional[Session] = None) -> bool:
         with self.db.get_session(session=session) as session:
-            variable = SysVal(key=key)
+            variable = SysVal(module=module, key=key)
             variable.set_value(value)
 
             insert_stmt = insert(SysVal).values(
+                module=module,
                 key=key,
                 val_datetime=variable.val_datetime,
                 val_int=variable.val_int,
@@ -66,7 +81,7 @@ class SysValDao(BaseDao):
             )
 
             upsert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=[SysVal.key],
+                index_elements=[SysVal.module, SysVal.key],
                 set_={
                     SysVal.val_datetime: variable.val_datetime,
                     SysVal.val_int: variable.val_int,
@@ -79,9 +94,10 @@ class SysValDao(BaseDao):
             result = session.execute(upsert_stmt)
             return result.rowcount > 0
 
-    def del_val(self, key: str, session: Optional[Session] = None) -> int:
+    def del_val(self, module: str, key: str, session: Optional[Session] = None) -> int:
         with self.db.get_session(session=session) as session:
             row_count = session.query(SysVal).filter(
+                SysVal.module == module,
                 SysVal.key == key,
                 SysVal.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value
             ).update({

@@ -1,4 +1,3 @@
-from .base_mapper import BaseMapper
-from .pinnacle import FixtureMapper as PinnacleFixtureMapper
+from .fixture_mapper import FixtureMapper
 
-__all__ = ['BaseMapper', 'PinnacleFixtureMapper']
+__all__ = ['FixtureMapper']

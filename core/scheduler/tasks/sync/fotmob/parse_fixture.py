@@ -5,12 +5,11 @@ from core.utils.fotmob_utils import extract_status
 from core.utils.fotmob_utils import PageUrlBuilder
 from datetime import datetime, timezone, timedelta
 from core.scheduler.tasks.poll_task import PollTask
-from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.daos.fotmob import FixtureDao
-from core.types.params import FixtureCrawlParams
 from core.types.enums import MatchStatus, SiteName
 from core.services.league import league_service
+from core.types.params import CrawlParams
 
 class FixtureParser:
     def parse(self, json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
@@ -62,7 +61,7 @@ class FixtureParser:
             if not page_url:
                 page_url = PageUrlBuilder.build(match_id, home, away)
 
-            match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), FixtureCrawlParams.MATCH_LIFESPAN_HOURS)
+            match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), CrawlParams.MATCH_LIFESPAN_HOURS)
 
             fixture = {
                 Fixture.round.key: round,
@@ -132,12 +131,12 @@ class ParseFixture(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.UPCOMING_WINDOW_DAYS)
+                start_date, end_date = self.get_fetch_date_range(CrawlParams.FIXTURE_LOOKAHEAD_DAYS)
                 items = self.fixture_dao.get_pending_parse_items(
                     start_date,
                     end_date,
-                    FixtureCrawlParams.PARSE_MAX_RETRIES,
-                    FixtureCrawlParams.RAW_DATA_QUERY_LIMIT
+                    CrawlParams.PARSE_MAX_RETRIES,
+                    CrawlParams.RAW_DATA_QUERY_LIMIT
                 )
 
                 if not items:
@@ -174,9 +173,9 @@ class ParseFixture(PollTask):
 
                         confirm_count = 0
                         if is_finalized:
-                            confirm_count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at, FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
-                        elif last_fetched_at - last_kickoff_time > timedelta(hours=FixtureCrawlParams.ARCHIVE_HOURS_AFTER_KICKOFF):
-                            confirm_count = -1
+                            confirm_count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at, CrawlParams.FIXTURE_CONFIRMATION_HOURS)
+                        elif last_fetched_at - last_kickoff_time > timedelta(hours=CrawlParams.MATCH_CONFIRMATION_HOURS + CrawlParams.MATCH_LIFESPAN_HOURS):
+                            confirm_count = -1 # mark as failed if it's been too long since kickoff without finalization
 
                         self.fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
                         self.fixture_dao.mark_as_parsed(match_date, last_kickoff_time, confirm_count)

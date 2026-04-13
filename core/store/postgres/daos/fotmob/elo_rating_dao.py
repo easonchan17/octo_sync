@@ -11,6 +11,7 @@ from ..common import SysValDao
 
 
 class EloRatingDao(BaseDao):
+    ELO_MODULE = 'elo'
     ELO_IMPACT_TIME_KEY = 'elo_impact_time'
 
     def __init__(self) -> None:
@@ -18,13 +19,13 @@ class EloRatingDao(BaseDao):
         self.sys_val_dao = SysValDao()
 
     def lock_impact_time(self, session: Session) -> Optional[datetime]:
-        return self.sys_val_dao.get_val(self.ELO_IMPACT_TIME_KEY, session, for_update=True)
+        return self.sys_val_dao.get_val(self.ELO_MODULE, self.ELO_IMPACT_TIME_KEY, session, for_update=True)
 
     def set_impact_time(self, session: Session, impact_time: datetime, strategy: UpsertStrategy) -> bool:
         if not impact_time:
             return False
 
-        return self.sys_val_dao.set_val(self.ELO_IMPACT_TIME_KEY, impact_time, strategy, session)
+        return self.sys_val_dao.set_val(self.ELO_MODULE, self.ELO_IMPACT_TIME_KEY, impact_time, strategy, session)
 
     def sync_elo_ratings(self) -> None:
         with self.db.get_session() as session:

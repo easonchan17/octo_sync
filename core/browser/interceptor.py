@@ -2,12 +2,10 @@ import time
 import janus
 import asyncio
 from enum import Enum
-from contextlib import suppress
 from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
 from core.utils.singleton import Singleton
-from playwright.async_api import WebSocket
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, Optional, Any
@@ -247,6 +245,7 @@ class Interceptor(Thread, Singleton):
                     await hook_chain.setup(ctx)
 
                     start_time = time.time()
+                    page_context.request._impl_obj._timeout_settings.set_default_timeout(timeout * 1000)
                     response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
 
                     if response is None:
@@ -254,7 +253,7 @@ class Interceptor(Thread, Singleton):
                         return False, result_set
 
                     if await self.rate_limiter.is_rate_limited(response):
-                        self.rate_limiter.activate_backoff(url)
+                        self.rate_limiter.activate_backoff(url, status=response.status)
                         return False, result_set
 
                     try:

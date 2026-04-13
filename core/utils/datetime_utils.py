@@ -2,6 +2,9 @@ from typing import Optional
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
+def from_timestamp(ts) -> Optional[datetime]:
+    return datetime.fromtimestamp(ts, tz=timezone.utc) if ts is not None else None
+
 def begin_time_of_date(
     date_str: str,
     date_fmt: str,
