@@ -1,5 +1,5 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index
+from sqlalchemy import Column, Integer, String, DateTime, Index, PrimaryKeyConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, Any
 from datetime import datetime
@@ -8,11 +8,13 @@ from ..base_model import Base, Status
 class SysVal(Base):
     __tablename__ = 'sys_vals'
     __table_args__ = (
+        PrimaryKeyConstraint('module', 'key', name='pkey_sys_vals_module_key'),
         Index('idx_sys_vals_created_at', 'created_at'),
         Index('idx_sys_vals_updated_at', 'updated_at')
     )
 
-    key = Column(String(128), primary_key=True)
+    module = Column(String(64), nullable=True)
+    key = Column(String(128), nullable=False)
 
     val_datetime = Column(DateTime(timezone=True), nullable=True)
     val_int = Column(Integer, nullable=True)

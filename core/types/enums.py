@@ -1,4 +1,16 @@
 from enum import IntEnum, Enum
+from typing import NamedTuple, Optional
+
+class OddsMarket(NamedTuple):
+    betting_type_id: int
+    scope_id: int
+    betting_type_slug: str
+    outcomes: Optional[dict[str, str]] = None
+
+class OddsMarkets:
+    FT_1X2 = OddsMarket(betting_type_id=1, scope_id=2, betting_type_slug='1X2', outcomes={"home": "0", "draw": "1", "away": "2"})
+    FT_AH  = OddsMarket(betting_type_id=5, scope_id=2, betting_type_slug='ah', outcomes={"home": "0", "away": "1"})
+
 
 class UpsertStrategy(str, Enum):
     OVERWRITE = "overwrite"

@@ -1,5 +1,5 @@
 from .enums import UpsertStrategy, SiteName, LeagueID, MatchStatus
-from .params import EloParams, FixtureCrawlParams, MatchCrawlParams
+from .params import EloParams, CrawlParams
 
 __all__ = [
     'UpsertStrategy',
@@ -7,6 +7,5 @@ __all__ = [
     'LeagueID',
     'MatchStatus',
     'EloParams',
-    'FixtureCrawlParams',
-    'MatchCrawlParams'
+    'CrawlParams'
 ]

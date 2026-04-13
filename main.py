@@ -99,7 +99,7 @@ def run_app() -> None:
     logger.info("✅ League service loaded")
 
     logger.info("🔧 Starting poll manager...")
-    get_poll_manager().start("sync.oddsportal.league")
+    get_poll_manager().start()
     logger.info("✅ Poll manager started")
 
     logger.info("🌐 Starting web server...")

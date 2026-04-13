@@ -84,3 +84,10 @@ class RawJsonMixin:
 class RawHtmlMixin:
     html_body = Column(Text, nullable=False)
     encoding = Column(String(20), default='utf-8')
+
+
+class PaginationMixin:
+    total = Column(Integer, nullable=False)
+    total_page = Column(Integer, nullable=False)
+    page_size = Column(Integer, nullable=False)
+    page = Column(Integer, nullable=False)

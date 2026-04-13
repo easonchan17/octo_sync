@@ -47,7 +47,7 @@ class MatchDao(BaseDao):
         limit: int
     ) -> List[Any]:
         with self.db.get_session() as session:
-            query = session.query(
+            return session.query(
                 MatchRaw.match_id,
                 MatchRaw.kickoff_time,
                 MatchRaw.last_fetched_at,
@@ -59,16 +59,15 @@ class MatchDao(BaseDao):
                 MatchRaw.is_parsed == False,
                 MatchRaw.parse_attempts < max_retries
             ).order_by(
-                MatchRaw.kickoff_time.asc()
-            ).limit(limit)
-
-            return query.all()
+                MatchRaw.created_at.asc()
+            ).limit(limit).all()
 
     def get_pending_refetch_items(
         self,
         start_time: datetime,
         end_time: datetime,
         required_confirm_count: int,
+        max_retries: int,
         limit: int
     ) -> List[Any]:
         with self.db.get_session() as session:
@@ -87,6 +86,7 @@ class MatchDao(BaseDao):
                 MatchRaw.is_parsed == True,
                 MatchRaw.confirm_count >= 0,
                 MatchRaw.confirm_count < required_confirm_count,
+                MatchRaw.fetch_attempts < max_retries,
                 ~MatchRaw.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
             ).order_by(
                 MatchRaw.kickoff_time.asc()

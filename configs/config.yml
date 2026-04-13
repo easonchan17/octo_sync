@@ -9,7 +9,7 @@ logger:
       backup_count: 5
 
 task_thread_pool:
-  max_workers: 10
+  max_workers: 32
 
 browser:
   options:

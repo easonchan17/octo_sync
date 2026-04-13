@@ -1,22 +1,23 @@
 import traceback
+from datetime import date
 from core.registry import Registry
 from typing import Any, Dict, List, Optional
-from core.scheduler.tasks.poll_task import PollTask
-from datetime import date, datetime, timedelta, timezone
-from core.browser.intercept_policy import InterceptPolicy, InterceptType
 from core.browser.interceptor import TaskType
+from core.scheduler.tasks.poll_task import PollTask
 from core.browser.handlers.receivers import JsonReceiver
 from core.store.postgres.daos.fotmob import FixtureDao
-from core.types.params import FixtureCrawlParams
+from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.scheduler.refresh_policy import FixtureRefreshPolicy
+from core.types.params import CrawlParams
 
 class BaseSyncFixture(PollTask):
     POLICY_CONFIG = {
-        "url_template": "https://www.fotmob.com/?date={date}",
+        "url_template": "https://www.fotmob.com/?date={date}&Asia%2FShanghai&ccode3=JPN",
         "debug": False,
         "rules": [
             {
                 "type": InterceptType.HTTP,
-                "pattern": "https://www.fotmob.com/api/data/matches",
+                "pattern": "https://www\\.fotmob\\.com/api/data/matches\\?.*timezone=",
                 "receiver": JsonReceiver
             }
         ]
@@ -88,44 +89,39 @@ class BaseSyncFixture(PollTask):
 @Registry.poll('sync.fotmob.fixture')
 class SyncFixture(BaseSyncFixture):
     def get_pending_fetch_items(self) -> List[date]:
-        start_date, end_date = self.get_fetch_date_range(FixtureCrawlParams.UPCOMING_WINDOW_DAYS)
+        start_date, end_date = self.get_fetch_date_range(CrawlParams.FIXTURE_LOOKAHEAD_DAYS)
 
         return self.fixture_dao.get_pending_fetch_items(
             start_date,
             end_date,
-            FixtureCrawlParams.FETCH_MAX_RETRIES
+            CrawlParams.FETCH_MAX_RETRIES
         )
+
 
 @Registry.poll('resync.fotmob.fixture')
 class ResyncFixture(BaseSyncFixture):
+    def __init__(self,payload: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(payload)
+        self.refresh_policy = FixtureRefreshPolicy(
+            fast_interval_minutes=2,
+            slow_interval_minutes=2 * 60
+        )
+
     def get_pending_fetch_items(self) -> List[date]:
         start_date, end_date = self.get_fetch_date_range(0)
         records = self.fixture_dao.get_pending_refetch_items(
             start_date,
             end_date,
-            FixtureCrawlParams.REQUIRED_CONFIRM_COUNT
+            CrawlParams.REQUIRED_CONFIRM_COUNT,
+            CrawlParams.FETCH_MAX_RETRIES
         )
 
-        now = datetime.now(timezone.utc)
-        today = now.date()
-
-        refresh_chckpoint = now - timedelta(minutes=FixtureCrawlParams.REFRESH_INTERVAL_MINUTES)
-        confirm_checkpoint = now - timedelta(hours=FixtureCrawlParams.CONFIRM_INTERVAL_HOURS)
-        catchup_checkpoint = now - timedelta(hours=FixtureCrawlParams.CATCHUP_INTERVAL_HOURS)
-        active_dates = self.fixture_dao.get_active_match_dates(FixtureCrawlParams.MATCH_LIFESPAN_HOURS)
+        active_dates = self.fixture_dao.get_active_match_dates(CrawlParams.MATCH_LIFESPAN_HOURS)
+        self.refresh_policy.set_avtive_dates(active_dates)
 
         items = []
-        for match_date, last_fetched_at, confirm_count in records:
-            if confirm_count > 0:
-                if last_fetched_at <= confirm_checkpoint:
-                    items.append(match_date)
-                continue
-
-            if match_date in active_dates:
-                if last_fetched_at <= refresh_chckpoint:
-                    items.append(match_date)
-            elif match_date < today:
-                if last_fetched_at <= catchup_checkpoint:
-                    items.append(match_date)
+        for match_date, last_fetched_at in records:
+            if self.refresh_policy.can_fetch(match_date, last_fetched_at):
+                items.append(match_date)
 
         return items

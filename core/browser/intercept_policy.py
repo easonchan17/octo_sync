@@ -2,7 +2,7 @@ import re
 from enum import StrEnum
 from collections import defaultdict
 from typing import Dict, List, Optional, Any, Type
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 class InterceptType(StrEnum):
     HTTP = "http"
@@ -17,7 +17,9 @@ class InterceptRule:
         pattern: Optional[str] = None,
         receiver: Optional[Type[Any]] = None,
         sender: Optional[Type[Any]] = None,
-        hook_script: Optional[str] = None
+        hook_script: Optional[str] = None,
+        wait_selector: Optional[str] = None,
+        on_trace: Optional[Any] = None,
     ) -> None:
         self.type = InterceptType(type)
         if not self.is_dom() and not self.is_js() and pattern is None:
@@ -27,6 +29,8 @@ class InterceptRule:
         self.receiver = receiver() if receiver else None
         self.sender = sender() if sender else None
         self.hook_script = hook_script
+        self.wait_selector = wait_selector
+        self.on_trace = on_trace
 
     def is_http(self) -> bool:
         return self.type == InterceptType.HTTP
@@ -74,7 +78,7 @@ class InterceptPolicy:
             return rules[0]
 
         res = urlparse(url)
-        normalized_url = f"{res.scheme}://{res.netloc}{res.path}"
+        normalized_url = urlunparse((res.scheme, res.netloc, res.path, res.params, res.query, ''))
         for rule in rules:
             if re.search(rule.pattern, normalized_url):
                 return rule
@@ -89,17 +93,18 @@ class InterceptPolicy:
         return patterns
 
     @classmethod
-    def from_rules(cls, policy_config: Optional[Dict[str, Any]] = None) -> 'InterceptPolicy':
+    def from_rules(cls, policy_config: Optional[Dict[str, Any]] = None, rule_extras: Optional[List[Optional[Dict[str, Any]]]] = None) -> 'InterceptPolicy':
         if not policy_config:
             return None
 
         rules = policy_config.get("rules", [])
+        if rule_extras:
+            rules = [{**rule, **extra} if extra else rule for rule, extra in zip(rules, rule_extras)]
         debug = policy_config.get("debug", False)
         timeout = policy_config.get("timeout", 300)
         page_delay = policy_config.get("page_delay", 5)
         retry_count = policy_config.get("retry_count", 3)
-        url_template = policy_config.get("url_template")
-        url = policy_config.get("url")
+        url = policy_config.get("url_template", policy_config.get("url"))
 
         policy = cls()
         for rule in rules:
@@ -108,11 +113,13 @@ class InterceptPolicy:
                 pattern=rule.get("pattern"),
                 receiver=rule.get("receiver"),
                 sender=rule.get("sender"),
-                hook_script=rule.get("hook_script"))
-            )
+                hook_script=rule.get("hook_script"),
+                wait_selector=rule.get("wait_selector"),
+                on_trace=rule.get("on_trace"),
+            ))
         policy.debug = debug
         policy.timeout = timeout
         policy.page_delay = page_delay
         policy.retry_count = retry_count
-        policy.url = url_template or url
+        policy.url = url
         return policy

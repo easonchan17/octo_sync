@@ -1,7 +1,7 @@
 from sqlalchemy import func
 from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models.oddsportal.league import LeagueRaw
+from core.store.postgres.models.oddsportal.league import LeagueRaw, League
 from ..base_dao import BaseDao
 
 
@@ -16,7 +16,7 @@ class LeagueDao(BaseDao):
 
             return not is_fetched
 
-    def get_pending_parse_items(self, max_retries: int) -> List[Any]:
+    def get_pending_parse_items(self, max_retries: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 LeagueRaw.sport,
@@ -25,7 +25,9 @@ class LeagueDao(BaseDao):
                 LeagueRaw.is_fetched == True,
                 LeagueRaw.is_parsed == False,
                 LeagueRaw.parse_attempts < max_retries,
-            ).all()
+            ).order_by(
+                LeagueRaw.created_at.asc()
+            ).limit(limit).all()
 
     def mark_as_fetched(self, sport: str) -> None:
         with self.db.get_session() as session:
@@ -102,3 +104,35 @@ class LeagueDao(BaseDao):
                 }
             )
             session.execute(insert_stmt)
+
+    def sync_parsed_data(self, parsed_data: List[Dict[str, Any]]) -> None:
+        with self.db.get_session() as session:
+            insert_stmt = insert(League).values(parsed_data)
+
+            assignment, where_clause = self.build_upsert_clauses(
+                League,
+                insert_stmt,
+                {
+                    League.id.key,
+                    League.league_id.key,
+                    League.created_at.key,
+                    League.updated_at.key
+                }
+            )
+            insert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[League.league_id.key],
+                set_=assignment,
+                where=where_clause,
+            )
+
+            session.execute(insert_stmt)
+
+    def get_leagues(self, league_ids: List[int]) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                League.league_id,
+                League.league_name,
+                League.page_url,
+            ).filter(
+                League.league_id.in_(league_ids),
+            ).all()

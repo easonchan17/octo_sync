@@ -17,6 +17,13 @@ class DomHook(BaseHook):
 
         async def _dom_loaded_handler(_page) -> None:
             try:
+                if dom_rule.wait_selector:
+                    await ctx.page_context.wait_for_selector(
+                        dom_rule.wait_selector,
+                        state='attached',
+                        timeout=ctx.policy.timeout * 1000
+                    )
+
                 parsed_data = await dom_rule.receiver.process(
                     page_context=ctx.page_context,
                     url=ctx.target_url,
