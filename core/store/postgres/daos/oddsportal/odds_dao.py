@@ -1,5 +1,6 @@
 from sqlalchemy import func, or_, and_
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
+from datetime import timedelta
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture
 from core.store.postgres.models.oddsportal.odds import OddsRaw, Odds1x2, OddsAh
@@ -15,6 +16,8 @@ class OddsDao(BaseDao):
                 Fixture.home_code,
                 Fixture.away_name,
                 Fixture.away_code,
+                Fixture.kickoff_time,
+                Fixture.match_url
             ).outerjoin(
                 OddsRaw,
                 and_(
@@ -26,7 +29,13 @@ class OddsDao(BaseDao):
                 or_(
                     OddsRaw.match_code.is_(None),
                     and_(
-                        OddsRaw.is_fetched == False,
+                        or_(
+                            OddsRaw.last_fetched_at.is_(None),
+                            and_(
+                                OddsRaw.last_fetched_at < Fixture.kickoff_time,
+                                OddsRaw.next_fetch_at <= func.now()
+                            )
+                        ),
                         OddsRaw.fetch_attempts < max_retries
                     )
                 )
@@ -34,32 +43,7 @@ class OddsDao(BaseDao):
                 Fixture.kickoff_time.desc()
             ).limit(limit).all()
 
-    def get_pending_refetch_items(self, betting_type_id: int, scope_id: int, max_retries: int, limit: int) -> List[Any]:
-        with self.db.get_session() as session:
-            return session.query(
-                Fixture.match_code,
-                Fixture.home_name,
-                Fixture.home_code,
-                Fixture.away_name,
-                Fixture.away_code,
-                Fixture.kickoff_time,
-                OddsRaw.last_fetched_at
-            ).join(
-                OddsRaw,
-                and_(
-                    OddsRaw.match_code == Fixture.match_code,
-                    OddsRaw.betting_type_id == betting_type_id,
-                    OddsRaw.scope_id == scope_id,
-                )
-            ).filter(
-                OddsRaw.is_fetched == True,
-                OddsRaw.last_fetched_at < Fixture.kickoff_time,
-                OddsRaw.fetch_attempts < max_retries
-            ).order_by(
-                Fixture.kickoff_time.asc()
-            ).limit(limit).all()
-
-    def mark_as_fetched(self, match_code: str, betting_type_id: int, scope_id: int) -> None:
+    def mark_as_fetched(self, match_code: str, betting_type_id: int, scope_id: int, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(OddsRaw).filter(
                 OddsRaw.match_code == match_code,
@@ -69,6 +53,7 @@ class OddsDao(BaseDao):
                 OddsRaw.is_fetched.key: True,
                 OddsRaw.last_fetch_error.key: None,
                 OddsRaw.last_fetched_at.key: func.now(),
+                OddsRaw.next_fetch_at.key: func.now() + fetch_interval if fetch_interval is not None else None,
                 OddsRaw.total_fetch_count.key: OddsRaw.total_fetch_count + 1,
                 OddsRaw.fetch_attempts.key: 0,
                 OddsRaw.is_parsed.key: False,

@@ -11,6 +11,7 @@ class OddsRaw(Base, CrawlStatusMixin, RawJsonMixin):
         UniqueConstraint('match_code', 'betting_type_id', 'scope_id', name='uq_odds_raw_match_betting_scope'),
         Index('idx_odds_raw_created_at', 'created_at'),
         Index('idx_odds_raw_updated_at', 'updated_at'),
+        Index('idx_odds_raw_next_fetch_at', 'next_fetch_at'),
         Index(
             'idx_odds_raw_not_parsed',
             'is_parsed',
@@ -23,6 +24,7 @@ class OddsRaw(Base, CrawlStatusMixin, RawJsonMixin):
     match_code = Column(String(64), nullable=False)
     betting_type_id = Column(Integer, nullable=False)
     scope_id = Column(Integer, nullable=False)
+    next_fetch_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class Odds1x2(Base):
