@@ -5,7 +5,6 @@ from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture, FixtureMappingLog
 from ..base_dao import BaseDao
 
-
 class FixtureMappingDao(BaseDao):
     def get_pending_mapping_items(
         self,

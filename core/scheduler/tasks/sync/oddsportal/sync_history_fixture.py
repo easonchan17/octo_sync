@@ -44,7 +44,7 @@ class SyncHistoryFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.payload = payload or {}
-        self.fixture_dao = HistoryFixtureDao()
+        self.history_fixture_dao = HistoryFixtureDao()
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
     def build_season_slug(self, season: int, max_season: int) -> Optional[str]:
@@ -74,7 +74,7 @@ class SyncHistoryFixture(PollTask):
 
         items = []
         for season in range(end_season, from_season - 1, -1):
-            season_items = self.fixture_dao.get_pending_fetch_items(league_ids, season)
+            season_items = self.history_fixture_dao.get_pending_fetch_items(league_ids, season)
             items.extend(season_items)
         return items
 
@@ -105,7 +105,7 @@ class SyncHistoryFixture(PollTask):
                         result_set = future.result()
                         if result_set is None or result_set.is_empty():
                             self.logger.error(f"No response for {page_url}")
-                            self.fixture_dao.mark_fetch_failed(league_id, season, page, "No response")
+                            self.history_fixture_dao.mark_fetch_failed(league_id, season, page, "No response")
                             continue
 
                         json_body = result_set.first()
@@ -114,20 +114,20 @@ class SyncHistoryFixture(PollTask):
                         total_page = d.get("pagination", {}).get("pageCount", 0)
                         page_size = d.get("onePage", 0)
 
-                        self.fixture_dao.sync_raw_data({
+                        self.history_fixture_dao.sync_raw_data({
                             "league_id": league_id,
                             "season": season,
                             "page": page,
                             "source_url": page_url,
                             "json_body": json_body,
                         })
-                        self.fixture_dao.mark_as_fetched(league_id, season, page)
-                        self.fixture_dao.update_progress(league_id, season, page, total, total_page, page_size)
+                        self.history_fixture_dao.mark_as_fetched(league_id, season, page)
+                        self.history_fixture_dao.update_progress(league_id, season, page, total, total_page, page_size)
                         self.logger.info(f"Synced oddsportal fixtures league_id={league_id} league_name={league_name} season={season} page={page}/{total_page}")
 
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.fixture_dao.mark_fetch_failed(league_id, season, page, full_stack_trace)
+                        self.history_fixture_dao.mark_fetch_failed(league_id, season, page, full_stack_trace)
                         self.logger.error(f"Failed to sync fixtures for league_id={league_id} league_name={league_name}: {e}")
 
             except Exception as e:
