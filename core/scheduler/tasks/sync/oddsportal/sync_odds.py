@@ -5,7 +5,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refresh_policy import OddsRefreshPolicy
+from core.scheduler.refresh_policy import PhaseRefetchStrategy
 from datetime import datetime, timezone, timedelta
 from core.types.params import CrawlParams
 from core.types.enums import OddsMarkets
@@ -39,8 +39,6 @@ class BaseSyncOdds(PollTask):
         ]
     }
 
-    MIN_REFETCH_INTERVAL = timedelta(minutes=5)
-
     def __init__(
         self,
         market: OddsMarkets,
@@ -54,13 +52,14 @@ class BaseSyncOdds(PollTask):
 
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG, rule_extras=rule_extras)
 
-        self.refresh_policies = [
-            OddsRefreshPolicy(start_offset_minutes=None, end_offset_minutes=-3*24*60, refresh_interval_minutes=24 * 60),
-            OddsRefreshPolicy(start_offset_minutes=-3*24*60, end_offset_minutes=-24*60, refresh_interval_minutes=12 * 60),
-            OddsRefreshPolicy(start_offset_minutes=-24*60, end_offset_minutes=-2*60, refresh_interval_minutes=60),
-            OddsRefreshPolicy(start_offset_minutes=-2*60, end_offset_minutes=-60, refresh_interval_minutes=15),
-            OddsRefreshPolicy(start_offset_minutes=-60, end_offset_minutes=0, refresh_interval_minutes=5)
-        ]
+        self.refetch_strategy = (
+            PhaseRefetchStrategy(min_refetch_interval=timedelta(minutes=5))
+            .add_phase(timedelta(days=-7), timedelta(days=-3), timedelta(hours=24))
+            .add_phase(timedelta(days=-3), timedelta(hours=-24), timedelta(hours=12))
+            .add_phase(timedelta(hours=-24), timedelta(hours=-2), timedelta(hours=1))
+            .add_phase(timedelta(hours=-2), timedelta(hours=-1), timedelta(minutes=15))
+            .add_phase(timedelta(hours=-1), timedelta(0), timedelta(minutes=5))
+        )
 
     def _build_page_url(
         self, match_code: str, home_name: str, home_code: str, away_name: str, away_code: str, match_url: str
@@ -85,16 +84,6 @@ class BaseSyncOdds(PollTask):
             betting_type=self.market.betting_type_slug,
             scope_id=self.market.scope_id,
         )
-
-
-    def calc_next_fetch_time(self, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
-        if not self.refresh_policies:
-            return None
-
-        for policy in self.refresh_policies:
-            if policy.is_active(kickoff_time, current_time):
-                suggested_interval = policy.suggested_interval(kickoff_time, current_time)
-                return max(suggested_interval, self.MIN_REFETCH_INTERVAL)
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
@@ -140,7 +129,7 @@ class BaseSyncOdds(PollTask):
                             "json_body": json_body,
                         })
 
-                        fetch_interval = self.calc_next_fetch_time(kickoff_time, datetime.now(timezone.utc))
+                        fetch_interval = self.refetch_strategy.suggest_interval(kickoff_time, datetime.now(timezone.utc))
                         self.odds_dao.mark_as_fetched(match_code, self.market.betting_type_id, self.market.scope_id, fetch_interval)
                         self.logger.info(f"Synced oddsportal odds match_code={match_code}")
 

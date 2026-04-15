@@ -1,8 +1,7 @@
 import traceback
 from core.registry import Registry
-from core.types.enums import MatchStatus
 from core.utils.fotmob_utils import parse_pair
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from core.logger.logger_manager import LoggerManager
 from typing import Dict, Any, Optional, List, Callable, Tuple
@@ -375,7 +374,7 @@ class ParseMatch(PollTask):
                     self.idle_sleep()
                     continue
 
-                for match_id, kickoff_time, last_fetched_at, json_body in items:
+                for match_id, kickoff_time, json_body in items:
                     if self.should_stop():
                         return
 
@@ -394,16 +393,9 @@ class ParseMatch(PollTask):
                             )
                             kickoff_time = new_kickoff_time
 
-                        confirm_count = 0
-                        if MatchStatus(match_status).is_finalized:
-                            confirm_count = self.calculate_confirm_count(kickoff_time, last_fetched_at, CrawlParams.MATCH_CONFIRMATION_HOURS)
-                        elif last_fetched_at - kickoff_time > timedelta(hours=CrawlParams.MATCH_CONFIRMATION_HOURS+CrawlParams.MATCH_LIFESPAN_HOURS):
-                            confirm_count = -1
-
                         self.match_dao.sync_parsed_data(parsed_data)
-                        self.match_dao.mark_as_parsed(match_id, kickoff_time, match_status, confirm_count)
-
-                        self.logger.info(f"Parsed match: confirm_count={confirm_count} kickoff_time={kickoff_time} match_id={match_id}")
+                        self.match_dao.mark_as_parsed(match_id, kickoff_time, match_status)
+                        self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.match_dao.mark_parse_failed(match_id, full_stack_trace)

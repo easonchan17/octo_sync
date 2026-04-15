@@ -4,8 +4,27 @@ from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture
 from ..base_dao import BaseDao
 
-
 class FixtureDao(BaseDao):
+    def get_teams_with_code(self) -> List[Any]:
+        with self.db.get_session() as session:
+            home_query = session.query(
+                Fixture.home_name.label('team_name'),
+                Fixture.home_code.label('team_code'),
+                Fixture.league_id,
+            ).filter(
+                Fixture.home_code.isnot(None)
+            )
+            away_query = session.query(
+                Fixture.away_name.label('team_name'),
+                Fixture.away_code.label('team_code'),
+                Fixture.league_id,
+            ).filter(
+                Fixture.away_code.isnot(None)
+            )
+            return home_query.union(away_query).order_by(
+                text('league_id, team_name')
+            ).all()
+
     def sync_parsed_data(self, records: List[Dict[str, Any]]) -> None:
         with self.db.get_session() as session:
             insert_stmt = insert(Fixture).values(records)
@@ -25,23 +44,3 @@ class FixtureDao(BaseDao):
                 where=where_clause,
             )
             session.execute(insert_stmt)
-
-    def load_teams(self) -> List[Any]:
-        with self.db.get_session() as session:
-            home_query = session.query(
-                Fixture.home_name.label('team_name'),
-                Fixture.home_code.label('team_code'),
-                Fixture.league_id,
-            ).filter(
-                Fixture.home_code.isnot(None)
-            )
-            away_query = session.query(
-                Fixture.away_name.label('team_name'),
-                Fixture.away_code.label('team_code'),
-                Fixture.league_id,
-            ).filter(
-                Fixture.away_code.isnot(None)
-            )
-            return home_query.union(away_query).order_by(
-                text('league_id, team_name')
-            ).all()

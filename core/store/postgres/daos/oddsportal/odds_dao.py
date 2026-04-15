@@ -31,16 +31,14 @@ class OddsDao(BaseDao):
                     and_(
                         or_(
                             OddsRaw.last_fetched_at.is_(None),
-                            and_(
-                                OddsRaw.last_fetched_at < Fixture.kickoff_time,
-                                OddsRaw.next_fetch_at <= func.now()
-                            )
+                            OddsRaw.next_fetch_at <= func.now()
                         ),
                         OddsRaw.fetch_attempts < max_retries
                     )
                 )
             ).order_by(
-                Fixture.kickoff_time.desc()
+                func.coalesce(OddsRaw.next_fetch_at, func.now()).asc(),
+                Fixture.kickoff_time.asc()
             ).limit(limit).all()
 
     def mark_as_fetched(self, match_code: str, betting_type_id: int, scope_id: int, fetch_interval: Optional[timedelta]) -> None:
