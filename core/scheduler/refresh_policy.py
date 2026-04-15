@@ -58,22 +58,21 @@ class OddsRefreshPolicy:
         self.end_offset = timedelta(minutes=end_offset_minutes) if end_offset_minutes is not None else None
         self.refresh_interval = timedelta(minutes=refresh_interval_minutes)
 
-    def is_active(self, kickoff_time: datetime) -> bool:
-        now = datetime.now(timezone.utc)
-
-        if self.start_offset is not None and now < kickoff_time + self.start_offset:
+    def is_active(self, kickoff_time: datetime, current_time: datetime) -> bool:
+        if self.start_offset is not None and current_time < kickoff_time + self.start_offset:
             return False
 
-        if self.end_offset is not None and now >= kickoff_time + self.end_offset:
+        if self.end_offset is not None and current_time >= kickoff_time + self.end_offset:
             return False
 
         return True
 
-    def can_fetch(self, last_fetched_time: Optional[datetime]) -> bool:
-        if not last_fetched_time:
-            return True
+    def suggested_interval(self, kickoff_time: datetime, current_time: datetime) -> timedelta:
+        if self.end_offset is None:
+            return self.refresh_interval
 
-        return last_fetched_time + self.refresh_interval <= datetime.now(timezone.utc)
+        time_to_next_stage = (kickoff_time + self.end_offset) - current_time
+        return min(self.refresh_interval, max(time_to_next_stage, timedelta(0)))
 
 class MappingRefreshPolicy:
     def __init__(self, min_attempts: Optional[int], max_attempts: Optional[int], refresh_interval_minutes: float) -> None:

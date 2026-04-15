@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from core.registry import Registry
 from core.types.params import CrawlParams
 from core.scheduler.tasks.poll_task import PollTask
-from core.store.postgres.daos.oddsportal import UpcomingFixtureDao
+from core.store.postgres.daos.oddsportal import UpcomingFixtureDao, FixtureDao
 from core.logger.logger_manager import LoggerManager
 
 class UpcomingFixtureParser:
@@ -96,6 +96,7 @@ class ParseUpcomingFixture(PollTask):
         super().__init__()
         self.payload = payload or {}
         self.upcoming_fixture_dao = UpcomingFixtureDao()
+        self.fixture_dao = FixtureDao()
         self.parser = UpcomingFixtureParser()
 
     def execute(self, *args, **kwargs) -> None:
@@ -125,7 +126,7 @@ class ParseUpcomingFixture(PollTask):
                             self.logger.error(f"Failed to parse upcoming fixture league_id={league_id}: fixtures is empty")
                             continue
 
-                        self.upcoming_fixture_dao.sync_parsed_data(parsed_fixtures)
+                        self.fixture_dao.sync_parsed_data(parsed_fixtures)
                         self.upcoming_fixture_dao.mark_as_parsed(league_id)
                         self.logger.info(f"Parsed upcoming fixture league_id={league_id} count={len(parsed_fixtures)}")
 

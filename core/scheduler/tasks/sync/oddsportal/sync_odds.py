@@ -6,6 +6,7 @@ from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
 from core.scheduler.refresh_policy import OddsRefreshPolicy
+from datetime import datetime, timezone, timedelta
 from core.types.params import CrawlParams
 from core.types.enums import OddsMarkets
 
@@ -38,6 +39,8 @@ class BaseSyncOdds(PollTask):
         ]
     }
 
+    MIN_REFETCH_INTERVAL = timedelta(minutes=5)
+
     def __init__(
         self,
         market: OddsMarkets,
@@ -51,9 +54,20 @@ class BaseSyncOdds(PollTask):
 
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG, rule_extras=rule_extras)
 
+        self.refresh_policies = [
+            OddsRefreshPolicy(start_offset_minutes=None, end_offset_minutes=-3*24*60, refresh_interval_minutes=24 * 60),
+            OddsRefreshPolicy(start_offset_minutes=-3*24*60, end_offset_minutes=-24*60, refresh_interval_minutes=12 * 60),
+            OddsRefreshPolicy(start_offset_minutes=-24*60, end_offset_minutes=-2*60, refresh_interval_minutes=60),
+            OddsRefreshPolicy(start_offset_minutes=-2*60, end_offset_minutes=-60, refresh_interval_minutes=15),
+            OddsRefreshPolicy(start_offset_minutes=-60, end_offset_minutes=0, refresh_interval_minutes=5)
+        ]
+
     def _build_page_url(
-        self, match_code: str, home_name: str, home_code: str, away_name: str, away_code: str
+        self, match_code: str, home_name: str, home_code: str, away_name: str, away_code: str, match_url: str
     ) -> str:
+        if not home_code or not away_code:
+            return match_url
+
         home_name, away_name = home_name.lower(), away_name.lower()
         slug = lambda name, code: f"{name.replace(' ', '-')}-{code}"
         home_team = slug(home_name, home_code)
@@ -72,29 +86,36 @@ class BaseSyncOdds(PollTask):
             scope_id=self.market.scope_id,
         )
 
-    def get_pending_fetch_items(self) -> List[Any]:
-        return self.odds_dao.get_pending_fetch_items(
-            self.market.betting_type_id,
-            self.market.scope_id,
-            CrawlParams.FETCH_MAX_RETRIES,
-            CrawlParams.META_DATA_QUERY_LIMIT
-        )
+
+    def calc_next_fetch_time(self, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
+        if not self.refresh_policies:
+            return None
+
+        for policy in self.refresh_policies:
+            if policy.is_active(kickoff_time, current_time):
+                suggested_interval = policy.suggested_interval(kickoff_time, current_time)
+                return max(suggested_interval, self.MIN_REFETCH_INTERVAL)
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                items = self.get_pending_fetch_items()
+                items = self.odds_dao.get_pending_fetch_items(
+                    self.market.betting_type_id,
+                    self.market.scope_id,
+                    CrawlParams.FETCH_MAX_RETRIES,
+                    CrawlParams.META_DATA_QUERY_LIMIT
+                )
                 if not items:
                     self.idle_sleep()
                     continue
 
-                for match_code, home_name, home_code, away_name, away_code in items:
+                for match_code, home_name, home_code, away_name, away_code, kickoff_time, match_url in items:
                     if self.should_stop():
                         return
 
                     try:
                         page_url = self._build_page_url(
-                            match_code, home_name, home_code, away_name, away_code
+                            match_code, home_name, home_code, away_name, away_code, match_url
                         )
 
                         future = self.interceptor.submit_task(
@@ -118,7 +139,9 @@ class BaseSyncOdds(PollTask):
                             "source_url": page_url,
                             "json_body": json_body,
                         })
-                        self.odds_dao.mark_as_fetched(match_code, self.market.betting_type_id, self.market.scope_id)
+
+                        fetch_interval = self.calc_next_fetch_time(kickoff_time, datetime.now(timezone.utc))
+                        self.odds_dao.mark_as_fetched(match_code, self.market.betting_type_id, self.market.scope_id, fetch_interval)
                         self.logger.info(f"Synced oddsportal odds match_code={match_code}")
 
                     except Exception as e:
@@ -130,43 +153,10 @@ class BaseSyncOdds(PollTask):
                 self.logger.error(f"Sync odds loop error: {e}", exc_info=True)
                 self.idle_sleep()
 
-
 @Registry.poll('sync.oddsportal.ft_1x2_odds')
 class SyncFT1x2Odds(BaseSyncOdds):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(OddsMarkets.FT_1X2, payload=payload)
-
-@Registry.poll('resync.oddsportal.ft_1x2_odds')
-class ResyncFT1x2Odds(BaseSyncOdds):
-    def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(OddsMarkets.FT_1X2, payload=payload)
-
-        self.refresh_policies = [
-            OddsRefreshPolicy(start_offset_minutes=-7*24*60, end_offset_minutes=-3*24*60, refresh_interval_minutes=24 * 60),
-            OddsRefreshPolicy(start_offset_minutes=-3*24*60, end_offset_minutes=-24*60, refresh_interval_minutes=12 * 60),
-            OddsRefreshPolicy(start_offset_minutes=-24*60, end_offset_minutes=-2*60, refresh_interval_minutes=60),
-            OddsRefreshPolicy(start_offset_minutes=-2*60, end_offset_minutes=-60, refresh_interval_minutes=15),
-            OddsRefreshPolicy(start_offset_minutes=-60, end_offset_minutes=0, refresh_interval_minutes=5),
-        ]
-
-    def get_pending_fetch_items(self) -> List[Any]:
-        records = self.odds_dao.get_pending_refetch_items(
-            self.market.betting_type_id,
-            self.market.scope_id,
-            CrawlParams.FETCH_MAX_RETRIES,
-            CrawlParams.META_DATA_QUERY_LIMIT
-        )
-
-        items = []
-        for match_code, home_name, home_code, away_name, away_code, kickoff_time, last_fetched_at in records:
-            for policy in self.refresh_policies:
-                if policy.is_active(kickoff_time):
-                    if policy.can_fetch(last_fetched_at):
-                        items.append((match_code, home_name, home_code, away_name, away_code))
-                    break
-        return items
-
-
 
 @Registry.poll('sync.oddsportal.ft_ah_odds')
 class SyncFTAhOdds(BaseSyncOdds):

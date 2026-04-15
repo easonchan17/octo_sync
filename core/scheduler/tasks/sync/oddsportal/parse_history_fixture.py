@@ -1,11 +1,11 @@
 import traceback
 from pathlib import PurePosixPath
+from core.registry import Registry
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from core.registry import Registry
 from core.types.params import CrawlParams
 from core.scheduler.tasks.poll_task import PollTask
-from core.store.postgres.daos.oddsportal import HistoryFixtureDao
+from core.store.postgres.daos.oddsportal import HistoryFixtureDao, FixtureDao
 from core.logger.logger_manager import LoggerManager
 
 
@@ -55,13 +55,14 @@ class ParseHistoryFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.payload = payload or {}
-        self.fixture_dao = HistoryFixtureDao()
+        self.history_fixture_dao = HistoryFixtureDao()
+        self.fixture_dao = FixtureDao()
         self.parser = HistoryFixtureParser()
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                items = self.fixture_dao.get_pending_parse_items(CrawlParams.PARSE_MAX_RETRIES, CrawlParams.RAW_DATA_QUERY_LIMIT)
+                items = self.history_fixture_dao.get_pending_parse_items(CrawlParams.PARSE_MAX_RETRIES, CrawlParams.RAW_DATA_QUERY_LIMIT)
 
                 if not items:
                     self.idle_sleep()
@@ -74,22 +75,22 @@ class ParseHistoryFixture(PollTask):
                     try:
                         parsed_fixtures = self.parser.parse(json_body, league_id, season)
                         if parsed_fixtures is None:
-                            self.fixture_dao.mark_parse_failed(league_id, season, page, "Parsed fixtures is None")
+                            self.history_fixture_dao.mark_parse_failed(league_id, season, page, "Parsed fixtures is None")
                             self.logger.error(f"Failed to parse fixture league_id={league_id} season={season} page={page}: fixtures is None")
                             continue
 
                         if not parsed_fixtures:
-                            self.fixture_dao.mark_parse_failed(league_id, season, page, "Parsed fixtures is empty")
+                            self.history_fixture_dao.mark_parse_failed(league_id, season, page, "Parsed fixtures is empty")
                             self.logger.error(f"Failed to parse fixture league_id={league_id} season={season} page={page}: fixtures is empty")
                             continue
 
                         self.fixture_dao.sync_parsed_data(parsed_fixtures)
-                        self.fixture_dao.mark_as_parsed(league_id, season, page)
+                        self.history_fixture_dao.mark_as_parsed(league_id, season, page)
                         self.logger.info(f"Parsed fixture league_id={league_id} season={season} page={page} count={len(parsed_fixtures)}")
 
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.fixture_dao.mark_parse_failed(league_id, season, page, full_stack_trace)
+                        self.history_fixture_dao.mark_parse_failed(league_id, season, page, full_stack_trace)
                         self.logger.error(f"Failed to parse fixture league_id={league_id} season={season} page={page}: {e}")
 
             except Exception as e:
