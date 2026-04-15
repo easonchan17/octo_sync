@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import List, Dict, Any
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
 from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.fotmob.fixture import Fixture
@@ -19,22 +19,28 @@ class MatchDao(BaseDao):
             query = session.query(
                 Fixture.match_id,
                 Fixture.kickoff_time,
-                Fixture.page_url
+                Fixture.page_url,
+                Fixture.league_id,
+                Fixture.league_name
             ).outerjoin(
                 MatchRaw, Fixture.match_id == MatchRaw.match_id
             ).filter(
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time < end_time,
+                ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value]),
                 or_(
                     MatchRaw.match_id.is_(None),
                     and_(
-                        MatchRaw.is_fetched == False,
+                        or_(
+                            MatchRaw.last_fetched_at.is_(None),
+                            MatchRaw.next_fetch_at <= func.now()
+                        ),
                         MatchRaw.fetch_attempts < max_retries
                     )
-                ),
-                Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time < end_time,
-                ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
+                )
             ).order_by(
-                Fixture.kickoff_time.desc()
+                func.coalesce(MatchRaw.next_fetch_at, func.now()).asc(),
+                Fixture.kickoff_time.asc()
             ).limit(limit)
 
             return query.all()
@@ -50,7 +56,6 @@ class MatchDao(BaseDao):
             return session.query(
                 MatchRaw.match_id,
                 MatchRaw.kickoff_time,
-                MatchRaw.last_fetched_at,
                 MatchRaw.json_body
             ).filter(
                 MatchRaw.kickoff_time >= start_time,
@@ -61,38 +66,6 @@ class MatchDao(BaseDao):
             ).order_by(
                 MatchRaw.created_at.asc()
             ).limit(limit).all()
-
-    def get_pending_refetch_items(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-        required_confirm_count: int,
-        max_retries: int,
-        limit: int
-    ) -> List[Any]:
-        with self.db.get_session() as session:
-            query = session.query(
-                MatchRaw.match_id,
-                MatchRaw.kickoff_time,
-                MatchRaw.last_fetched_at,
-                Fixture.page_url,
-                Fixture.league_id,
-                Fixture.league_name
-            ).join(
-                Fixture, MatchRaw.match_id == Fixture.match_id
-            ).filter(
-                MatchRaw.kickoff_time >= start_time,
-                MatchRaw.kickoff_time < end_time,
-                MatchRaw.is_parsed == True,
-                MatchRaw.confirm_count >= 0,
-                MatchRaw.confirm_count < required_confirm_count,
-                MatchRaw.fetch_attempts < max_retries,
-                ~MatchRaw.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
-            ).order_by(
-                MatchRaw.kickoff_time.asc()
-            ).limit(limit)
-
-            return query.all()
 
     def mark_as_not_modified(self, match_id: int) -> None:
         with self.db.get_session() as session:
@@ -107,7 +80,7 @@ class MatchDao(BaseDao):
                 MatchRaw.updated_at: func.now()
             }, synchronize_session=False)
 
-    def mark_as_fetched(self, match_id: int) -> None:
+    def mark_as_fetched(self, match_id: int, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(MatchRaw).filter(
                 MatchRaw.match_id == match_id
@@ -115,6 +88,7 @@ class MatchDao(BaseDao):
                 MatchRaw.is_fetched: True,
                 MatchRaw.last_fetch_error: None,
                 MatchRaw.last_fetched_at: func.now(),
+                MatchRaw.next_fetch_at: func.now() + fetch_interval if fetch_interval is not None else None,
                 MatchRaw.fetch_attempts: 0,
                 MatchRaw.total_fetch_count: MatchRaw.total_fetch_count + 1,
                 MatchRaw.is_parsed: False,
@@ -148,7 +122,7 @@ class MatchDao(BaseDao):
 
             session.execute(upsert_stmt)
 
-    def mark_as_parsed(self, match_id: int, kickoff_time: datetime, match_status: int, confirm_count: int) -> None:
+    def mark_as_parsed(self, match_id: int, kickoff_time: datetime, match_status: int) -> None:
         with self.db.get_session() as session:
             session.query(MatchRaw).filter(
                 MatchRaw.match_id == match_id
@@ -156,7 +130,6 @@ class MatchDao(BaseDao):
                 MatchRaw.kickoff_time: kickoff_time,
                 MatchRaw.match_status: match_status,
                 MatchRaw.is_parsed: True,
-                MatchRaw.confirm_count: confirm_count,
                 MatchRaw.last_parse_error: None,
                 MatchRaw.parse_attempts: 0,
                 MatchRaw.total_parse_count: MatchRaw.total_parse_count + 1,

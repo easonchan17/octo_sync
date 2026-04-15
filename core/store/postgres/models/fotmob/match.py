@@ -31,6 +31,7 @@ class MatchRaw(Base, CrawlStatusMixin, RawJsonMixin):
     kickoff_time = Column(DateTime(timezone=True), nullable=False)
 
     match_status = Column(Integer, nullable=True)
+    next_fetch_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class MatchStat(Base):

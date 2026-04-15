@@ -10,7 +10,6 @@ from core.store.postgres.daos.oddsportal import OddsDao
 from core.logger.logger_manager import LoggerManager
 from core.utils.datetime_utils import from_timestamp
 
-
 class BaseOddsParser:
     def __init__(self) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
@@ -49,7 +48,6 @@ class BaseOddsParser:
     @abstractmethod
     def parse(self, match_code: str, market: OddsMarket, json_body: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         raise NotImplementedError
-
 
 class Odds1x2Parser(BaseOddsParser):
     def _extract_odds_records(self, match_code: str, market: OddsMarket, quote_type: str,  market_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:

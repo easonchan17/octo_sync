@@ -7,7 +7,6 @@ from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import SeasonDao
 from core.logger.logger_manager import LoggerManager
 
-
 class SeasonParser:
     SEASON_PATTERN = re.compile(r'<a\s[^>]*href="https://www\.oddsportal\.com/football/[^"]+/results/"[^>]*>\s*(\d{4})/\d{4}\s*</a>')
 
