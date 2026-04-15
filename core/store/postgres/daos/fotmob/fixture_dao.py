@@ -1,11 +1,10 @@
 from sqlalchemy.types import Date
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Optional
 from sqlalchemy import or_, and_, func, cast
 from sqlalchemy.dialects.postgresql import insert
 from datetime import date, timedelta, datetime, timezone
 from core.store.postgres.models.fotmob.fixture import Fixture, FixtureRaw
 from ..base_dao import BaseDao
-
 
 class FixtureDao(BaseDao):
     def get_pending_fetch_items(
@@ -21,11 +20,12 @@ class FixtureDao(BaseDao):
                 FixtureRaw.match_date >= start_date,
                 FixtureRaw.match_date <= end_date,
                 or_(
-                    FixtureRaw.is_fetched == True,
                     and_(
-                        FixtureRaw.is_fetched == False,
-                        FixtureRaw.fetch_attempts >= max_retries
-                    )
+                        FixtureRaw.next_fetch_at.is_(None),
+                        FixtureRaw.is_fetched == True,
+                    ),
+                    FixtureRaw.next_fetch_at > func.now(),
+                    FixtureRaw.fetch_attempts >= max_retries
                 )
             ).all()
             ignore_dates = {row[0] for row in ignore_rows}
@@ -46,7 +46,6 @@ class FixtureDao(BaseDao):
         with self.db.get_session() as session:
             return session.query(
                 FixtureRaw.match_date,
-                FixtureRaw.last_fetched_at,
                 FixtureRaw.json_body
             ).filter(
                 FixtureRaw.match_date >= start_date,
@@ -58,43 +57,7 @@ class FixtureDao(BaseDao):
                 FixtureRaw.created_at.asc()
             ).limit(limit).all()
 
-    def get_pending_refetch_items(
-        self,
-        start_date: date,
-        end_date: date,
-        required_confirm_count: int,
-        max_retries: int
-    ) -> List[Any]:
-        with self.db.get_session() as session:
-            query = session.query(
-                FixtureRaw.match_date,
-                FixtureRaw.last_fetched_at
-            ).filter(
-                FixtureRaw.match_date >= start_date,
-                FixtureRaw.match_date <= end_date,
-                FixtureRaw.is_parsed == True,
-                FixtureRaw.confirm_count >= 0,
-                FixtureRaw.confirm_count < required_confirm_count,
-                FixtureRaw.fetch_attempts < max_retries
-            ).order_by(
-                FixtureRaw.match_date.asc()
-            )
-            return query.all()
-
-    def get_active_match_dates(self, lookback_hours: int) -> Set[date]:
-        end_time = datetime.now(timezone.utc)
-        start_time = end_time - timedelta(hours=lookback_hours)
-        with self.db.get_session() as session:
-            rows = session.query(
-                cast(Fixture.kickoff_time, Date).label('d')
-            ).filter(
-                Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time < end_time
-            ).distinct().all()
-
-            return {row[0] for row in rows}
-
-    def mark_as_not_modified(self, match_date: date) -> None:
+    def mark_as_not_modified(self, match_date: date, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(FixtureRaw).filter(
                 FixtureRaw.match_date == match_date
@@ -102,12 +65,13 @@ class FixtureDao(BaseDao):
                 FixtureRaw.is_fetched: True,
                 FixtureRaw.last_fetch_error: None,
                 FixtureRaw.last_fetched_at: func.now(),
+                FixtureRaw.next_fetch_at: func.now() + fetch_interval if fetch_interval is not None else None,
                 FixtureRaw.total_fetch_count: FixtureRaw.total_fetch_count + 1,
                 FixtureRaw.fetch_attempts: 0,
                 FixtureRaw.updated_at: func.now()
             }, synchronize_session=False)
 
-    def mark_as_fetched(self, match_date: date) -> None:
+    def mark_as_fetched(self, match_date: date, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(FixtureRaw).filter(
                 FixtureRaw.match_date == match_date
@@ -115,6 +79,7 @@ class FixtureDao(BaseDao):
                 FixtureRaw.is_fetched: True,
                 FixtureRaw.last_fetch_error: None,
                 FixtureRaw.last_fetched_at: func.now(),
+                FixtureRaw.next_fetch_at: func.now() + fetch_interval if fetch_interval is not None else None,
                 FixtureRaw.total_fetch_count: FixtureRaw.total_fetch_count + 1,
                 FixtureRaw.is_parsed: False,
                 FixtureRaw.last_parse_error: None,
@@ -145,14 +110,13 @@ class FixtureDao(BaseDao):
             )
             session.execute(upsert_stmt)
 
-    def mark_as_parsed(self, match_date: date, last_kickoff_time: datetime, confirm_count: int) -> None:
+    def mark_as_parsed(self, match_date: date, last_kickoff_time: datetime) -> None:
         with self.db.get_session() as session:
             session.query(FixtureRaw).filter(
                 FixtureRaw.match_date == match_date
             ).update({
                 FixtureRaw.last_kickoff_time: last_kickoff_time,
                 FixtureRaw.is_parsed: True,
-                FixtureRaw.confirm_count: confirm_count,
                 FixtureRaw.last_parse_error: None,
                 FixtureRaw.parse_attempts: 0,
                 FixtureRaw.total_parse_count: FixtureRaw.total_parse_count + 1,
