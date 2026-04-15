@@ -5,7 +5,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refresh_policy import PhaseRefetchStrategy
+from core.scheduler.refetch_strategy import PhaseRefetchStrategy
 from datetime import datetime, timezone, timedelta
 from core.types.params import CrawlParams
 from core.types.enums import OddsMarkets

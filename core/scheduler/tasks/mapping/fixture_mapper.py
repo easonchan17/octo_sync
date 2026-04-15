@@ -7,7 +7,7 @@ from core.services.match_resolver import MatchItem, MatchResolver
 from core.store.postgres.daos.fotmob.fixture_dao import FixtureDao as FotmobFixtureDao
 from core.store.postgres.daos.oddsportal.fixture_mapping_dao import FixtureMappingDao
 from core.scheduler.tasks.poll_task import PollTask
-from core.scheduler.refresh_policy import MappingRefreshPolicy
+from core.scheduler.refetch_strategy import MappingRefreshPolicy
 
 @Registry.poll('mapping.oddsportal.fixture')
 class FixtureMapper(PollTask):

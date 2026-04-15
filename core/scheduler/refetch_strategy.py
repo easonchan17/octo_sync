@@ -1,21 +1,5 @@
-from datetime import date, datetime, timedelta, timezone
-from typing import Optional, Set
-
-
-class FixtureRefreshPolicy:
-    def __init__(self, fast_interval_minutes: float, slow_interval_minutes: float) -> None:
-        self.fast_interval = timedelta(minutes=fast_interval_minutes)
-        self.slow_interval = timedelta(minutes=slow_interval_minutes)
-
-    def set_avtive_dates(self, active_dates: Set[date]) -> None:
-        self.active_dates = active_dates
-
-    def can_fetch(self, match_date: date, last_fetched_at: Optional[datetime]) -> bool:
-        if not last_fetched_at:
-            return True
-        interval = self.fast_interval if match_date in self.active_dates else self.slow_interval
-        return last_fetched_at + interval <= datetime.now(timezone.utc)
-
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 class RefetchPhase:
     def __init__(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> None:

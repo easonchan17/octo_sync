@@ -3,7 +3,7 @@ from core.registry import Registry
 from typing import Any, Dict, Optional, List, Tuple
 from core.utils.fotmob_utils import extract_status
 from core.utils.fotmob_utils import PageUrlBuilder
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.daos.fotmob import FixtureDao
@@ -143,7 +143,7 @@ class ParseFixture(PollTask):
                     self.idle_sleep()
                     continue
 
-                for match_date, last_fetched_at, json_body in items:
+                for match_date, json_body in items:
                     if self.should_stop():
                         return
 
@@ -169,18 +169,12 @@ class ParseFixture(PollTask):
                         for fixture in parsed_fixtures:
                             fixture[Fixture.raw_fetch_date.key] = match_date
 
-                        is_finalized, last_kickoff_time = self.get_daily_summary(parsed_fixtures)
-
-                        confirm_count = 0
-                        if is_finalized:
-                            confirm_count = self.calculate_confirm_count(last_kickoff_time, last_fetched_at, CrawlParams.FIXTURE_CONFIRMATION_HOURS)
-                        elif last_fetched_at - last_kickoff_time > timedelta(hours=CrawlParams.MATCH_CONFIRMATION_HOURS + CrawlParams.MATCH_LIFESPAN_HOURS):
-                            confirm_count = -1 # mark as failed if it's been too long since kickoff without finalization
+                        _, last_kickoff_time = self.get_daily_summary(parsed_fixtures)
 
                         self.fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
-                        self.fixture_dao.mark_as_parsed(match_date, last_kickoff_time, confirm_count)
+                        self.fixture_dao.mark_as_parsed(match_date, last_kickoff_time)
 
-                        self.logger.info(f"Parsed fixtures: confirm_count={confirm_count} last_kickoff_time={last_kickoff_time} match_date={match_date}")
+                        self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.fixture_dao.mark_parse_failed(match_date, full_stack_trace)
