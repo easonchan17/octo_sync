@@ -26,6 +26,7 @@ class FixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_date = Column(Date, nullable=False, unique=True)
     last_kickoff_time = Column(DateTime(timezone=True), nullable=True)
+    next_fetch_at = Column(DateTime(timezone=True), nullable=True)
 
 class Fixture(Base):
     __tablename__ = 'fixtures'

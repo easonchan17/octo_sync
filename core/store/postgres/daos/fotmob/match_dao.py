@@ -67,7 +67,7 @@ class MatchDao(BaseDao):
                 MatchRaw.created_at.asc()
             ).limit(limit).all()
 
-    def mark_as_not_modified(self, match_id: int) -> None:
+    def mark_as_not_modified(self, match_id: int, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(MatchRaw).filter(
                 MatchRaw.match_id == match_id
@@ -75,6 +75,7 @@ class MatchDao(BaseDao):
                 MatchRaw.is_fetched: True,
                 MatchRaw.last_fetch_error: None,
                 MatchRaw.last_fetched_at: func.now(),
+                MatchRaw.next_fetch_at: func.now() + fetch_interval if fetch_interval is not None else None,
                 MatchRaw.total_fetch_count: MatchRaw.total_fetch_count + 1,
                 MatchRaw.fetch_attempts: 0,
                 MatchRaw.updated_at: func.now()

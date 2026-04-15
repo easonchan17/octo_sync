@@ -10,7 +10,7 @@ from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refresh_policy import PhaseRefetchStrategy
+from core.scheduler.refetch_strategy import PhaseRefetchStrategy
 from core.types.enums import LeaguePriority
 from core.types.params import CrawlParams
 
@@ -108,9 +108,11 @@ class SyncMatch(PollTask):
                             self.match_dao.mark_fetch_failed(match_id, kickoff_time, "No data")
                             continue
 
+                        fetch_interval = self.calc_next_fetch_time(league_id, league_name, kickoff_time, datetime.now(timezone.utc))
+
                         if result_set.is_not_modified():
                             self.logger.warning(f"Match detail data is not modified for {match_detail_url}")
-                            self.match_dao.mark_as_not_modified(match_id)
+                            self.match_dao.mark_as_not_modified(match_id, fetch_interval)
                             continue
 
                         self.match_dao.sync_raw_data({
@@ -120,7 +122,6 @@ class SyncMatch(PollTask):
                             "json_body": result_set.first()
                         })
 
-                        fetch_interval = self.calc_next_fetch_time(league_id, league_name, kickoff_time, datetime.now(timezone.utc))
                         self.match_dao.mark_as_fetched(match_id, fetch_interval)
                         self.logger.info(f"Synced match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
