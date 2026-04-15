@@ -17,62 +17,55 @@ class FixtureRefreshPolicy:
         return last_fetched_at + interval <= datetime.now(timezone.utc)
 
 
-class MatchRefreshPolicy:
-    def __init__(self, start_offset_hours: Optional[float], end_offset_hours: Optional[float], refresh_interval_minutes: Optional[float] = None, min_priority: int = 0) -> None:
-        assert start_offset_hours is not None or end_offset_hours is not None, "At least one of start_offset_hours or end_offset_hours must be provided"
-
-        self.start_offset = timedelta(hours=start_offset_hours) if start_offset_hours is not None else None
-        self.end_offset = timedelta(hours=end_offset_hours) if end_offset_hours is not None else None
-        self.refresh_interval = timedelta(minutes=refresh_interval_minutes) if refresh_interval_minutes is not None else None
-        self.min_priority = min_priority
-
-    def is_active(self, kickoff_time: datetime) -> bool:
-        now = datetime.now(timezone.utc)
-
-        if self.start_offset is not None and now < kickoff_time + self.start_offset:
-            return False
-
-        if self.end_offset is not None and now >= kickoff_time + self.end_offset:
-            return False
-
-        return True
-
-    def can_fetch(self, kickoff_time: datetime, last_fetched_time: Optional[datetime], priority: int = 0) -> bool:
-        if priority < self.min_priority:
-            return False
-
-        if not last_fetched_time:
-            return True
-
-        if self.refresh_interval:
-            return last_fetched_time + self.refresh_interval <= datetime.now(timezone.utc)
-        else:
-            return self.start_offset is not None and last_fetched_time < kickoff_time + self.start_offset
-
-
-class OddsRefreshPolicy:
-    def __init__(self, start_offset_minutes: Optional[float], end_offset_minutes: Optional[float], refresh_interval_minutes: float) -> None:
-        assert start_offset_minutes is not None or end_offset_minutes is not None, "At least one of start_offset_minutes or end_offset_minutes must be provided"
-
-        self.start_offset = timedelta(minutes=start_offset_minutes) if start_offset_minutes is not None else None
-        self.end_offset = timedelta(minutes=end_offset_minutes) if end_offset_minutes is not None else None
-        self.refresh_interval = timedelta(minutes=refresh_interval_minutes)
+class RefetchPhase:
+    def __init__(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> None:
+        self.start_offset = start_offset
+        self.end_offset = end_offset
+        self.interval = interval
 
     def is_active(self, kickoff_time: datetime, current_time: datetime) -> bool:
-        if self.start_offset is not None and current_time < kickoff_time + self.start_offset:
-            return False
+        start_time = kickoff_time + self.start_offset
+        end_time = kickoff_time + self.end_offset
+        return start_time <= current_time < end_time
 
-        if self.end_offset is not None and current_time >= kickoff_time + self.end_offset:
-            return False
+    def suggest_interval(self, kickoff_time: datetime, current_time: datetime) -> timedelta:
+        time_to_end = (kickoff_time + self.end_offset) - current_time
+        return min(self.interval, max(time_to_end, timedelta(0)))
 
-        return True
+class PhaseRefetchStrategy:
+    def __init__(self, min_refetch_interval: timedelta) -> None:
+        self._phases: list[RefetchPhase] = []
+        self.min_refetch_interval = min_refetch_interval
 
-    def suggested_interval(self, kickoff_time: datetime, current_time: datetime) -> timedelta:
-        if self.end_offset is None:
-            return self.refresh_interval
+    def add_phase(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> "PhaseRefetchStrategy":
+        if interval < self.min_refetch_interval:
+            raise ValueError(f"Interval {interval} is less than min_refetch_interval {self.min_refetch_interval}")
 
-        time_to_next_stage = (kickoff_time + self.end_offset) - current_time
-        return min(self.refresh_interval, max(time_to_next_stage, timedelta(0)))
+        if start_offset >= end_offset:
+            raise ValueError(f"Invalid range: start_offset {start_offset} must be less than end_offset {end_offset}")
+
+        if self._phases:
+            last_phase = self._phases[-1]
+            if start_offset < last_phase.end_offset:
+                raise ValueError(f"Sequence violation: start_offset {start_offset} must be >= last end_offset {last_phase.end_offset}")
+
+        self._phases.append(RefetchPhase(start_offset, end_offset, interval))
+        return self
+
+    def suggest_interval(self, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
+        if not self._phases:
+            return None
+
+        first_start_time = kickoff_time + self._phases[0].start_offset
+        if current_time < first_start_time:
+            return first_start_time - current_time
+
+        for phase in self._phases:
+            if phase.is_active(kickoff_time, current_time):
+                suggested = phase.suggest_interval(kickoff_time, current_time)
+                return max(suggested, self.min_refetch_interval)
+
+        return None
 
 class MappingRefreshPolicy:
     def __init__(self, min_attempts: Optional[int], max_attempts: Optional[int], refresh_interval_minutes: float) -> None:

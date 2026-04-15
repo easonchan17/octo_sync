@@ -151,4 +151,3 @@ class HistoryFixtureDao(BaseDao):
                 }
             )
             session.execute(insert_stmt)
-

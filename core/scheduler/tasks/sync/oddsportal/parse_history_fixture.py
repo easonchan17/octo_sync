@@ -8,7 +8,6 @@ from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import HistoryFixtureDao, FixtureDao
 from core.logger.logger_manager import LoggerManager
 
-
 class HistoryFixtureParser:
     def __init__(self) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from core.types.enums import LeaguePriority
 
 class EloParams:
     BASE_RATING = 1500
@@ -26,6 +27,9 @@ class CrawlParams:
     MATCH_LOOKAHEAD_DAYS = 2
     MATCH_LIFESPAN_HOURS = 4
     MATCH_CONFIRMATION_HOURS = 24
+
+    MATCH_POST_KICKOFF_ARCHIVE_HOURS = 48
+    MATCH_MIN_REFETCH_LEAGUE_PRIORITY = LeaguePriority.LEVEL_MAJOR.value
 
     FIXTURE_LOOKAHEAD_DAYS = 7
     FIXTURE_CONFIRMATION_HOURS = 1
