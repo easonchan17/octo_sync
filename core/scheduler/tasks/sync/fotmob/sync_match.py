@@ -47,6 +47,7 @@ class SyncMatch(PollTask):
 
         self.min_refetch_league_priority = CrawlParams.MATCH_MIN_REFETCH_LEAGUE_PRIORITY
         self.post_kickoff_archive_hours = CrawlParams.MATCH_POST_KICKOFF_ARCHIVE_HOURS
+        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
     @property
     def fetch_date_range(self) -> Tuple[date, date]:
@@ -100,12 +101,12 @@ class SyncMatch(PollTask):
                         result_set = future.result()
                         if result_set is None:
                             self.logger.error(f"No response for {match_detail_url}")
-                            self.match_dao.mark_fetch_failed(match_id, kickoff_time, "No response")
+                            self.match_dao.mark_fetch_failed(match_id, kickoff_time, "No response", self.fetch_fail_interval)
                             continue
 
                         if result_set.is_empty():
                             self.logger.error(f"No match detail data for {match_detail_url}")
-                            self.match_dao.mark_fetch_failed(match_id, kickoff_time, "No data")
+                            self.match_dao.mark_fetch_failed(match_id, kickoff_time, "No data", self.fetch_fail_interval)
                             continue
 
                         fetch_interval = self.calc_next_fetch_time(league_id, league_name, kickoff_time, datetime.now(timezone.utc))
@@ -126,7 +127,7 @@ class SyncMatch(PollTask):
                         self.logger.info(f"Synced match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.match_dao.mark_fetch_failed(match_id, kickoff_time, full_stack_trace)
+                        self.match_dao.mark_fetch_failed(match_id, kickoff_time, full_stack_trace, self.fetch_fail_interval)
                         self.logger.error(f"Failed to sync match detail for match {match_id} from {match_detail_url}: {e}")
                         self.idle_sleep()
 

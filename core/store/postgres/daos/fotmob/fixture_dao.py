@@ -88,7 +88,8 @@ class FixtureDao(BaseDao):
                 FixtureRaw.updated_at: func.now()
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, match_date: date, error_msg: str) -> None:
+    def mark_fetch_failed(self, match_date: date, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+        next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         with self.db.get_session() as session:
             insert_stmt = insert(FixtureRaw).values(
                 match_date=match_date,
@@ -96,7 +97,8 @@ class FixtureDao(BaseDao):
                 fetch_attempts=1,
                 last_fetch_error=(error_msg or "")[:2000],
                 json_body={},
-                total_fetch_count=1
+                total_fetch_count=1,
+                next_fetch_at=next_fetch_at
             )
             upsert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[FixtureRaw.match_date],
@@ -105,6 +107,7 @@ class FixtureDao(BaseDao):
                     FixtureRaw.last_fetch_error: (error_msg or "")[:2000],
                     FixtureRaw.fetch_attempts: FixtureRaw.fetch_attempts + 1,
                     FixtureRaw.total_fetch_count: FixtureRaw.total_fetch_count + 1,
+                    FixtureRaw.next_fetch_at: next_fetch_at,
                     FixtureRaw.updated_at: func.now()
                 }
             )
