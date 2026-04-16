@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from core.types.enums import LeaguePriority
 
 class EloParams:
@@ -14,6 +14,8 @@ class EloParams:
 class CrawlParams:
     START_DATE = datetime(2023, 1, 1, tzinfo=timezone.utc)
     START_SEASON = 2023
+
+    FETCH_FAILURE_DELAY = timedelta(minutes=1)
 
     RAW_DATA_QUERY_LIMIT = 300
     META_DATA_QUERY_LIMIT = 2000

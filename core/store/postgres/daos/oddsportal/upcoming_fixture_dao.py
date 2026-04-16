@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from sqlalchemy import func, or_
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.league import League
 from core.store.postgres.models.oddsportal.fixture import UpcomingFixtureRaw
@@ -42,7 +42,8 @@ class UpcomingFixtureDao(BaseDao):
                 UpcomingFixtureRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, league_id: int, error_msg: str) -> None:
+    def mark_fetch_failed(self, league_id: int, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+        next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         with self.db.get_session() as session:
             insert_stmt = insert(UpcomingFixtureRaw).values(
                 league_id=league_id,
@@ -52,6 +53,7 @@ class UpcomingFixtureDao(BaseDao):
                 fetch_attempts=1,
                 last_fetch_error=(error_msg or '')[:2000],
                 total_fetch_count=1,
+                next_fetch_at=next_fetch_at,
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[UpcomingFixtureRaw.league_id.key],
@@ -60,6 +62,7 @@ class UpcomingFixtureDao(BaseDao):
                     UpcomingFixtureRaw.last_fetch_error.key: (error_msg or '')[:2000],
                     UpcomingFixtureRaw.fetch_attempts.key: UpcomingFixtureRaw.fetch_attempts + 1,
                     UpcomingFixtureRaw.total_fetch_count.key: UpcomingFixtureRaw.total_fetch_count + 1,
+                    UpcomingFixtureRaw.next_fetch_at.key: next_fetch_at,
                     UpcomingFixtureRaw.updated_at.key: func.now(),
                 }
             )

@@ -31,6 +31,7 @@ class SyncSeason(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.fetch_interval = timedelta(days=1)
+        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
     def build_fixture_uri(self, fixture_uri: str) -> str:
         return f"{fixture_uri[:-1]}/results/"
@@ -71,7 +72,7 @@ class SyncSeason(PollTask):
                         result_set = future.result()
                         if result_set is None or result_set.is_empty():
                             self.logger.error(f"No response for {page_url}")
-                            self.season_dao.mark_fetch_failed(league_id, "No response")
+                            self.season_dao.mark_fetch_failed(league_id, "No response", self.fetch_fail_interval)
                             continue
 
                         self.season_dao.sync_raw_data({
@@ -85,7 +86,7 @@ class SyncSeason(PollTask):
 
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.season_dao.mark_fetch_failed(league_id, full_stack_trace)
+                        self.season_dao.mark_fetch_failed(league_id, full_stack_trace, self.fetch_fail_interval)
                         self.logger.error(f"Failed to sync season for league_id={league_id} league_name={league_name}: {e}")
 
             except Exception as e:

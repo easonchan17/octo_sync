@@ -9,12 +9,11 @@ from core.store.postgres.daos.oddsportal import UpcomingFixtureDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
 from core.browser.handlers.receivers.html_receiver import HtmlReceiver
 from core.services.league.service import league_service
+from core.types.params import CrawlParams
 
 
 @Registry.poll('sync.oddsportal.upcoming_fixture')
 class SyncUpcomingFixture(PollTask):
-    FETCH_INTERVAL = timedelta(days=1)
-
     POLICY_CONFIG = {
         "url_template": "https://www.oddsportal.com{fixture_uri}",
         "debug": False,
@@ -32,6 +31,9 @@ class SyncUpcomingFixture(PollTask):
         self.payload = payload or {}
         self.upcoming_fixture_dao = UpcomingFixtureDao()
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+
+        self.fetch_interval = timedelta(days=1)
+        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
     def get_pending_fetch_items(self):
         site_leagues = league_service.get_site_leagues(
@@ -64,7 +66,7 @@ class SyncUpcomingFixture(PollTask):
                         result_set = future.result()
                         if result_set is None or result_set.is_empty():
                             self.logger.warning(f"No response for {url}")
-                            self.upcoming_fixture_dao.mark_fetch_failed(league_id, "No response")
+                            self.upcoming_fixture_dao.mark_fetch_failed(league_id, "No response", self.fetch_fail_interval)
                             continue
 
                         self.upcoming_fixture_dao.sync_raw_data({
@@ -73,12 +75,12 @@ class SyncUpcomingFixture(PollTask):
                             "source_url": url,
                             "html_body": result_set.first(),
                         })
-                        self.upcoming_fixture_dao.mark_as_fetched(league_id, self.FETCH_INTERVAL)
+                        self.upcoming_fixture_dao.mark_as_fetched(league_id, self.fetch_interval)
                         self.logger.info(f"Synced upcoming fixtures for league_id={league_id} league_name={league_name}")
 
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.upcoming_fixture_dao.mark_fetch_failed(league_id, full_stack_trace)
+                        self.upcoming_fixture_dao.mark_fetch_failed(league_id, full_stack_trace, self.fetch_fail_interval)
                         self.logger.error(f"Failed to sync upcoming fixtures for league_id={league_id}: {e}")
             except Exception as e:
                 self.logger.error(f"Sync upcoming fixture loop error: {e}", exc_info=True)
