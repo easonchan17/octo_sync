@@ -5,7 +5,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import PhaseRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineRefetchStrategy
 from datetime import datetime, timezone, timedelta
 from core.types.params import CrawlParams
 from core.types.enums import OddsMarkets
@@ -53,12 +53,12 @@ class BaseSyncOdds(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG, rule_extras=rule_extras)
 
         self.refetch_strategy = (
-            PhaseRefetchStrategy(min_refetch_interval=timedelta(minutes=5))
-            .add_phase(timedelta(days=-7), timedelta(days=-3), timedelta(hours=24))
-            .add_phase(timedelta(days=-3), timedelta(hours=-24), timedelta(hours=12))
-            .add_phase(timedelta(hours=-24), timedelta(hours=-2), timedelta(hours=1))
-            .add_phase(timedelta(hours=-2), timedelta(hours=-1), timedelta(minutes=15))
-            .add_phase(timedelta(hours=-1), timedelta(0), timedelta(minutes=5))
+            TimelineRefetchStrategy(min_refetch_interval=timedelta(minutes=5))
+            .add_segment(timedelta(days=-7), timedelta(days=-3), timedelta(hours=24))
+            .add_segment(timedelta(days=-3), timedelta(hours=-24), timedelta(hours=12))
+            .add_segment(timedelta(hours=-24), timedelta(hours=-2), timedelta(hours=1))
+            .add_segment(timedelta(hours=-2), timedelta(hours=-1), timedelta(minutes=15))
+            .add_segment(timedelta(hours=-1), timedelta(0), timedelta(minutes=5))
         )
 
     def _build_page_url(

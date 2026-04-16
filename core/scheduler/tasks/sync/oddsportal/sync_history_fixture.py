@@ -1,5 +1,6 @@
 import traceback
 from core.registry import Registry
+from datetime import timedelta
 from typing import Any, Dict, Optional
 from core.types.enums import SiteName, LeaguePriority
 from core.browser.interceptor import TaskType
@@ -46,6 +47,11 @@ class SyncHistoryFixture(PollTask):
         self.payload = payload or {}
         self.history_fixture_dao = HistoryFixtureDao()
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+
+        self.fetch_interval = timedelta(days=1)
+
+    def calc_next_fetch_interval(self, season: int, max_season: int, page: int) -> Optional[timedelta]:
+        return self.fetch_interval if season == max_season and page == 1 else None
 
     def build_season_slug(self, season: int, max_season: int) -> Optional[str]:
         if season == max_season:
@@ -121,7 +127,8 @@ class SyncHistoryFixture(PollTask):
                             "source_url": page_url,
                             "json_body": json_body,
                         })
-                        self.history_fixture_dao.mark_as_fetched(league_id, season, page)
+                        fetch_interval = self.calc_next_fetch_interval(season, max_season, page)
+                        self.history_fixture_dao.mark_as_fetched(league_id, season, page, fetch_interval)
                         self.history_fixture_dao.update_progress(league_id, season, page, total, total_page, page_size)
                         self.logger.info(f"Synced oddsportal fixtures league_id={league_id} league_name={league_name} season={season} page={page}/{total_page}")
 

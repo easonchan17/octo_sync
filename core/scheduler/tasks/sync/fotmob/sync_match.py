@@ -10,7 +10,7 @@ from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import PhaseRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineRefetchStrategy
 from core.types.enums import LeaguePriority
 from core.types.params import CrawlParams
 
@@ -36,13 +36,13 @@ class SyncMatch(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.refetch_strategy = (
-            PhaseRefetchStrategy(min_refetch_interval=timedelta(minutes=10))
-            .add_phase(timedelta(days=-2), timedelta(hours=-2), timedelta(hours=24))
-            .add_phase(timedelta(hours=-2), timedelta(hours=-1), timedelta(minutes=20))
-            .add_phase(timedelta(hours=-1), timedelta(0), timedelta(minutes=10))
-            .add_phase(timedelta(0), timedelta(hours=8), timedelta(hours=4))
-            .add_phase(timedelta(hours=8), timedelta(hours=28), timedelta(hours=24))
-            .add_phase(timedelta(hours=28), timedelta(hours=48), timedelta(hours=24))
+            TimelineRefetchStrategy(min_refetch_interval=timedelta(minutes=10))
+            .add_segment(timedelta(days=-2), timedelta(hours=-2), timedelta(hours=24))
+            .add_segment(timedelta(hours=-2), timedelta(hours=-1), timedelta(minutes=20))
+            .add_segment(timedelta(hours=-1), timedelta(0), timedelta(minutes=10))
+            .add_segment(timedelta(0), timedelta(hours=8), timedelta(hours=4))
+            .add_segment(timedelta(hours=8), timedelta(hours=28), timedelta(hours=24))
+            .add_segment(timedelta(hours=28), timedelta(hours=48), timedelta(hours=24))
         )
 
         self.min_refetch_league_priority = CrawlParams.MATCH_MIN_REFETCH_LEAGUE_PRIORITY

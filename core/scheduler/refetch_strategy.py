@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
 from typing import Optional
+from datetime import datetime, timedelta
 
-class RefetchPhase:
+class TimelineSegment:
     def __init__(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> None:
         self.start_offset = start_offset
         self.end_offset = end_offset
@@ -16,52 +16,76 @@ class RefetchPhase:
         time_to_end = (kickoff_time + self.end_offset) - current_time
         return min(self.interval, max(time_to_end, timedelta(0)))
 
-class PhaseRefetchStrategy:
+class TimelineRefetchStrategy:
     def __init__(self, min_refetch_interval: timedelta) -> None:
-        self._phases: list[RefetchPhase] = []
-        self.min_refetch_interval = min_refetch_interval
+        self._segments: list[TimelineSegment] = []
+        self._min_interval = min_refetch_interval
 
-    def add_phase(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> "PhaseRefetchStrategy":
-        if interval < self.min_refetch_interval:
-            raise ValueError(f"Interval {interval} is less than min_refetch_interval {self.min_refetch_interval}")
+    def add_segment(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> "TimelineRefetchStrategy":
+        if interval < self._min_interval:
+            raise ValueError(f"Interval {interval} is less than min_refetch_interval {self._min_interval}")
 
         if start_offset >= end_offset:
             raise ValueError(f"Invalid range: start_offset {start_offset} must be less than end_offset {end_offset}")
 
-        if self._phases:
-            last_phase = self._phases[-1]
+        if self._segments:
+            last_phase = self._segments[-1]
             if start_offset < last_phase.end_offset:
                 raise ValueError(f"Sequence violation: start_offset {start_offset} must be >= last end_offset {last_phase.end_offset}")
 
-        self._phases.append(RefetchPhase(start_offset, end_offset, interval))
+        self._segments.append(TimelineSegment(start_offset, end_offset, interval))
         return self
 
     def suggest_interval(self, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
-        if not self._phases:
+        if not self._segments:
             return None
 
-        first_start_time = kickoff_time + self._phases[0].start_offset
+        first_start_time = kickoff_time + self._segments[0].start_offset
         if current_time < first_start_time:
             return first_start_time - current_time
 
-        for phase in self._phases:
+        for phase in self._segments:
             if phase.is_active(kickoff_time, current_time):
                 suggested = phase.suggest_interval(kickoff_time, current_time)
-                return max(suggested, self.min_refetch_interval)
+                return max(suggested, self._min_interval)
 
         return None
 
-class MappingRefreshPolicy:
-    def __init__(self, min_attempts: Optional[int], max_attempts: Optional[int], refresh_interval_minutes: float) -> None:
+class AttemptSegment:
+    def __init__(self, min_attempts: int, max_attempts: int, interval: timedelta) -> None:
         self.min_attempts = min_attempts
         self.max_attempts = max_attempts
-        self.refresh_interval = timedelta(minutes=refresh_interval_minutes)
+        self.interval = interval
 
     def is_active(self, attempts: int) -> bool:
-        if self.min_attempts is not None and attempts < self.min_attempts:
+        if attempts < self.min_attempts:
             return False
 
-        if self.max_attempts is not None and attempts >= self.max_attempts:
+        if attempts >= self.max_attempts:
             return False
 
         return True
+
+
+class AttemptRefetchStrategy:
+    def __init__(self) -> None:
+        self._segments: list[AttemptSegment] = []
+
+    def add_segment(self, min_attempts: int, max_attempts: int, interval: timedelta) -> "AttemptRefetchStrategy":
+        if min_attempts >= max_attempts:
+            raise ValueError(f"Invalid range: min_attempts {min_attempts} must be less than max_attempts {max_attempts}")
+
+        if self._segments:
+            last = self._segments[-1]
+            if last.max_attempts != min_attempts:
+                raise ValueError(f"Sequence violation: min_attempts {min_attempts} must equal last max_attempts {last.max_attempts}")
+
+        self._segments.append(AttemptSegment(min_attempts, max_attempts, interval))
+        return self
+
+    def suggest_interval(self, attempts: int) -> Optional[timedelta]:
+        for segment in self._segments:
+            if segment.is_active(attempts):
+                return segment.interval
+
+        return None

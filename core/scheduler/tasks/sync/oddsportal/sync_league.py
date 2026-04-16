@@ -1,5 +1,6 @@
 import traceback
 from core.registry import Registry
+from datetime import timedelta
 from typing import Any, Dict, Optional
 from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
@@ -44,6 +45,7 @@ class SyncLeague(PollTask):
         self.payload = payload or {}
         self.league_dao = LeagueDao()
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+        self.fetch_interval = timedelta(days=7)
 
     def execute(self, *args, **kwargs) -> None:
         sport_name = self.SPORT_NAME
@@ -72,7 +74,7 @@ class SyncLeague(PollTask):
                     "sport": sport_name,
                     "json_body": result_set.first(),
                 })
-                self.league_dao.mark_as_fetched(sport_name)
+                self.league_dao.mark_as_fetched(sport_name, self.fetch_interval)
                 self.logger.info(f"Synced oddsportal leagues for sport={sport_name}")
 
             except Exception as e:

@@ -9,6 +9,7 @@ class FixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
     __table_args__ = (
         Index('idx_fixture_raw_created_at', 'created_at'),
         Index('idx_fixture_raw_updated_at', 'updated_at'),
+        Index('idx_fixture_raw_next_fetch_at', 'next_fetch_at'),
         Index(
             'idx_fixture_raw_not_parsed',
             'match_date',
@@ -19,14 +20,12 @@ class FixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
             'match_date',
             postgresql_where=text("is_fetched = false")
         ),
-        Index('idx_fixture_raw_refetch', 'is_parsed', 'confirm_count', 'match_date'),
         {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_date = Column(Date, nullable=False, unique=True)
     last_kickoff_time = Column(DateTime(timezone=True), nullable=True)
-    next_fetch_at = Column(DateTime(timezone=True), nullable=True)
 
 class Fixture(Base):
     __tablename__ = 'fixtures'

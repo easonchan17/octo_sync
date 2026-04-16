@@ -1,5 +1,6 @@
-from sqlalchemy import func, or_, and_
-from typing import List, Dict, Any
+from datetime import timedelta
+from sqlalchemy import case, func, or_, and_
+from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.league import League
 from core.store.postgres.models.oddsportal.fixture import HistoryFixtureProgress, HistoryFixtureRaw
@@ -46,7 +47,7 @@ class HistoryFixtureDao(BaseDao):
                 HistoryFixtureRaw.created_at.asc()
             ).limit(limit).all()
 
-    def mark_as_fetched(self, league_id: int, season: int, page: int) -> None:
+    def mark_as_fetched(self, league_id: int, season: int, page: int, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(HistoryFixtureRaw).filter(
                 HistoryFixtureRaw.league_id == league_id,
@@ -58,6 +59,7 @@ class HistoryFixtureDao(BaseDao):
                 HistoryFixtureRaw.last_fetched_at.key: func.now(),
                 HistoryFixtureRaw.total_fetch_count.key: HistoryFixtureRaw.total_fetch_count + 1,
                 HistoryFixtureRaw.fetch_attempts.key: 0,
+                HistoryFixtureRaw.next_fetch_at.key: func.now() + fetch_interval if fetch_interval is not None else None,
                 HistoryFixtureRaw.is_parsed.key: False,
                 HistoryFixtureRaw.last_parse_error.key: None,
                 HistoryFixtureRaw.parse_attempts.key: 0,

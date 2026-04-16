@@ -3,7 +3,7 @@ from core.registry import Registry
 from typing import Any, Dict, Optional
 from core.types.params import CrawlParams
 from core.browser.interceptor import TaskType
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from core.scheduler.tasks.poll_task import PollTask
 from core.types.enums import SiteName, LeaguePriority
 from core.store.postgres.daos.oddsportal import SeasonDao
@@ -11,11 +11,8 @@ from core.browser.intercept_policy import InterceptPolicy, InterceptType
 from core.browser.handlers.receivers.html_receiver import HtmlReceiver
 from core.services.league.service import league_service
 
-
 @Registry.poll('sync.oddsportal.season')
 class SyncSeason(PollTask):
-    FETCH_INTERVAL_DAYS=1
-
     POLICY_CONFIG = {
         "url_template": "https://www.oddsportal.com{fixture_uri}",
         "debug": False,
@@ -33,6 +30,8 @@ class SyncSeason(PollTask):
         self.season_dao = SeasonDao()
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
+        self.fetch_interval = timedelta(days=1)
+
     def build_fixture_uri(self, fixture_uri: str) -> str:
         return f"{fixture_uri[:-1]}/results/"
 
@@ -40,12 +39,10 @@ class SyncSeason(PollTask):
         site_leagues = league_service.get_site_leagues(
             SiteName.ODDSPORTAL.value, LeaguePriority.LEVEL_REGIONAL.value
         )
-        league_ids = [int(l.league_id) for l in site_leagues]
+        league_ids = [int(league.league_id) for league in site_leagues]
 
-        last_fetched_before = datetime.now(timezone.utc) - timedelta(days=self.FETCH_INTERVAL_DAYS)
         return self.season_dao.get_pending_fetch_items(
             league_ids,
-            last_fetched_before,
             CrawlParams.FETCH_MAX_RETRIES
         )
 
@@ -57,7 +54,7 @@ class SyncSeason(PollTask):
                     self.idle_sleep()
                     continue
 
-                for league_id, league_name, fixture_uri, _ in items:
+                for league_id, league_name, fixture_uri in items:
                     if self.should_stop():
                         return
 
@@ -83,7 +80,7 @@ class SyncSeason(PollTask):
                             "source_url": page_url,
                             "html_body": result_set.first(),
                         })
-                        self.season_dao.mark_as_fetched(league_id)
+                        self.season_dao.mark_as_fetched(league_id, self.fetch_interval)
                         self.logger.info(f"Synced season for league_id={league_id} league_name={league_name}")
 
                     except Exception as e:
