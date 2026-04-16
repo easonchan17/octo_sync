@@ -9,6 +9,7 @@ class LeagueRaw(Base, CrawlStatusMixin, RawJsonMixin):
     __table_args__ = (
         Index('idx_league_raw_created_at', 'created_at'),
         Index('idx_league_raw_updated_at', 'updated_at'),
+        Index('idx_league_raw_next_fetch_at', 'next_fetch_at'),
         Index(
             'idx_league_raw_not_parsed',
             'is_parsed',
@@ -26,6 +27,7 @@ class SeasonRaw(Base, CrawlStatusMixin, RawHtmlMixin):
     __table_args__ = (
         Index('idx_season_raw_created_at', 'created_at'),
         Index('idx_season_raw_updated_at', 'updated_at'),
+        Index('idx_season_raw_next_fetch_at', 'next_fetch_at'),
         Index(
             'idx_season_raw_not_parsed',
             'is_parsed',

@@ -74,7 +74,7 @@ class CrawlStatusMixin:
     total_fetch_count = Column(Integer, default=0)
     total_parse_count = Column(Integer, default=0)
 
-    confirm_count = Column(Integer, default=0)
+    next_fetch_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class RawJsonMixin:

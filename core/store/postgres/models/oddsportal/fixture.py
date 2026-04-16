@@ -24,6 +24,7 @@ class HistoryFixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
         UniqueConstraint('league_id', 'season', 'page', name='uq_history_fixture_raw_league_season_page'),
         Index('idx_history_fixture_raw_created_at', 'created_at'),
         Index('idx_history_fixture_raw_updated_at', 'updated_at'),
+        Index('idx_history_fixture_raw_next_fetch_at', 'next_fetch_at'),
         Index(
             'idx_history_fixture_raw_not_parsed',
             'is_parsed',
@@ -43,6 +44,7 @@ class UpcomingFixtureRaw(Base, CrawlStatusMixin, RawHtmlMixin):
     __table_args__ = (
         Index('idx_upcoming_fixture_raw_created_at', 'created_at'),
         Index('idx_upcoming_fixture_raw_updated_at', 'updated_at'),
+        Index('idx_upcoming_fixture_raw_next_fetch_at', 'next_fetch_at'),
         Index(
             'idx_upcoming_fixture_raw_not_parsed',
             'is_parsed',
@@ -54,7 +56,6 @@ class UpcomingFixtureRaw(Base, CrawlStatusMixin, RawHtmlMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     league_id = Column(Integer, nullable=False, unique=True)
     season = Column(Integer, nullable=False)
-    next_fetch_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class Fixture(Base):

@@ -1,18 +1,11 @@
 from sqlalchemy import delete, func, or_, and_, update
-from datetime import datetime
 from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture, FixtureMappingLog
 from ..base_dao import BaseDao
 
 class FixtureMappingDao(BaseDao):
-    def get_pending_mapping_items(
-        self,
-        league_ids: List[int],
-        next_fetch_limit: datetime,
-        max_retries: int,
-        limit: int
-    ) -> List[Any]:
+    def get_pending_mapping_items(self, league_ids: List[int], limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.id,
@@ -29,10 +22,7 @@ class FixtureMappingDao(BaseDao):
                 Fixture.league_id.in_(league_ids),
                 or_(
                     FixtureMappingLog.match_code.is_(None),
-                    and_(
-                        FixtureMappingLog.attempts < max_retries,
-                        FixtureMappingLog.next_attempt_at <= next_fetch_limit
-                    )
+                    FixtureMappingLog.next_attempt_at <= func.now()
                 )
             ).order_by(
                 Fixture.kickoff_time.desc()

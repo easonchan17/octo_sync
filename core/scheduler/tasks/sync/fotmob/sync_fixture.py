@@ -7,7 +7,7 @@ from core.store.postgres.daos.fotmob import FixtureDao
 from core.browser.handlers.receivers import JsonReceiver
 from datetime import date, datetime, time, timedelta, timezone
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import PhaseRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineRefetchStrategy
 from core.types.params import CrawlParams
 
 @Registry.poll('sync.fotmob.fixture')
@@ -31,9 +31,9 @@ class SyncFixture(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.refetch_strategy = (
-            PhaseRefetchStrategy(min_refetch_interval=timedelta(minutes=1))
-            .add_phase(timedelta(hours=0), timedelta(hours=28), timedelta(minutes=1))
-            .add_phase(timedelta(hours=28), timedelta(hours=30), timedelta(hours=1))
+            TimelineRefetchStrategy(min_refetch_interval=timedelta(minutes=1))
+            .add_segment(timedelta(hours=0), timedelta(hours=28), timedelta(minutes=1))
+            .add_segment(timedelta(hours=28), timedelta(hours=30), timedelta(hours=1))
         )
 
     def get_pending_fetch_items(self) -> List[date]:

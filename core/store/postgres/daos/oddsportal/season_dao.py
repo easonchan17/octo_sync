@@ -1,28 +1,30 @@
-from datetime import datetime
+from datetime import timedelta
 from sqlalchemy import func, or_, and_
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.league import League, SeasonRaw
 from ..base_dao import BaseDao
 
 
 class SeasonDao(BaseDao):
-    def get_pending_fetch_items(self, league_ids: List[int], fetched_before: datetime, max_retries: int) -> List[Any]:
+    def get_pending_fetch_items(self, league_ids: List[int], max_retries: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 League.league_id,
                 League.league_name,
                 League.page_url,
-                SeasonRaw.last_fetched_at,
             ).outerjoin(
                 SeasonRaw, SeasonRaw.league_id == League.league_id
             ).filter(
                 League.league_id.in_(league_ids),
                 or_(
-                    SeasonRaw.last_fetched_at.is_(None),
+                    SeasonRaw.league_id.is_(None),
                     and_(
-                        SeasonRaw.last_fetched_at < fetched_before,
-                        SeasonRaw.fetch_attempts < max_retries,
+                        or_(
+                            SeasonRaw.last_fetched_at.is_(None),
+                            SeasonRaw.next_fetch_at <= func.now(),
+                        ),
+                        SeasonRaw.fetch_attempts < max_retries
                     ),
                 )
             ).all()
@@ -41,7 +43,7 @@ class SeasonDao(BaseDao):
                 SeasonRaw.created_at.asc()
             ).limit(limit).all()
 
-    def mark_as_fetched(self, league_id: int) -> None:
+    def mark_as_fetched(self, league_id: int, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(SeasonRaw).filter(
                 SeasonRaw.league_id == league_id
@@ -51,6 +53,7 @@ class SeasonDao(BaseDao):
                 SeasonRaw.last_fetched_at.key: func.now(),
                 SeasonRaw.total_fetch_count.key: SeasonRaw.total_fetch_count + 1,
                 SeasonRaw.fetch_attempts.key: 0,
+                SeasonRaw.next_fetch_at.key: func.now() + fetch_interval if fetch_interval is not None else None,
                 SeasonRaw.is_parsed.key: False,
                 SeasonRaw.last_parse_error.key: None,
                 SeasonRaw.parse_attempts.key: 0,

@@ -1,5 +1,6 @@
-from sqlalchemy import func
-from typing import List, Dict, Any
+from datetime import timedelta
+from sqlalchemy import func, or_, and_
+from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.league import LeagueRaw, League
 from ..base_dao import BaseDao
@@ -8,13 +9,17 @@ from ..base_dao import BaseDao
 class LeagueDao(BaseDao):
     def is_pending_fetch_item(self, sport: str) -> bool:
         with self.db.get_session() as session:
-            is_fetched = session.query(
-                LeagueRaw.is_fetched
-            ).filter(
-                LeagueRaw.sport == sport
-            ).scalar()
-
-            return not is_fetched
+            non_pending_item = session.query(LeagueRaw).filter(
+                LeagueRaw.sport == sport,
+                or_(
+                    and_(
+                        LeagueRaw.next_fetch_at.is_(None),
+                        LeagueRaw.is_fetched == True
+                    ),
+                    LeagueRaw.next_fetch_at > func.now(),
+                )
+            ).first()
+            return non_pending_item is None
 
     def get_pending_parse_items(self, max_retries: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:
@@ -29,7 +34,7 @@ class LeagueDao(BaseDao):
                 LeagueRaw.created_at.asc()
             ).limit(limit).all()
 
-    def mark_as_fetched(self, sport: str) -> None:
+    def mark_as_fetched(self, sport: str, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(LeagueRaw).filter(
                 LeagueRaw.sport == sport
@@ -39,6 +44,7 @@ class LeagueDao(BaseDao):
                 LeagueRaw.last_fetched_at.key: func.now(),
                 LeagueRaw.total_fetch_count.key: LeagueRaw.total_fetch_count + 1,
                 LeagueRaw.fetch_attempts.key: 0,
+                LeagueRaw.next_fetch_at.key: func.now() + fetch_interval if fetch_interval is not None else None,
                 LeagueRaw.is_parsed.key: False,
                 LeagueRaw.last_parse_error.key: None,
                 LeagueRaw.parse_attempts.key: 0,
