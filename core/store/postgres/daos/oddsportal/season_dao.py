@@ -60,7 +60,8 @@ class SeasonDao(BaseDao):
                 SeasonRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, league_id: int, error_msg: str) -> None:
+    def mark_fetch_failed(self, league_id: int, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+        next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         with self.db.get_session() as session:
             insert_stmt = insert(SeasonRaw).values(
                 league_id=league_id,
@@ -69,6 +70,7 @@ class SeasonDao(BaseDao):
                 fetch_attempts=1,
                 last_fetch_error=(error_msg or '')[:2000],
                 total_fetch_count=1,
+                next_fetch_at=next_fetch_at,
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[SeasonRaw.league_id.key],
@@ -77,6 +79,7 @@ class SeasonDao(BaseDao):
                     SeasonRaw.last_fetch_error.key: (error_msg or '')[:2000],
                     SeasonRaw.fetch_attempts.key: SeasonRaw.fetch_attempts + 1,
                     SeasonRaw.total_fetch_count.key: SeasonRaw.total_fetch_count + 1,
+                    SeasonRaw.next_fetch_at.key: next_fetch_at,
                     SeasonRaw.updated_at.key: func.now(),
                 }
             )

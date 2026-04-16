@@ -98,7 +98,8 @@ class MatchDao(BaseDao):
                 MatchRaw.updated_at: func.now()
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, match_id: int, kickoff_time: datetime, error_msg: str) -> None:
+    def mark_fetch_failed(self, match_id: int, kickoff_time: datetime, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+        next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         with self.db.get_session() as session:
             insert_stmt = insert(MatchRaw).values(
                 match_id=match_id,
@@ -107,6 +108,7 @@ class MatchDao(BaseDao):
                 fetch_attempts=1,
                 last_fetch_error=(error_msg or "")[:2000],
                 total_fetch_count=1,
+                next_fetch_at=next_fetch_at,
                 json_body={}
             )
 
@@ -117,6 +119,7 @@ class MatchDao(BaseDao):
                     MatchRaw.last_fetch_error: (error_msg or "")[:2000],
                     MatchRaw.fetch_attempts: MatchRaw.fetch_attempts + 1,
                     MatchRaw.total_fetch_count: MatchRaw.total_fetch_count + 1,
+                    MatchRaw.next_fetch_at: next_fetch_at,
                     MatchRaw.updated_at: func.now()
                 }
             )

@@ -6,6 +6,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import LeagueDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.types.params import CrawlParams
 
 
 @Registry.poll('sync.oddsportal.league')
@@ -46,6 +47,7 @@ class SyncLeague(PollTask):
         self.league_dao = LeagueDao()
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
         self.fetch_interval = timedelta(days=7)
+        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
     def execute(self, *args, **kwargs) -> None:
         sport_name = self.SPORT_NAME
@@ -66,7 +68,7 @@ class SyncLeague(PollTask):
                 result_set = future.result()
                 if result_set is None or result_set.is_empty():
                     self.logger.error(f"No response for {page_url}")
-                    self.league_dao.mark_fetch_failed(sport_name, "No response")
+                    self.league_dao.mark_fetch_failed(sport_name, "No response", self.fetch_fail_interval)
                     continue
 
                 self.league_dao.sync_raw_data({
@@ -79,7 +81,7 @@ class SyncLeague(PollTask):
 
             except Exception as e:
                 full_stack_trace = traceback.format_exc()
-                self.league_dao.mark_fetch_failed(sport_name, full_stack_trace)
+                self.league_dao.mark_fetch_failed(sport_name, full_stack_trace, self.fetch_fail_interval)
                 self.logger.error(f"Failed to sync oddsportal leagues for sport={sport_name}: {e}")
             finally:
                 self.idle_sleep()

@@ -35,6 +35,7 @@ class SyncFixture(PollTask):
             .add_segment(timedelta(hours=0), timedelta(hours=28), timedelta(minutes=1))
             .add_segment(timedelta(hours=28), timedelta(hours=30), timedelta(hours=1))
         )
+        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
     def get_pending_fetch_items(self) -> List[date]:
         start_date, end_date = self.get_fetch_date_range(CrawlParams.FIXTURE_LOOKAHEAD_DAYS)
@@ -75,12 +76,12 @@ class SyncFixture(PollTask):
                         result_set = future.result()
                         if result_set is None:
                             self.logger.error(f"No response for {page_url}")
-                            self.fixture_dao.mark_fetch_failed(cur_date, "No response")
+                            self.fixture_dao.mark_fetch_failed(cur_date, "No response", self.fetch_fail_interval)
                             continue
 
                         if result_set.is_empty():
                             self.logger.error(f"No fixture data for {page_url}")
-                            self.fixture_dao.mark_fetch_failed(cur_date, "No data")
+                            self.fixture_dao.mark_fetch_failed(cur_date, "No data", self.fetch_fail_interval)
                             continue
 
                         fetch_interval = self.calc_next_fetch_time(cur_date, datetime.now(timezone.utc))
@@ -100,7 +101,7 @@ class SyncFixture(PollTask):
                         self.logger.info(f"Synced fixtures: match_date={cur_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.fixture_dao.mark_fetch_failed(cur_date, full_stack_trace)
+                        self.fixture_dao.mark_fetch_failed(cur_date, full_stack_trace, self.fetch_fail_interval)
                         self.logger.error(f"Failed to sync fixtures for {cur_date}: {e}")
                         self.idle_sleep()
 

@@ -60,6 +60,7 @@ class BaseSyncOdds(PollTask):
             .add_segment(timedelta(hours=-2), timedelta(hours=-1), timedelta(minutes=15))
             .add_segment(timedelta(hours=-1), timedelta(0), timedelta(minutes=5))
         )
+        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
     def _build_page_url(
         self, match_code: str, home_name: str, home_code: str, away_name: str, away_code: str, match_url: str
@@ -116,7 +117,7 @@ class BaseSyncOdds(PollTask):
                         result_set = future.result()
                         if result_set is None or result_set.is_empty():
                             self.logger.error(f"No response for {page_url}")
-                            self.odds_dao.mark_fetch_failed(match_code, self.market.betting_type_id, self.market.scope_id, "No response")
+                            self.odds_dao.mark_fetch_failed(match_code, self.market.betting_type_id, self.market.scope_id, "No response", self.fetch_fail_interval)
                             continue
 
                         json_body = result_set.first()
@@ -135,7 +136,7 @@ class BaseSyncOdds(PollTask):
 
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.odds_dao.mark_fetch_failed(match_code, self.market.betting_type_id, self.market.scope_id, full_stack_trace)
+                        self.odds_dao.mark_fetch_failed(match_code, self.market.betting_type_id, self.market.scope_id, full_stack_trace, self.fetch_fail_interval)
                         self.logger.error(f"Failed to sync odds for match_code={match_code}: {e}")
 
             except Exception as e:

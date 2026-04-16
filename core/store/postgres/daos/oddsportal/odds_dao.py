@@ -60,7 +60,8 @@ class OddsDao(BaseDao):
                 OddsRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, match_code: str, betting_type_id: int, scope_id: int, error_msg: str) -> None:
+    def mark_fetch_failed(self, match_code: str, betting_type_id: int, scope_id: int, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+        next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         with self.db.get_session() as session:
             insert_stmt = insert(OddsRaw).values(
                 match_code=match_code,
@@ -71,6 +72,7 @@ class OddsDao(BaseDao):
                 fetch_attempts=1,
                 last_fetch_error=(error_msg or '')[:2000],
                 total_fetch_count=1,
+                next_fetch_at=next_fetch_at,
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[OddsRaw.match_code.key, OddsRaw.betting_type_id.key, OddsRaw.scope_id.key],
@@ -79,6 +81,7 @@ class OddsDao(BaseDao):
                     OddsRaw.last_fetch_error.key: (error_msg or '')[:2000],
                     OddsRaw.fetch_attempts.key: OddsRaw.fetch_attempts + 1,
                     OddsRaw.total_fetch_count.key: OddsRaw.total_fetch_count + 1,
+                    OddsRaw.next_fetch_at.key: next_fetch_at,
                     OddsRaw.updated_at.key: func.now(),
                 }
             )
