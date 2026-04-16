@@ -7,12 +7,11 @@ from core.services.match_resolver import MatchItem, MatchResolver
 from core.store.postgres.daos.fotmob.fixture_dao import FixtureDao as FotmobFixtureDao
 from core.store.postgres.daos.oddsportal.fixture_mapping_dao import FixtureMappingDao
 from core.scheduler.tasks.poll_task import PollTask
-from core.scheduler.refetch_strategy import MappingRefreshPolicy
+from core.scheduler.refetch_strategy import AttemptRefetchStrategy
 
 @Registry.poll('mapping.oddsportal.fixture')
 class FixtureMapper(PollTask):
     MAPPING_QUERY_LIMIT = 100
-    MAPPING_MAX_RETRIES = 6
     SIMILARITY_THRESHOLD = 60
     KICKOFF_TOLERANCE = timedelta(minutes=30)
 
@@ -24,24 +23,26 @@ class FixtureMapper(PollTask):
             kickoff_tolerance=self.KICKOFF_TOLERANCE,
             similarity_threshold=self.SIMILARITY_THRESHOLD
         )
-        self.refresh_policies = [
-            MappingRefreshPolicy(min_attempts=1, max_attempts=4, refresh_interval_minutes=1),
-            MappingRefreshPolicy(min_attempts=4, max_attempts=5, refresh_interval_minutes=60),
-            MappingRefreshPolicy(min_attempts=5, max_attempts=self.MAPPING_MAX_RETRIES, refresh_interval_minutes=24 * 60),
-        ]
+        self.retry_strategy = (
+            AttemptRefetchStrategy()
+            .add_segment(1, 4, timedelta(minutes=1))
+            .add_segment(4, 5, timedelta(hours=1))
+            .add_segment(5, 6, timedelta(hours=24))
+        )
 
-    def _calc_next_attempt_at(self, attempts: int) -> Optional[datetime]:
-        for policy in self.refresh_policies:
-            if policy.is_active(attempts):
-                return datetime.now(timezone.utc) + policy.refresh_interval
+    def _calc_next_attempt_at(self, attempts: int, current_time: datetime) -> Optional[datetime]:
+        interval = self.retry_strategy.suggest_interval(attempts)
+        return  current_time + interval if interval is not None else None
 
     def _build_failed_records(self, items) -> List[Dict[str, Any]]:
+        current_time = datetime.now(timezone.utc)
+
         records = []
         for item in items:
             records.append({
                 "match_code": item.match_code,
                 "attempts": item.attempts + 1,
-                "next_attempt_at": self._calc_next_attempt_at(item.attempts + 1)
+                "next_attempt_at": self._calc_next_attempt_at(item.attempts + 1, current_time)
             })
         return records
 
@@ -56,8 +57,6 @@ class FixtureMapper(PollTask):
 
                 oddsportal_fixtures = self.oddsportal_dao.get_pending_mapping_items(
                     list(oddsportal_league_map.keys()),
-                    datetime.now(timezone.utc),
-                    self.MAPPING_MAX_RETRIES,
                     self.MAPPING_QUERY_LIMIT
                 )
                 if not oddsportal_fixtures:

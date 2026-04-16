@@ -10,6 +10,7 @@ class MatchRaw(Base, CrawlStatusMixin, RawJsonMixin):
     __table_args__ = (
         Index('idx_match_raw_created_at', 'created_at'),
         Index('idx_match_raw_updated_at', 'updated_at'),
+        Index('idx_match_raw_next_fetch_at', 'next_fetch_at'),
         Index('idx_match_raw_kickoff_time', 'kickoff_time'),
         Index(
             'idx_match_raw_not_parsed',
@@ -21,7 +22,6 @@ class MatchRaw(Base, CrawlStatusMixin, RawJsonMixin):
             'match_id',
             postgresql_where=text("is_fetched = false")
         ),
-        Index('idx_match_raw_refetch', 'is_parsed', 'confirm_count', 'kickoff_time'),
         {'schema': SiteName.FOTMOB.value}
     )
 
@@ -31,7 +31,6 @@ class MatchRaw(Base, CrawlStatusMixin, RawJsonMixin):
     kickoff_time = Column(DateTime(timezone=True), nullable=False)
 
     match_status = Column(Integer, nullable=True)
-    next_fetch_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class MatchStat(Base):
