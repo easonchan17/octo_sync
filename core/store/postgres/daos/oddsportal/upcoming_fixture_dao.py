@@ -7,21 +7,22 @@ from core.store.postgres.models.oddsportal.fixture import UpcomingFixtureRaw
 from ..base_dao import BaseDao
 
 class UpcomingFixtureDao(BaseDao):
-    def get_pending_fetch_items(self, league_ids: List[int], next_fetch_limit: datetime) -> List[Any]:
+    def get_pending_fetch_items(self, league_ids: List[int]) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 League.league_id,
                 League.league_name,
                 League.page_url,
                 League.max_season,
+                UpcomingFixtureRaw.fetch_attempts
             ).outerjoin(
                 UpcomingFixtureRaw, UpcomingFixtureRaw.league_id == League.league_id
             ).filter(
                 League.league_id.in_(league_ids),
                 League.max_season.isnot(None),
                 or_(
-                    UpcomingFixtureRaw.next_fetch_at.is_(None),
-                    UpcomingFixtureRaw.next_fetch_at <= next_fetch_limit,
+                    UpcomingFixtureRaw.league_id.is_(None),
+                    UpcomingFixtureRaw.next_fetch_at <= func.now(),
                 )
             ).all()
 
@@ -120,4 +121,3 @@ class UpcomingFixtureDao(BaseDao):
                 }
             )
             session.execute(insert_stmt)
-

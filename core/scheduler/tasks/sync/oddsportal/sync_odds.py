@@ -5,7 +5,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import TimelineRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineRefetchStrategy, AttemptRefetchStrategy
 from datetime import datetime, timezone, timedelta
 from core.types.params import CrawlParams
 from core.types.enums import OddsMarkets
@@ -53,14 +53,21 @@ class BaseSyncOdds(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG, rule_extras=rule_extras)
 
         self.refetch_strategy = (
-            TimelineRefetchStrategy(min_refetch_interval=timedelta(minutes=5))
-            .add_segment(timedelta(days=-7), timedelta(days=-3), timedelta(hours=24))
-            .add_segment(timedelta(days=-3), timedelta(hours=-24), timedelta(hours=12))
-            .add_segment(timedelta(hours=-24), timedelta(hours=-2), timedelta(hours=1))
-            .add_segment(timedelta(hours=-2), timedelta(hours=-1), timedelta(minutes=15))
-            .add_segment(timedelta(hours=-1), timedelta(0), timedelta(minutes=5))
+            TimelineRefetchStrategy(min_interval=timedelta(minutes=5))
+            .add_segment(start_offset=timedelta(days=-7), end_offset=timedelta(days=-3), interval=timedelta(days=1))
+            .add_segment(start_offset=timedelta(days=-3), end_offset=timedelta(hours=-24), interval=timedelta(hours=12))
+            .add_segment(start_offset=timedelta(hours=-24), end_offset=timedelta(hours=-2), interval=timedelta(hours=1))
+            .add_segment(start_offset=timedelta(hours=-2), end_offset=timedelta(hours=-1), interval=timedelta(minutes=15))
+            .add_segment(start_offset=timedelta(hours=-1), end_offset=timedelta(0), interval=timedelta(minutes=5))
+            .add_segment(start_offset=timedelta(minutes=0), end_offset=timedelta(minutes=30), interval=timedelta(minutes=10))
         )
-        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
+
+        self.retry_strategy = (
+            AttemptRefetchStrategy()
+            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
+            .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=2))
+            .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(minutes=15))
+        )
 
     def _build_page_url(
         self, match_code: str, home_name: str, home_code: str, away_name: str, away_code: str, match_url: str
@@ -92,14 +99,13 @@ class BaseSyncOdds(PollTask):
                 items = self.odds_dao.get_pending_fetch_items(
                     self.market.betting_type_id,
                     self.market.scope_id,
-                    CrawlParams.FETCH_MAX_RETRIES,
                     CrawlParams.META_DATA_QUERY_LIMIT
                 )
                 if not items:
                     self.idle_sleep()
                     continue
 
-                for match_code, home_name, home_code, away_name, away_code, kickoff_time, match_url in items:
+                for match_code, home_name, home_code, away_name, away_code, kickoff_time, match_url, fetch_attempts in items:
                     if self.should_stop():
                         return
 
@@ -117,7 +123,12 @@ class BaseSyncOdds(PollTask):
                         result_set = future.result()
                         if result_set is None or result_set.is_empty():
                             self.logger.error(f"No response for {page_url}")
-                            self.odds_dao.mark_fetch_failed(match_code, self.market.betting_type_id, self.market.scope_id, "No response", self.fetch_fail_interval)
+                            self.odds_dao.mark_fetch_failed(
+                                match_code,
+                                self.market.betting_type_id,
+                                self.market.scope_id, "No response",
+                                self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            )
                             continue
 
                         json_body = result_set.first()
@@ -136,7 +147,13 @@ class BaseSyncOdds(PollTask):
 
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.odds_dao.mark_fetch_failed(match_code, self.market.betting_type_id, self.market.scope_id, full_stack_trace, self.fetch_fail_interval)
+                        self.odds_dao.mark_fetch_failed(
+                            match_code,
+                            self.market.betting_type_id,
+                            self.market.scope_id,
+                            full_stack_trace,
+                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                        )
                         self.logger.error(f"Failed to sync odds for match_code={match_code}: {e}")
 
             except Exception as e:

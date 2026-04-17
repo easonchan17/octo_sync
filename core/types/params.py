@@ -15,16 +15,12 @@ class CrawlParams:
     START_DATE = datetime(2023, 1, 1, tzinfo=timezone.utc)
     START_SEASON = 2023
 
-    FETCH_FAILURE_DELAY = timedelta(minutes=1)
-
     RAW_DATA_QUERY_LIMIT = 300
     META_DATA_QUERY_LIMIT = 2000
 
-    FETCH_MAX_RETRIES = 5
     PARSE_MAX_RETRIES = 3
 
     POLL_IDLE_SECONDS = 60
-    REQUIRED_CONFIRM_COUNT = 2
 
     MATCH_LOOKAHEAD_DAYS = 2
     MATCH_LIFESPAN_HOURS = 4

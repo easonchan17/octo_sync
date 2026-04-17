@@ -12,7 +12,6 @@ class MatchDao(BaseDao):
         self,
         start_time: datetime,
         end_time: datetime,
-        max_retries: int,
         limit: int
     ) -> List[Any]:
         with self.db.get_session() as session:
@@ -21,7 +20,8 @@ class MatchDao(BaseDao):
                 Fixture.kickoff_time,
                 Fixture.page_url,
                 Fixture.league_id,
-                Fixture.league_name
+                Fixture.league_name,
+                func.coalesce(MatchRaw.fetch_attempts, 0).label("fetch_attempts")
             ).outerjoin(
                 MatchRaw, Fixture.match_id == MatchRaw.match_id
             ).filter(
@@ -30,13 +30,7 @@ class MatchDao(BaseDao):
                 ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value]),
                 or_(
                     MatchRaw.match_id.is_(None),
-                    and_(
-                        or_(
-                            MatchRaw.last_fetched_at.is_(None),
-                            MatchRaw.next_fetch_at <= func.now()
-                        ),
-                        MatchRaw.fetch_attempts < max_retries
-                    )
+                    MatchRaw.next_fetch_at <= func.now()
                 )
             ).order_by(
                 func.coalesce(MatchRaw.next_fetch_at, func.now()).asc(),

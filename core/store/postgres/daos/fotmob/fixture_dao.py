@@ -10,31 +10,33 @@ class FixtureDao(BaseDao):
     def get_pending_fetch_items(
         self,
         start_date: date,
-        end_date: date,
-        max_retries: int,
-    ) -> List[date]:
+        end_date: date
+    ) -> List[Any]:
         with self.db.get_session() as session:
-            ignore_rows = session.query(
-                FixtureRaw.match_date
+            rows = session.query(
+                FixtureRaw.match_date,
+                FixtureRaw.fetch_attempts,
+                (FixtureRaw.next_fetch_at <= func.now()).label("is_fetchable")
             ).filter(
                 FixtureRaw.match_date >= start_date,
-                FixtureRaw.match_date <= end_date,
-                or_(
-                    and_(
-                        FixtureRaw.next_fetch_at.is_(None),
-                        FixtureRaw.is_fetched == True,
-                    ),
-                    FixtureRaw.next_fetch_at > func.now(),
-                    FixtureRaw.fetch_attempts >= max_retries
-                )
+                FixtureRaw.match_date <= end_date
             ).all()
-            ignore_dates = {row[0] for row in ignore_rows}
+
+            db_map = {row.match_date: row for row in rows}
 
             total_days = (end_date - start_date).days + 1
-            all_dates = {start_date + timedelta(days=i) for i in range(total_days)}
+            result = []
 
-            pending_dates = all_dates - ignore_dates
-            return sorted(list(pending_dates), reverse=True)
+            for i in range(total_days):
+                dt = end_date - timedelta(days=i)
+                row = db_map.get(dt)
+
+                if row is None:
+                    result.append((dt, 0))
+                elif row.is_fetchable:
+                    result.append((dt, row.fetch_attempts))
+
+            return result
 
     def get_pending_parse_items(
         self,

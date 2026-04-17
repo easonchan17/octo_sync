@@ -6,8 +6,8 @@ from core.services.league.service import league_service
 from core.services.match_resolver import MatchItem, MatchResolver
 from core.store.postgres.daos.fotmob.fixture_dao import FixtureDao as FotmobFixtureDao
 from core.store.postgres.daos.oddsportal.fixture_mapping_dao import FixtureMappingDao
-from core.scheduler.tasks.poll_task import PollTask
 from core.scheduler.refetch_strategy import AttemptRefetchStrategy
+from core.scheduler.tasks.poll_task import PollTask
 
 @Registry.poll('mapping.oddsportal.fixture')
 class FixtureMapper(PollTask):
@@ -23,14 +23,16 @@ class FixtureMapper(PollTask):
             kickoff_tolerance=self.KICKOFF_TOLERANCE,
             similarity_threshold=self.SIMILARITY_THRESHOLD
         )
+
         self.retry_strategy = (
             AttemptRefetchStrategy()
-            .add_segment(1, 4, timedelta(minutes=1))
-            .add_segment(4, 5, timedelta(hours=1))
-            .add_segment(5, 6, timedelta(hours=24))
+            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
+            .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(hours=1))
+            .add_segment(min_attempts=7, max_attempts=10, interval=timedelta(days=1))
+            .add_segment(min_attempts=10, max_attempts=None, interval=timedelta(days=7))
         )
 
-    def _calc_next_attempt_at(self, attempts: int, current_time: datetime) -> Optional[datetime]:
+    def _get_refetch_time(self, attempts: int, current_time: datetime) -> Optional[datetime]:
         interval = self.retry_strategy.suggest_interval(attempts)
         return  current_time + interval if interval is not None else None
 
@@ -42,7 +44,7 @@ class FixtureMapper(PollTask):
             records.append({
                 "match_code": item.match_code,
                 "attempts": item.attempts + 1,
-                "next_attempt_at": self._calc_next_attempt_at(item.attempts + 1, current_time)
+                "next_attempt_at": self._get_refetch_time(item.attempts + 1, current_time)
             })
         return records
 

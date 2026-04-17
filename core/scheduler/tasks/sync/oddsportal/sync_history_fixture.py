@@ -7,9 +7,8 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import HistoryFixtureDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.scheduler.refetch_strategy import AttemptRefetchStrategy
 from core.services.league.service import league_service
-from core.types.params import CrawlParams
-
 
 @Registry.poll('sync.oddsportal.history_fixture')
 class SyncHistoryFixture(PollTask):
@@ -49,11 +48,13 @@ class SyncHistoryFixture(PollTask):
         self.history_fixture_dao = HistoryFixtureDao()
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
-        self.fetch_interval = timedelta(days=1)
-        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
-    def calc_next_fetch_interval(self, season: int, max_season: int, page: int) -> Optional[timedelta]:
-        return self.fetch_interval if season == max_season and page == 1 else None
+        self.retry_strategy = (
+            AttemptRefetchStrategy()
+            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
+            .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=5))
+            .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(hours=1))
+        )
 
     def build_season_slug(self, season: int, max_season: int) -> Optional[str]:
         if season == max_season:
@@ -77,7 +78,7 @@ class SyncHistoryFixture(PollTask):
         site_leagues = league_service.get_site_leagues(
             SiteName.ODDSPORTAL.value, LeaguePriority.LEVEL_REGIONAL.value
         )
-        league_ids = [int(l.league_id) for l in site_leagues]
+        league_ids = [int(league.league_id) for league in site_leagues]
         from_season, end_season = self.get_fetch_season_range()
 
         items = []
@@ -94,13 +95,12 @@ class SyncHistoryFixture(PollTask):
                     self.idle_sleep()
                     continue
 
-                for league_id, league_name, fixture_uri, max_season, season, last_page in items:
+                for league_id, league_name, fixture_uri, max_season, season, page, fetch_attempts in items:
                     if self.should_stop():
                         return
 
                     try:
                         season_slug = self.build_season_slug(season, max_season)
-                        page = last_page + 1
                         page_url = self.intercept_policy.url.format(
                             fixture_uri=self.build_fixture_uri(fixture_uri, season_slug, page)
                         )
@@ -113,7 +113,13 @@ class SyncHistoryFixture(PollTask):
                         result_set = future.result()
                         if result_set is None or result_set.is_empty():
                             self.logger.error(f"No response for {page_url}")
-                            self.history_fixture_dao.mark_fetch_failed(league_id, season, page, "No response", self.fetch_fail_interval)
+                            self.history_fixture_dao.mark_fetch_failed(
+                                league_id,
+                                season,
+                                page,
+                                "No response",
+                                self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            )
                             continue
 
                         json_body = result_set.first()
@@ -129,14 +135,19 @@ class SyncHistoryFixture(PollTask):
                             "source_url": page_url,
                             "json_body": json_body,
                         })
-                        fetch_interval = self.calc_next_fetch_interval(season, max_season, page)
-                        self.history_fixture_dao.mark_as_fetched(league_id, season, page, fetch_interval)
+
+                        self.history_fixture_dao.mark_as_fetched(league_id, season, page, fetch_interval=None)
                         self.history_fixture_dao.update_progress(league_id, season, page, total, total_page, page_size)
                         self.logger.info(f"Synced oddsportal fixtures league_id={league_id} league_name={league_name} season={season} page={page}/{total_page}")
 
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.history_fixture_dao.mark_fetch_failed(league_id, season, page, full_stack_trace, self.fetch_fail_interval)
+                        self.history_fixture_dao.mark_fetch_failed(
+                            league_id, season,
+                            page,
+                            full_stack_trace,
+                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                        )
                         self.logger.error(f"Failed to sync fixtures for league_id={league_id} league_name={league_name}: {e}")
 
             except Exception as e:
