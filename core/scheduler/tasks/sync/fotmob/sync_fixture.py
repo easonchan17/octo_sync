@@ -7,7 +7,7 @@ from core.store.postgres.daos.fotmob import FixtureDao
 from core.browser.handlers.receivers import JsonReceiver
 from datetime import date, datetime, time, timedelta, timezone
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import TimelineRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineRefetchStrategy, AttemptRefetchStrategy
 from core.types.params import CrawlParams
 
 @Registry.poll('sync.fotmob.fixture')
@@ -31,26 +31,28 @@ class SyncFixture(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.refetch_strategy = (
-            TimelineRefetchStrategy(min_refetch_interval=timedelta(minutes=1))
-            .add_segment(timedelta(hours=0), timedelta(hours=28), timedelta(minutes=1))
-            .add_segment(timedelta(hours=28), timedelta(hours=30), timedelta(hours=1))
+            TimelineRefetchStrategy(min_interval=timedelta(minutes=1))
+            .add_segment(start_offset=timedelta(hours=0), end_offset=timedelta(hours=28), interval=timedelta(minutes=1))
+            .add_segment(start_offset=timedelta(hours=28), end_offset=timedelta(hours=30), interval=timedelta(hours=1))
         )
-        self.fetch_fail_interval = CrawlParams.FETCH_FAILURE_DELAY
 
-    def get_pending_fetch_items(self) -> List[date]:
+        self.retry_strategy = (
+            AttemptRefetchStrategy()
+            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
+            .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=5))
+            .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(hours=1))
+        )
+
+    def get_pending_fetch_items(self) -> List[Any]:
         start_date, end_date = self.get_fetch_date_range(CrawlParams.FIXTURE_LOOKAHEAD_DAYS)
 
-        return self.fixture_dao.get_pending_fetch_items(
-            start_date,
-            end_date,
-            CrawlParams.FETCH_MAX_RETRIES
-        )
+        return self.fixture_dao.get_pending_fetch_items(start_date, end_date)
 
-    def calc_next_fetch_time(self, match_date: date, current_time: datetime) -> Optional[timedelta]:
+    def get_refetch_interval(self, match_date: date, current_time: datetime) -> Optional[timedelta]:
         local_tz = datetime.now().astimezone().tzinfo
         match_datetime = datetime.combine(match_date, time(0, 0)).replace(tzinfo=local_tz)
         return self.refetch_strategy.suggest_interval(match_datetime, current_time)
-
+        # TODO use kickoff_times calc every refetch time
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
@@ -60,7 +62,7 @@ class SyncFixture(PollTask):
                     self.idle_sleep()
                     continue
 
-                for cur_date in items:
+                for cur_date, fetch_attempts in items:
                     if self.should_stop():
                         return
 
@@ -76,15 +78,23 @@ class SyncFixture(PollTask):
                         result_set = future.result()
                         if result_set is None:
                             self.logger.error(f"No response for {page_url}")
-                            self.fixture_dao.mark_fetch_failed(cur_date, "No response", self.fetch_fail_interval)
+                            self.fixture_dao.mark_fetch_failed(
+                                cur_date,
+                                "No response",
+                                self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            )
                             continue
 
                         if result_set.is_empty():
                             self.logger.error(f"No fixture data for {page_url}")
-                            self.fixture_dao.mark_fetch_failed(cur_date, "No data", self.fetch_fail_interval)
+                            self.fixture_dao.mark_fetch_failed(
+                                cur_date,
+                                "No data",
+                                self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            )
                             continue
 
-                        fetch_interval = self.calc_next_fetch_time(cur_date, datetime.now(timezone.utc))
+                        fetch_interval = self.get_refetch_interval(cur_date, datetime.now(timezone.utc))
 
                         if result_set.is_not_modified():
                             self.logger.warning(f"Fixture data is not modified for {page_url}")
@@ -101,7 +111,11 @@ class SyncFixture(PollTask):
                         self.logger.info(f"Synced fixtures: match_date={cur_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.fixture_dao.mark_fetch_failed(cur_date, full_stack_trace, self.fetch_fail_interval)
+                        self.fixture_dao.mark_fetch_failed(
+                            cur_date,
+                            full_stack_trace,
+                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                        )
                         self.logger.error(f"Failed to sync fixtures for {cur_date}: {e}")
                         self.idle_sleep()
 

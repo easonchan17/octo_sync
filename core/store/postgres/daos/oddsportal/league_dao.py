@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from sqlalchemy import func, or_, and_
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
@@ -7,19 +7,23 @@ from ..base_dao import BaseDao
 
 
 class LeagueDao(BaseDao):
-    def is_pending_fetch_item(self, sport: str) -> bool:
+    def get_pending_fetch_item(self, sport: str) -> Any:
         with self.db.get_session() as session:
-            non_pending_item = session.query(LeagueRaw).filter(
-                LeagueRaw.sport == sport,
-                or_(
-                    and_(
-                        LeagueRaw.next_fetch_at.is_(None),
-                        LeagueRaw.is_fetched == True
-                    ),
-                    LeagueRaw.next_fetch_at > func.now(),
-                )
+            item = session.query(
+                LeagueRaw.sport,
+                LeagueRaw.fetch_attempts,
+                LeagueRaw.next_fetch_at
+            ).filter(
+                LeagueRaw.sport == sport
             ).first()
-            return non_pending_item is None
+
+            if item is None:
+                return (sport, 0, datetime.now())
+
+            if item.next_fetch_at is not None and item.next_fetch_at <= datetime.now():
+                return item
+
+            return None
 
     def get_pending_parse_items(self, max_retries: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:

@@ -8,7 +8,7 @@ from ..base_dao import BaseDao
 
 
 class OddsDao(BaseDao):
-    def get_pending_fetch_items(self, betting_type_id: int, scope_id: int, max_retries: int, limit: int) -> List[Any]:
+    def get_pending_fetch_items(self, betting_type_id: int, scope_id: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.match_code,
@@ -17,7 +17,8 @@ class OddsDao(BaseDao):
                 Fixture.away_name,
                 Fixture.away_code,
                 Fixture.kickoff_time,
-                Fixture.match_url
+                Fixture.match_url,
+                OddsRaw.fetch_attempts
             ).outerjoin(
                 OddsRaw,
                 and_(
@@ -28,13 +29,7 @@ class OddsDao(BaseDao):
             ).filter(
                 or_(
                     OddsRaw.match_code.is_(None),
-                    and_(
-                        or_(
-                            OddsRaw.last_fetched_at.is_(None),
-                            OddsRaw.next_fetch_at <= func.now()
-                        ),
-                        OddsRaw.fetch_attempts < max_retries
-                    )
+                    OddsRaw.next_fetch_at <= func.now()
                 )
             ).order_by(
                 func.coalesce(OddsRaw.next_fetch_at, func.now()).asc(),

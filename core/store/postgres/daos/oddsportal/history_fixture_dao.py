@@ -14,13 +14,21 @@ class HistoryFixtureDao(BaseDao):
                 League.league_name,
                 League.page_url,
                 League.max_season,
-                func.coalesce(HistoryFixtureProgress.season, season),
-                func.coalesce(HistoryFixtureProgress.page, 0),
+                func.coalesce(HistoryFixtureProgress.season, season).label('season'),
+                (func.coalesce(HistoryFixtureProgress.page, 0)+1).label('page'),
+                func.coalesce(HistoryFixtureRaw.fetch_attempts, 0).label('fetch_attempts')
             ).outerjoin(
                 HistoryFixtureProgress,
                 and_(
                     HistoryFixtureProgress.league_id == League.league_id,
                     HistoryFixtureProgress.season == season,
+                )
+            ).outerjoin(
+                HistoryFixtureRaw,
+                and_(
+                    HistoryFixtureRaw.league_id == League.league_id,
+                    HistoryFixtureRaw.season == season,
+                    HistoryFixtureRaw.page == func.coalesce(HistoryFixtureProgress.page, 0) + 1
                 )
             ).filter(
                 League.league_id.in_(league_ids),
@@ -106,9 +114,6 @@ class HistoryFixtureDao(BaseDao):
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[HistoryFixtureProgress.league_id.key, HistoryFixtureProgress.season.key],
                 set_={
-                    HistoryFixtureProgress.total.key: insert_stmt.excluded.total,
-                    HistoryFixtureProgress.total_page.key: insert_stmt.excluded.total_page,
-                    HistoryFixtureProgress.page_size.key: insert_stmt.excluded.page_size,
                     HistoryFixtureProgress.page.key: insert_stmt.excluded.page,
                     HistoryFixtureProgress.updated_at.key: func.now(),
                 }

@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 from datetime import datetime, timedelta
 
@@ -7,23 +8,26 @@ class TimelineSegment:
         self.end_offset = end_offset
         self.interval = interval
 
-    def is_active(self, kickoff_time: datetime, current_time: datetime) -> bool:
-        start_time = kickoff_time + self.start_offset
-        end_time = kickoff_time + self.end_offset
+    def is_active(self, base_time: datetime, current_time: datetime) -> bool:
+        start_time = base_time + self.start_offset
+        end_time = base_time + self.end_offset
         return start_time <= current_time < end_time
 
-    def suggest_interval(self, kickoff_time: datetime, current_time: datetime) -> timedelta:
-        time_to_end = (kickoff_time + self.end_offset) - current_time
+    def suggest_interval(self, base_time: datetime, current_time: datetime) -> timedelta:
+        time_to_end = (base_time + self.end_offset) - current_time
         return min(self.interval, max(time_to_end, timedelta(0)))
 
 class TimelineRefetchStrategy:
-    def __init__(self, min_refetch_interval: timedelta) -> None:
+    def __init__(self, min_interval: timedelta) -> None:
         self._segments: list[TimelineSegment] = []
-        self._min_interval = min_refetch_interval
+        self._min_interval = min_interval
 
-    def add_segment(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> "TimelineRefetchStrategy":
+    def add_segment(self, start_offset: timedelta, end_offset: Optional[timedelta], interval: timedelta) -> "TimelineRefetchStrategy":
+        if end_offset is None:
+            end_offset = timedelta(days=36500)
+
         if interval < self._min_interval:
-            raise ValueError(f"Interval {interval} is less than min_refetch_interval {self._min_interval}")
+            raise ValueError(f"Interval {interval} is less than min_interval {self._min_interval}")
 
         if start_offset >= end_offset:
             raise ValueError(f"Invalid range: start_offset {start_offset} must be less than end_offset {end_offset}")
@@ -36,17 +40,17 @@ class TimelineRefetchStrategy:
         self._segments.append(TimelineSegment(start_offset, end_offset, interval))
         return self
 
-    def suggest_interval(self, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
+    def suggest_interval(self, base_time: datetime, current_time: datetime) -> Optional[timedelta]:
         if not self._segments:
             return None
 
-        first_start_time = kickoff_time + self._segments[0].start_offset
+        first_start_time = base_time + self._segments[0].start_offset
         if current_time < first_start_time:
             return first_start_time - current_time
 
         for phase in self._segments:
-            if phase.is_active(kickoff_time, current_time):
-                suggested = phase.suggest_interval(kickoff_time, current_time)
+            if phase.is_active(base_time, current_time):
+                suggested = phase.suggest_interval(base_time, current_time)
                 return max(suggested, self._min_interval)
 
         return None
@@ -66,12 +70,14 @@ class AttemptSegment:
 
         return True
 
-
 class AttemptRefetchStrategy:
     def __init__(self) -> None:
         self._segments: list[AttemptSegment] = []
 
-    def add_segment(self, min_attempts: int, max_attempts: int, interval: timedelta) -> "AttemptRefetchStrategy":
+    def add_segment(self, min_attempts: int, max_attempts: Optional[int], interval: timedelta) -> "AttemptRefetchStrategy":
+        if max_attempts is None:
+            max_attempts = sys.maxsize
+
         if min_attempts >= max_attempts:
             raise ValueError(f"Invalid range: min_attempts {min_attempts} must be less than max_attempts {max_attempts}")
 
