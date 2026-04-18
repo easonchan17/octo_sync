@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 class TimelineSegment:
     def __init__(self, start_offset: timedelta, end_offset: timedelta, interval: timedelta) -> None:
@@ -108,21 +108,22 @@ class ScheduleStrategy:
         self._active_window = active_window
         self._active_interval = active_interval
 
-    def suggest_interval(self, current_time: datetime, scheduled_items: List[ScheduleSegment]) -> Optional[timedelta]:
-        if not scheduled_items:
-            return None
+    def suggest_interval(self, last_fetch_time: datetime, scheduled_items: List[ScheduleSegment], max_scheduled_time: datetime) -> Optional[timedelta]:
+        current_time = datetime.now(timezone.utc)
 
-        window_start = current_time - self._active_window
-        sorted_items = sorted(scheduled_items, key=lambda item: item.time)
+        if scheduled_items:
+            sorted_items = sorted(scheduled_items, key=lambda item: item.time)
 
-        for item in sorted_items:
-            if item.time < window_start:
-                continue
+            for item in sorted_items:
+                if item.time + self._active_window < last_fetch_time:
+                    continue
 
-            if item.time > current_time:
-                return item.time - current_time
+                if item.time > last_fetch_time:
+                    return max(item.time - current_time, self._active_interval)
 
-            if item.is_active:
                 return self._active_interval
 
-        return None
+        archived_time = max_scheduled_time + self._active_window
+
+        if last_fetch_time < archived_time:
+            return max(archived_time - current_time, self._active_interval)

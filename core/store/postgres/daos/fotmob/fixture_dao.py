@@ -44,6 +44,7 @@ class FixtureDao(BaseDao):
         with self.db.get_session() as session:
             return session.query(
                 FixtureRaw.match_date,
+                FixtureRaw.last_fetched_at,
                 FixtureRaw.json_body
             ).filter(
                 FixtureRaw.match_date >= start_date,
