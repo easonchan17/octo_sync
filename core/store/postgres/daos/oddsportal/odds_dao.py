@@ -1,3 +1,4 @@
+import traceback
 from sqlalchemy import func, or_, and_
 from typing import List, Any, Dict, Optional
 from datetime import timedelta
@@ -55,8 +56,10 @@ class OddsDao(BaseDao):
                 OddsRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, match_code: str, betting_type_id: int, scope_id: int, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+    def mark_fetch_failed(self, match_code: str, betting_type_id: int, scope_id: int, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             insert_stmt = insert(OddsRaw).values(
                 match_code=match_code,
@@ -125,7 +128,9 @@ class OddsDao(BaseDao):
                 OddsRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_parse_failed(self, match_code: str, betting_type_id: int, scope_id: int, error_msg: str) -> None:
+    def mark_parse_failed(self, match_code: str, betting_type_id: int, scope_id: int, error_msg: Optional[str] = None) -> None:
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             session.query(OddsRaw).filter(
                 OddsRaw.match_code == match_code,

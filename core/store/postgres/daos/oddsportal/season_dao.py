@@ -1,3 +1,4 @@
+import traceback
 from datetime import timedelta
 from sqlalchemy import func, or_, and_
 from typing import List, Dict, Any, Optional
@@ -55,8 +56,10 @@ class SeasonDao(BaseDao):
                 SeasonRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, league_id: int, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+    def mark_fetch_failed(self, league_id: int, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             insert_stmt = insert(SeasonRaw).values(
                 league_id=league_id,
@@ -93,7 +96,9 @@ class SeasonDao(BaseDao):
                 SeasonRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_parse_failed(self, league_id: int, error_msg: str) -> None:
+    def mark_parse_failed(self, league_id: int, error_msg: Optional[str] = None) -> None:
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             session.query(SeasonRaw).filter(
                 SeasonRaw.league_id == league_id

@@ -1,4 +1,3 @@
-import traceback
 from core.registry import Registry
 from typing import Any, Dict, Optional, List
 from core.types.params import CrawlParams
@@ -82,8 +81,7 @@ class ParseLeague(PollTask):
                         self.logger.info(f"Parsed raw leagues sport={sport} count={len(parsed_leagues)}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
-                        self.league_dao.mark_parse_failed(sport, full_stack_trace)
+                        self.league_dao.mark_parse_failed(sport)
                         self.logger.error(f"Failed to parse raw leagues sport={sport}: {e}")
 
             except Exception as e:

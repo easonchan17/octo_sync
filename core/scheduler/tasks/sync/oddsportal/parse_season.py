@@ -1,5 +1,4 @@
 import re
-import traceback
 from typing import Any, Dict, Optional, Tuple
 from core.registry import Registry
 from core.types.params import CrawlParams
@@ -62,8 +61,7 @@ class ParseSeason(PollTask):
                         self.logger.info(f"Parsed season league_id={league_id} min={min_season} max={max_season}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
-                        self.season_dao.mark_parse_failed(league_id, full_stack_trace)
+                        self.season_dao.mark_parse_failed(league_id)
                         self.logger.error(f"Failed to parse season league_id={league_id}: {e}")
 
             except Exception as e:
