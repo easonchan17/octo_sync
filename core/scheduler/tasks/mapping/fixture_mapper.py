@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from core.registry import Registry
-from core.types.enums import SiteName, LeaguePriority
+from core.types.enums import SiteName
 from core.services.league.service import league_service
 from core.services.match_resolver import MatchItem, MatchResolver
 from core.store.postgres.daos.fotmob.fixture_dao import FixtureDao as FotmobFixtureDao
@@ -51,8 +51,8 @@ class FixtureMapper(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                oddsportal_site_leagues = league_service.get_site_leagues(SiteName.ODDSPORTAL.value, LeaguePriority.LEVEL_MAJOR.value)
-                fotmob_site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value, LeaguePriority.LEVEL_MAJOR.value)
+                oddsportal_site_leagues = league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
+                fotmob_site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value)
 
                 oddsportal_league_map = {int(league.league_id): league.ref_league_id for league in oddsportal_site_leagues}
                 fotmob_league_map = {int(league.league_id): league.ref_league_id for league in fotmob_site_leagues}

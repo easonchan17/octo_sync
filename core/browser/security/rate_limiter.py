@@ -8,7 +8,7 @@ from core.logger.logger_manager import LoggerManager
 
 class RateLimiter:
     PREVIEW_LENGTH = 2000
-    BASE_DELAY = 20.0
+    BASE_DELAY = 60.0
 
     RATE_LIMIT_LABELS = [
         "too many requests",
@@ -65,7 +65,7 @@ class RateLimiter:
             raise ValueError(f"Invalid URL: {url}")
 
         count = self.consecutive_errors.get(hostname, 0) + 1
-        wait_time = min(self.BASE_DELAY * (2 ** (count - 1)), self.BASE_DELAY * 10) if delay is None else delay
+        wait_time = min(self.BASE_DELAY * (2 ** (count - 1)), self.BASE_DELAY * 120) if delay is None else delay
 
         self.consecutive_errors[hostname] = count
         self.backoff_until[hostname] = time.time() + wait_time

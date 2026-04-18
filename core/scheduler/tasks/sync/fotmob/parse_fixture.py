@@ -9,6 +9,7 @@ from core.store.postgres.daos.fotmob import FixtureDao
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.scheduler.refetch_strategy import ScheduleStrategy, ScheduleSegment
 from core.services.league import league_service
+from core.types.enums import LeaguePriority
 from core.types.params import CrawlParams
 
 class PageUrlBuilder:
@@ -178,33 +179,32 @@ class ParseFixture(PollTask):
             active_interval=timedelta(minutes=1)
         )
 
-    def get_daily_summary(self, parsed_data: List[Dict[str, Any]]) -> Tuple[bool, datetime]:
-        match_status_key = Fixture.match_status.key
+    def get_last_kickoff_time(self, parsed_data: List[Dict[str, Any]]) -> datetime:
         kickoff_key = Fixture.kickoff_time.key
 
-        last_kickoff_time = max(
+        return max(
             datetime.fromisoformat(fixture[kickoff_key]).astimezone(timezone.utc)
             for fixture in parsed_data
         )
 
-        for fixture in parsed_data:
-            match_status = MatchStatus(fixture[match_status_key])
-            if not match_status.is_finalized:
-                return False, last_kickoff_time
+    def get_refetch_interval(self, last_fetch_time: datetime, max_sheduled_time: datetime, fixtures: List[Any]) -> Optional[timedelta]:
+        site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value)
 
-        return True, last_kickoff_time
-
-    def get_refetch_interval(self, current_time: datetime, fixtures: List[Any]) -> Optional[timedelta]:
         match_status_key = Fixture.match_status.key
         kickoff_key = Fixture.kickoff_time.key
+        league_id_key = Fixture.league_id.key
+
+        league_ids = {int(league.league_id) for league in site_leagues}
         scheduled_items = [
             ScheduleSegment(
                 time=datetime.fromisoformat(fixture[kickoff_key]).astimezone(timezone.utc),
                 is_active=MatchStatus(fixture[match_status_key]).is_playing
             )
             for fixture in fixtures
+            if fixture[league_id_key] in league_ids
         ]
-        return self.refetch_strategy.suggest_interval(current_time, scheduled_items)
+
+        return self.refetch_strategy.suggest_interval(last_fetch_time, scheduled_items, max_sheduled_time)
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
@@ -221,7 +221,7 @@ class ParseFixture(PollTask):
                     self.idle_sleep()
                     continue
 
-                for match_date, json_body in items:
+                for match_date, last_fetched_at, json_body in items:
                     if self.should_stop():
                         return
 
@@ -247,13 +247,13 @@ class ParseFixture(PollTask):
                         for fixture in parsed_fixtures:
                             fixture[Fixture.raw_fetch_date.key] = match_date
 
-                        _, last_kickoff_time = self.get_daily_summary(parsed_fixtures)
-
                         self.fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
+
+                        last_kickoff_time = self.get_last_kickoff_time(parsed_fixtures)
                         self.fixture_dao.mark_as_parsed(
                             match_date,
                             last_kickoff_time,
-                            self.get_refetch_interval(datetime.now(timezone.utc), parsed_fixtures)
+                            self.get_refetch_interval(last_fetched_at, last_kickoff_time, parsed_fixtures)
                         )
 
                         self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")

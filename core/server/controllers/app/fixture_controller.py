@@ -22,8 +22,7 @@ class FixtureController(BaseController):
             start_time = begin_time_of_date(match_date, "%Y%m%d", timezone)
             grouped_fixtures = self.fixture_service.get_grouped_fixtures(
                 start_time=start_time,
-                end_time=start_time + timedelta(days=1),
-                min_priority=LeaguePriority.LEVEL_REGIONAL.value
+                end_time=start_time + timedelta(days=1)
             )
             return [GroupedFixturesResponse.model_validate(group) for group in grouped_fixtures]
         except ValueError as e:

@@ -93,7 +93,7 @@ class OrphanLoader:
         return CanonicalLeagueData(
             id=id,
             name=league.league_name,
-            priority=LeaguePriority.LEVEL_BASIC.value,
+            priority=LeaguePriority.LEVEL_NONE.value,
             country_code=league.country_code,
             country_name=league.country_name,
             site_leagues={
@@ -238,7 +238,7 @@ class LeagueService(BaseService):
             self._cache.set(orphan)
             return orphan
 
-    def get_leagues(self, min_priority: Optional[int] = None) -> List[CanonicalLeagueData]:
+    def get_leagues(self, min_priority: int = LeaguePriority.LEVEL_BASIC.value) -> List[CanonicalLeagueData]:
         if self._cache is None:
             return []
 
@@ -246,14 +246,10 @@ class LeagueService(BaseService):
         if not leagues:
             return []
 
-        if min_priority is not None:
-            items = (league for league in leagues.values() if league.priority >= min_priority)
-        else:
-            items = leagues.values()
-
+        items = (league for league in leagues.values() if league.priority >= min_priority)
         return sorted(items, key=lambda item: (-item.priority, item.name))
 
-    def get_site_leagues(self, site_name: str, min_priority: Optional[int] = None) -> List[SiteLeagueData]:
+    def get_site_leagues(self, site_name: str, min_priority: int = LeaguePriority.LEVEL_BASIC.value) -> List[SiteLeagueData]:
         return [
             site_league for league in self.get_leagues(min_priority=min_priority)
             if (site_league := league.site_leagues.get(site_name)) is not None

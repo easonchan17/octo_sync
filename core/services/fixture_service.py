@@ -37,15 +37,10 @@ class FixtureService(BaseService):
 
             return fixtures
 
-    def get_grouped_fixtures(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-        min_priority: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+    def get_grouped_fixtures(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         leagues = {
             int(league.site_leagues[SiteName.FOTMOB.value].league_id): league
-            for league in league_service.get_leagues(min_priority=min_priority)
+            for league in league_service.get_leagues()
             if SiteName.FOTMOB.value in league.site_leagues
         }
         if not leagues:
