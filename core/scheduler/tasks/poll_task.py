@@ -23,7 +23,7 @@ class PollTask(BaseTask):
 
     def idle_sleep(self) -> None:
         timeout = self.get_idle_timeout_seconds()
-        self.logger.info(f"Polling task {self.__class__.__module__}.{self.name} is idle, waiting for {timeout} seconds")
+        self.logger.info(f"Polling task {self.name} is idle, waiting for {timeout} seconds")
         self._idle_wake_event.wait(timeout=timeout)
 
         if not self.should_stop():

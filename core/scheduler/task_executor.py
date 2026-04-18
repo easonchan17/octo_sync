@@ -41,4 +41,5 @@ class TaskExecutor(Thread, Singleton):
 
         for task in tasks:
             task.cancel()
-        thread_pool.shutdown(wait=True)
+
+        thread_pool.shutdown(wait=True, cancel_futures=True)
