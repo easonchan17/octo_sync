@@ -194,7 +194,7 @@ class LeagueService(BaseService):
         self._orphan_loader = OrphanLoader()
         self._cache = None
 
-    def reload(self) -> None:
+    def load(self) -> None:
         with self.db.get_session() as session:
             officials = self._official_loader.get_all(session)
             orphans = self._orphan_loader.get_all(session)
