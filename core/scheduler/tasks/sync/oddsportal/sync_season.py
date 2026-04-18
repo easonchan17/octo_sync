@@ -1,5 +1,5 @@
 from core.registry import Registry
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from core.types.params import CrawlParams
 from core.browser.interceptor import TaskType
 from datetime import timedelta, datetime, timezone
@@ -46,12 +46,14 @@ class SyncSeason(PollTask):
     def build_fixture_uri(self, fixture_uri: str) -> str:
         return f"{fixture_uri[:-1]}/results/"
 
-    def get_pending_fetch_items(self):
+    def get_pending_fetch_items(self) -> List[Any]:
         site_leagues = league_service.get_site_leagues(
             SiteName.ODDSPORTAL.value, LeaguePriority.LEVEL_REGIONAL.value
         )
-        league_ids = [int(league.league_id) for league in site_leagues]
+        if not site_leagues:
+            return []
 
+        league_ids = [int(league.league_id) for league in site_leagues]
         return self.season_dao.get_pending_fetch_items(league_ids)
 
     def execute(self, *args, **kwargs) -> None:
