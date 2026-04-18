@@ -44,6 +44,7 @@ class UpcomingFixtureParser:
             self.logger.error("no ld+json blocks found in html")
             return None
 
+        seen = set()
         records = []
         for script in scripts:
             try:
@@ -74,6 +75,10 @@ class UpcomingFixtureParser:
                 self.logger.error(f"failed to extract match_code from {match_url}")
                 continue
 
+            if match_code in seen:
+                continue
+
+            seen.add(match_code)
             records.append({
                 "league_id": league_id,
                 "season": season,

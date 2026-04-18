@@ -37,7 +37,7 @@ class SyncSeason(PollTask):
 
         self.retry_strategy = (
             AttemptRefetchStrategy()
-            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
+            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=5))
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=15))
             .add_segment(min_attempts=7, max_attempts=10, interval=timedelta(hours=4))
             .add_segment(min_attempts=10, max_attempts=None, interval=timedelta(days=1))

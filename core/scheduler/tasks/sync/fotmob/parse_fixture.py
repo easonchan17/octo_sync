@@ -17,14 +17,11 @@ class FixtureParser:
         if not json_data:
             return None
 
-        results = {}
+        seen = set()
+        results = []
 
         leagues = json_data.get('leagues', [])
-        sorted_leagues = sorted(
-            leagues,
-            key=lambda league: league.get('id'),
-            reverse=True
-        )
+        sorted_leagues = sorted(leagues, key=lambda league: league.get('id'), reverse=True)
         match_id_key = Fixture.match_id.key
         for league in sorted_leagues:
             league_id = league.get('id')
@@ -34,13 +31,12 @@ class FixtureParser:
             league_fixtures = self._parse_fixtures(matches, league_id, league_name)
             for fixture in league_fixtures:
                 match_id = fixture[match_id_key]
-
-                if match_id in results:
+                if match_id in seen:
                     continue
+                seen.add(match_id)
+                results.append(fixture)
 
-                results[match_id] = fixture
-
-        return list(results.values())
+        return results
 
     def _parse_fixtures(
         self,
@@ -83,23 +79,24 @@ class FixtureParser:
 
         return fixtures
 
-
 class LeagueParser:
     def parse(self, json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         if not json_data:
             return None
 
+        seen = set()
         results = []
         leagues = json_data.get('leagues', [])
         for league in leagues:
             league_id = league['id']
-            league_name = league['name']
-            country_code = league['ccode']
+            if league_id in seen:
+                continue
 
+            seen.add(league_id)
             results.append({
                 "league_id": league_id,
-                "league_name": league_name,
-                "country_code": country_code
+                "league_name": league['name'],
+                "country_code": league['ccode'],
             })
         return results
 

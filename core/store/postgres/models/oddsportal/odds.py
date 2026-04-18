@@ -24,6 +24,7 @@ class OddsRaw(Base, CrawlStatusMixin, RawJsonMixin):
     match_code = Column(String(64), nullable=False)
     betting_type_id = Column(Integer, nullable=False)
     scope_id = Column(Integer, nullable=False)
+    kickoff_time = Column(DateTime(timezone=True), nullable=True)
 
 
 class Odds1x2(Base):
