@@ -103,7 +103,7 @@ class InterceptPolicy:
         debug = policy_config.get("debug", False)
         timeout = policy_config.get("timeout", 300)
         page_delay = policy_config.get("page_delay", 5)
-        retry_count = policy_config.get("retry_count", 3)
+        retry_count = policy_config.get("retry_count", 0)
         url = policy_config.get("url_template", policy_config.get("url"))
 
         policy = cls()

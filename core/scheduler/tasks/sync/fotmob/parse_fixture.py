@@ -8,7 +8,7 @@ from core.scheduler.tasks.poll_task import PollTask
 from core.types.enums import MatchStatus, SiteName
 from core.store.postgres.daos.fotmob import FixtureDao
 from core.store.postgres.models.fotmob.fixture import Fixture
-from core.scheduler.refetch_strategy import ScheduleRefetchStrategy, ScheduleItem
+from core.scheduler.refetch_strategy import ScheduleStrategy, ScheduleSegment
 from core.services.league import league_service
 from core.types.params import CrawlParams
 
@@ -110,7 +110,7 @@ class ParseFixture(PollTask):
         self.league_parser = LeagueParser()
         self.fixture_parser = FixtureParser()
 
-        self.refetch_strategy = ScheduleRefetchStrategy(
+        self.refetch_strategy = ScheduleStrategy(
             active_window=timedelta(hours=4),
             active_interval=timedelta(minutes=1)
         )
@@ -135,7 +135,7 @@ class ParseFixture(PollTask):
         match_status_key = Fixture.match_status.key
         kickoff_key = Fixture.kickoff_time.key
         scheduled_items = [
-            ScheduleItem(
+            ScheduleSegment(
                 time=datetime.fromisoformat(fixture[kickoff_key]).astimezone(timezone.utc),
                 is_active=MatchStatus(fixture[match_status_key]).is_playing
             )

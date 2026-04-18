@@ -63,6 +63,9 @@ class Interceptor(Thread, Singleton):
     async def _async_run(self) -> None:
         try:
             await self._async_run_loop()
+        except Exception as e:
+            if "Connection closed" not in str(e) and "TargetClosed" not in str(e):
+                raise
         finally:
             await self._drain_pending_tasks()
 
@@ -129,7 +132,7 @@ class Interceptor(Thread, Singleton):
                         continue
 
                     task_type, future, payload = task_data
-                    await self._process_task(task_type, future, payload)
+                    await self._run_with_stop_check(task_type, future, payload)
                     self.task_queue.async_q.task_done()
 
                     intercepted_pages += 1
@@ -139,6 +142,23 @@ class Interceptor(Thread, Singleton):
 
                 self.logger.info(f"Page pool cleanup.")
                 self.page_pool = None
+
+    async def _run_with_stop_check(self, task_type: TaskType, future: Future, payload: dict[str, Any]) -> None:
+        process_task = asyncio.create_task(self._process_task(task_type, future, payload))
+        while not process_task.done():
+            if self.stop_event.is_set():
+                process_task.cancel()
+                try:
+                    await process_task
+                except (asyncio.CancelledError, Exception):
+                    pass
+                if not future.done():
+                    future.set_exception(RuntimeError("Interceptor stopped"))
+                return
+            await asyncio.sleep(0.5)
+
+        if not process_task.cancelled():
+            process_task.exception()
 
     async def _process_task(self, task_type: TaskType, future: Future, payload: dict[str, Any]) -> None:
         try:
@@ -206,7 +226,7 @@ class Interceptor(Thread, Singleton):
                 return result_set
 
             if idx >= retry_count:
-                self.logger.error(f"Failed to intercept page {url} after {retry_count} retries")
+                self.logger.error(f"Failed to intercept page {url} after {idx + 1} attempts")
                 return None
 
             self.logger.info(f"Retrying to intercept page {url} (attempt {idx + 1}/{retry_count})")

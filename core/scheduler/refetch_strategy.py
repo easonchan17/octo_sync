@@ -18,12 +18,12 @@ class TimelineSegment:
         time_to_end = (base_time + self.end_offset) - current_time
         return min(self.interval, max(time_to_end, timedelta(0)))
 
-class TimelineRefetchStrategy:
+class TimelineStrategy:
     def __init__(self, min_interval: timedelta) -> None:
         self._segments: list[TimelineSegment] = []
         self._min_interval = min_interval
 
-    def add_segment(self, start_offset: timedelta, end_offset: Optional[timedelta], interval: timedelta) -> "TimelineRefetchStrategy":
+    def add_segment(self, start_offset: timedelta, end_offset: Optional[timedelta], interval: timedelta) -> "TimelineStrategy":
         if end_offset is None:
             end_offset = timedelta(days=36500)
 
@@ -34,9 +34,9 @@ class TimelineRefetchStrategy:
             raise ValueError(f"Invalid range: start_offset {start_offset} must be less than end_offset {end_offset}")
 
         if self._segments:
-            last_phase = self._segments[-1]
-            if start_offset < last_phase.end_offset:
-                raise ValueError(f"Sequence violation: start_offset {start_offset} must be >= last end_offset {last_phase.end_offset}")
+            last_segment = self._segments[-1]
+            if start_offset < last_segment.end_offset:
+                raise ValueError(f"Sequence violation: start_offset {start_offset} must be >= last end_offset {last_segment.end_offset}")
 
         self._segments.append(TimelineSegment(start_offset, end_offset, interval))
         return self
@@ -49,9 +49,9 @@ class TimelineRefetchStrategy:
         if current_time < first_start_time:
             return first_start_time - current_time
 
-        for phase in self._segments:
-            if phase.is_active(base_time, current_time):
-                suggested = phase.suggest_interval(base_time, current_time)
+        for segment in self._segments:
+            if segment.is_active(base_time, current_time):
+                suggested = segment.suggest_interval(base_time, current_time)
                 return max(suggested, self._min_interval)
 
         return None
@@ -71,11 +71,11 @@ class AttemptSegment:
 
         return True
 
-class AttemptRefetchStrategy:
+class AttemptStrategy:
     def __init__(self) -> None:
         self._segments: list[AttemptSegment] = []
 
-    def add_segment(self, min_attempts: int, max_attempts: Optional[int], interval: timedelta) -> "AttemptRefetchStrategy":
+    def add_segment(self, min_attempts: int, max_attempts: Optional[int], interval: timedelta) -> "AttemptStrategy":
         if max_attempts is None:
             max_attempts = sys.maxsize
 
@@ -83,14 +83,15 @@ class AttemptRefetchStrategy:
             raise ValueError(f"Invalid range: min_attempts {min_attempts} must be less than max_attempts {max_attempts}")
 
         if self._segments:
-            last = self._segments[-1]
-            if last.max_attempts != min_attempts:
-                raise ValueError(f"Sequence violation: min_attempts {min_attempts} must equal last max_attempts {last.max_attempts}")
+            last_segment = self._segments[-1]
+            if last_segment.max_attempts != min_attempts:
+                raise ValueError(f"Sequence violation: min_attempts {min_attempts} must equal last max_attempts {last_segment.max_attempts}")
 
         self._segments.append(AttemptSegment(min_attempts, max_attempts, interval))
         return self
 
-    def suggest_interval(self, attempts: int) -> Optional[timedelta]:
+    def suggest_interval(self, fails: Optional[int]) -> Optional[timedelta]:
+        attempts = (fails or 0) + 1
         for segment in self._segments:
             if segment.is_active(attempts):
                 return segment.interval
@@ -98,15 +99,16 @@ class AttemptRefetchStrategy:
         return None
 
 @dataclass
-class ScheduleItem:
+class ScheduleSegment:
     time: datetime
     is_active: bool
-class ScheduleRefetchStrategy:
+
+class ScheduleStrategy:
     def __init__(self, active_window: timedelta, active_interval: timedelta) -> None:
         self._active_window = active_window
         self._active_interval = active_interval
 
-    def suggest_interval(self, current_time: datetime, scheduled_items: List[ScheduleItem]) -> Optional[timedelta]:
+    def suggest_interval(self, current_time: datetime, scheduled_items: List[ScheduleSegment]) -> Optional[timedelta]:
         if not scheduled_items:
             return None
 

@@ -10,7 +10,7 @@ from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import TimelineRefetchStrategy, AttemptRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.types.enums import LeaguePriority
 from core.types.params import CrawlParams
 
@@ -36,7 +36,7 @@ class SyncMatch(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.refetch_strategy = (
-            TimelineRefetchStrategy(min_interval=timedelta(minutes=10))
+            TimelineStrategy(min_interval=timedelta(minutes=10))
             .add_segment(start_offset=timedelta(days=-2), end_offset=timedelta(hours=-2), interval=timedelta(hours=24))
             .add_segment(start_offset=timedelta(hours=-2), end_offset=timedelta(hours=-1), interval=timedelta(minutes=20))
             .add_segment(start_offset=timedelta(hours=-1), end_offset=timedelta(0), interval=timedelta(minutes=10))
@@ -49,7 +49,7 @@ class SyncMatch(PollTask):
         self.post_kickoff_archive_hours = CrawlParams.MATCH_POST_KICKOFF_ARCHIVE_HOURS
 
         self.retry_strategy = (
-            AttemptRefetchStrategy()
+            AttemptStrategy()
             .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=5))
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=15))
             .add_segment(min_attempts=7, max_attempts=10, interval=timedelta(hours=4))
@@ -111,7 +111,7 @@ class SyncMatch(PollTask):
                                 match_id,
                                 kickoff_time,
                                 "No response",
-                                self.retry_strategy.suggest_interval(fetch_attempts + 1)
+                                self.retry_strategy.suggest_interval(fetch_attempts)
                             )
                             continue
 
@@ -121,7 +121,7 @@ class SyncMatch(PollTask):
                                 match_id,
                                 kickoff_time,
                                 "No data",
-                                self.retry_strategy.suggest_interval(fetch_attempts + 1)
+                                self.retry_strategy.suggest_interval(fetch_attempts)
                             )
                             continue
 
@@ -147,7 +147,7 @@ class SyncMatch(PollTask):
                             match_id,
                             kickoff_time,
                             full_stack_trace,
-                            self.retry_strategy.suggest_interval(fetch_attempts + 1)
+                            self.retry_strategy.suggest_interval(fetch_attempts)
                         )
                         self.logger.error(f"Failed to sync match detail for match {match_id} from {match_detail_url}: {e}")
                         self.idle_sleep()

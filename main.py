@@ -1,7 +1,5 @@
-import sys
-import signal
-import argparse
-from threading import Event
+import os, sys, signal, argparse
+from threading import Event, enumerate
 from core.server.web_server import WebServer
 from core.browser.interceptor import Interceptor
 from core.config.config_manager import ConfigManager
@@ -23,22 +21,22 @@ shutdown_event = Event()
 def signal_handler(signum, frame) -> None:
     logger.info(f"Received signal {signum}, shutting down gracefully...")
 
-    if not env_manager.is_ml:
-        logger.info("🔧 Stopping network interceptor...")
-        Interceptor.get_instance().stop()
-        logger.info("✅ Network interceptor stopped")
-
-    logger.info("🔧 Stopping poll manager...")
-    get_poll_manager().stop()
-    logger.info("✅ Poll manager stopped")
+    logger.info("🔧 Stopping web server...")
+    WebServer.get_instance().stop()
+    logger.info("✅ Web server stopped")
 
     logger.info("🔧 Stopping cron...")
     get_cron_manager().stop()
     logger.info("✅ Cron stopped")
 
-    logger.info("🔧 Stopping web server...")
-    WebServer.get_instance().stop()
-    logger.info("✅ Web server stopped")
+    logger.info("🔧 Stopping poll manager...")
+    get_poll_manager().stop()
+    logger.info("✅ Poll manager stopped")
+
+    if not env_manager.is_ml:
+        logger.info("🔧 Stopping network interceptor...")
+        Interceptor.get_instance().stop()
+        logger.info("✅ Network interceptor stopped")
 
     logger.info("🔧 Stopping task executor...")
     TaskExecutor.get_instance().stop()
@@ -106,6 +104,11 @@ def run_app() -> None:
     logger.info("✅ Web server started")
 
     shutdown_event.wait()
+
+    for thread in enumerate():
+        logger.info(f"Still running thread: {thread.name} daemon={thread.daemon}")
+
+    os._exit(0)
 
 if __name__ == "__main__":
     run_app()

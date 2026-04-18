@@ -7,18 +7,18 @@ from core.store.postgres.daos.fotmob import FixtureDao
 from core.browser.handlers.receivers import JsonReceiver
 from datetime import date, datetime, time, timedelta, timezone
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import TimelineRefetchStrategy, AttemptRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.types.params import CrawlParams
 
 @Registry.poll('sync.fotmob.fixture')
 class SyncFixture(PollTask):
     POLICY_CONFIG = {
-        "url_template": "https://www.fotmob.com/?date={date}&Asia%2FShanghai&ccode3=JPN",
+        "url_template": "https://www.fotmob.com/?date={date}",
         "debug": False,
         "rules": [
             {
                 "type": InterceptType.HTTP,
-                "pattern": "https://www\\.fotmob\\.com/api/data/matches\\?.*timezone=",
+                "pattern": "https://www\\.fotmob\\.com/api/data/matches\\?date=.*&timezone=.*&ccode3=",
                 "receiver": JsonReceiver
             }
         ]
@@ -31,12 +31,12 @@ class SyncFixture(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.refetch_strategy = (
-            TimelineRefetchStrategy(min_interval=timedelta(minutes=5))
+            TimelineStrategy(min_interval=timedelta(minutes=5))
             .add_segment(start_offset=timedelta(hours=0), end_offset=timedelta(hours=30), interval=timedelta(minutes=5))
         )
 
         self.retry_strategy = (
-            AttemptRefetchStrategy()
+            AttemptStrategy()
             .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=5))
             .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(hours=1))
@@ -79,7 +79,7 @@ class SyncFixture(PollTask):
                             self.fixture_dao.mark_fetch_failed(
                                 cur_date,
                                 "No response",
-                                self.retry_strategy.suggest_interval(fetch_attempts+1)
+                                self.retry_strategy.suggest_interval(fetch_attempts)
                             )
                             continue
 
@@ -88,7 +88,7 @@ class SyncFixture(PollTask):
                             self.fixture_dao.mark_fetch_failed(
                                 cur_date,
                                 "No data",
-                                self.retry_strategy.suggest_interval(fetch_attempts+1)
+                                self.retry_strategy.suggest_interval(fetch_attempts)
                             )
                             continue
 
@@ -112,7 +112,7 @@ class SyncFixture(PollTask):
                         self.fixture_dao.mark_fetch_failed(
                             cur_date,
                             full_stack_trace,
-                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            self.retry_strategy.suggest_interval(fetch_attempts)
                         )
                         self.logger.error(f"Failed to sync fixtures for {cur_date}: {e}")
                         self.idle_sleep()
