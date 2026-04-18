@@ -204,7 +204,7 @@ class Interceptor(Thread, Singleton):
                     ctx = HookContext(
                         page_context=page_context,
                         target_url=url,
-                        policy=policy,
+                        strategy=policy,
                         result_set=result_set,
                     )
 

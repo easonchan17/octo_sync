@@ -1,6 +1,6 @@
 from typing import Optional
-from core.browser.hooks.base_hook import BaseHook, HookContext
 from core.browser.hooks.latch import SignalLatch
+from core.browser.hooks.base_hook import BaseHook, HookContext
 from core.browser.intercept_strategy import InterceptType
 
 class DomHook(BaseHook):
@@ -9,7 +9,7 @@ class DomHook(BaseHook):
         self._latch: Optional[SignalLatch] = None
 
     async def setup(self, ctx: HookContext) -> None:
-        dom_rule = ctx.policy.find_rule(type=InterceptType.DOM)
+        dom_rule = ctx.strategy.find_rule(type=InterceptType.DOM)
         if dom_rule is None:
             return
 
@@ -21,13 +21,13 @@ class DomHook(BaseHook):
                     await ctx.page_context.wait_for_selector(
                         dom_rule.wait_selector,
                         state='attached',
-                        timeout=ctx.policy.timeout * 1000
+                        timeout=ctx.strategy.timeout * 1000
                     )
 
                 parsed_data = await dom_rule.receiver.process(
                     page_context=ctx.page_context,
                     url=ctx.target_url,
-                    timeout=ctx.policy.timeout
+                    timeout=ctx.strategy.timeout
                 )
 
                 if parsed_data is None:
@@ -43,5 +43,5 @@ class DomHook(BaseHook):
 
     async def execute(self, ctx: HookContext) -> bool:
         if self._latch is not None:
-            await self._latch.wait(ctx.policy.timeout)
+            await self._latch.wait(ctx.strategy.timeout)
         return True
