@@ -1,3 +1,4 @@
+import traceback
 from datetime import timedelta
 from sqlalchemy import case, func, or_, and_
 from typing import List, Dict, Any, Optional
@@ -28,7 +29,7 @@ class HistoryFixtureDao(BaseDao):
                 and_(
                     HistoryFixtureRaw.league_id == League.league_id,
                     HistoryFixtureRaw.season == season,
-                    HistoryFixtureRaw.page == func.coalesce(HistoryFixtureProgress.page, 0) + 1
+                    HistoryFixtureRaw.page == func.coalesce(HistoryFixtureProgress.page, 0)+1
                 )
             ).filter(
                 League.league_id.in_(league_ids),
@@ -74,8 +75,10 @@ class HistoryFixtureDao(BaseDao):
                 HistoryFixtureRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, league_id: int, season: int, page: int, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+    def mark_fetch_failed(self, league_id: int, season: int, page: int, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             insert_stmt = insert(HistoryFixtureRaw).values(
                 league_id=league_id,
@@ -135,7 +138,9 @@ class HistoryFixtureDao(BaseDao):
                 HistoryFixtureRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_parse_failed(self, league_id: int, season: int, page: int, error_msg: str) -> None:
+    def mark_parse_failed(self, league_id: int, season: int, page: int, error_msg: Optional[str] = None) -> None:
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             session.query(HistoryFixtureRaw).filter(
                 HistoryFixtureRaw.league_id == league_id,

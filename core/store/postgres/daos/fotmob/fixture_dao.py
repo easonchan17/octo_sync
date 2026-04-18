@@ -115,7 +115,7 @@ class FixtureDao(BaseDao):
             )
             session.execute(upsert_stmt)
 
-    def mark_as_parsed(self, match_date: date, last_kickoff_time: datetime) -> None:
+    def mark_as_parsed(self, match_date: date, last_kickoff_time: datetime, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(FixtureRaw).filter(
                 FixtureRaw.match_date == match_date
@@ -126,7 +126,8 @@ class FixtureDao(BaseDao):
                 FixtureRaw.parse_attempts: 0,
                 FixtureRaw.total_parse_count: FixtureRaw.total_parse_count + 1,
                 FixtureRaw.last_parsed_at: func.now(),
-                FixtureRaw.updated_at: func.now()
+                FixtureRaw.updated_at: func.now(),
+                FixtureRaw.next_fetch_at: func.now() + fetch_interval if fetch_interval is not None else None
             }, synchronize_session=False)
 
     def mark_parse_failed(self, match_date: date, error_msg: str) -> None:

@@ -1,4 +1,3 @@
-import traceback
 from core.registry import Registry
 from typing import Any, Dict, Optional, List
 from core.browser.interceptor import TaskType
@@ -126,8 +125,9 @@ class BaseSyncOdds(PollTask):
                             self.odds_dao.mark_fetch_failed(
                                 match_code,
                                 self.market.betting_type_id,
-                                self.market.scope_id, "No response",
-                                self.retry_strategy.suggest_interval(fetch_attempts+1)
+                                self.market.scope_id,
+                                self.retry_strategy.suggest_interval(fetch_attempts+1),
+                                "No response",
                             )
                             continue
 
@@ -146,13 +146,11 @@ class BaseSyncOdds(PollTask):
                         self.logger.info(f"Synced oddsportal odds match_code={match_code}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
                         self.odds_dao.mark_fetch_failed(
                             match_code,
                             self.market.betting_type_id,
                             self.market.scope_id,
-                            full_stack_trace,
-                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            self.retry_strategy.suggest_interval(fetch_attempts+1),
                         )
                         self.logger.error(f"Failed to sync odds for match_code={match_code}: {e}")
 

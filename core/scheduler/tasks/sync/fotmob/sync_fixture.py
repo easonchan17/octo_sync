@@ -31,9 +31,8 @@ class SyncFixture(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.refetch_strategy = (
-            TimelineRefetchStrategy(min_interval=timedelta(minutes=1))
-            .add_segment(start_offset=timedelta(hours=0), end_offset=timedelta(hours=28), interval=timedelta(minutes=1))
-            .add_segment(start_offset=timedelta(hours=28), end_offset=timedelta(hours=30), interval=timedelta(hours=1))
+            TimelineRefetchStrategy(min_interval=timedelta(minutes=5))
+            .add_segment(start_offset=timedelta(hours=0), end_offset=timedelta(hours=30), interval=timedelta(minutes=5))
         )
 
         self.retry_strategy = (
@@ -52,7 +51,6 @@ class SyncFixture(PollTask):
         local_tz = datetime.now().astimezone().tzinfo
         match_datetime = datetime.combine(match_date, time(0, 0)).replace(tzinfo=local_tz)
         return self.refetch_strategy.suggest_interval(match_datetime, current_time)
-        # TODO use kickoff_times calc every refetch time
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():

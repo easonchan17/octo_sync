@@ -1,4 +1,3 @@
-import traceback
 from core.registry import Registry
 from typing import Any, Dict, Optional, List
 from datetime import datetime, timedelta, timezone
@@ -76,8 +75,8 @@ class SyncUpcomingFixture(PollTask):
                             self.logger.warning(f"No response for {url}")
                             self.upcoming_fixture_dao.mark_fetch_failed(
                                 league_id,
+                                self.retry_strategy.suggest_interval(fetch_attempts+1),
                                 "No response",
-                                self.retry_strategy.suggest_interval(fetch_attempts+1)
                             )
                             continue
 
@@ -96,11 +95,9 @@ class SyncUpcomingFixture(PollTask):
                         self.logger.info(f"Synced upcoming fixtures for league_id={league_id} league_name={league_name}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
                         self.upcoming_fixture_dao.mark_fetch_failed(
                             league_id,
-                            full_stack_trace,
-                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            self.retry_strategy.suggest_interval(fetch_attempts+1),
                         )
                         self.logger.error(f"Failed to sync upcoming fixtures for league_id={league_id}: {e}")
             except Exception as e:

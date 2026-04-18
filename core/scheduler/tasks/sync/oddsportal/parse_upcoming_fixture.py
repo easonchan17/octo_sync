@@ -1,6 +1,5 @@
 import re
 import json
-import traceback
 from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -131,8 +130,7 @@ class ParseUpcomingFixture(PollTask):
                         self.logger.info(f"Parsed upcoming fixture league_id={league_id} count={len(parsed_fixtures)}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
-                        self.upcoming_fixture_dao.mark_parse_failed(league_id, full_stack_trace)
+                        self.upcoming_fixture_dao.mark_parse_failed(league_id)
                         self.logger.error(f"Failed to parse upcoming fixture league_id={league_id}: {e}")
 
             except Exception as e:

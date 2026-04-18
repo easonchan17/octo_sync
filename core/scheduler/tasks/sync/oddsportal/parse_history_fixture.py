@@ -1,4 +1,3 @@
-import traceback
 from pathlib import PurePosixPath
 from core.registry import Registry
 from datetime import datetime, timezone
@@ -88,8 +87,7 @@ class ParseHistoryFixture(PollTask):
                         self.logger.info(f"Parsed fixture league_id={league_id} season={season} page={page} count={len(parsed_fixtures)}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
-                        self.history_fixture_dao.mark_parse_failed(league_id, season, page, full_stack_trace)
+                        self.history_fixture_dao.mark_parse_failed(league_id, season, page)
                         self.logger.error(f"Failed to parse fixture league_id={league_id} season={season} page={page}: {e}")
 
             except Exception as e:
