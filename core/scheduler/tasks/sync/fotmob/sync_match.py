@@ -5,11 +5,11 @@ from core.types.enums import SiteName
 from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from typing import Any, Dict, Optional, List, Tuple
-from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
+from core.services.league import league_service
 from core.types.enums import LeaguePriority
 from core.types.params import CrawlParams
 
@@ -31,7 +31,6 @@ class SyncMatch(PollTask):
         super().__init__()
         self.payload = payload or {}
         self.match_dao = MatchDao()
-        self.league_service = get_league_service()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.refetch_strategy = (
@@ -44,7 +43,6 @@ class SyncMatch(PollTask):
             .add_segment(start_offset=timedelta(hours=28), end_offset=timedelta(hours=48), interval=timedelta(hours=24))
         )
 
-        self.min_refetch_league_priority = CrawlParams.MATCH_MIN_REFETCH_LEAGUE_PRIORITY
         self.post_kickoff_archive_hours = CrawlParams.MATCH_POST_KICKOFF_ARCHIVE_HOURS
 
         self.retry_strategy = (
@@ -62,9 +60,7 @@ class SyncMatch(PollTask):
         return start_date.date(), finish_date.date()
 
     def get_pending_fetch_items(self) -> List[Any]:
-        site_leagues = self.league_service.get_site_leagues(
-            SiteName.FOTMOB.value, LeaguePriority.LEVEL_REGIONAL.value
-        )
+        site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value)
         if not site_leagues:
             return []
 
@@ -73,10 +69,10 @@ class SyncMatch(PollTask):
         return self.match_dao.get_pending_fetch_items(start_time, end_time, league_ids, CrawlParams.META_DATA_QUERY_LIMIT)
 
     def get_refetch_interval(self, league_id: int, league_name: str, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
-        resolved_league = self.league_service.resolve(SiteName.FOTMOB.value, league_id, league_name)
+        resolved_league = league_service.resolve(SiteName.FOTMOB.value, league_id, league_name)
         priority = resolved_league.priority if resolved_league else LeaguePriority.LEVEL_NONE.value
 
-        if priority < self.min_refetch_league_priority:
+        if priority < LeaguePriority.LEVEL_BASIC.value:
             archive_interval = (kickoff_time + timedelta(hours=self.post_kickoff_archive_hours)) - current_time
             return archive_interval if archive_interval > timedelta(0) else None
 

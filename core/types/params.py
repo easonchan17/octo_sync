@@ -15,4 +15,3 @@ class CrawlParams:
 
     MATCH_LIFESPAN = timedelta(hours=4)
     MATCH_POST_KICKOFF_ARCHIVE_HOURS = 48
-    MATCH_MIN_REFETCH_LEAGUE_PRIORITY = LeaguePriority.LEVEL_MAJOR.value

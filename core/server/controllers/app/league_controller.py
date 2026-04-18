@@ -3,7 +3,6 @@ from fastapi import HTTPException
 from core.services.league import league_service
 from core.server.controllers.base_controller import BaseController
 from core.server.schemas.api_models import LeagueResponse
-from core.types.enums import LeaguePriority
 
 class LeagueController(BaseController):
     def __init__(self) -> None:
@@ -12,7 +11,7 @@ class LeagueController(BaseController):
 
     def get_leagues(self) -> List[LeagueResponse]:
         try:
-            leagues = league_service.get_leagues(LeaguePriority.LEVEL_REGIONAL)
+            leagues = league_service.get_leagues()
             return [LeagueResponse.model_validate(league) for league in leagues]
         except Exception as e:
             self.logger.error(f"Failed to get leagues: {e}", exc_info=True)

@@ -46,9 +46,7 @@ class SyncSeason(PollTask):
         return f"{fixture_uri[:-1]}/results/"
 
     def get_pending_fetch_items(self) -> List[Any]:
-        site_leagues = league_service.get_site_leagues(
-            SiteName.ODDSPORTAL.value, LeaguePriority.LEVEL_REGIONAL.value
-        )
+        site_leagues = league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
         if not site_leagues:
             return []
 
