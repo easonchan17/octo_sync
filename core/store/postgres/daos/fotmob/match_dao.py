@@ -8,14 +8,9 @@ from ..base_dao import BaseDao
 from core.types.enums import MatchStatus
 
 class MatchDao(BaseDao):
-    def get_pending_fetch_items(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-        limit: int
-    ) -> List[Any]:
+    def get_pending_fetch_items(self, start_time: datetime, end_time: datetime, limit: int) -> List[Any]:
         with self.db.get_session() as session:
-            query = session.query(
+            return session.query(
                 Fixture.match_id,
                 Fixture.kickoff_time,
                 Fixture.page_url,
@@ -33,11 +28,8 @@ class MatchDao(BaseDao):
                     MatchRaw.next_fetch_at <= func.now()
                 )
             ).order_by(
-                func.coalesce(MatchRaw.next_fetch_at, func.now()).asc(),
-                Fixture.kickoff_time.asc()
-            ).limit(limit)
-
-            return query.all()
+                Fixture.kickoff_time.desc()
+            ).limit(limit).all()
 
     def get_pending_parse_items(
         self,

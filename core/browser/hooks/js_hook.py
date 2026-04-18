@@ -37,8 +37,8 @@ class JsHook(BaseHook):
                         return
 
                 # self.logger.info(f"Received trace data from: {request.url} with payload:\n{json.dumps(json_data, indent=2, ensure_ascii=False)}")
-                # ctx.result_set.set(1, json_data)
-                # self._latch.mark_completed()
+                ctx.result_set.set(1, json_data)
+                self._latch.mark_completed()
 
                 self.logger.info(f"Trace data captured from: {request.url}")
             except Exception as e:

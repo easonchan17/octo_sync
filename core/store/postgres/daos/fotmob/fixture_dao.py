@@ -7,11 +7,7 @@ from core.store.postgres.models.fotmob.fixture import Fixture, FixtureRaw
 from ..base_dao import BaseDao
 
 class FixtureDao(BaseDao):
-    def get_pending_fetch_items(
-        self,
-        start_date: date,
-        end_date: date
-    ) -> List[Any]:
+    def get_pending_fetch_items(self, start_date: date, end_date: date) -> List[Any]:
         with self.db.get_session() as session:
             rows = session.query(
                 FixtureRaw.match_date,

@@ -1,6 +1,6 @@
 from core.registry import Registry
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from core.types.enums import SiteName, LeaguePriority
 from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
@@ -73,10 +73,13 @@ class SyncHistoryFixture(PollTask):
 
         return uri
 
-    def get_pending_fetch_items(self):
+    def get_pending_fetch_items(self) -> List[Any]:
         site_leagues = league_service.get_site_leagues(
             SiteName.ODDSPORTAL.value, LeaguePriority.LEVEL_REGIONAL.value
         )
+        if not site_leagues:
+            return []
+
         league_ids = [int(league.league_id) for league in site_leagues]
         from_season, end_season = self.get_fetch_season_range()
 

@@ -63,8 +63,13 @@ class SyncMatch(PollTask):
         return start_date.date(), finish_date.date()
 
     def get_pending_fetch_items(self) -> List[Any]:
-        start_time, end_time = self.get_fetch_time_range(CrawlParams.MATCH_LOOKAHEAD_DAYS)
+        site_leagues = self.league_service.get_site_leagues(
+            SiteName.FOTMOB.value, LeaguePriority.LEVEL_REGIONAL.value
+        )
+        if not site_leagues:
+            return []
 
+        start_time, end_time = self.get_fetch_time_range(CrawlParams.MATCH_LOOKAHEAD_DAYS)
         return self.match_dao.get_pending_fetch_items(start_time, end_time, CrawlParams.META_DATA_QUERY_LIMIT)
 
     def get_refetch_interval(self, league_id: int, league_name: str, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
