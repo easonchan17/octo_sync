@@ -5,198 +5,25 @@ CREATE TABLE alembic_version (
     CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
 );
 
--- Running upgrade  -> 19d04cf87682
+-- Running upgrade  -> f0f209d2f864
 
-CREATE TABLE football_data.countries (
-    id SERIAL NOT NULL, 
-    name VARCHAR(128) NOT NULL, 
-    page_url VARCHAR(256) NOT NULL, 
+CREATE TABLE canonical_leagues (
+    id BIGSERIAL NOT NULL, 
+    country_code VARCHAR(3), 
+    country_name VARCHAR(100), 
+    name VARCHAR(200) NOT NULL, 
+    priority INTEGER, 
     status INTEGER, 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id), 
-    UNIQUE (name)
+    PRIMARY KEY (id)
 );
 
-CREATE INDEX idx_countries_created_at ON football_data.countries (created_at);
+CREATE INDEX idx_canonical_leagues_created_at ON canonical_leagues (created_at);
 
-CREATE INDEX idx_countries_updated_at ON football_data.countries (updated_at);
+CREATE INDEX idx_canonical_leagues_priority ON canonical_leagues (priority);
 
-CREATE TABLE football_data.country_raw (
-    id SERIAL NOT NULL, 
-    name VARCHAR(128) NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    source_url VARCHAR(512), 
-    is_fetched BOOLEAN, 
-    fetch_attempts INTEGER, 
-    last_fetch_error TEXT, 
-    last_fetched_at TIMESTAMP WITH TIME ZONE, 
-    is_parsed BOOLEAN, 
-    parse_attempts INTEGER, 
-    last_parse_error TEXT, 
-    last_parsed_at TIMESTAMP WITH TIME ZONE, 
-    total_fetch_count INTEGER, 
-    total_parse_count INTEGER, 
-    confirm_count INTEGER, 
-    html_body TEXT NOT NULL, 
-    encoding VARCHAR(20), 
-    PRIMARY KEY (id), 
-    UNIQUE (name)
-);
-
-CREATE INDEX idx_country_raw_created_at ON football_data.country_raw (created_at);
-
-CREATE INDEX idx_country_raw_not_parsed ON football_data.country_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
-
-CREATE INDEX idx_country_raw_updated_at ON football_data.country_raw (updated_at);
-
-CREATE TABLE football_data.league_odds (
-    id SERIAL NOT NULL, 
-    country_name VARCHAR(128) NOT NULL, 
-    season INTEGER NOT NULL, 
-    league_id VARCHAR(100) NOT NULL, 
-    league_name VARCHAR(200) NOT NULL, 
-    odds_url VARCHAR(512) NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id), 
-    CONSTRAINT uq_league_odds_season_league UNIQUE (season, league_id)
-);
-
-CREATE INDEX idx_league_odds_created_at ON football_data.league_odds (created_at);
-
-CREATE INDEX idx_league_odds_season ON football_data.league_odds (season);
-
-CREATE INDEX idx_league_odds_updated_at ON football_data.league_odds (updated_at);
-
-CREATE TABLE football_data.league_raw (
-    id SERIAL NOT NULL, 
-    country_name VARCHAR(128) NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    source_url VARCHAR(512), 
-    is_fetched BOOLEAN, 
-    fetch_attempts INTEGER, 
-    last_fetch_error TEXT, 
-    last_fetched_at TIMESTAMP WITH TIME ZONE, 
-    is_parsed BOOLEAN, 
-    parse_attempts INTEGER, 
-    last_parse_error TEXT, 
-    last_parsed_at TIMESTAMP WITH TIME ZONE, 
-    total_fetch_count INTEGER, 
-    total_parse_count INTEGER, 
-    confirm_count INTEGER, 
-    html_body TEXT NOT NULL, 
-    encoding VARCHAR(20), 
-    PRIMARY KEY (id), 
-    UNIQUE (country_name)
-);
-
-CREATE INDEX idx_league_raw_created_at ON football_data.league_raw (created_at);
-
-CREATE INDEX idx_league_raw_not_parsed ON football_data.league_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
-
-CREATE INDEX idx_league_raw_updated_at ON football_data.league_raw (updated_at);
-
-CREATE TABLE football_data.odds (
-    id SERIAL NOT NULL, 
-    match_id INTEGER NOT NULL, 
-    match_code VARCHAR(64), 
-    kickoff_time TIMESTAMP WITH TIME ZONE NOT NULL, 
-    home_team VARCHAR(64), 
-    away_team VARCHAR(64), 
-    home_open NUMERIC(10, 4), 
-    draw_open NUMERIC(10, 4), 
-    away_open NUMERIC(10, 4), 
-    home_close NUMERIC(10, 4), 
-    draw_close NUMERIC(10, 4), 
-    away_close NUMERIC(10, 4), 
-    ah_line_open NUMERIC(8, 2), 
-    ah_home_open NUMERIC(10, 4), 
-    ah_away_open NUMERIC(10, 4), 
-    ah_line_close NUMERIC(8, 2), 
-    ah_home_close NUMERIC(10, 4), 
-    ah_away_close NUMERIC(10, 4), 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id), 
-    CONSTRAINT uq_odds_match_id UNIQUE (match_id)
-);
-
-CREATE INDEX idx_odds_created_at ON football_data.odds (created_at);
-
-CREATE INDEX idx_odds_kickoff_time ON football_data.odds (kickoff_time);
-
-CREATE INDEX idx_odds_match_code ON football_data.odds (match_code);
-
-CREATE INDEX idx_odds_match_id ON football_data.odds (match_id);
-
-CREATE INDEX idx_odds_updated_at ON football_data.odds (updated_at);
-
-CREATE TABLE football_data.odds_raw (
-    id SERIAL NOT NULL, 
-    season INTEGER NOT NULL, 
-    league_id VARCHAR(100) NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    source_url VARCHAR(512), 
-    is_fetched BOOLEAN, 
-    fetch_attempts INTEGER, 
-    last_fetch_error TEXT, 
-    last_fetched_at TIMESTAMP WITH TIME ZONE, 
-    is_parsed BOOLEAN, 
-    parse_attempts INTEGER, 
-    last_parse_error TEXT, 
-    last_parsed_at TIMESTAMP WITH TIME ZONE, 
-    total_fetch_count INTEGER, 
-    total_parse_count INTEGER, 
-    confirm_count INTEGER, 
-    PRIMARY KEY (id), 
-    CONSTRAINT uq_odds_raw_season_league UNIQUE (season, league_id)
-);
-
-CREATE INDEX idx_odds_raw_created_at ON football_data.odds_raw (created_at);
-
-CREATE INDEX idx_odds_raw_not_parsed ON football_data.odds_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
-
-CREATE INDEX idx_odds_raw_updated_at ON football_data.odds_raw (updated_at);
-
-CREATE TABLE fotmob.elo_ratings (
-    id SERIAL NOT NULL, 
-    team_code CHAR(8) NOT NULL, 
-    match_code CHAR(8) NOT NULL, 
-    kickoff_time TIMESTAMP WITH TIME ZONE NOT NULL, 
-    season INTEGER NOT NULL, 
-    venue VARCHAR(16) NOT NULL, 
-    goal_diff INTEGER NOT NULL, 
-    pre_rating NUMERIC(10, 4) NOT NULL, 
-    expected_score NUMERIC(10, 4) NOT NULL, 
-    post_rating NUMERIC(10, 4) NOT NULL, 
-    game_count INTEGER NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id), 
-    CONSTRAINT uq_elo_ratings_team_match UNIQUE (team_code, match_code)
-);
-
-CREATE INDEX idx_elo_ratings_created_at ON fotmob.elo_ratings (created_at);
-
-CREATE INDEX idx_elo_ratings_kickoff_time ON fotmob.elo_ratings (kickoff_time);
-
-CREATE INDEX idx_elo_ratings_season ON fotmob.elo_ratings (season);
-
-CREATE INDEX idx_elo_ratings_team_match ON fotmob.elo_ratings (team_code, match_code);
-
-CREATE INDEX idx_elo_ratings_team_time ON fotmob.elo_ratings (team_code, kickoff_time);
-
-CREATE INDEX idx_elo_ratings_updated_at ON fotmob.elo_ratings (updated_at);
+CREATE INDEX idx_canonical_leagues_updated_at ON canonical_leagues (updated_at);
 
 CREATE TABLE fotmob.fixture_raw (
     id SERIAL NOT NULL, 
@@ -216,7 +43,7 @@ CREATE TABLE fotmob.fixture_raw (
     last_parsed_at TIMESTAMP WITH TIME ZONE, 
     total_fetch_count INTEGER, 
     total_parse_count INTEGER, 
-    confirm_count INTEGER, 
+    next_fetch_at TIMESTAMP WITH TIME ZONE, 
     json_body JSONB NOT NULL, 
     PRIMARY KEY (id), 
     UNIQUE (match_date)
@@ -224,11 +51,11 @@ CREATE TABLE fotmob.fixture_raw (
 
 CREATE INDEX idx_fixture_raw_created_at ON fotmob.fixture_raw (created_at);
 
+CREATE INDEX idx_fixture_raw_next_fetch_at ON fotmob.fixture_raw (next_fetch_at);
+
 CREATE INDEX idx_fixture_raw_not_fetched ON fotmob.fixture_raw (match_date) WHERE is_fetched = false;
 
 CREATE INDEX idx_fixture_raw_not_parsed ON fotmob.fixture_raw (match_date) WHERE is_fetched = true and is_parsed = false;
-
-CREATE INDEX idx_fixture_raw_refetch ON fotmob.fixture_raw (is_parsed, confirm_count, match_date);
 
 CREATE INDEX idx_fixture_raw_updated_at ON fotmob.fixture_raw (updated_at);
 
@@ -389,7 +216,7 @@ CREATE TABLE fotmob.match_raw (
     last_parsed_at TIMESTAMP WITH TIME ZONE, 
     total_fetch_count INTEGER, 
     total_parse_count INTEGER, 
-    confirm_count INTEGER, 
+    next_fetch_at TIMESTAMP WITH TIME ZONE, 
     json_body JSONB NOT NULL, 
     PRIMARY KEY (id), 
     UNIQUE (match_id)
@@ -399,11 +226,11 @@ CREATE INDEX idx_match_raw_created_at ON fotmob.match_raw (created_at);
 
 CREATE INDEX idx_match_raw_kickoff_time ON fotmob.match_raw (kickoff_time);
 
+CREATE INDEX idx_match_raw_next_fetch_at ON fotmob.match_raw (next_fetch_at);
+
 CREATE INDEX idx_match_raw_not_fetched ON fotmob.match_raw (match_id) WHERE is_fetched = false;
 
 CREATE INDEX idx_match_raw_not_parsed ON fotmob.match_raw (kickoff_time) WHERE is_fetched = true and is_parsed = false;
-
-CREATE INDEX idx_match_raw_refetch ON fotmob.match_raw (is_parsed, confirm_count, kickoff_time);
 
 CREATE INDEX idx_match_raw_updated_at ON fotmob.match_raw (updated_at);
 
@@ -506,6 +333,111 @@ CREATE INDEX idx_match_stats_match_id ON fotmob.match_stats (match_id);
 
 CREATE INDEX idx_match_stats_updated_at ON fotmob.match_stats (updated_at);
 
+CREATE TABLE oddsportal.fixture_mapping_logs (
+    id SERIAL NOT NULL, 
+    match_code VARCHAR(64) NOT NULL, 
+    attempts INTEGER NOT NULL, 
+    last_attempted_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    next_attempt_at TIMESTAMP WITH TIME ZONE, 
+    status INTEGER, 
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    PRIMARY KEY (id), 
+    UNIQUE (match_code)
+);
+
+CREATE INDEX idx_fixture_mapping_logs_created_at ON oddsportal.fixture_mapping_logs (created_at);
+
+CREATE INDEX idx_fixture_mapping_logs_updated_at ON oddsportal.fixture_mapping_logs (updated_at);
+
+CREATE TABLE oddsportal.fixtures (
+    id SERIAL NOT NULL, 
+    match_id INTEGER, 
+    league_id INTEGER NOT NULL, 
+    season INTEGER NOT NULL, 
+    kickoff_time TIMESTAMP WITH TIME ZONE NOT NULL, 
+    home_id INTEGER, 
+    away_id INTEGER, 
+    home_name VARCHAR(200) NOT NULL, 
+    away_name VARCHAR(200) NOT NULL, 
+    match_url VARCHAR(512) NOT NULL, 
+    match_code VARCHAR(64) NOT NULL, 
+    home_url VARCHAR(512), 
+    home_code VARCHAR(200), 
+    away_url VARCHAR(512), 
+    away_code VARCHAR(200), 
+    ref_match_id INTEGER, 
+    status INTEGER, 
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    PRIMARY KEY (id), 
+    UNIQUE (match_code), 
+    UNIQUE (match_id), 
+    UNIQUE (ref_match_id)
+);
+
+CREATE INDEX idx_fixtures_created_at ON oddsportal.fixtures (created_at);
+
+CREATE INDEX idx_fixtures_kickoff_time ON oddsportal.fixtures (kickoff_time);
+
+CREATE INDEX idx_fixtures_league_id ON oddsportal.fixtures (league_id);
+
+CREATE INDEX idx_fixtures_season ON oddsportal.fixtures (season);
+
+CREATE INDEX idx_fixtures_updated_at ON oddsportal.fixtures (updated_at);
+
+CREATE TABLE oddsportal.history_fixture_progress (
+    id SERIAL NOT NULL, 
+    league_id INTEGER NOT NULL, 
+    season INTEGER NOT NULL, 
+    status INTEGER, 
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    total INTEGER NOT NULL, 
+    total_page INTEGER NOT NULL, 
+    page_size INTEGER NOT NULL, 
+    page INTEGER NOT NULL, 
+    PRIMARY KEY (id), 
+    CONSTRAINT uq_history_fixture_progress_league_season UNIQUE (league_id, season)
+);
+
+CREATE INDEX idx_history_fixture_progress_created_at ON oddsportal.history_fixture_progress (created_at);
+
+CREATE INDEX idx_history_fixture_progress_updated_at ON oddsportal.history_fixture_progress (updated_at);
+
+CREATE TABLE oddsportal.history_fixture_raw (
+    id SERIAL NOT NULL, 
+    league_id INTEGER NOT NULL, 
+    season INTEGER NOT NULL, 
+    page INTEGER NOT NULL, 
+    status INTEGER, 
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    source_url VARCHAR(512), 
+    is_fetched BOOLEAN, 
+    fetch_attempts INTEGER, 
+    last_fetch_error TEXT, 
+    last_fetched_at TIMESTAMP WITH TIME ZONE, 
+    is_parsed BOOLEAN, 
+    parse_attempts INTEGER, 
+    last_parse_error TEXT, 
+    last_parsed_at TIMESTAMP WITH TIME ZONE, 
+    total_fetch_count INTEGER, 
+    total_parse_count INTEGER, 
+    next_fetch_at TIMESTAMP WITH TIME ZONE, 
+    json_body JSONB NOT NULL, 
+    PRIMARY KEY (id), 
+    CONSTRAINT uq_history_fixture_raw_league_season_page UNIQUE (league_id, season, page)
+);
+
+CREATE INDEX idx_history_fixture_raw_created_at ON oddsportal.history_fixture_raw (created_at);
+
+CREATE INDEX idx_history_fixture_raw_next_fetch_at ON oddsportal.history_fixture_raw (next_fetch_at);
+
+CREATE INDEX idx_history_fixture_raw_not_parsed ON oddsportal.history_fixture_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
+
+CREATE INDEX idx_history_fixture_raw_updated_at ON oddsportal.history_fixture_raw (updated_at);
+
 CREATE TABLE oddsportal.league_raw (
     id SERIAL NOT NULL, 
     sport VARCHAR(64) NOT NULL, 
@@ -523,7 +455,7 @@ CREATE TABLE oddsportal.league_raw (
     last_parsed_at TIMESTAMP WITH TIME ZONE, 
     total_fetch_count INTEGER, 
     total_parse_count INTEGER, 
-    confirm_count INTEGER, 
+    next_fetch_at TIMESTAMP WITH TIME ZONE, 
     json_body JSONB NOT NULL, 
     PRIMARY KEY (id), 
     UNIQUE (sport)
@@ -531,159 +463,211 @@ CREATE TABLE oddsportal.league_raw (
 
 CREATE INDEX idx_league_raw_created_at ON oddsportal.league_raw (created_at);
 
+CREATE INDEX idx_league_raw_next_fetch_at ON oddsportal.league_raw (next_fetch_at);
+
 CREATE INDEX idx_league_raw_not_parsed ON oddsportal.league_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
 
 CREATE INDEX idx_league_raw_updated_at ON oddsportal.league_raw (updated_at);
 
-CREATE TABLE pinnacle.fixtures (
-    id BIGSERIAL NOT NULL, 
-    match_id BIGINT NOT NULL, 
-    kickoff_time TIMESTAMP WITH TIME ZONE NOT NULL, 
+CREATE TABLE oddsportal.leagues (
+    id SERIAL NOT NULL, 
     league_id INTEGER NOT NULL, 
     league_name VARCHAR(200) NOT NULL, 
-    home_team VARCHAR(100) NOT NULL, 
-    away_team VARCHAR(100) NOT NULL, 
-    fixture_id INTEGER, 
+    page_url VARCHAR(512) NOT NULL, 
+    country_name VARCHAR(128) NOT NULL, 
+    country_code VARCHAR(8) NOT NULL, 
+    min_season INTEGER, 
+    max_season INTEGER, 
     status INTEGER, 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id), 
-    UNIQUE (fixture_id), 
-    UNIQUE (match_id)
-);
-
-COMMENT ON COLUMN pinnacle.fixtures.fixture_id IS 'References fotmob_fixtures.match_id';
-
-CREATE INDEX idx_fixtures_away_team ON pinnacle.fixtures (away_team);
-
-CREATE INDEX idx_fixtures_created_at ON pinnacle.fixtures (created_at);
-
-CREATE INDEX idx_fixtures_home_team ON pinnacle.fixtures (home_team);
-
-CREATE INDEX idx_fixtures_kickoff_time ON pinnacle.fixtures (kickoff_time);
-
-CREATE INDEX idx_fixtures_league_id ON pinnacle.fixtures (league_id);
-
-CREATE INDEX idx_fixtures_updated_at ON pinnacle.fixtures (updated_at);
-
-CREATE TABLE pinnacle.league_raw (
-    id SERIAL NOT NULL, 
-    sport_id INTEGER NOT NULL, 
-    sport_name VARCHAR(100) NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    source_url VARCHAR(512), 
-    is_fetched BOOLEAN, 
-    fetch_attempts INTEGER, 
-    last_fetch_error TEXT, 
-    last_fetched_at TIMESTAMP WITH TIME ZONE, 
-    is_parsed BOOLEAN, 
-    parse_attempts INTEGER, 
-    last_parse_error TEXT, 
-    last_parsed_at TIMESTAMP WITH TIME ZONE, 
-    total_fetch_count INTEGER, 
-    total_parse_count INTEGER, 
-    confirm_count INTEGER, 
-    json_body JSONB NOT NULL, 
-    PRIMARY KEY (id), 
-    UNIQUE (sport_id)
-);
-
-CREATE INDEX idx_league_raw_created_at ON pinnacle.league_raw (created_at);
-
-CREATE INDEX idx_league_raw_updated_at ON pinnacle.league_raw (updated_at);
-
-CREATE TABLE pinnacle.moneylines (
-    id BIGSERIAL NOT NULL, 
-    match_id BIGINT NOT NULL, 
-    period INTEGER NOT NULL, 
-    home_price INTEGER NOT NULL, 
-    home_odds NUMERIC(7, 3) NOT NULL, 
-    draw_price INTEGER NOT NULL, 
-    draw_odds NUMERIC(7, 3) NOT NULL, 
-    away_price INTEGER NOT NULL, 
-    away_odds NUMERIC(7, 3) NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id)
-);
-
-CREATE INDEX idx_moneylines_created_at ON pinnacle.moneylines (created_at);
-
-CREATE INDEX idx_moneylines_match_id ON pinnacle.moneylines (match_id);
-
-CREATE INDEX idx_moneylines_updated_at ON pinnacle.moneylines (updated_at);
-
-CREATE TABLE pinnacle.odds_raw (
-    id SERIAL NOT NULL, 
-    league_id INTEGER NOT NULL, 
-    status INTEGER, 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    source_url VARCHAR(512), 
-    is_fetched BOOLEAN, 
-    fetch_attempts INTEGER, 
-    last_fetch_error TEXT, 
-    last_fetched_at TIMESTAMP WITH TIME ZONE, 
-    is_parsed BOOLEAN, 
-    parse_attempts INTEGER, 
-    last_parse_error TEXT, 
-    last_parsed_at TIMESTAMP WITH TIME ZONE, 
-    total_fetch_count INTEGER, 
-    total_parse_count INTEGER, 
-    confirm_count INTEGER, 
-    json_body JSONB NOT NULL, 
     PRIMARY KEY (id), 
     UNIQUE (league_id)
 );
 
-CREATE INDEX idx_odds_raw_created_at ON pinnacle.odds_raw (created_at);
+CREATE INDEX idx_leagues_country_name ON oddsportal.leagues (country_name);
 
-CREATE INDEX idx_odds_raw_updated_at ON pinnacle.odds_raw (updated_at);
+CREATE INDEX idx_leagues_created_at ON oddsportal.leagues (created_at);
 
-CREATE TABLE pinnacle.spreads (
-    id BIGSERIAL NOT NULL, 
-    match_id BIGINT NOT NULL, 
-    period INTEGER NOT NULL, 
-    handicap NUMERIC(5, 2) NOT NULL, 
-    home_price INTEGER NOT NULL, 
-    home_odds NUMERIC(7, 3) NOT NULL, 
-    away_price INTEGER NOT NULL, 
-    away_odds NUMERIC(7, 3) NOT NULL, 
-    is_alternate BOOLEAN NOT NULL, 
+CREATE INDEX idx_leagues_updated_at ON oddsportal.leagues (updated_at);
+
+CREATE TABLE oddsportal.odds_1x2 (
+    id SERIAL NOT NULL, 
+    match_code VARCHAR(64) NOT NULL, 
+    betting_type_id INTEGER NOT NULL, 
+    scope_id INTEGER NOT NULL, 
+    bookmaker_id INTEGER NOT NULL, 
+    quote_type VARCHAR(8) NOT NULL, 
+    closing_home_odds FLOAT, 
+    closing_draw_odds FLOAT, 
+    closing_away_odds FLOAT, 
+    opening_home_odds FLOAT, 
+    opening_draw_odds FLOAT, 
+    opening_away_odds FLOAT, 
+    closing_home_volume INTEGER, 
+    closing_draw_volume INTEGER, 
+    closing_away_volume INTEGER, 
+    opening_home_volume INTEGER, 
+    opening_draw_volume INTEGER, 
+    opening_away_volume INTEGER, 
+    home_movement VARCHAR(8), 
+    draw_movement VARCHAR(8), 
+    away_movement VARCHAR(8), 
+    closing_home_change_time TIMESTAMP WITH TIME ZONE, 
+    closing_draw_change_time TIMESTAMP WITH TIME ZONE, 
+    closing_away_change_time TIMESTAMP WITH TIME ZONE, 
+    opening_home_change_time TIMESTAMP WITH TIME ZONE, 
+    opening_draw_change_time TIMESTAMP WITH TIME ZONE, 
+    opening_away_change_time TIMESTAMP WITH TIME ZONE, 
     status INTEGER, 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id)
+    PRIMARY KEY (id), 
+    CONSTRAINT uq_odds_1x2_match_betting_scope_bookmaker_quote_type UNIQUE (match_code, betting_type_id, scope_id, bookmaker_id, quote_type)
 );
 
-CREATE INDEX idx_spreads_created_at ON pinnacle.spreads (created_at);
+CREATE INDEX idx_odds_1x2_created_at ON oddsportal.odds_1x2 (created_at);
 
-CREATE INDEX idx_spreads_match_id ON pinnacle.spreads (match_id);
+CREATE INDEX idx_odds_1x2_match_code ON oddsportal.odds_1x2 (match_code);
 
-CREATE INDEX idx_spreads_updated_at ON pinnacle.spreads (updated_at);
+CREATE INDEX idx_odds_1x2_updated_at ON oddsportal.odds_1x2 (updated_at);
 
-CREATE TABLE public.leagues (
-    id BIGSERIAL NOT NULL, 
-    country_code VARCHAR(3), 
-    country_name VARCHAR(100), 
-    name VARCHAR(200) NOT NULL, 
-    priority INTEGER, 
+CREATE TABLE oddsportal.odds_ah (
+    id SERIAL NOT NULL, 
+    match_code VARCHAR(64) NOT NULL, 
+    betting_type_id INTEGER NOT NULL, 
+    scope_id INTEGER NOT NULL, 
+    bookmaker_id INTEGER NOT NULL, 
+    quote_type VARCHAR(8) NOT NULL, 
+    handicap FLOAT, 
+    closing_home_odds FLOAT, 
+    closing_away_odds FLOAT, 
+    opening_handicap FLOAT, 
+    opening_home_odds FLOAT, 
+    opening_away_odds FLOAT, 
+    closing_home_volume INTEGER, 
+    closing_away_volume INTEGER, 
+    opening_home_volume INTEGER, 
+    opening_away_volume INTEGER, 
+    home_movement VARCHAR(8), 
+    away_movement VARCHAR(8), 
+    closing_home_change_time TIMESTAMP WITH TIME ZONE, 
+    closing_away_change_time TIMESTAMP WITH TIME ZONE, 
+    opening_home_change_time TIMESTAMP WITH TIME ZONE, 
+    opening_away_change_time TIMESTAMP WITH TIME ZONE, 
     status INTEGER, 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (id)
+    PRIMARY KEY (id), 
+    CONSTRAINT uq_odds_ah_match_betting_scope_bookmaker_quote_type_handicap UNIQUE (match_code, betting_type_id, scope_id, bookmaker_id, quote_type, handicap)
 );
 
-CREATE INDEX idx_leagues_created_at ON public.leagues (created_at);
+CREATE INDEX idx_odds_ah_created_at ON oddsportal.odds_ah (created_at);
 
-CREATE INDEX idx_leagues_priority ON public.leagues (priority);
+CREATE INDEX idx_odds_ah_match_code ON oddsportal.odds_ah (match_code);
 
-CREATE INDEX idx_leagues_updated_at ON public.leagues (updated_at);
+CREATE INDEX idx_odds_ah_updated_at ON oddsportal.odds_ah (updated_at);
 
-CREATE TABLE public.sites (
+CREATE TABLE oddsportal.odds_raw (
+    id SERIAL NOT NULL, 
+    match_code VARCHAR(64) NOT NULL, 
+    betting_type_id INTEGER NOT NULL, 
+    scope_id INTEGER NOT NULL, 
+    status INTEGER, 
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    source_url VARCHAR(512), 
+    is_fetched BOOLEAN, 
+    fetch_attempts INTEGER, 
+    last_fetch_error TEXT, 
+    last_fetched_at TIMESTAMP WITH TIME ZONE, 
+    is_parsed BOOLEAN, 
+    parse_attempts INTEGER, 
+    last_parse_error TEXT, 
+    last_parsed_at TIMESTAMP WITH TIME ZONE, 
+    total_fetch_count INTEGER, 
+    total_parse_count INTEGER, 
+    next_fetch_at TIMESTAMP WITH TIME ZONE, 
+    json_body JSONB NOT NULL, 
+    PRIMARY KEY (id), 
+    CONSTRAINT uq_odds_raw_match_betting_scope UNIQUE (match_code, betting_type_id, scope_id)
+);
+
+CREATE INDEX idx_odds_raw_created_at ON oddsportal.odds_raw (created_at);
+
+CREATE INDEX idx_odds_raw_next_fetch_at ON oddsportal.odds_raw (next_fetch_at);
+
+CREATE INDEX idx_odds_raw_not_parsed ON oddsportal.odds_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
+
+CREATE INDEX idx_odds_raw_updated_at ON oddsportal.odds_raw (updated_at);
+
+CREATE TABLE oddsportal.season_raw (
+    id SERIAL NOT NULL, 
+    league_id INTEGER NOT NULL, 
+    league_name VARCHAR(200) NOT NULL, 
+    status INTEGER, 
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    source_url VARCHAR(512), 
+    is_fetched BOOLEAN, 
+    fetch_attempts INTEGER, 
+    last_fetch_error TEXT, 
+    last_fetched_at TIMESTAMP WITH TIME ZONE, 
+    is_parsed BOOLEAN, 
+    parse_attempts INTEGER, 
+    last_parse_error TEXT, 
+    last_parsed_at TIMESTAMP WITH TIME ZONE, 
+    total_fetch_count INTEGER, 
+    total_parse_count INTEGER, 
+    next_fetch_at TIMESTAMP WITH TIME ZONE, 
+    html_body TEXT NOT NULL, 
+    encoding VARCHAR(20), 
+    PRIMARY KEY (id), 
+    UNIQUE (league_id)
+);
+
+CREATE INDEX idx_season_raw_created_at ON oddsportal.season_raw (created_at);
+
+CREATE INDEX idx_season_raw_next_fetch_at ON oddsportal.season_raw (next_fetch_at);
+
+CREATE INDEX idx_season_raw_not_parsed ON oddsportal.season_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
+
+CREATE INDEX idx_season_raw_updated_at ON oddsportal.season_raw (updated_at);
+
+CREATE TABLE oddsportal.upcoming_fixture_raw (
+    id SERIAL NOT NULL, 
+    league_id INTEGER NOT NULL, 
+    season INTEGER NOT NULL, 
+    status INTEGER, 
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+    source_url VARCHAR(512), 
+    is_fetched BOOLEAN, 
+    fetch_attempts INTEGER, 
+    last_fetch_error TEXT, 
+    last_fetched_at TIMESTAMP WITH TIME ZONE, 
+    is_parsed BOOLEAN, 
+    parse_attempts INTEGER, 
+    last_parse_error TEXT, 
+    last_parsed_at TIMESTAMP WITH TIME ZONE, 
+    total_fetch_count INTEGER, 
+    total_parse_count INTEGER, 
+    next_fetch_at TIMESTAMP WITH TIME ZONE, 
+    html_body TEXT NOT NULL, 
+    encoding VARCHAR(20), 
+    PRIMARY KEY (id), 
+    UNIQUE (league_id)
+);
+
+CREATE INDEX idx_upcoming_fixture_raw_created_at ON oddsportal.upcoming_fixture_raw (created_at);
+
+CREATE INDEX idx_upcoming_fixture_raw_next_fetch_at ON oddsportal.upcoming_fixture_raw (next_fetch_at);
+
+CREATE INDEX idx_upcoming_fixture_raw_not_parsed ON oddsportal.upcoming_fixture_raw (is_parsed) WHERE is_fetched = true and is_parsed = false;
+
+CREATE INDEX idx_upcoming_fixture_raw_updated_at ON oddsportal.upcoming_fixture_raw (updated_at);
+
+CREATE TABLE sites (
     id SERIAL NOT NULL, 
     name VARCHAR(100) NOT NULL, 
     url TEXT NOT NULL, 
@@ -694,13 +678,14 @@ CREATE TABLE public.sites (
     UNIQUE (name)
 );
 
-CREATE INDEX idx_sites_created_at ON public.sites (created_at);
+CREATE INDEX idx_sites_created_at ON sites (created_at);
 
-CREATE INDEX idx_sites_updated_at ON public.sites (updated_at);
+CREATE INDEX idx_sites_updated_at ON sites (updated_at);
 
-CREATE INDEX idx_sites_url ON public.sites (url);
+CREATE INDEX idx_sites_url ON sites (url);
 
-CREATE TABLE public.sys_vals (
+CREATE TABLE sys_vals (
+    module VARCHAR(64), 
     key VARCHAR(128) NOT NULL, 
     val_datetime TIMESTAMP WITH TIME ZONE, 
     val_int INTEGER, 
@@ -708,14 +693,14 @@ CREATE TABLE public.sys_vals (
     status INTEGER, 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    PRIMARY KEY (key)
+    CONSTRAINT pkey_sys_vals_module_key PRIMARY KEY (module, key)
 );
 
-CREATE INDEX idx_sys_vals_created_at ON public.sys_vals (created_at);
+CREATE INDEX idx_sys_vals_created_at ON sys_vals (created_at);
 
-CREATE INDEX idx_sys_vals_updated_at ON public.sys_vals (updated_at);
+CREATE INDEX idx_sys_vals_updated_at ON sys_vals (updated_at);
 
-CREATE TABLE public.training_records (
+CREATE TABLE training_records (
     id SERIAL NOT NULL, 
     model_version VARCHAR(256) NOT NULL, 
     model_type VARCHAR(256) NOT NULL, 
@@ -733,19 +718,19 @@ CREATE TABLE public.training_records (
     UNIQUE (model_version)
 );
 
-CREATE INDEX idx_training_records_created_at ON public.training_records (created_at);
+CREATE INDEX idx_training_records_created_at ON training_records (created_at);
 
-CREATE INDEX idx_training_records_dataset_name ON public.training_records (dataset_name);
+CREATE INDEX idx_training_records_dataset_name ON training_records (dataset_name);
 
-CREATE INDEX idx_training_records_model_type ON public.training_records (model_type);
+CREATE INDEX idx_training_records_model_type ON training_records (model_type);
 
-CREATE INDEX idx_training_records_test_score ON public.training_records (test_score);
+CREATE INDEX idx_training_records_test_score ON training_records (test_score);
 
-CREATE INDEX idx_training_records_train_score ON public.training_records (train_score);
+CREATE INDEX idx_training_records_train_score ON training_records (train_score);
 
-CREATE INDEX idx_training_records_updated_at ON public.training_records (updated_at);
+CREATE INDEX idx_training_records_updated_at ON training_records (updated_at);
 
-CREATE TABLE public.site_leagues (
+CREATE TABLE site_leagues (
     id SERIAL NOT NULL, 
     site_name VARCHAR(100) NOT NULL, 
     country_code VARCHAR(3), 
@@ -758,32 +743,16 @@ CREATE TABLE public.site_leagues (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
     PRIMARY KEY (id), 
-    FOREIGN KEY(ref_league_id) REFERENCES public.leagues (id), 
+    CONSTRAINT site_leagues_ref_league_id_fkey FOREIGN KEY(ref_league_id) REFERENCES canonical_leagues (id), 
     CONSTRAINT uq_site_league_league_id_site UNIQUE (ref_league_id, site_name), 
     CONSTRAINT uq_site_league_site_code UNIQUE (site_name, league_id)
 );
 
-CREATE INDEX idx_site_leagues_created_at ON public.site_leagues (created_at);
+CREATE INDEX idx_site_leagues_created_at ON site_leagues (created_at);
 
-CREATE INDEX idx_site_leagues_updated_at ON public.site_leagues (updated_at);
+CREATE INDEX idx_site_leagues_updated_at ON site_leagues (updated_at);
 
-INSERT INTO alembic_version (version_num) VALUES ('19d04cf87682') RETURNING alembic_version.version_num;
-
--- Running upgrade 19d04cf87682 -> 7c900c42d186
-
-ALTER TABLE site_leagues DROP CONSTRAINT site_leagues_ref_league_id_fkey;
-
-ALTER TABLE public.site_leagues ADD FOREIGN KEY(ref_league_id) REFERENCES public.leagues (id);
-
-UPDATE alembic_version SET version_num='7c900c42d186' WHERE alembic_version.version_num = '19d04cf87682';
-
--- Running upgrade 7c900c42d186 -> 393b08f729d2
-
-ALTER TABLE site_leagues DROP CONSTRAINT site_leagues_ref_league_id_fkey;
-
-ALTER TABLE public.site_leagues ADD CONSTRAINT site_leagues_ref_league_id_fkey FOREIGN KEY(ref_league_id) REFERENCES public.leagues (id);
-
-UPDATE alembic_version SET version_num='393b08f729d2' WHERE alembic_version.version_num = '7c900c42d186';
+INSERT INTO alembic_version (version_num) VALUES ('f0f209d2f864') RETURNING alembic_version.version_num;
 
 COMMIT;
 

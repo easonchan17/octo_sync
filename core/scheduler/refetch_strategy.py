@@ -1,5 +1,6 @@
 import sys
-from typing import Optional
+from dataclasses import dataclass
+from typing import Optional, List
 from datetime import datetime, timedelta
 
 class TimelineSegment:
@@ -93,5 +94,33 @@ class AttemptRefetchStrategy:
         for segment in self._segments:
             if segment.is_active(attempts):
                 return segment.interval
+
+        return None
+
+@dataclass
+class ScheduleItem:
+    time: datetime
+    is_active: bool
+class ScheduleRefetchStrategy:
+    def __init__(self, active_window: timedelta, active_interval: timedelta) -> None:
+        self._active_window = active_window
+        self._active_interval = active_interval
+
+    def suggest_interval(self, current_time: datetime, scheduled_items: List[ScheduleItem]) -> Optional[timedelta]:
+        if not scheduled_items:
+            return None
+
+        window_start = current_time - self._active_window
+        sorted_items = sorted(scheduled_items, key=lambda item: item.time)
+
+        for item in sorted_items:
+            if item.time < window_start:
+                continue
+
+            if item.time > current_time:
+                return item.time - current_time
+
+            if item.is_active:
+                return self._active_interval
 
         return None

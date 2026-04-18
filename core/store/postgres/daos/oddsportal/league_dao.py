@@ -1,4 +1,5 @@
-from datetime import timedelta, datetime
+import traceback
+from datetime import timedelta, datetime, timezone
 from sqlalchemy import func, or_, and_
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
@@ -18,9 +19,9 @@ class LeagueDao(BaseDao):
             ).first()
 
             if item is None:
-                return (sport, 0, datetime.now())
+                return (sport, 0, datetime.now(timezone.utc))
 
-            if item.next_fetch_at is not None and item.next_fetch_at <= datetime.now():
+            if item.next_fetch_at is not None and item.next_fetch_at <= datetime.now(timezone.utc):
                 return item
 
             return None
@@ -55,8 +56,11 @@ class LeagueDao(BaseDao):
                 LeagueRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, sport: str, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+    def mark_fetch_failed(self, sport: str, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
+        if error_msg is None:
+            error_msg = traceback.format_exc()
+
         with self.db.get_session() as session:
             insert_stmt = insert(LeagueRaw).values(
                 sport=sport,
@@ -93,7 +97,9 @@ class LeagueDao(BaseDao):
                 LeagueRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_parse_failed(self, sport: str, error_msg: str) -> None:
+    def mark_parse_failed(self, sport: str, error_msg: Optional[str] = None) -> None:
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             session.query(LeagueRaw).filter(
                 LeagueRaw.sport == sport

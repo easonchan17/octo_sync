@@ -1,5 +1,4 @@
 import json
-import traceback
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional
 from core.registry import Registry
@@ -336,8 +335,7 @@ class BaseParseOdds(PollTask):
                         self.logger.info(f"Parsed odds match_code={match_code} betting_type_id={betting_type_id} scope_id={scope_id} count={len(parsed_odds)}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
-                        self.odds_dao.mark_parse_failed(match_code, betting_type_id, scope_id, full_stack_trace)
+                        self.odds_dao.mark_parse_failed(match_code, betting_type_id, scope_id)
                         self.logger.error(f"Failed to parse odds match_code={match_code}: {e}", exc_info=True)
                         self.logger.error(f"json_body: {json.dumps(json_body, ensure_ascii=False, indent=2)}")
 

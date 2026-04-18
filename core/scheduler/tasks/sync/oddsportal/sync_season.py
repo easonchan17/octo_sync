@@ -1,4 +1,3 @@
-import traceback
 from core.registry import Registry
 from typing import Any, Dict, Optional
 from core.types.params import CrawlParams
@@ -82,8 +81,8 @@ class SyncSeason(PollTask):
                             self.logger.error(f"No response for {page_url}")
                             self.season_dao.mark_fetch_failed(
                                 league_id,
+                                self.retry_strategy.suggest_interval(fetch_attempts+1),
                                 "No response",
-                                self.retry_strategy.suggest_interval(fetch_attempts+1)
                             )
                             continue
 
@@ -102,11 +101,9 @@ class SyncSeason(PollTask):
                         self.logger.info(f"Synced season for league_id={league_id} league_name={league_name}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
                         self.season_dao.mark_fetch_failed(
                             league_id,
-                            full_stack_trace,
-                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            self.retry_strategy.suggest_interval(fetch_attempts+1),
                         )
                         self.logger.error(f"Failed to sync season for league_id={league_id} league_name={league_name}: {e}")
 

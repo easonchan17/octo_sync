@@ -1,4 +1,3 @@
-import traceback
 from core.registry import Registry
 from datetime import timedelta
 from typing import Any, Dict, Optional
@@ -117,8 +116,8 @@ class SyncHistoryFixture(PollTask):
                                 league_id,
                                 season,
                                 page,
+                                self.retry_strategy.suggest_interval(fetch_attempts+1),
                                 "No response",
-                                self.retry_strategy.suggest_interval(fetch_attempts+1)
                             )
                             continue
 
@@ -141,12 +140,10 @@ class SyncHistoryFixture(PollTask):
                         self.logger.info(f"Synced oddsportal fixtures league_id={league_id} league_name={league_name} season={season} page={page}/{total_page}")
 
                     except Exception as e:
-                        full_stack_trace = traceback.format_exc()
                         self.history_fixture_dao.mark_fetch_failed(
                             league_id, season,
                             page,
-                            full_stack_trace,
-                            self.retry_strategy.suggest_interval(fetch_attempts+1)
+                            self.retry_strategy.suggest_interval(fetch_attempts+1),
                         )
                         self.logger.error(f"Failed to sync fixtures for league_id={league_id} league_name={league_name}: {e}")
 

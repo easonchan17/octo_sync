@@ -12,8 +12,8 @@ class EloParams:
     # TODO: different reversion_rate for different leagues
 
 class CrawlParams:
-    START_DATE = datetime(2023, 1, 1, tzinfo=timezone.utc)
-    START_SEASON = 2023
+    START_DATE = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    START_SEASON = 2025
 
     RAW_DATA_QUERY_LIMIT = 300
     META_DATA_QUERY_LIMIT = 2000

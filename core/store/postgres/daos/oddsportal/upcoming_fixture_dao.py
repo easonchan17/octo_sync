@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+import traceback
+from datetime import timedelta
 from sqlalchemy import func, or_
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
@@ -43,8 +44,10 @@ class UpcomingFixtureDao(BaseDao):
                 UpcomingFixtureRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, league_id: int, error_msg: str, fetch_interval: Optional[timedelta]) -> None:
+    def mark_fetch_failed(self, league_id: int, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             insert_stmt = insert(UpcomingFixtureRaw).values(
                 league_id=league_id,
@@ -96,7 +99,9 @@ class UpcomingFixtureDao(BaseDao):
                 UpcomingFixtureRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_parse_failed(self, league_id: int, error_msg: str) -> None:
+    def mark_parse_failed(self, league_id: int, error_msg: Optional[str] = None) -> None:
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             session.query(UpcomingFixtureRaw).filter(
                 UpcomingFixtureRaw.league_id == league_id
