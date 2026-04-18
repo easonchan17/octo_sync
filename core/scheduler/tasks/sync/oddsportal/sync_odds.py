@@ -4,7 +4,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import TimelineRefetchStrategy, AttemptRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from datetime import datetime, timezone, timedelta
 from core.types.params import CrawlParams
 from core.types.enums import OddsMarkets
@@ -52,7 +52,7 @@ class BaseSyncOdds(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG, rule_extras=rule_extras)
 
         self.refetch_strategy = (
-            TimelineRefetchStrategy(min_interval=timedelta(minutes=5))
+            TimelineStrategy(min_interval=timedelta(minutes=5))
             .add_segment(start_offset=timedelta(days=-7), end_offset=timedelta(days=-3), interval=timedelta(days=1))
             .add_segment(start_offset=timedelta(days=-3), end_offset=timedelta(hours=-24), interval=timedelta(hours=12))
             .add_segment(start_offset=timedelta(hours=-24), end_offset=timedelta(hours=-2), interval=timedelta(hours=1))
@@ -62,7 +62,7 @@ class BaseSyncOdds(PollTask):
         )
 
         self.retry_strategy = (
-            AttemptRefetchStrategy()
+            AttemptStrategy()
             .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=2))
             .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(minutes=15))
@@ -126,7 +126,7 @@ class BaseSyncOdds(PollTask):
                                 match_code,
                                 self.market.betting_type_id,
                                 self.market.scope_id,
-                                self.retry_strategy.suggest_interval(fetch_attempts+1),
+                                self.retry_strategy.suggest_interval(fetch_attempts),
                                 "No response",
                             )
                             continue
@@ -151,7 +151,7 @@ class BaseSyncOdds(PollTask):
                             match_code,
                             self.market.betting_type_id,
                             self.market.scope_id,
-                            self.retry_strategy.suggest_interval(fetch_attempts+1),
+                            self.retry_strategy.suggest_interval(fetch_attempts),
                         )
                         self.logger.error(f"Failed to sync odds for match_code={match_code}: {e}")
 

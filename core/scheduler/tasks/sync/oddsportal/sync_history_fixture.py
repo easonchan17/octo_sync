@@ -6,7 +6,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import HistoryFixtureDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import AttemptRefetchStrategy
+from core.scheduler.refetch_strategy import AttemptStrategy
 from core.services.league.service import league_service
 
 @Registry.poll('sync.oddsportal.history_fixture')
@@ -48,7 +48,7 @@ class SyncHistoryFixture(PollTask):
         self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
 
         self.retry_strategy = (
-            AttemptRefetchStrategy()
+            AttemptStrategy()
             .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=5))
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=10))
             .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(hours=1))
@@ -118,7 +118,7 @@ class SyncHistoryFixture(PollTask):
                                 league_id,
                                 season,
                                 page,
-                                self.retry_strategy.suggest_interval(fetch_attempts+1),
+                                self.retry_strategy.suggest_interval(fetch_attempts),
                                 "No response",
                             )
                             continue
@@ -145,7 +145,7 @@ class SyncHistoryFixture(PollTask):
                         self.history_fixture_dao.mark_fetch_failed(
                             league_id, season,
                             page,
-                            self.retry_strategy.suggest_interval(fetch_attempts+1),
+                            self.retry_strategy.suggest_interval(fetch_attempts),
                         )
                         self.logger.error(f"Failed to sync fixtures for league_id={league_id} league_name={league_name}: {e}")
 

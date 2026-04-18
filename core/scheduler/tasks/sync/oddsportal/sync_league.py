@@ -5,7 +5,7 @@ from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import LeagueDao
 from core.browser.intercept_policy import InterceptPolicy, InterceptType
-from core.scheduler.refetch_strategy import TimelineRefetchStrategy, AttemptRefetchStrategy
+from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 
 @Registry.poll('sync.oddsportal.league')
 class SyncLeague(PollTask):
@@ -47,12 +47,12 @@ class SyncLeague(PollTask):
         self.sport_name = self.SPORT_NAME
 
         self.refetch_strategy = (
-            TimelineRefetchStrategy(min_interval=timedelta(days=1))
+            TimelineStrategy(min_interval=timedelta(days=1))
             .add_segment(start_offset=timedelta(0), end_offset=None, interval=timedelta(days=7))
         )
 
         self.retry_strategy = (
-            AttemptRefetchStrategy()
+            AttemptStrategy()
             .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=5))
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=15))
             .add_segment(min_attempts=7, max_attempts=10, interval=timedelta(hours=4))
@@ -62,8 +62,6 @@ class SyncLeague(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                fetch_attempts = 0
-
                 item = self.league_dao.get_pending_fetch_item(self.sport_name)
                 if item is None:
                     self.idle_sleep()
@@ -83,7 +81,7 @@ class SyncLeague(PollTask):
                     self.logger.error(f"No response for {page_url}")
                     self.league_dao.mark_fetch_failed(
                         self.sport_name,
-                        self.retry_strategy.suggest_interval(fetch_attempts + 1),
+                        self.retry_strategy.suggest_interval(fetch_attempts),
                         "No response",
                     )
                     continue
@@ -104,6 +102,6 @@ class SyncLeague(PollTask):
             except Exception as e:
                 self.league_dao.mark_fetch_failed(
                     self.sport_name,
-                    self.retry_strategy.suggest_interval(fetch_attempts + 1)
+                    self.retry_strategy.suggest_interval(fetch_attempts)
                 )
                 self.logger.error(f"Failed to sync oddsportal leagues for sport={self.sport_name}: {e}")
