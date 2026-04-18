@@ -1,7 +1,7 @@
 from typing import Optional
 from core.browser.hooks.base_hook import BaseHook, HookContext
 from core.browser.hooks.latch import SignalLatch
-from core.browser.intercept_policy import InterceptType
+from core.browser.intercept_strategy import InterceptType
 
 class DomHook(BaseHook):
     def __init__(self) -> None:

@@ -2,10 +2,9 @@ from core.registry import Registry
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
 from core.types.enums import SiteName, LeaguePriority
-from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import HistoryFixtureDao
-from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import AttemptStrategy
 from core.services.league.service import league_service
 
@@ -30,7 +29,7 @@ class SyncHistoryFixture(PollTask):
         };
     })();"""
 
-    POLICY_CONFIG = {
+    INTERCEPT_STRATEGY = {
         "url_template": "https://www.oddsportal.com{fixture_uri}",
         "debug": False,
         "rules": [
@@ -45,7 +44,7 @@ class SyncHistoryFixture(PollTask):
         super().__init__()
         self.payload = payload or {}
         self.history_fixture_dao = HistoryFixtureDao()
-        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+        self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.retry_strategy = (
             AttemptStrategy()
@@ -102,13 +101,12 @@ class SyncHistoryFixture(PollTask):
 
                     try:
                         season_slug = self.build_season_slug(season, max_season)
-                        page_url = self.intercept_policy.url.format(
+                        page_url = self.intercept_strategy.url.format(
                             fixture_uri=self.build_fixture_uri(fixture_uri, season_slug, page)
                         )
-                        future = self.interceptor.submit_task(
-                            TaskType.OPEN_PAGE,
+                        future = self.interceptor.submit(
                             url=page_url,
-                            intercept_policy=self.intercept_policy
+                            strategy=self.intercept_strategy
                         )
 
                         result_set = future.result()

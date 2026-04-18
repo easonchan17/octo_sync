@@ -36,7 +36,6 @@ class TrainingService(BaseService):
 
             task = Registry.get_target(name)(payload)
             task = HookedTask(task, post_execute=lambda: self._cleanup_task(name, task.id))
-            task.enable_async_mode()
 
             self.tasks[name][task.id] = task
             return TaskExecutor.get_instance().submit(task)
@@ -59,5 +58,4 @@ class TrainingService(BaseService):
     def create_dataset(self, family: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
         name = f"{family}.{site_name}.samples"
         task = Registry.get_target(name)(payload)
-        task.enable_async_mode()
         return TaskExecutor.get_instance().submit(task)

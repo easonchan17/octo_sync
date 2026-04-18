@@ -2,7 +2,7 @@ from contextlib import suppress
 from typing import Optional
 from core.browser.hooks.base_hook import BaseHook, HookContext
 from core.browser.hooks.latch import PatternLatch
-from core.browser.intercept_policy import InterceptType
+from core.browser.intercept_strategy import InterceptType
 from core.browser.intercept_result_set import FetchState
 
 class HttpHook(BaseHook):
@@ -19,7 +19,7 @@ class HttpHook(BaseHook):
                 try:
                     rule = ctx.policy.find_rule(InterceptType.HTTP, request.url)
                     if rule and rule.sender:
-                        overrides = await rule.sender.process(request, ctx.query_params)
+                        overrides = await rule.sender.process(request, None)
 
                         if overrides is not None:
                             await route.continue_(**overrides)

@@ -1,6 +1,6 @@
 from playwright.async_api import WebSocket
 from core.browser.hooks.base_hook import BaseHook, HookContext
-from core.browser.intercept_policy import InterceptType
+from core.browser.intercept_strategy import InterceptType
 
 class WsHook(BaseHook):
     async def setup(self, ctx: HookContext) -> None:

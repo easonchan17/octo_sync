@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from core.types.enums import LeaguePriority
 class CrawlParams:
     START_DATE = datetime(2025, 1, 1, tzinfo=timezone.utc)
@@ -13,6 +13,6 @@ class CrawlParams:
     FIXTURE_LOOKAHEAD_DAYS = 7
     MATCH_LOOKAHEAD_DAYS = 2
 
-    MATCH_LIFESPAN_HOURS = 4
+    MATCH_LIFESPAN = timedelta(hours=4)
     MATCH_POST_KICKOFF_ARCHIVE_HOURS = 48
     MATCH_MIN_REFETCH_LEAGUE_PRIORITY = LeaguePriority.LEVEL_MAJOR.value
