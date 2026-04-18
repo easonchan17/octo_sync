@@ -1,6 +1,5 @@
-import traceback
+import traceback, re
 from core.registry import Registry
-from core.utils.fotmob_utils import parse_pair
 from datetime import datetime, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from core.logger.logger_manager import LoggerManager
@@ -8,7 +7,26 @@ from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat
 from core.store.postgres.daos.fotmob import MatchDao
 from core.types.params import CrawlParams
-from core.utils.fotmob_utils import extract_status
+from core.scheduler.tasks.sync.fotmob.utils import extract_status
+
+_VALUE_WITH_PERCENT_PATTERN = re.compile(r'^(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)')
+
+def parse_pair(value: str, value_type1: type, value_type2: type) -> Tuple[Optional[Any], Optional[Any]]:
+    if not isinstance(value, str):
+        return None, None
+
+    value = value.strip()
+    if not value:
+        return None, None
+
+    match = _VALUE_WITH_PERCENT_PATTERN.search(value)
+    if match is None:
+        return None, None
+
+    try:
+        return value_type1(match.group(1)), value_type2(match.group(2))
+    except (ValueError, TypeError):
+        return None, None
 
 def make_actual_extractor(val_type: type, rate_type: type) -> Callable[[List[Optional[str]]], List[Optional[Any]]]:
     def extractor(stats: List[Optional[str]]) -> List[Optional[Any]]:
@@ -235,7 +253,7 @@ class MatchParser:
             result["player_stats"] = self._parse_player_stats(match_id, raw_player_stats)
 
         status = json_data.get('header', {}).get('status')
-        match_status, kickoff_time, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN_HOURS)
+        match_status, kickoff_time, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
         result["match_status"] = match_status
         result["kickoff_time"] = kickoff_time
         return result

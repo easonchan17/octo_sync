@@ -44,7 +44,7 @@ class InterceptRule:
     def is_js(self) -> bool:
         return self.type == InterceptType.JS
 
-class InterceptPolicy:
+class InterceptStrategy:
     def __init__(self) -> None:
         self.rules: Dict[InterceptType, List[InterceptRule]] = defaultdict(list)
         self.timeout: Optional[int] = None
@@ -93,7 +93,7 @@ class InterceptPolicy:
         return patterns
 
     @classmethod
-    def from_rules(cls, policy_config: Optional[Dict[str, Any]] = None, rule_extras: Optional[List[Optional[Dict[str, Any]]]] = None) -> 'InterceptPolicy':
+    def from_rules(cls, policy_config: Optional[Dict[str, Any]] = None, rule_extras: Optional[List[Optional[Dict[str, Any]]]] = None) -> 'InterceptStrategy':
         if not policy_config:
             return None
 

@@ -40,18 +40,4 @@ class PollTask(BaseTask):
         return start_time, end_time
 
     def get_fetch_season_range(self) -> Tuple[int, int]:
-        return CrawlParams.START_SEASON, datetime.now(timezone.utc).year #config to db???
-
-    def calculate_confirm_count(
-        self,
-        kickoff_time: datetime,
-        fetched_time: datetime,
-        confirm_interval_hours: int
-    ) -> int:
-        safe_duration = timedelta(hours=CrawlParams.MATCH_LIFESPAN_HOURS)
-        time_since_kickoff = fetched_time - kickoff_time
-        if time_since_kickoff < safe_duration:
-            return 0
-        active_duration = time_since_kickoff - safe_duration
-        confirm_interval = timedelta(hours=confirm_interval_hours)
-        return int(active_duration / confirm_interval) + 1
+        return CrawlParams.START_SEASON, datetime.now(timezone.utc).year

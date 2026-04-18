@@ -2,5 +2,5 @@ from typing import Any, Optional, Dict
 from .base_sender import BaseSender
 
 class NoCacheSender(BaseSender):
-    async def process(self, request: Any, query_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def process(self, request: Any, query_params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         return self.disable_cache(request.headers)

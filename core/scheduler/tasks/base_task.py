@@ -15,8 +15,6 @@ class BaseTask(ABC):
         self.interceptor = Interceptor.get_instance()
         self.cancel_event = Event()
         self.payload = None
-        self.is_async = False
-        self.is_force = False
 
     def get_required_param(self, key: str) -> Any:
         if self.payload is None:
@@ -37,12 +35,6 @@ class BaseTask(ABC):
     def should_stop(self) -> bool:
         return self.cancel_event.is_set()
 
-    def enable_force_mode(self) -> None:
-        self.is_force = True
-
-    def enable_async_mode(self) -> None:
-        self.is_async = True
-
     @abstractmethod
     def execute(self, *args, **kwargs) -> Any:
         pass
@@ -61,14 +53,6 @@ class Pipeline(BaseTask):
     def cancel(self) -> None:
         for task in self.tasks:
             task.cancel()
-
-    def enable_force_mode(self) -> None:
-        for task in self.tasks:
-            task.enable_force_mode()
-        self.is_force = True
-
-    def enable_async_mode(self) -> None:
-        self.is_async = True
 
     def execute(self, *args, **kwargs) -> None:
         for i, task in enumerate(self.tasks):
@@ -102,18 +86,6 @@ class TaskWrapper(BaseTask):
             raise ValueError("Task is not set")
 
         self._task.cancel()
-
-    def enable_force_mode(self) -> None:
-        if self._task is None:
-            raise ValueError("Task is not set")
-
-        self._task.enable_force_mode()
-
-    def enable_async_mode(self) -> None:
-        if self._task is None:
-            raise ValueError("Task is not set")
-
-        self._task.enable_async_mode()
 
     def should_stop(self) -> bool:
         if self._task is None:

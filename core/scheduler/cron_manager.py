@@ -5,7 +5,7 @@ from typing import Callable, Optional
 from apscheduler.triggers.cron import CronTrigger
 from core.logger.logger_manager import LoggerManager
 from core.config.env_manager import env_manager
-from core.registry import Registry, RegistryKind
+from core.registry import Registry, TaskType
 from apscheduler.schedulers.base import STATE_PAUSED, STATE_RUNNING
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -30,7 +30,7 @@ class CronManager:
 
     def load_jobs(self) -> None:
         current_env = env_manager.value
-        entries = Registry.get_entries(RegistryKind.CRON)
+        entries = Registry.get_entries(TaskType.CRON)
 
         for entry in entries:
             name = entry["name"]

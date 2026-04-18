@@ -1,7 +1,7 @@
 import re
 from functools import lru_cache
 from typing import Optional
-from core.registry import RegistryKind
+from core.registry import TaskType
 from core.logger.logger_manager import LoggerManager
 from core.services.task_service import TaskService
 from core.registry import Registry
@@ -16,7 +16,7 @@ class PollManager:
         self.task_service = TaskService.get_instance()
 
     def start(self, site_name: Optional[str] = None) -> None:
-        entries = Registry.get_entries(RegistryKind.POLL)
+        entries = Registry.get_entries(TaskType.POLL)
         for entry in entries:
             name = entry["name"]
 
@@ -27,7 +27,7 @@ class PollManager:
             self.logger.info(f"Started poll task: {name}")
 
     def stop(self) -> None:
-        entries = Registry.get_entries(RegistryKind.POLL)
+        entries = Registry.get_entries(TaskType.POLL)
         for entry in entries:
             name = entry["name"]
             self.task_service.stop_task(*name.split("."))

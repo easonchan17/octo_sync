@@ -1,9 +1,8 @@
 from core.registry import Registry
 from typing import Any, Dict, Optional, List
-from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import OddsDao
-from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from datetime import datetime, timezone, timedelta
 from core.types.params import CrawlParams
@@ -27,7 +26,7 @@ class BaseSyncOdds(PollTask):
         };
     })();"""
 
-    POLICY_CONFIG = {
+    INTERCEPT_STRATEGY = {
         "url_template": "https://www.oddsportal.com/football/h2h/{first_team}/{second_team}/#{match_code}:{betting_type};{scope_id}",
         "debug": False,
         "rules": [
@@ -49,7 +48,7 @@ class BaseSyncOdds(PollTask):
         self.payload = payload or {}
         self.odds_dao = OddsDao()
 
-        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG, rule_extras=rule_extras)
+        self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY, rule_extras=rule_extras)
 
         self.refetch_strategy = (
             TimelineStrategy(min_interval=timedelta(minutes=5))
@@ -84,7 +83,7 @@ class BaseSyncOdds(PollTask):
         else:
             first_team, second_team = away_team, home_team
 
-        return self.intercept_policy.url.format(
+        return self.intercept_strategy.url.format(
             first_team=first_team,
             second_team=second_team,
             match_code=match_code,
@@ -113,10 +112,9 @@ class BaseSyncOdds(PollTask):
                             match_code, home_name, home_code, away_name, away_code, match_url
                         )
 
-                        future = self.interceptor.submit_task(
-                            TaskType.OPEN_PAGE,
+                        future = self.interceptor.submit(
                             url=page_url,
-                            intercept_policy=self.intercept_policy
+                            strategy=self.intercept_strategy
                         )
 
                         result_set = future.result()
