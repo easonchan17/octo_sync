@@ -4,11 +4,11 @@ from core.browser.intercept_strategy import InterceptType
 
 class WsHook(BaseHook):
     async def setup(self, ctx: HookContext) -> None:
-        if not ctx.policy.has_rules(InterceptType.WS):
+        if not ctx.strategy.has_rules(InterceptType.WS):
             return
 
         async def _ws_connect_handler(ws: WebSocket):
-            ws_rule = ctx.policy.find_rule(
+            ws_rule = ctx.strategy.find_rule(
                 type=InterceptType.WS,
                 url=ws.url
             )
@@ -36,6 +36,6 @@ class WsHook(BaseHook):
         ctx.page_context.on("websocket", _ws_connect_handler)
 
     async def execute(self, ctx: HookContext) -> bool:
-        if ctx.policy.has_rules(InterceptType.WS):
+        if ctx.strategy.has_rules(InterceptType.WS):
             ctx.page_context.detach()
         return True

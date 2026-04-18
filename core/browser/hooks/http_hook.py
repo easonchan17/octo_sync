@@ -11,15 +11,15 @@ class HttpHook(BaseHook):
         self._latch: Optional[PatternLatch] = None
 
     async def setup(self, ctx: HookContext) -> None:
-        if not ctx.policy.has_rules(InterceptType.HTTP):
+        if not ctx.strategy.has_rules(InterceptType.HTTP):
             return
 
-        if ctx.policy.has_senders(InterceptType.HTTP):
+        if ctx.strategy.has_senders(InterceptType.HTTP):
             async def _http_request_handler(route, request) -> None:
                 try:
-                    rule = ctx.policy.find_rule(InterceptType.HTTP, request.url)
+                    rule = ctx.strategy.find_rule(InterceptType.HTTP, request.url)
                     if rule and rule.sender:
-                        overrides = await rule.sender.process(request, None)
+                        overrides = await rule.sender.process(request, ctx.query_params)
 
                         if overrides is not None:
                             await route.continue_(**overrides)
@@ -28,7 +28,7 @@ class HttpHook(BaseHook):
                     self.logger.error(f"Failed to send request: {e}")
 
                 try:
-                    if ctx.policy.debug:
+                    if ctx.strategy.debug:
                         self.logger.info(f"Continuing request without modification: {request.url}")
                     await route.continue_()
                 except Exception as e:
@@ -38,16 +38,16 @@ class HttpHook(BaseHook):
 
             await ctx.page_context.route("**/*", _http_request_handler)
 
-        if ctx.policy.has_receivers(InterceptType.HTTP):
-            self._latch = PatternLatch(ctx.policy.get_url_patterns(InterceptType.HTTP))
+        if ctx.strategy.has_receivers(InterceptType.HTTP):
+            self._latch = PatternLatch(ctx.strategy.get_url_patterns(InterceptType.HTTP))
 
             async def _http_response_handler(response) -> None:
-                http_rule = ctx.policy.find_rule(
+                http_rule = ctx.strategy.find_rule(
                     type=InterceptType.HTTP,
                     url=response.url
                 )
                 if http_rule is None or http_rule.receiver is None:
-                    if ctx.policy.debug:
+                    if ctx.strategy.debug:
                         self.logger.warning(f"No receiver found for HTTP rule: {response.url}")
                     return
 
@@ -75,5 +75,5 @@ class HttpHook(BaseHook):
 
     async def execute(self, ctx: HookContext) -> bool:
         if self._latch is not None:
-            await self._latch.wait(ctx.policy.timeout)
+            await self._latch.wait(ctx.strategy.timeout)
         return True

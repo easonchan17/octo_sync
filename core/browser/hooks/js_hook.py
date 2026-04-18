@@ -16,7 +16,7 @@ class JsHook(BaseHook):
         self._js_inject_handler = None
 
     async def setup(self, ctx: HookContext) -> None:
-        js_rule = ctx.policy.find_rule(type=InterceptType.JS)
+        js_rule = ctx.strategy.find_rule(type=InterceptType.JS)
         if js_rule is None or not js_rule.hook_script:
             return
 
@@ -114,5 +114,5 @@ class JsHook(BaseHook):
         if self._latch is None:
             return True
 
-        await self._latch.wait(ctx.policy.timeout)
+        await self._latch.wait(ctx.strategy.timeout)
         return True
