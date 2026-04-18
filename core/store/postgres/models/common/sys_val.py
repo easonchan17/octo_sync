@@ -13,7 +13,7 @@ class SysVal(Base):
         Index('idx_sys_vals_updated_at', 'updated_at')
     )
 
-    module = Column(String(64), nullable=True)
+    module = Column(String(64), nullable=False)
     key = Column(String(128), nullable=False)
 
     val_datetime = Column(DateTime(timezone=True), nullable=True)

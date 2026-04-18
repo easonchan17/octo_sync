@@ -17,6 +17,7 @@ class HistoryFixtureParser:
             self.logger.error("rows is empty")
             return None
 
+        seen = set()
         results = []
         for row in rows:
             match_id = row.get("id")
@@ -29,6 +30,10 @@ class HistoryFixtureParser:
                 self.logger.error(f"date-start-timestamp is missing for match_id={match_id}")
                 continue
 
+            if match_id in seen:
+                continue
+
+            seen.add(match_id)
             results.append({
                 "match_id": match_id,
                 "league_id": league_id,

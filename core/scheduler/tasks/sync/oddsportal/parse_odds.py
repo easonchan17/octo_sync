@@ -129,6 +129,7 @@ class Odds1x2Parser(BaseOddsParser):
                     "bookmaker_odds_movement": bookmaker_odds_movement,
                 }, indent=2, ensure_ascii=False))
                 return None
+
         return records
 
     def parse(self, match_code: str, market: OddsMarket, json_body: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:

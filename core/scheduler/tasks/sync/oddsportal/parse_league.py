@@ -21,15 +21,20 @@ class LeagueParser:
             self.logger.error("football all is empty")
             return None
 
+        seen = set()
         results = []
         for country_name, country_data in football_all.items():
             country_code = country_data.get("two-chart-code")
             tournaments = country_data.get("tournaments", [])
 
-
             for tournament in tournaments:
+                league_id = str(tournament.get("tournament-id"))
+                if league_id in seen:
+                    continue
+
+                seen.add(league_id)
                 results.append({
-                    "league_id": str(tournament.get("tournament-id")),
+                    "league_id": league_id,
                     "league_name": tournament.get("name"),
                     "page_url": tournament.get("url"),
                     "country_name": country_name,

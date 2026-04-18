@@ -57,8 +57,8 @@ class BaseSyncOdds(PollTask):
             .add_segment(start_offset=timedelta(days=-3), end_offset=timedelta(hours=-24), interval=timedelta(hours=12))
             .add_segment(start_offset=timedelta(hours=-24), end_offset=timedelta(hours=-2), interval=timedelta(hours=1))
             .add_segment(start_offset=timedelta(hours=-2), end_offset=timedelta(hours=-1), interval=timedelta(minutes=15))
-            .add_segment(start_offset=timedelta(hours=-1), end_offset=timedelta(0), interval=timedelta(minutes=5))
-            .add_segment(start_offset=timedelta(minutes=0), end_offset=timedelta(minutes=30), interval=timedelta(minutes=10))
+            .add_segment(start_offset=timedelta(hours=-1), end_offset=timedelta(0), interval=timedelta(minutes=10))
+            .add_segment(start_offset=timedelta(minutes=0), end_offset=timedelta(minutes=30), interval=timedelta(minutes=15))
         )
 
         self.retry_strategy = (
@@ -139,6 +139,7 @@ class BaseSyncOdds(PollTask):
                             "scope_id": self.market.scope_id,
                             "source_url": page_url,
                             "json_body": json_body,
+                            "kickoff_time": kickoff_time,
                         })
 
                         fetch_interval = self.refetch_strategy.suggest_interval(kickoff_time, datetime.now(timezone.utc))
