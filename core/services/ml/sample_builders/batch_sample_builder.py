@@ -6,7 +6,7 @@ from core.services.league import league_service
 from .base_sample_builder import BaseSampleBuilder
 from core.types.enums import SiteName
 
-@Registry.task('winball.fotmob.samples')
+@Registry.job('winball.samples')
 class BatchSampleBuilder(BaseSampleBuilder):
     def execute(self) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         league_id = self.get_required_param("league_id")

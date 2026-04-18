@@ -3,7 +3,7 @@ import json
 from contextlib import suppress
 from typing import Optional
 from core.browser.hooks.latch import SignalLatch
-from core.browser.intercept_policy import InterceptType
+from core.browser.intercept_strategy import InterceptType
 from core.browser.hooks.base_hook import BaseHook, HookContext
 
 class JsHook(BaseHook):

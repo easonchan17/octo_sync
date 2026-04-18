@@ -1,10 +1,9 @@
 from core.registry import Registry
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
-from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import LeagueDao
-from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 
 @Registry.poll('sync.oddsportal.league')
@@ -28,7 +27,7 @@ class SyncLeague(PollTask):
 
     SPORT_NAME = "football"
 
-    POLICY_CONFIG = {
+    INTERCEPT_STRATEGY = {
         "url": "https://www.oddsportal.com/#sport/football/all",
         "debug": False,
         "rules": [
@@ -43,7 +42,7 @@ class SyncLeague(PollTask):
         super().__init__()
         self.payload = payload or {}
         self.league_dao = LeagueDao()
-        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+        self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
         self.sport_name = self.SPORT_NAME
 
         self.refetch_strategy = (
@@ -69,11 +68,10 @@ class SyncLeague(PollTask):
 
                 _, fetch_attempts, _ = item
 
-                page_url = self.intercept_policy.url
-                future = self.interceptor.submit_task(
-                    TaskType.OPEN_PAGE,
+                page_url = self.intercept_strategy.url
+                future = self.interceptor.submit(
                     url=page_url,
-                    intercept_policy=self.intercept_policy
+                    strategy=self.intercept_strategy
                 )
 
                 result_set = future.result()

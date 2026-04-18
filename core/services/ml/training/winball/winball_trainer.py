@@ -9,7 +9,7 @@ from skopt.space import Real, Integer
 from ..base_trainer import BaseTrainer
 from ..base_tracker import BaseTracker
 
-@Registry.task('winball.training')
+@Registry.job('winball.training')
 class WinballTrainer(BaseTrainer):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()

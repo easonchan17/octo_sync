@@ -79,5 +79,5 @@ class BaseSender(ABC):
         return {"headers": headers}
 
     @abstractmethod
-    def process(self, request: Any, query_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def process(self, request: Any, query_params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         pass

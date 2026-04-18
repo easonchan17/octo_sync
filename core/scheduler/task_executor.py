@@ -27,13 +27,9 @@ class TaskExecutor(Thread, Singleton):
 
             try:
                 if task is not None:
-                    if task.is_async:
-                        thread_pool.submit(task.execute)
-                        tasks.append(task)
-                        self.logger.info(f"TaskExecutor executing task: {task.id} {task.name}")
-                    else:
-                        task.execute()
-                        self.logger.info(f"TaskExecutor executing task: {task.id} {task.name}")
+                    thread_pool.submit(task.execute)
+                    tasks.append(task)
+                    self.logger.info(f"TaskExecutor executing task: {task.id} {task.name}")
             except Exception as e:
                 self.logger.error(f"Error in TaskExecutor thread: {e}")
             finally:

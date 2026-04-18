@@ -1,19 +1,18 @@
 from core.registry import Registry
 from typing import Any, Dict, List, Optional
 from core.types.params import CrawlParams
-from core.browser.interceptor import TaskType
 from datetime import timedelta, datetime, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from core.types.enums import SiteName, LeaguePriority
 from core.store.postgres.daos.oddsportal import SeasonDao
-from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.browser.handlers.receivers.html_receiver import HtmlReceiver
 from core.services.league.service import league_service
 
 @Registry.poll('sync.oddsportal.season')
 class SyncSeason(PollTask):
-    POLICY_CONFIG = {
+    INTERCEPT_STRATEGY = {
         "url_template": "https://www.oddsportal.com{fixture_uri}",
         "debug": False,
         "rules": [
@@ -28,7 +27,7 @@ class SyncSeason(PollTask):
         super().__init__()
         self.payload = payload or {}
         self.season_dao = SeasonDao()
-        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+        self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.refetch_strategy = (
             TimelineStrategy(min_interval=timedelta(days=1))
@@ -69,13 +68,12 @@ class SyncSeason(PollTask):
                         return
 
                     try:
-                        page_url = self.intercept_policy.url.format(
+                        page_url = self.intercept_strategy.url.format(
                             fixture_uri=self.build_fixture_uri(fixture_uri)
                         )
-                        future = self.interceptor.submit_task(
-                            TaskType.OPEN_PAGE,
+                        future = self.interceptor.submit(
                             url=page_url,
-                            intercept_policy=self.intercept_policy
+                            strategy=self.intercept_strategy
                         )
 
                         result_set = future.result()

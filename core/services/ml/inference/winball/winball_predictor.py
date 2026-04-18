@@ -5,7 +5,7 @@ from core.services.ml.models.xgboost_classifier import XGBoostClassifier
 from core.services.ml.inference.base_predictor import BasePredictor
 from .feature_builder import FeatureBuilder
 
-@Registry.task('winball.inference')
+@Registry.job('winball.inference')
 class WinballPredictor(BasePredictor):
     def __init__(self) -> None:
         super().__init__()

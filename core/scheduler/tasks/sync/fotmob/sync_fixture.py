@@ -1,18 +1,17 @@
 import traceback
 from core.registry import Registry
 from typing import Any, Dict, List, Optional
-from core.browser.interceptor import TaskType
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.fotmob import FixtureDao
 from core.browser.handlers.receivers import JsonReceiver
 from datetime import date, datetime, time, timedelta, timezone
-from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.types.params import CrawlParams
 
 @Registry.poll('sync.fotmob.fixture')
 class SyncFixture(PollTask):
-    POLICY_CONFIG = {
+    INTERCEPT_STRATEGY = {
         "url_template": "https://www.fotmob.com/?date={date}",
         "debug": False,
         "rules": [
@@ -28,7 +27,7 @@ class SyncFixture(PollTask):
         super().__init__()
         self.payload = payload or {}
         self.fixture_dao = FixtureDao()
-        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+        self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.refetch_strategy = (
             TimelineStrategy(min_interval=timedelta(minutes=5))
@@ -65,12 +64,11 @@ class SyncFixture(PollTask):
                         return
 
                     try:
-                        page_url = self.intercept_policy.url.format(date=cur_date.strftime("%Y%m%d"))
+                        page_url = self.intercept_strategy.url.format(date=cur_date.strftime("%Y%m%d"))
 
-                        future = self.interceptor.submit_task(
-                            TaskType.OPEN_PAGE,
+                        future = self.interceptor.submit(
                             url=page_url,
-                            intercept_policy=self.intercept_policy
+                            strategy=self.intercept_strategy
                         )
 
                         result_set = future.result()

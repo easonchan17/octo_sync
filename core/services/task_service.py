@@ -22,7 +22,7 @@ class TaskService(BaseService, Singleton):
             self.logger.info(f"Task {name} cleaned up")
             return task
 
-    def start_task(self, action: str, site_name: str, resource: str, payload: Optional[Dict[str, Any]], is_force: Optional[bool] = False) -> str:
+    def start_task(self, action: str, site_name: str, resource: str, payload: Optional[Dict[str, Any]]) -> str:
         with self._lock:
             name = f"{action}.{site_name}.{resource}"
             if name in self.tasks:
@@ -30,10 +30,6 @@ class TaskService(BaseService, Singleton):
 
             task = Registry.get_target(name)(payload)
             task = HookedTask(task, post_execute=lambda: self._cleanup_task(name))
-            task.enable_async_mode()
-
-            if is_force:
-                task.enable_force_mode()
 
             self.tasks[name] = task
             return TaskExecutor.get_instance().submit(task)

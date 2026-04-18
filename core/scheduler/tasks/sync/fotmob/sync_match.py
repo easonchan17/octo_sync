@@ -2,21 +2,20 @@ import traceback
 from datetime import date
 from core.registry import Registry
 from core.types.enums import SiteName
-from core.browser.interceptor import TaskType
 from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from typing import Any, Dict, Optional, List, Tuple
 from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
-from core.browser.intercept_policy import InterceptPolicy, InterceptType
+from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.types.enums import LeaguePriority
 from core.types.params import CrawlParams
 
 @Registry.poll('sync.fotmob.match')
 class SyncMatch(PollTask):
-    POLICY_CONFIG = {
+    INTERCEPT_STRATEGY = {
         "url_template": "https://www.fotmob.com{match_uri}",
         "debug": False,
         "rules": [
@@ -33,7 +32,7 @@ class SyncMatch(PollTask):
         self.payload = payload or {}
         self.match_dao = MatchDao()
         self.league_service = get_league_service()
-        self.intercept_policy = InterceptPolicy.from_rules(self.POLICY_CONFIG)
+        self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.refetch_strategy = (
             TimelineStrategy(min_interval=timedelta(minutes=10))
@@ -97,11 +96,10 @@ class SyncMatch(PollTask):
                         return
 
                     try:
-                        match_detail_url = self.intercept_policy.url.format(match_uri=match_uri)
-                        future = self.interceptor.submit_task(
-                            TaskType.OPEN_PAGE,
+                        match_detail_url = self.intercept_strategy.url.format(match_uri=match_uri)
+                        future = self.interceptor.submit(
                             url=match_detail_url,
-                            intercept_policy=self.intercept_policy
+                            strategy=self.intercept_strategy
                         )
 
                         result_set = future.result()

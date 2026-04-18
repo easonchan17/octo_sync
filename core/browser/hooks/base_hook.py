@@ -1,18 +1,15 @@
-from dataclasses import dataclass, field
-from typing import Optional, Any
+from dataclasses import dataclass
+from typing import Any
 from core.logger.logger_manager import LoggerManager
-from core.browser.intercept_policy import InterceptPolicy
+from core.browser.intercept_strategy import InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
-
 
 @dataclass
 class HookContext:
     page_context: Any
     target_url: str
-    policy: InterceptPolicy
+    policy: InterceptStrategy
     result_set: InterceptResultSet
-    query_params: Optional[dict[str, Any]] = field(default=None)
-
 
 class BaseHook:
     def __init__(self) -> None:
