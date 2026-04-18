@@ -8,7 +8,7 @@ from ..base_dao import BaseDao
 from core.types.enums import MatchStatus
 
 class MatchDao(BaseDao):
-    def get_pending_fetch_items(self, start_time: datetime, end_time: datetime, limit: int) -> List[Any]:
+    def get_pending_fetch_items(self, start_time: datetime, end_time: datetime, league_ids: List[int], limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.match_id,
@@ -22,6 +22,7 @@ class MatchDao(BaseDao):
             ).filter(
                 Fixture.kickoff_time >= start_time,
                 Fixture.kickoff_time < end_time,
+                Fixture.league_id.in_(league_ids),
                 ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value]),
                 or_(
                     MatchRaw.match_id.is_(None),
