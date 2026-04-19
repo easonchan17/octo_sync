@@ -21,13 +21,17 @@ class InterceptorManager:
 
             return interceptor
 
-    def start(self, site_name: str, request_interval: float) -> None:
+    def start(self, site_name: str, request_interval: float, launch_options: Dict, viewport: Dict) -> None:
         with self._lock:
             if site_name in self.interceptors:
                 self.logger.warning(f"Interceptor for site {site_name} is already running")
                 return
 
-            interceptor = Interceptor(request_interval=request_interval)
+            interceptor = Interceptor(
+                request_interval=request_interval,
+                launch_options=launch_options,
+                viewport=viewport
+            )
             interceptor.start()
             self.interceptors[site_name] = interceptor
             self.logger.info(f"Started interceptor for site: {site_name}")

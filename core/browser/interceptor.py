@@ -1,24 +1,25 @@
-import time
-import janus
-import asyncio
+import time, janus, asyncio, psutil
 from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
-from typing import Tuple, Optional, Any
+from typing import Tuple, Optional, Any, Dict
 from core.browser.security import RateLimiter
-from core.config.config_manager import ConfigManager
 from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook, TurnstileHook, JsHook
 from core.browser.intercept_strategy import InterceptType, InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
 class Interceptor(Thread):
-    def __init__(self, request_interval: float) -> None:
+    def __init__(self, request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 95) -> None:
         super().__init__()
         self.page_pool = None
         self.task_queue: Optional[janus.Queue] = None
         self.rate_limiter = RateLimiter(base_interval=request_interval)
+        self.launch_options = launch_options
+        self.viewport = viewport
+        self.page_pool_size = page_pool_size
+        self.sys_mem_threshold = sys_mem_threshold
 
     def submit(self, url: str, strategy: InterceptStrategy) -> Optional[Future]:
         parsed = urlparse(url)
@@ -64,19 +65,12 @@ class Interceptor(Thread):
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(self._asyncio_exception_handler)
 
-        config = ConfigManager.get_instance().get_config("browser")
-
-        options = config.get("options", {})
-        page_pool_size = config['page_pool_size']
-        page_limit = config['page_limit']
-        viewport = config['viewport']
-
         while not self.stop_event.is_set():
             intercepted_pages = 0
 
-            async with AsyncCamoufox(**options) as browser:
-                context = await browser.new_context(viewport=viewport)
-                self.page_pool = PagePool(context, page_pool_size)
+            async with AsyncCamoufox(**self.launch_options) as browser:
+                context = await browser.new_context(viewport=self.viewport)
+                self.page_pool = PagePool(context, self.page_pool_size)
 
                 while not self.stop_event.is_set():
                     try:
@@ -89,12 +83,21 @@ class Interceptor(Thread):
                     self.task_queue.async_q.task_done()
 
                     intercepted_pages += 1
-                    if intercepted_pages >= page_limit:
-                        self.logger.info(f"Restarting browser after {intercepted_pages} tasks")
+                    if self._should_recycle():
+                        self.logger.warning(f"Restarting browser after {intercepted_pages} tasks")
                         break
 
-                self.logger.info(f"Page pool cleanup.")
+                self.logger.info(f"Page pool cleanup")
                 self.page_pool = None
+
+    def _should_recycle(self):
+        mem = psutil.virtual_memory()
+
+        if mem.percent >= self.sys_mem_threshold:
+            self.logger.warning(f"Memory usage at {mem.percent}%, restarting browser")
+            return True
+
+        return False
 
     async def _drain_pending_tasks(self) -> None:
         while True:

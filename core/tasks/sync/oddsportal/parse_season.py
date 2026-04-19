@@ -57,7 +57,7 @@ class ParseSeason(PollTask):
                         min_season, max_season = season_range
                         self.season_dao.sync_parsed_data(league_id, min_season, max_season)
                         self.season_dao.mark_as_parsed(league_id)
-                        self.logger.info(f"Parsed season league_id={league_id} min={min_season} max={max_season}")
+                        self.logger.debug(f"Parsed season league_id={league_id} min={min_season} max={max_season}")
 
                     except Exception as e:
                         self.season_dao.mark_parse_failed(league_id)
