@@ -3,7 +3,7 @@ from core.utils.thread import Thread
 from core.utils.singleton import Singleton
 from core.config.config_manager import ConfigManager
 from concurrent.futures import ThreadPoolExecutor
-from .tasks.base_task import BaseTask
+from .base_task import BaseTask
 
 class TaskExecutor(Thread, Singleton):
     def __init__(self) -> None:

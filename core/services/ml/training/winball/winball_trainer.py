@@ -1,7 +1,7 @@
 from copy import deepcopy
 from skopt import BayesSearchCV
-from core.registry import Registry
 from typing import Dict, Any, Optional
+from core.scheduler.task_registry import TaskRegistry
 from core.services.ml.models.xgboost_classifier import XGBoostClassifier
 from sklearn.model_selection import TimeSeriesSplit
 from .winball_config import WinballConfig
@@ -9,7 +9,7 @@ from skopt.space import Real, Integer
 from ..base_trainer import BaseTrainer
 from ..base_tracker import BaseTracker
 
-@Registry.job('winball.training')
+@TaskRegistry.job('winball.training')
 class WinballTrainer(BaseTrainer):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()

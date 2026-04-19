@@ -3,8 +3,8 @@ from typing import Optional, Dict, Any
 from core.utils.singleton import Singleton
 from core.scheduler.task_executor import TaskExecutor
 from core.services.base_service import BaseService
-from core.scheduler.tasks.base_task import BaseTask, HookedTask
-from core.registry import Registry
+from core.scheduler.base_task import BaseTask, HookedTask
+from core.scheduler.task_registry import TaskRegistry
 
 class TaskService(BaseService, Singleton):
     def __init__(self) -> None:
@@ -28,7 +28,7 @@ class TaskService(BaseService, Singleton):
             if name in self.tasks:
                 return ""
 
-            task = Registry.get_target(name)(payload)
+            task = TaskRegistry.get_target(name)(payload)
             task = HookedTask(task, post_execute=lambda: self._cleanup_task(name))
 
             self.tasks[name] = task

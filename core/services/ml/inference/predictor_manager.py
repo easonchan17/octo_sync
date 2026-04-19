@@ -1,7 +1,7 @@
 from threading import Lock
 from functools import lru_cache
-from core.registry import Registry
 from typing import Dict, Optional, Any, List
+from core.scheduler.task_registry import TaskRegistry
 from core.services.ml.inference.base_predictor import BasePredictor
 
 class PredictorManager:
@@ -35,7 +35,7 @@ class PredictorManager:
                 return self._predictors[version]
 
             name = f"{family}.inference"
-            predictor = Registry.get_target(name)()
+            predictor = TaskRegistry.get_target(name)()
 
             if not predictor.load(record):
                 return None
