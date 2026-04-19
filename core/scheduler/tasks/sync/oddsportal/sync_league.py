@@ -1,10 +1,11 @@
 from core.registry import Registry
-from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+from datetime import datetime, timedelta, timezone
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import LeagueDao
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
+from core.types.enums import SiteName
 
 @Registry.poll('sync.oddsportal.league')
 class SyncLeague(PollTask):
@@ -39,7 +40,7 @@ class SyncLeague(PollTask):
     }
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.league_dao = LeagueDao()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)

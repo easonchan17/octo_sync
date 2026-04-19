@@ -1,10 +1,9 @@
 import json
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional
 from core.registry import Registry
-from core.types.params import CrawlParams
+from typing import Any, Dict, List, Optional
 from core.types.enums import OddsMarket, OddsMarkets
-from core.scheduler.tasks.poll_task import PollTask
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.logger.logger_manager import LoggerManager
 from core.utils.datetime_utils import from_timestamp

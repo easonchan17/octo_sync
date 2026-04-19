@@ -1,7 +1,7 @@
 from core.registry import Registry
+from core.types.enums import SiteName
 from typing import Any, Dict, Optional, List
 from datetime import datetime, timedelta, timezone
-from core.types.enums import SiteName, LeaguePriority
 from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.oddsportal import UpcomingFixtureDao
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
@@ -24,7 +24,7 @@ class SyncUpcomingFixture(PollTask):
     }
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.upcoming_fixture_dao = UpcomingFixtureDao()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)

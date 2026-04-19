@@ -2,10 +2,9 @@ import re
 import json
 from bs4 import BeautifulSoup
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 from core.registry import Registry
-from core.types.params import CrawlParams
-from core.scheduler.tasks.poll_task import PollTask
+from typing import Any, Dict, List, Optional
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.daos.oddsportal import UpcomingFixtureDao, FixtureDao
 from core.logger.logger_manager import LoggerManager
 
