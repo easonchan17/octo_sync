@@ -13,7 +13,7 @@ task_thread_pool:
 
 browser:
   options:
-    headless: true
+    headless: false
     geoip: false
     os:
       - "windows"
@@ -28,7 +28,6 @@ browser:
     height: 1080
   page_pool_size: 5
   page_limit: 30
-  shutdown_timeout: 60.0
 
 http:
   host: "127.0.0.1"

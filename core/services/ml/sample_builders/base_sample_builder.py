@@ -22,7 +22,7 @@ from .feature_engineering.constants import (
     EPSILON,
     DEFAULT_DECIMALS
 )
-from core.scheduler.tasks.base_task import BaseTask
+from core.scheduler.base_task import BaseTask
 from .match_feature_extractor import MatchFeatureExtractor
 from .player_feature_extractor import OutfieldPlayerFeatureExtractor, GoalkeeperFeatureExtractor
 

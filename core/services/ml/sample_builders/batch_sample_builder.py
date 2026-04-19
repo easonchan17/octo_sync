@@ -1,12 +1,12 @@
 import pandas as pd
-from core.registry import Registry
 from typing import Optional, Tuple
 from core.utils.pandas_utils import save_dataframe
 from core.services.league import league_service
 from .base_sample_builder import BaseSampleBuilder
+from core.scheduler.task_registry import TaskRegistry
 from core.types.enums import SiteName
 
-@Registry.job('winball.samples')
+@TaskRegistry.job('winball.samples')
 class BatchSampleBuilder(BaseSampleBuilder):
     def execute(self) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         league_id = self.get_required_param("league_id")

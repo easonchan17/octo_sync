@@ -1,15 +1,15 @@
 import os, sys, signal, argparse
 from threading import Event, enumerate
-from core.server.web_server import WebServer
+from core.server.http.web_server import WebServer
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_executor import TaskExecutor
-from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.scheduler.cron_manager import get_cron_manager
 from core.scheduler.poll_manager import get_poll_manager
-from core.services.league.service import league_service
-from core.config.env_manager import env_manager
+from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.services.league.league_service import league_service
 from core.browser.interceptor_manager import interceptor_manager
+from core.config.env_manager import env_manager
 from core.types.enums import SiteName
 
 if sys.version_info < (3, 11):

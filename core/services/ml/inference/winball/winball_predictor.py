@@ -1,11 +1,11 @@
 from typing import Any, Dict
-from core.registry import Registry
+from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.models import TrainingRecord
 from core.services.ml.models.xgboost_classifier import XGBoostClassifier
 from core.services.ml.inference.base_predictor import BasePredictor
 from .feature_builder import FeatureBuilder
 
-@Registry.job('winball.inference')
+@TaskRegistry.job('winball.inference')
 class WinballPredictor(BasePredictor):
     def __init__(self) -> None:
         super().__init__()
