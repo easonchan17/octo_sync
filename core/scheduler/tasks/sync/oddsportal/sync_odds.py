@@ -1,11 +1,11 @@
 from core.registry import Registry
-from typing import Any, Dict, Optional, List
-from core.scheduler.tasks.poll_task import PollTask
+from core.types.enums import SiteName
+from typing import Any, Dict, Optional
 from core.store.postgres.daos.oddsportal import OddsDao
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from datetime import datetime, timezone, timedelta
-from core.types.params import CrawlParams
 from core.types.enums import OddsMarkets
 
 class BaseSyncOdds(PollTask):
@@ -43,7 +43,7 @@ class BaseSyncOdds(PollTask):
         rule_extras: Optional[list] = None,
         payload: Optional[Dict[str, Any]] = None
     ) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.market = market
         self.payload = payload or {}
         self.odds_dao = OddsDao()

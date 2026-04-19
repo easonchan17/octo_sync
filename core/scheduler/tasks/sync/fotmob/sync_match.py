@@ -3,15 +3,14 @@ from datetime import date
 from core.registry import Registry
 from core.types.enums import SiteName
 from datetime import datetime, timedelta, timezone
-from core.scheduler.tasks.poll_task import PollTask
 from typing import Any, Dict, Optional, List, Tuple
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.services.league import league_service
 from core.types.enums import LeaguePriority
-from core.types.params import CrawlParams
 
 @Registry.poll('sync.fotmob.match')
 class SyncMatch(PollTask):
@@ -28,7 +27,7 @@ class SyncMatch(PollTask):
     }
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.match_dao = MatchDao()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)

@@ -1,13 +1,13 @@
 import traceback
 from core.registry import Registry
 from typing import Any, Dict, List, Optional
-from core.scheduler.tasks.poll_task import PollTask
 from core.store.postgres.daos.fotmob import FixtureDao
 from core.browser.handlers.receivers import JsonReceiver
 from datetime import date, datetime, time, timedelta, timezone
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.scheduler.refetch_strategy import TimelineStrategy, AttemptStrategy
-from core.types.params import CrawlParams
+from core.types.enums import SiteName
 
 @Registry.poll('sync.fotmob.fixture')
 class SyncFixture(PollTask):
@@ -24,7 +24,7 @@ class SyncFixture(PollTask):
     }
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.fixture_dao = FixtureDao()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
@@ -40,6 +40,7 @@ class SyncFixture(PollTask):
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(minutes=5))
             .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(hours=1))
         )
+
 
     def get_pending_fetch_items(self) -> List[Any]:
         start_date, end_date = self.get_fetch_date_range(CrawlParams.FIXTURE_LOOKAHEAD_DAYS)

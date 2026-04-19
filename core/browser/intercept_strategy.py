@@ -48,8 +48,6 @@ class InterceptStrategy:
     def __init__(self) -> None:
         self.rules: Dict[InterceptType, List[InterceptRule]] = defaultdict(list)
         self.timeout: Optional[int] = None
-        self.page_delay: Optional[float] = None
-        self.retry_count: Optional[int] = None
         self.debug: Optional[bool] = False
         self.url: Optional[str] = None
 
@@ -102,8 +100,6 @@ class InterceptStrategy:
             rules = [{**rule, **extra} if extra else rule for rule, extra in zip(rules, rule_extras)]
         debug = policy_config.get("debug", False)
         timeout = policy_config.get("timeout", 300)
-        page_delay = policy_config.get("page_delay", 5)
-        retry_count = policy_config.get("retry_count", 0)
         url = policy_config.get("url_template", policy_config.get("url"))
 
         policy = cls()
@@ -119,7 +115,5 @@ class InterceptStrategy:
             ))
         policy.debug = debug
         policy.timeout = timeout
-        policy.page_delay = page_delay
-        policy.retry_count = retry_count
         policy.url = url
         return policy

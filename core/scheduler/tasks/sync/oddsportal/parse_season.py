@@ -1,8 +1,7 @@
 import re
-from typing import Any, Dict, Optional, Tuple
 from core.registry import Registry
-from core.types.params import CrawlParams
-from core.scheduler.tasks.poll_task import PollTask
+from typing import Any, Dict, Optional, Tuple
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.daos.oddsportal import SeasonDao
 from core.logger.logger_manager import LoggerManager
 
