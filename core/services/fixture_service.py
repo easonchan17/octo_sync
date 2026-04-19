@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from core.services.league import league_service
 from core.services.base_service import BaseService
 from core.store.postgres.models.fotmob import Fixture

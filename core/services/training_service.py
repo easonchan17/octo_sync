@@ -2,8 +2,8 @@ from threading import Lock
 from typing import Dict, Any, Optional
 from core.scheduler.task_executor import TaskExecutor
 from core.services.base_service import BaseService
-from core.scheduler.tasks.base_task import BaseTask, HookedTask
-from core.registry import Registry
+from core.scheduler.base_task import BaseTask, HookedTask
+from core.scheduler.task_registry import TaskRegistry
 
 class TrainingService(BaseService):
     def __init__(self):
@@ -34,7 +34,7 @@ class TrainingService(BaseService):
             if name not in self.tasks:
                 self.tasks[name] = {}
 
-            task = Registry.get_target(name)(payload)
+            task = TaskRegistry.get_target(name)(payload)
             task = HookedTask(task, post_execute=lambda: self._cleanup_task(name, task.id))
 
             self.tasks[name][task.id] = task
@@ -57,5 +57,5 @@ class TrainingService(BaseService):
 
     def create_dataset(self, family: str, site_name: str, payload: Optional[Dict[str, Any]]) -> str:
         name = f"{family}.{site_name}.samples"
-        task = Registry.get_target(name)(payload)
+        task = TaskRegistry.get_target(name)(payload)
         return TaskExecutor.get_instance().submit(task)
