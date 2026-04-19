@@ -8,7 +8,6 @@ from core.logger.logger_manager import LoggerManager
 
 class RateLimiter:
     PREVIEW_LENGTH = 2000
-    BASE_DELAY = 60.0
 
     RATE_LIMIT_LABELS = [
         "too many requests",
@@ -18,13 +17,14 @@ class RateLimiter:
         "retry after"
     ]
 
-    def __init__(self) -> None:
+    def __init__(self, base_interval: float = 60.0) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self.last_request: dict[str, float] = {}
         self.backoff_until: dict[str, float] = {}
         self.consecutive_errors: dict[str, int] = {}
+        self.base_interval = base_interval
 
-    async def throttle(self, url: str, delay: Optional[float] = None) -> None:
+    async def throttle(self, url: str) -> None:
         hostname = urlparse(url).hostname
         if not hostname:
             raise ValueError(f"Invalid URL: {url}")
@@ -32,7 +32,7 @@ class RateLimiter:
         backoff_time = self.backoff_until.get(hostname, 0)
         last_time = self.last_request.get(hostname, 0)
 
-        delay = (delay or 3.0) * random.uniform(1.2, 1.5)
+        delay = self.base_interval * random.uniform(1.2, 1.5)
         target_time = max(backoff_time, last_time + delay)
 
         current_time = time.time()
@@ -59,13 +59,13 @@ class RateLimiter:
 
         return False
 
-    def activate_backoff(self, url: str, status: int, delay: Optional[float] = None) -> None:
+    def activate_backoff(self, url: str, status: int) -> None:
         hostname = urlparse(url).hostname
         if not hostname:
             raise ValueError(f"Invalid URL: {url}")
 
         count = self.consecutive_errors.get(hostname, 0) + 1
-        wait_time = min(self.BASE_DELAY * (2 ** (count - 1)), self.BASE_DELAY * 120) if delay is None else delay
+        wait_time = min(self.base_interval * (2 ** (count - 1)), self.base_interval * 120)
 
         self.consecutive_errors[hostname] = count
         self.backoff_until[hostname] = time.time() + wait_time

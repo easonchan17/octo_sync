@@ -2,8 +2,7 @@ from pathlib import PurePosixPath
 from core.registry import Registry
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from core.types.params import CrawlParams
-from core.scheduler.tasks.poll_task import PollTask
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.daos.oddsportal import HistoryFixtureDao, FixtureDao
 from core.logger.logger_manager import LoggerManager
 

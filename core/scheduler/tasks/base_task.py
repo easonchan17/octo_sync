@@ -3,16 +3,12 @@ from threading import Event
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Callable
 from core.logger.logger_manager import LoggerManager
-from core.config.config_manager import ConfigManager
-from core.browser.interceptor import Interceptor
 
 class BaseTask(ABC):
     def __init__(self, name: Optional[str] = None) -> None:
         self.id = str(uuid.uuid4())
         self.name = name or self.__class__.__name__
         self.logger = LoggerManager.get_instance().get_logger(self.name)
-        self.config_manager = ConfigManager.get_instance()
-        self.interceptor = Interceptor.get_instance()
         self.cancel_event = Event()
         self.payload = None
 

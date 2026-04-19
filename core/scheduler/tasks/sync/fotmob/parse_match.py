@@ -1,13 +1,12 @@
 import traceback, re
 from core.registry import Registry
 from datetime import datetime, timezone
-from core.scheduler.tasks.poll_task import PollTask
 from core.logger.logger_manager import LoggerManager
 from typing import Dict, Any, Optional, List, Callable, Tuple
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat
-from core.store.postgres.daos.fotmob import MatchDao
-from core.types.params import CrawlParams
 from core.scheduler.tasks.sync.fotmob.utils import extract_status
+from core.store.postgres.daos.fotmob import MatchDao
 
 _VALUE_WITH_PERCENT_PATTERN = re.compile(r'^(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)')
 

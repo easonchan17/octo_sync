@@ -1,16 +1,14 @@
 import traceback, re, unicodedata
 from core.registry import Registry
-from typing import Any, Dict, Optional, List, Tuple
-from core.scheduler.tasks.sync.fotmob.utils import extract_status
+from typing import Any, Dict, Optional, List
 from datetime import datetime, timezone, timedelta
-from core.scheduler.tasks.poll_task import PollTask
 from core.types.enums import MatchStatus, SiteName
 from core.store.postgres.daos.fotmob import FixtureDao
 from core.store.postgres.models.fotmob.fixture import Fixture
+from core.scheduler.tasks.poll_task import PollTask, CrawlParams
+from core.scheduler.tasks.sync.fotmob.utils import extract_status
 from core.scheduler.refetch_strategy import ScheduleStrategy, ScheduleSegment
 from core.services.league import league_service
-from core.types.enums import LeaguePriority
-from core.types.params import CrawlParams
 
 class PageUrlBuilder:
     _STOP_WORDS = frozenset({"a", "an", "the", "and", "or", "of", "to", "in", "for", "on", "with", "as", "by"})

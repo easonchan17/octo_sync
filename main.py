@@ -1,7 +1,6 @@
 import os, sys, signal, argparse
 from threading import Event, enumerate
 from core.server.web_server import WebServer
-from core.browser.interceptor import Interceptor
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_executor import TaskExecutor
@@ -10,6 +9,8 @@ from core.scheduler.cron_manager import get_cron_manager
 from core.scheduler.poll_manager import get_poll_manager
 from core.services.league.service import league_service
 from core.config.env_manager import env_manager
+from core.browser.interceptor_manager import interceptor_manager
+from core.types.enums import SiteName
 
 if sys.version_info < (3, 11):
     sys.exit("Python 3.14 or higher is required")
@@ -34,9 +35,10 @@ def signal_handler(signum, frame) -> None:
     logger.info("✅ Poll manager stopped")
 
     if not env_manager.is_ml:
-        logger.info("🔧 Stopping network interceptor...")
-        Interceptor.get_instance().stop()
-        logger.info("✅ Network interceptor stopped")
+        logger.info("🔧 Stopping interceptor manager...")
+        interceptor_manager.stop(SiteName.FOTMOB.value)
+        interceptor_manager.stop(SiteName.ODDSPORTAL.value)
+        logger.info("✅ Interceptor manager stopped")
 
     logger.info("🔧 Stopping task executor...")
     TaskExecutor.get_instance().stop()
@@ -80,7 +82,8 @@ def run_app() -> None:
 
     if not env_manager.is_ml:
         logger.info("🔧 Starting network interceptor...")
-        Interceptor.get_instance().start()
+        interceptor_manager.start(site_name=SiteName.FOTMOB.value, request_interval=20.0)
+        interceptor_manager.start(site_name=SiteName.ODDSPORTAL.value, request_interval=60.0)
         logger.info("✅ Network interceptor started")
 
     logger.info("🔧 Starting task executor...")

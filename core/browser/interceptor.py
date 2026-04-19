@@ -4,7 +4,6 @@ import asyncio
 from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
-from core.utils.singleton import Singleton
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, Optional, Any
@@ -14,12 +13,12 @@ from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook
 from core.browser.intercept_strategy import InterceptType, InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
-class Interceptor(Thread, Singleton):
-    def __init__(self) -> None:
+class Interceptor(Thread):
+    def __init__(self, request_interval: float) -> None:
         super().__init__()
         self.page_pool = None
         self.task_queue: Optional[janus.Queue] = None
-        self.rate_limiter = RateLimiter()
+        self.rate_limiter = RateLimiter(base_interval=request_interval)
 
     def submit(self, url: str, strategy: InterceptStrategy) -> Optional[Future]:
         parsed = urlparse(url)
@@ -140,13 +139,17 @@ class Interceptor(Thread, Singleton):
         while not process_task.done():
             if self.stop_event.is_set():
                 process_task.cancel()
+
                 try:
                     await process_task
                 except (asyncio.CancelledError, Exception):
                     pass
+
                 if not future.done():
                     future.set_exception(RuntimeError("Interceptor stopped"))
+
                 return
+
             await asyncio.sleep(0.5)
 
         if not process_task.cancelled():
@@ -162,49 +165,38 @@ class Interceptor(Thread, Singleton):
             if not future.done():
                 future.set_exception(e)
 
-    async def _open_page(self, url: str, policy: InterceptStrategy) -> Optional[InterceptResultSet]:
-        retry_count = policy.retry_count
+    async def _open_page(self, url: str, strategy: InterceptStrategy) -> Optional[InterceptResultSet]:
+        await self.rate_limiter.throttle(url)
 
-        for idx in range(retry_count + 1):
-            if self.stop_event.is_set():
-                self.logger.info(f"Stop event is set for URL: {url}")
-                return None
+        success, result_set = await self._intercept(url=url, strategy=strategy)
+        if not success:
+            self.logger.error(f"Failed to intercept page {url}")
+            return None
 
-            await self.rate_limiter.throttle(url, policy.page_delay)
+        return result_set
 
-            success, result_set = await self._intercept(url=url, policy=policy)
-
-            if success:
-                return result_set
-
-            if idx >= retry_count:
-                self.logger.error(f"Failed to intercept page {url} after {idx + 1} attempts")
-                return None
-
-            self.logger.info(f"Retrying to intercept page {url} (attempt {idx + 1}/{retry_count})")
-
-    async def _intercept(self, url: str, policy: InterceptStrategy) -> Tuple[bool, InterceptResultSet]:
+    async def _intercept(self, url: str, strategy: InterceptStrategy) -> Tuple[bool, InterceptResultSet]:
         result_set = InterceptResultSet()
-        timeout = policy.timeout
+        timeout = strategy.timeout
 
         try:
             async with self.page_pool.acquire(timeout) as page_context:
                 try:
                     hooks = [TurnstileHook()]
-                    if policy.has_rules(InterceptType.HTTP):
+                    if strategy.has_rules(InterceptType.HTTP):
                         hooks.append(HttpHook())
-                    if policy.has_rules(InterceptType.JS):
+                    if strategy.has_rules(InterceptType.JS):
                         hooks.append(JsHook())
-                    if policy.has_rules(InterceptType.DOM):
+                    if strategy.has_rules(InterceptType.DOM):
                         hooks.append(DomHook())
-                    if policy.has_rules(InterceptType.WS):
+                    if strategy.has_rules(InterceptType.WS):
                         hooks.append(WsHook())
                     hook_chain = HookChain(hooks)
 
                     ctx = HookContext(
                         page_context=page_context,
                         target_url=url,
-                        strategy=policy,
+                        strategy=strategy,
                         result_set=result_set,
                     )
 
