@@ -81,9 +81,23 @@ def run_app() -> None:
     logger.info("✅ PostgreSQL manager started")
 
     if not env_manager.is_ml:
+        config = ConfigManager.get_instance().get_config("browser")
+        launch_options = config.get("launch_options", {})
+        viewport = config['viewport']
+
         logger.info("🔧 Starting network interceptor...")
-        interceptor_manager.start(site_name=SiteName.FOTMOB.value, request_interval=20.0)
-        interceptor_manager.start(site_name=SiteName.ODDSPORTAL.value, request_interval=60.0)
+        interceptor_manager.start(
+            site_name=SiteName.FOTMOB.value,
+            request_interval=20.0,
+            launch_options={**launch_options, "headless": True},
+            viewport=viewport
+        )
+        interceptor_manager.start(
+            site_name=SiteName.ODDSPORTAL.value,
+            request_interval=60.0,
+            launch_options=launch_options,
+            viewport=viewport
+        )
         logger.info("✅ Network interceptor started")
 
     logger.info("🔧 Starting task executor...")
