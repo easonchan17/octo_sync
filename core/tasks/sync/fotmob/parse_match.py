@@ -365,7 +365,7 @@ class MatchParser:
                     for target_key, extractor in targets:
                         record[target_key] = extractor(raw_val)
             records.append(record)
-        self.logger.info(f"Parsed {len(records)} player stats for match {match_id}")
+        self.logger.debug(f"Parsed {len(records)} player stats for match {match_id}")
         return records
 
 @TaskRegistry.poll('parse.fotmob.match')
@@ -412,7 +412,7 @@ class ParseMatch(PollTask):
 
                         self.match_dao.sync_parsed_data(parsed_data)
                         self.match_dao.mark_as_parsed(match_id, kickoff_time, match_status)
-                        self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
+                        self.logger.debug(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.match_dao.mark_parse_failed(match_id, full_stack_trace)

@@ -254,7 +254,7 @@ class ParseFixture(PollTask):
                             self.get_refetch_interval(last_fetched_at, last_kickoff_time, parsed_fixtures)
                         )
 
-                        self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
+                        self.logger.debug(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.fixture_dao.mark_parse_failed(match_date, full_stack_trace)
