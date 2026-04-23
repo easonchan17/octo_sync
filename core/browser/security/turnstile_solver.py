@@ -109,13 +109,12 @@ class TurnstileSolver:
         )
 
         try:
-            js_handle = await page_context.wait_for_function(
-                execution_expression,
-                timeout=timeout * 1000,
-                polling=polling
+            js_handle = await asyncio.wait_for(
+                page_context.wait_for_function(execution_expression, timeout=0, polling=polling),
+                timeout=timeout
             )
             return await js_handle.json_value() if expect_visible else True
-        except PlaywrightTimeoutError:
+        except (asyncio.TimeoutError, PlaywrightTimeoutError):
             return None if expect_visible else False
 
     async def _wait_for_widget_ready(self, page_context: Any, timeout: int) -> None:
@@ -169,14 +168,14 @@ class TurnstileSolver:
                 self.logger.debug(">>> Challenge container did not appear within timeout")
                 return False
 
-            self.logger.info(f">>> Found challenge container via: {result.get('found_via', 'unknown')}")
-            self.logger.info(">>> Waiting for challenge to be ready...")
+            self.logger.debug(f">>> Found challenge container via: {result.get('found_via', 'unknown')}")
+            self.logger.debug(">>> Waiting for challenge to be ready...")
             await self._wait_for_widget_ready(page_context, timeout)
-            self.logger.info(">>> Challenge is ready, starting click attempts")
+            self.logger.debug(">>> Challenge is ready, starting click attempts")
 
             base_x = result['x'] + self.WIDGET_OFFSET_X + random.uniform(*self.RANDOM_OFFSET_X_RANGE)
             base_y = result['y'] + self.WIDGET_OFFSET_Y + random.uniform(*self.RANDOM_OFFSET_Y_RANGE)
-            self.logger.info(f">>> Base point: ({base_x:.1f}, {base_y:.1f})")
+            self.logger.debug(f">>> Base point: ({base_x:.1f}, {base_y:.1f})")
 
             if base_x < 0 or base_y < 0:
                 return False
@@ -186,18 +185,21 @@ class TurnstileSolver:
                 target_x = base_x + offset_x
                 target_y = base_y + offset_y
 
-                self.logger.info(
+                self.logger.debug(
                     f">>> Attempt {attempt + 1}/{max_attempts}: "
                     f"Trying to click at point ({target_x:.1f}, {target_y:.1f})"
                 )
 
-                is_completed = await self._click_at_point(
-                    page_context, target_x, target_y, self.DEFAULT_CLICK_TIMEOUT
-                )
-
-                if is_completed:
-                    self.logger.info(f">>> Click completed successfully at attempt {attempt + 1}")
-                    return True
+                try:
+                    is_completed = await self._click_at_point(
+                        page_context, target_x, target_y, self.DEFAULT_CLICK_TIMEOUT
+                    )
+                    if is_completed:
+                        self.logger.info(f">>> Click completed successfully at attempt {attempt + 1}")
+                        return True
+                except asyncio.CancelledError:
+                    self.logger.info(f">>> Click daemon cancelled at attempt {attempt + 1} (page likely loaded)")
+                    raise
 
             self.logger.warning(">>> All spiral attempts failed, challenge may not be solvable")
             return False

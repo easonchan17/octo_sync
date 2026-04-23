@@ -1,5 +1,6 @@
 import traceback, re
 from datetime import datetime, timezone
+from core.types.enums import SiteName
 from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_registry import TaskRegistry
 from typing import Dict, Any, Optional, List, Callable, Tuple
@@ -371,7 +372,7 @@ class MatchParser:
 @TaskRegistry.poll('parse.fotmob.match')
 class ParseMatch(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.match_dao = MatchDao()
         self.parser = MatchParser()

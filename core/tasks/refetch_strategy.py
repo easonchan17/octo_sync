@@ -1,5 +1,4 @@
-import sys
-from random import random
+import sys, random
 from dataclasses import dataclass
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone

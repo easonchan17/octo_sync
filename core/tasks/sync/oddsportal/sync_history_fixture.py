@@ -134,7 +134,7 @@ class SyncHistoryFixture(PollTask):
 
                         self.history_fixture_dao.mark_as_fetched(league_id, season, page, fetch_interval=None)
                         self.history_fixture_dao.update_progress(league_id, season, page, total, total_page, page_size)
-                        self.logger.info(f"Synced oddsportal fixtures league_id={league_id} league_name={league_name} season={season} page={page}/{total_page}")
+                        self.logger.info(f"Synced fixtures league_id={league_id} league_name={league_name} season={season} page={page}/{total_page}")
 
                     except Exception as e:
                         self.history_fixture_dao.mark_fetch_failed(

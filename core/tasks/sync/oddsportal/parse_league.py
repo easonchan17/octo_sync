@@ -46,7 +46,7 @@ class LeagueParser:
 @TaskRegistry.poll('parse.oddsportal.league')
 class ParseLeague(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.league_dao = LeagueDao()
         self.parser = LeagueParser()
