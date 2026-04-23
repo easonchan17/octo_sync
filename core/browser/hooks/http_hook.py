@@ -30,11 +30,17 @@ class HttpHook(BaseHook):
                 try:
                     if ctx.strategy.debug:
                         self.logger.info(f"Continuing request without modification: {request.url}")
-                    await route.continue_()
+                    await route.fallback()
                 except Exception as e:
+                    is_main_doc = request.is_navigation_request() and request.resource_type == "document"
+                    if is_main_doc:
+                        with suppress(Exception):
+                            await route.fallback()
+                    else:
+                        with suppress(Exception):
+                            await route.abort("failed")
+
                     self.logger.error(f"Failed to continue request: {e}")
-                    with suppress(Exception):
-                        await route.abort("failed")
 
             await ctx.page_context.route("**/*", _http_request_handler)
 

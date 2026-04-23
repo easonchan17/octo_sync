@@ -21,3 +21,6 @@ select a.league_id, b.league_name, a.season, a.is_fetched, a.is_parsed, a.last_f
 
 # check oddsportal.odds_raw
 select match_code, kickoff_time, betting_type_id, scope_id, is_fetched, is_parsed, last_fetched_at, next_fetch_at from oddsportal.odds_raw order by kickoff_time desc;
+
+# check oddsportal.season_raw
+select league_id, league_name, last_fetched_at, next_fetch_at, is_fetched, is_parsed from oddsportal.season_raw order by last_fetched_at;

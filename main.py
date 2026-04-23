@@ -12,6 +12,11 @@ from core.browser.interceptor_manager import interceptor_manager
 from core.config.env_manager import env_manager
 from core.types.enums import SiteName
 
+import warnings
+from urllib3.exceptions import InsecureRequestWarning
+warnings.filterwarnings("ignore", category=InsecureRequestWarning)
+
+
 if sys.version_info < (3, 11):
     sys.exit("Python 3.14 or higher is required")
 
