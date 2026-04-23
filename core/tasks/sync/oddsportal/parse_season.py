@@ -4,6 +4,7 @@ from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.daos.oddsportal import SeasonDao
 from core.logger.logger_manager import LoggerManager
+from core.types.enums import SiteName
 
 class SeasonParser:
     SEASON_PATTERN = re.compile(r'<a\s[^>]*href="https://www\.oddsportal\.com/football/[^"]+/results/"[^>]*>\s*(\d{4})/\d{4}\s*</a>')
@@ -27,7 +28,7 @@ class SeasonParser:
 @TaskRegistry.poll('parse.oddsportal.season')
 class ParseSeason(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.season_dao = SeasonDao()
         self.parser = SeasonParser()

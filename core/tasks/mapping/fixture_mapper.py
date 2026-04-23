@@ -16,7 +16,7 @@ class FixtureMapper(PollTask):
     KICKOFF_TOLERANCE = timedelta(minutes=30)
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.fotmob_dao = FotmobFixtureDao()
         self.oddsportal_dao = FixtureMappingDao()
         self.match_resolver = MatchResolver(

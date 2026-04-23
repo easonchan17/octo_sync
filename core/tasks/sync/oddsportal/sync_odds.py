@@ -141,7 +141,7 @@ class BaseSyncOdds(PollTask):
 
                         fetch_interval = self.refetch_strategy.suggest_interval(kickoff_time, datetime.now(timezone.utc))
                         self.odds_dao.mark_as_fetched(match_code, self.market.betting_type_id, self.market.scope_id, fetch_interval)
-                        self.logger.info(f"Synced oddsportal odds match_code={match_code}")
+                        self.logger.info(f"Synced odds match_code={match_code}")
 
                     except Exception as e:
                         self.odds_dao.mark_fetch_failed(

@@ -5,6 +5,7 @@ from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.daos.oddsportal import HistoryFixtureDao, FixtureDao
 from core.logger.logger_manager import LoggerManager
+from core.types.enums import SiteName
 
 class HistoryFixtureParser:
     def __init__(self) -> None:
@@ -55,7 +56,7 @@ class HistoryFixtureParser:
 @TaskRegistry.poll('parse.oddsportal.history_fixture')
 class ParseHistoryFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.history_fixture_dao = HistoryFixtureDao()
         self.fixture_dao = FixtureDao()
