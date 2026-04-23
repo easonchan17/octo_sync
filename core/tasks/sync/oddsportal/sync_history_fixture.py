@@ -17,11 +17,10 @@ class SyncHistoryFixture(PollTask):
             try {
                 if (result && typeof result === 'object' && result.d && result.d.pagination && result.d.pagination.url) {
                     if (result.d.pagination.url.startsWith('https://www.oddsportal.com/ajax-sport-country-tournament-archive_')) {
-                        fetch('/__app_trace__/fixtures/', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: text
-                        });
+                        navigator.sendBeacon('/__app_trace__/fixtures/', JSON.stringify({
+                            url: window.location.href,
+                            data: result
+                        }));
                     }
                 }
             } catch (e) {}

@@ -6,11 +6,11 @@ playwright==1.53.0
 pydantic==2.11.2
 pydantic-settings==2.12.0
 psycopg2-binary==2.9.10
-chardet==5.2.0
+chardet==7.4.3
 camoufox[geoip]==0.4.11
 pytz>=2025.2
-pyarrow==22.0.0
-pandas==2.3.3
+pyarrow==24.0.0
+pandas==3.0.2
 bs4==0.0.2
 scikit-learn==1.7.2
 scikit_optimize==0.10.2
@@ -21,4 +21,4 @@ thefuzz==0.22.1
 apscheduler==3.11.2
 httpx==0.28.1
 alembic==1.18.1
-visidata==3.3
+mitmproxy==12.2.2

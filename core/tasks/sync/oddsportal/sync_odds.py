@@ -15,11 +15,10 @@ class BaseSyncOdds(PollTask):
             var result = _origParse.call(this, text, reviver);
             try {
                 if (result && typeof result === 'object' && result.d && result.d.oddsdata) {
-                    fetch('/__app_trace__/odds/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: text
-                    });
+                    navigator.sendBeacon('/__app_trace__/odds/', JSON.stringify({
+                        url: window.location.href,
+                        data: result
+                    }));
                 }
             } catch (e) {}
             return result;

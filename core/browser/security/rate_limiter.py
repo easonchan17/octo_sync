@@ -17,11 +17,20 @@ class RateLimiter:
         "retry after"
     ]
 
+    STATUS_PENALTIES = {
+        429: 2,
+        502: 1,
+        503: 5,
+        504: 2
+    }
+
+    MAX_PENALTY_FACTOR = 120
+
     def __init__(self, base_interval: float = 60.0) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self.last_request: dict[str, float] = {}
         self.backoff_until: dict[str, float] = {}
-        self.consecutive_errors: dict[str, int] = {}
+        self.host_penalties: dict[str, int] = {}
         self.base_interval = base_interval
 
     async def throttle(self, url: str) -> None:
@@ -32,7 +41,7 @@ class RateLimiter:
         backoff_time = self.backoff_until.get(hostname, 0)
         last_time = self.last_request.get(hostname, 0)
 
-        delay = self.base_interval * random.uniform(1.2, 1.5)
+        delay = self.base_interval * random.uniform(1.0, 1.5)
         target_time = max(backoff_time, last_time + delay)
 
         current_time = time.time()
@@ -44,7 +53,7 @@ class RateLimiter:
         self.last_request[hostname] = time.time()
 
     async def is_rate_limited(self, response: Any) -> bool:
-        if response.status in [429, 503, 504]:
+        if response.status in self.STATUS_PENALTIES:
             return True
 
         try:
@@ -64,11 +73,12 @@ class RateLimiter:
         if not hostname:
             raise ValueError(f"Invalid URL: {url}")
 
-        count = self.consecutive_errors.get(hostname, 0) + 1
-        wait_time = min(self.base_interval * (2 ** (count - 1)), self.base_interval * 120)
+        penalty = self.host_penalties.get(hostname, 0) + self.STATUS_PENALTIES(status, 1)
+        self.host_penalties[hostname] = penalty
 
-        self.consecutive_errors[hostname] = count
+        wait_time = min(self.base_interval * (2 ** (penalty - 1)), self.base_interval * self.MAX_PENALTY_FACTOR)
         self.backoff_until[hostname] = time.time() + wait_time
+
         self.logger.warning(f"Rate limit detected ({status}) for {hostname}, backing off for {wait_time}s")
 
     def reset_backoff(self, url: str) -> None:
@@ -76,5 +86,5 @@ class RateLimiter:
         if not hostname:
             raise ValueError(f"Invalid URL: {url}")
 
-        self.consecutive_errors.pop(hostname, None)
+        self.host_penalties.pop(hostname, None)
         self.backoff_until.pop(hostname, None)
