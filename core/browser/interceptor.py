@@ -1,3 +1,4 @@
+from random import random
 import time, janus, asyncio, psutil
 from urllib.parse import urlparse
 from core.utils.thread import Thread
@@ -184,55 +185,51 @@ class Interceptor(Thread):
 
         try:
             async with self.page_pool.acquire(timeout) as page_context:
+                hooks = [TurnstileHook()]
+                if strategy.has_rules(InterceptType.HTTP):
+                    hooks.append(HttpHook())
+                if strategy.has_rules(InterceptType.JS):
+                    hooks.append(JsHook())
+                if strategy.has_rules(InterceptType.DOM):
+                    hooks.append(DomHook())
+                if strategy.has_rules(InterceptType.WS):
+                    hooks.append(WsHook())
+                hook_chain = HookChain(hooks)
+
+                ctx = HookContext(
+                    page_context=page_context,
+                    target_url=url,
+                    strategy=strategy,
+                    result_set=result_set,
+                )
+
+                await hook_chain.setup(ctx)
+
+                page_context.request._impl_obj._timeout_settings.set_default_timeout(timeout * 1000)
+                response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
+
+                if response is None:
+                    self.logger.warning(f"Navigation to {url} returned None, no response available")
+                    return False, result_set
+
+                if await self.rate_limiter.is_rate_limited(response):
+                    self.rate_limiter.activate_backoff(url, status=response.status)
+                    return False, result_set
+
                 try:
-                    hooks = [TurnstileHook()]
-                    if strategy.has_rules(InterceptType.HTTP):
-                        hooks.append(HttpHook())
-                    if strategy.has_rules(InterceptType.JS):
-                        hooks.append(JsHook())
-                    if strategy.has_rules(InterceptType.DOM):
-                        hooks.append(DomHook())
-                    if strategy.has_rules(InterceptType.WS):
-                        hooks.append(WsHook())
-                    hook_chain = HookChain(hooks)
+                    success = await hook_chain.execute(ctx)
+                finally:
+                    await hook_chain.destroy(ctx)
 
-                    ctx = HookContext(
-                        page_context=page_context,
-                        target_url=url,
-                        strategy=strategy,
-                        result_set=result_set,
-                    )
+                if not success:
+                    return False, result_set
 
-                    await hook_chain.setup(ctx)
+                self.rate_limiter.reset_backoff(url)
+                self.logger.info(f"Page loaded: {url}")
 
-                    start_time = time.time()
-                    page_context.request._impl_obj._timeout_settings.set_default_timeout(timeout * 1000)
-                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
+                await asyncio.sleep(random.uniform(1, 3))
 
-                    if response is None:
-                        self.logger.warning(f"Navigation to {url} returned None, no response available")
-                        return False, result_set
-
-                    if await self.rate_limiter.is_rate_limited(response):
-                        self.rate_limiter.activate_backoff(url, status=response.status)
-                        return False, result_set
-
-                    try:
-                        success = await hook_chain.execute(ctx)
-                    finally:
-                        await hook_chain.destroy(ctx)
-
-                    if not success:
-                        return False, result_set
-
-                    self.rate_limiter.reset_backoff(url)
-
-                    elapsed_time = time.time() - start_time
-                    self.logger.info(f"Page loaded: {url} in {elapsed_time:.2f}s")
-
-                    return True, result_set
-                except Exception as e:
-                    self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
+                return True, result_set
 
         except asyncio.TimeoutError:
             self.logger.error(f"Timeout while acquiring page for URL: {url}")

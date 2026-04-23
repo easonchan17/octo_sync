@@ -15,18 +15,15 @@ class SyncLeague(PollTask):
             var result = _origParse.call(this, text, reviver);
             try {
                 if (result && typeof result === 'object' && result.d && result.d.football_all) {
-                    fetch('/__app_trace__/leagues/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: text
-                    });
+                    navigator.sendBeacon('/__app_trace__/leagues/', JSON.stringify({
+                        url: window.location.href,
+                        data: result
+                    }));
                 }
             } catch (e) {}
             return result;
         };
     })();"""
-
-    SPORT_NAME = "football"
 
     INTERCEPT_STRATEGY = {
         "url": "https://www.oddsportal.com/#sport/football/all",
@@ -44,7 +41,7 @@ class SyncLeague(PollTask):
         self.payload = payload or {}
         self.league_dao = LeagueDao()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
-        self.sport_name = self.SPORT_NAME
+        self.sport_name = "football"
 
         self.refetch_strategy = (
             TimelineStrategy(min_interval=timedelta(days=1))

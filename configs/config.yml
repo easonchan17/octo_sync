@@ -12,13 +12,12 @@ task_thread_pool:
   max_workers: 32
 
 browser:
-  options:
+  launch_options:
     headless: false
-    geoip: false
+    geoip: true
     os:
       - "windows"
       - "macos"
-      - "linux"
     humanize: true
     firefox_user_prefs:
       browser.tabs.remote.useCrossOriginOpenerPolicy: false
@@ -26,8 +25,6 @@ browser:
   viewport:
     width: 1920
     height: 1080
-  page_pool_size: 5
-  page_limit: 30
 
 http:
   host: "127.0.0.1"
