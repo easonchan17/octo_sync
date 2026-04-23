@@ -166,7 +166,7 @@ class LeagueParser:
 @TaskRegistry.poll("parse.fotmob.fixture")
 class ParseFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.fixture_dao = FixtureDao()
         self.league_parser = LeagueParser()

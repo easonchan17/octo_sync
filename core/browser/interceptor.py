@@ -1,5 +1,4 @@
-from random import random
-import time, janus, asyncio, psutil
+import janus, asyncio, psutil, random
 from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
@@ -174,7 +173,6 @@ class Interceptor(Thread):
 
         success, result_set = await self._intercept(url=url, strategy=strategy)
         if not success:
-            self.logger.error(f"Failed to intercept page {url}")
             return None
 
         return result_set
@@ -209,7 +207,7 @@ class Interceptor(Thread):
                 response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
 
                 if response is None:
-                    self.logger.warning(f"Navigation to {url} returned None, no response available")
+                    self.logger.warning(f"No response: {url}")
                     return False, result_set
 
                 if await self.rate_limiter.is_rate_limited(response):
@@ -226,13 +224,8 @@ class Interceptor(Thread):
 
                 self.rate_limiter.reset_backoff(url)
                 self.logger.info(f"Page loaded: {url}")
-
                 await asyncio.sleep(random.uniform(1, 3))
-
                 return True, result_set
-
-        except asyncio.TimeoutError:
-            self.logger.error(f"Timeout while acquiring page for URL: {url}")
         except Exception as e:
-            self.logger.error(f"Error loading page {url}: {e}", exc_info=True)
-        return False, result_set
+            self.logger.error(f"Failed to load page {url}: {e}")
+            return False, result_set

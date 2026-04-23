@@ -7,6 +7,7 @@ from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask, CrawlParams
 from core.store.postgres.daos.oddsportal import UpcomingFixtureDao, FixtureDao
 from core.logger.logger_manager import LoggerManager
+from core.types.enums import SiteName
 
 class UpcomingFixtureParser:
     MATCHUP_NAME_PATTERN = re.compile(r'^(?P<home>.+?)\s+-\s+(?P<away>.+)$')
@@ -96,7 +97,7 @@ class UpcomingFixtureParser:
 @TaskRegistry.poll('parse.oddsportal.upcoming_fixture')
 class ParseUpcomingFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.upcoming_fixture_dao = UpcomingFixtureDao()
         self.fixture_dao = FixtureDao()

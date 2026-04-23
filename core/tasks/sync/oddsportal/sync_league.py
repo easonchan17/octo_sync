@@ -93,11 +93,11 @@ class SyncLeague(PollTask):
                     self.sport_name,
                     self.refetch_strategy.suggest_interval(base_time=current_time, current_time=current_time)
                 )
-                self.logger.info(f"Synced oddsportal leagues for sport={self.sport_name}")
+                self.logger.info(f"Synced leagues for sport={self.sport_name}")
 
             except Exception as e:
                 self.league_dao.mark_fetch_failed(
                     self.sport_name,
                     self.retry_strategy.suggest_interval(fetch_attempts)
                 )
-                self.logger.error(f"Failed to sync oddsportal leagues for sport={self.sport_name}: {e}")
+                self.logger.error(f"Failed to sync leagues for sport={self.sport_name}: {e}")
