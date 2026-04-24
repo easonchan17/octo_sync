@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from core.browser.interceptor_manager import interceptor_manager
 
 class CrawlParams:
-    START_DATE = datetime(2024, 12, 1, tzinfo=timezone.utc)
+    START_DATE = datetime(2024, 1, 1, tzinfo=timezone.utc)
     START_SEASON = 2024
 
     POLL_IDLE_SECONDS = 60

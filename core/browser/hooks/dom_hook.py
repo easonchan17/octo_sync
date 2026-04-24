@@ -34,7 +34,7 @@ class DomHook(BaseHook):
                     return
 
                 ctx.result_set.set(dom_rule.receiver.instance_id, parsed_data)
-                self.logger.info(f"DOM data captured from: {ctx.target_url}")
+                self.logger.info(f"Data captured from: {ctx.target_url}")
             except Exception as e:
                 self.logger.error(f"Failed to process page content from {ctx.target_url}: {e}", exc_info=True)
             finally:

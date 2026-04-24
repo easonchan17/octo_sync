@@ -38,14 +38,14 @@ class JsHook(BaseHook):
                 if js_rule.on_trace:
                     data = await js_rule.on_trace(ctx, data)
                     if data is None:
-                        self.logger.info(f"Discarded trace data for: {request.url}")
+                        self.logger.info(f"Discarded data for: {request.url}")
                         return
 
                 ctx.result_set.set(1, data)
                 self._latch.mark_completed()
-                self.logger.info(f"Trace data captured from: {request.url}")
+                self.logger.info(f"Data captured from: {request.url}")
             except Exception as e:
-                self.logger.error(f"Failed to process trace data from: {request.url}: {e}", exc_info=True)
+                self.logger.error(f"Failed to process data from: {request.url}: {e}", exc_info=True)
             finally:
                 with suppress(Exception):
                     await route.fulfill(status=200, body="ok")
