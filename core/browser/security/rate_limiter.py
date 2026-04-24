@@ -75,7 +75,7 @@ class RateLimiter:
         if not hostname:
             raise ValueError(f"Invalid URL: {url}")
 
-        penalty = self.host_penalties.get(hostname, 0) + self.STATUS_PENALTIES(status, 1)
+        penalty = self.host_penalties.get(hostname, 0) + self.STATUS_PENALTIES.get(status, 1)
         self.host_penalties[hostname] = penalty
 
         wait_time = min(self.base_interval * (2 ** (penalty - 1)), self.base_interval * self.MAX_PENALTY_FACTOR)
