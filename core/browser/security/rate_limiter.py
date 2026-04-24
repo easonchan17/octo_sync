@@ -18,10 +18,12 @@ class RateLimiter:
     ]
 
     STATUS_PENALTIES = {
-        429: 2,
+        429: 3,
         502: 1,
         503: 5,
-        504: 2
+        504: 2,
+        -1: 2,
+        -2: 1
     }
 
     MAX_PENALTY_FACTOR = 120

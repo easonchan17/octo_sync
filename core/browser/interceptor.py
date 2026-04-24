@@ -1,4 +1,5 @@
-import janus, asyncio, psutil, random
+import janus, asyncio, psutil, random, time
+from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
@@ -78,9 +79,14 @@ class Interceptor(Thread):
                     except asyncio.TimeoutError:
                         continue
 
+                    start_time = time.perf_counter()
+
                     future, url, strategy = task_data
                     await self._run_with_stop_check(future, url, strategy)
                     self.task_queue.async_q.task_done()
+
+                    cost_time = time.perf_counter() - start_time
+                    self.logger.info(f"Task cost time {cost_time:.3f} s")
 
                     intercepted_pages += 1
                     if self._should_recycle():
@@ -201,20 +207,19 @@ class Interceptor(Thread):
                     result_set=result_set,
                 )
 
-                await hook_chain.setup(ctx)
-
-                page_context.request._impl_obj._timeout_settings.set_default_timeout(timeout * 1000)
-                response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
-
-                if response is None:
-                    self.logger.warning(f"No response: {url}")
-                    return False, result_set
-
-                if await self.rate_limiter.is_rate_limited(response):
-                    self.rate_limiter.activate_backoff(url, status=response.status)
-                    return False, result_set
-
                 try:
+                    await hook_chain.setup(ctx)
+                    page_context.set_default_timeout(timeout * 1000)
+                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
+
+                    if response is None:
+                        self.logger.warning(f"No response: {url}")
+                        return False, result_set
+
+                    if await self.rate_limiter.is_rate_limited(response):
+                        self.rate_limiter.activate_backoff(url, status=response.status)
+                        return False, result_set
+
                     success = await hook_chain.execute(ctx)
                 finally:
                     await hook_chain.destroy(ctx)
@@ -226,6 +231,11 @@ class Interceptor(Thread):
                 self.logger.info(f"Page loaded: {url}")
                 await asyncio.sleep(random.uniform(1, 3))
                 return True, result_set
+        except (TimeoutError, PlaywrightTimeoutError) as e:
+            self.rate_limiter.activate_backoff(url, status=-1)
+            self.logger.error(f"Failed to load page {url}: {e}")
+            return False, result_set
         except Exception as e:
+            self.rate_limiter.activate_backoff(url, status=-2)
             self.logger.error(f"Failed to load page {url}: {e}")
             return False, result_set
