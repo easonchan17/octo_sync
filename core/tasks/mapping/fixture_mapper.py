@@ -26,10 +26,10 @@ class FixtureMapper(PollTask):
 
         self.retry_strategy = (
             AttemptStrategy()
-            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=1))
+            .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=5))
             .add_segment(min_attempts=4, max_attempts=7, interval=timedelta(hours=1))
-            .add_segment(min_attempts=7, max_attempts=10, interval=timedelta(days=1))
-            .add_segment(min_attempts=10, max_attempts=None, interval=timedelta(days=7))
+            .add_segment(min_attempts=7, max_attempts=10, interval=timedelta(hours=4))
+            .add_segment(min_attempts=10, max_attempts=None, interval=timedelta(days=1))
         )
 
     def _get_refetch_time(self, attempts: int, current_time: datetime) -> Optional[datetime]:
@@ -62,7 +62,7 @@ class FixtureMapper(PollTask):
                     self.MAPPING_QUERY_LIMIT
                 )
                 if not oddsportal_fixtures:
-                    self.logger.info("No pending fixtures to map")
+                    # self.logger.info("No pending fixtures to map")
                     self.idle_sleep()
                     continue
 
