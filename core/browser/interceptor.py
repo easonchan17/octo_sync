@@ -186,6 +186,7 @@ class Interceptor(Thread):
     async def _intercept(self, url: str, strategy: InterceptStrategy) -> Tuple[bool, InterceptResultSet]:
         result_set = InterceptResultSet()
         timeout = strategy.timeout
+        success = False
 
         try:
             async with self.page_pool.acquire(timeout) as page_context:
@@ -214,28 +215,23 @@ class Interceptor(Thread):
 
                     if response is None:
                         self.logger.warning(f"No response: {url}")
-                        return False, result_set
-
-                    if await self.rate_limiter.is_rate_limited(response):
+                    elif await self.rate_limiter.is_rate_limited(response):
                         self.rate_limiter.activate_backoff(url, status=response.status)
-                        return False, result_set
-
-                    success = await hook_chain.execute(ctx)
+                    else:
+                        success = await hook_chain.execute(ctx)
                 finally:
                     await hook_chain.destroy(ctx)
 
-                if not success:
-                    return False, result_set
-
-                self.rate_limiter.reset_backoff(url)
-                self.logger.info(f"Page loaded: {url}")
-                await asyncio.sleep(random.uniform(1, 3))
-                return True, result_set
         except (TimeoutError, PlaywrightTimeoutError) as e:
             self.rate_limiter.activate_backoff(url, status=-1)
             self.logger.error(f"Failed to load page {url}: {e}")
-            return False, result_set
         except Exception as e:
             self.rate_limiter.activate_backoff(url, status=-2)
             self.logger.error(f"Failed to load page {url}: {e}")
-            return False, result_set
+
+        if success:
+            self.rate_limiter.reset_backoff(url)
+            self.logger.info(f"Page loaded: {url}")
+            await asyncio.sleep(random.uniform(1, 3))
+
+        return success, result_set
