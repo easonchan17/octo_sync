@@ -7,7 +7,6 @@ from core.scheduler.task_registry import TaskRegistry, TaskType
 
 import core.tasks.sync.fotmob  # noqa: F401
 import core.tasks.sync.oddsportal # noqa: F401
-import core.tasks.mapping  # noqa: F401
 
 class PollManager:
     def __init__(self) -> None:

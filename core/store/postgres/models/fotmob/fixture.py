@@ -54,6 +54,8 @@ class Fixture(Base):
     away_team = Column(String(100), nullable=False)
     away_id = Column(Integer, nullable=False)
 
+    season = Column(Integer, nullable=True)
+
     home_score = Column(Integer, nullable=True)
     away_score = Column(Integer, nullable=True)
 

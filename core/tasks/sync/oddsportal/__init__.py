@@ -8,6 +8,7 @@ from .sync_season import SyncSeason
 from .parse_season import ParseSeason
 from .sync_odds import BaseSyncOdds, SyncFT1x2Odds, SyncFTAhOdds
 from .parse_odds import BaseParseOdds, ParseFT1x2Odds, ParseFTAhOdds
+from .map_fixture import MapFixture
 
 __all__ = [
     'SyncLeague',
@@ -24,4 +25,5 @@ __all__ = [
     'BaseParseOdds',
     'ParseFT1x2Odds',
     'ParseFTAhOdds',
+    'MapFixture',
 ]

@@ -27,8 +27,8 @@ class LeagueParser:
             tournaments = country_data.get("tournaments", [])
 
             for tournament in tournaments:
-                league_id = str(tournament.get("tournament-id"))
-                if league_id in seen:
+                league_id = tournament.get("tournament-id")
+                if league_id is None or league_id in seen:
                     continue
 
                 seen.add(league_id)
@@ -66,8 +66,8 @@ class ParseLeague(PollTask):
 
                     try:
                         parsed_leagues = self.parser.parse(json_body)
-                        if parsed_leagues is None:
-                            self.league_dao.mark_parse_failed(sport, "Parsed leagues is None")
+                        if not parsed_leagues:
+                            self.league_dao.mark_parse_failed(sport, "Parsed leagues is empty")
                             continue
 
                         self.league_dao.sync_parsed_data(parsed_leagues)
@@ -75,7 +75,7 @@ class ParseLeague(PollTask):
                         for league in parsed_leagues:
                             league_service.resolve(
                                 SiteName.ODDSPORTAL.value,
-                                league["league_id"],
+                                str(league["league_id"]),
                                 league["league_name"],
                                 country_name=league["country_name"],
                                 country_code=league["country_code"]

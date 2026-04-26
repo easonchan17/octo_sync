@@ -6,10 +6,11 @@ from core.types.enums import SiteName
 from core.types.params import EloParams
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import FotmobFixture, Site, EloRating, PinnacleFixture, Moneyline, Spread
-from core.services.ml.sample_builders.feature_engineering import OddsDeriver, EloRatingDeriver
+from core.services.ml.preprocessing.transforms import EloRatingDeriver
+from core.services.ml.preprocessing.extractors.odds_feature_extractor import OddsDeriver
 from core.store.postgres.models.fbref import Fixture as FbrefFixture
 from core.store.postgres.postgresql_manager import PostgreSQLManager
-from core.services.ml.sample_builders import SingleSampleBuilder
+from core.services.ml.preprocessing import PredictSampleBuilder
 
 
 class FeatureBuilder:
@@ -34,7 +35,7 @@ class FeatureBuilder:
         away_code = fbref_fixture.away_code
         self.logger.info(f"Teams: home={home_code}, away={away_code}")
 
-        aggregator = SingleSampleBuilder({
+        aggregator = PredictSampleBuilder({
                 "home_code": home_code,
                 "away_code": away_code,
                 "kickoff_time": kickoff_time,
