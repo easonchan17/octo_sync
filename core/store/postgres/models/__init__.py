@@ -1,7 +1,7 @@
 # PostgreSQL models package
 from .base_model import Base, Status
 from .common import Site, TrainingRecord, SysVal, CanonicalLeague, SiteLeague
-from .fotmob import Fixture as FotmobFixture, MatchLineup
+from .fotmob import Fixture as FotmobFixture, MatchLineup, EloRating
 from .oddsportal import LeagueRaw
 
 __all__ = [
@@ -15,6 +15,7 @@ __all__ = [
     'Odds',
     'FotmobFixture',
     'MatchLineup',
+    'EloRating',
     'SysVal',
     'CanonicalLeague',
     'SiteLeague',

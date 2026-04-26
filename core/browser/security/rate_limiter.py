@@ -26,7 +26,7 @@ class RateLimiter:
         -2: 1
     }
 
-    MAX_PENALTY_FACTOR = 120
+    MAX_PENALTY_FACTOR = 15
 
     def __init__(self, base_interval: float = 60.0) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
