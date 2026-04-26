@@ -1,0 +1,848 @@
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import aliased
+from typing import Any, Dict, List, Optional
+from core.types.enums import MatchStatus
+from core.store.postgres.models import (
+    MatchResult, GoalAndShotCreation, Passing, Shooting,
+    DefensiveAction, GoalKeeping, Odds, EloRating
+)
+from ..transforms import (
+    ColumnFilter,
+    Filter,
+    MeanImputer,
+    FormulaDeriver,
+    TeamTimeSeriesDeriver,
+    EloRatingDeriver
+)
+from .odds import OddsDeriver
+from ..constants import (
+    POINT_COL,
+    HOME_VENUE, AWAY_VENUE, HOME_GF_COL, AWAY_GF_COL,
+    HOME_POINT_COL, AWAY_POINT_COL, XG_COL, TARGET_COL
+)
+from .base import BaseFeatureExtractor
+
+
+class MatchFeatureExtractor(BaseFeatureExtractor):
+    EMA_BASED_FEATURES = [
+        "gf", "xg",
+        "possession",
+        "sca", "sca_passes_dead", "sca_take_ons",
+        "passes", "passes_total_distance", "passes_progressive",
+        "passes_progressive_distance", "passes_completed_long", "passes_long",
+        "xg_assist", "pass_xa", "passes_into_final_third",
+        "passes_into_penalty_area", "crosses_into_penalty_area",
+        "shots", "shots_on_target", "average_shot_distance",
+        "tackles", "tackles_won", "tackles_att_third",
+        "challenges", "challenges_lost", "blocks",
+        "interceptions", "clearances", "errors_shot",
+        "gk_psxg", "gk_crosses_stopped", "gk_crosses",
+        "gk_def_actions_outside_pen_area", "gk_avg_distance_def_actions"
+    ]
+
+    NOT_NONE_FEATURES = [
+        "home_rest_days",
+        "away_rest_days",
+        "home_gf_ema_5",
+        "away_gf_ema_5",
+        "home_home_dependency_5",
+        "away_home_dependency_5"
+    ]
+
+    FORMULA_BASED_FEATURES = [
+        ("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5"),
+        ("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5"),
+        ("home_field_tilt_ema_5", "home_passes_into_final_third_ema_5 / (home_passes_into_final_third_ema_5 + away_passes_into_final_third_ema_5)"),
+        ("away_field_tilt_ema_5", "1 - home_field_tilt_ema_5"),
+        ("home_safe_control_ema_5", "home_possession_ema_5 - home_field_tilt_ema_5"),
+        ("away_safe_control_ema_5", "away_possession_ema_5 - away_field_tilt_ema_5"),
+        ("home_long_passes_acc_ema_5", "home_passes_completed_long_ema_5 / home_passes_long_ema_5"),
+        ("away_long_passes_acc_ema_5", "away_passes_completed_long_ema_5 / away_passes_long_ema_5"),
+        ("home_long_passes_share_ema_5", "home_passes_long_ema_5 / home_passes_ema_5"),
+        ("away_long_passes_share_ema_5", "away_passes_long_ema_5 / away_passes_ema_5"),
+        ("home_box_penetration_ratio_ema_5", "home_passes_into_penalty_area_ema_5 / home_passes_into_final_third_ema_5"),
+        ("away_box_penetration_ratio_ema_5", "away_passes_into_penalty_area_ema_5 / away_passes_into_final_third_ema_5"),
+        ("home_creativity_share_ema_5", "home_pass_xa_ema_5 / home_xg_ema_5"),
+        ("away_creativity_share_ema_5", "away_pass_xa_ema_5 / away_xg_ema_5"),
+        ("home_final_third_entry_share_ema_5", "home_passes_into_final_third_ema_5 / home_passes_ema_5"),
+        ("away_final_third_entry_share_ema_5", "away_passes_into_final_third_ema_5 / away_passes_ema_5"),
+        ("home_passes_progressive_rate_ema_5", "home_passes_progressive_ema_5 / home_passes_ema_5"),
+        ("away_passes_progressive_rate_ema_5", "away_passes_progressive_ema_5 / away_passes_ema_5"),
+        ("home_passes_progressive_share_ema_5", "home_passes_progressive_distance_ema_5 / home_passes_total_distance_ema_5"),
+        ("away_passes_progressive_share_ema_5", "away_passes_progressive_distance_ema_5 / away_passes_total_distance_ema_5"),
+        ("home_shots_acc_ratio_ema_5", "home_shots_on_target_ema_5 / home_shots_ema_5"),
+        ("away_shots_acc_ratio_ema_5", "away_shots_on_target_ema_5 / away_shots_ema_5"),
+        ("home_shots_conversion_ratio_ema_5", "home_gf_ema_5 / home_shots_ema_5"),
+        ("away_shots_conversion_ratio_ema_5", "away_gf_ema_5 / away_shots_ema_5"),
+        ("home_goal_to_xg_ema_5", "home_gf_ema_5 / home_xg_ema_5"),
+        ("away_goal_to_xg_ema_5", "away_gf_ema_5 / away_xg_ema_5"),
+        ("home_gsaa_ema_5", "home_gk_psxg_ema_5 - away_gf_ema_5"),
+        ("away_gsaa_ema_5", "away_gk_psxg_ema_5 - home_gf_ema_5"),
+        ("home_tackles_success_ratio_ema_5", "home_tackles_won_ema_5 / home_tackles_ema_5"),
+        ("away_tackles_success_ratio_ema_5", "away_tackles_won_ema_5 / away_tackles_ema_5"),
+        ("home_challenges_success_ratio_ema_5", "(home_challenges_ema_5-home_challenges_lost_ema_5) / home_challenges_ema_5"),
+        ("away_challenges_success_ratio_ema_5", "(away_challenges_ema_5-away_challenges_lost_ema_5) / away_challenges_ema_5"),
+        ("home_high_press_ratio_ema_5", "home_tackles_att_third_ema_5 / home_tackles_ema_5"),
+        ("away_high_press_ratio_ema_5", "away_tackles_att_third_ema_5 / away_tackles_ema_5"),
+        ("home_disruption_volume_ema_5", "home_blocks_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5"),
+        ("away_disruption_volume_ema_5", "away_blocks_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5"),
+        ("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5)"),
+        ("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5)"),
+        ("home_gk_crosses_stopped_ratio_ema_5", "home_gk_crosses_stopped_ema_5 / home_gk_crosses_ema_5"),
+        ("away_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ema_5 / away_gk_crosses_ema_5"),
+        ("home_set_piece_sca_ratio_ema_5", "home_sca_passes_dead_ema_5 / home_sca_ema_5"),
+        ("away_set_piece_sca_ratio_ema_5", "away_sca_passes_dead_ema_5 / away_sca_ema_5"),
+        ("home_take_on_sca_ratio_ema_5", "home_sca_take_ons_ema_5 / home_sca_ema_5"),
+        ("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5")
+    ]
+
+    HOME_AWAY_DIFF_FEATURES = [
+        "rest_days", "xg_ema_5", "possession_ema_5", "point_sum_5","h2h_points",
+        "sca_passes_dead_ema_5", "sca_take_ons_ema_5", "passes_ema_5",
+        "passes_progressive_ema_5", "passes_progressive_distance_ema_5", "passes_long_ema_5",
+        "xg_assist_ema_5", "pass_xa_ema_5", "passes_into_penalty_area_ema_5",
+        "crosses_into_penalty_area_ema_5", "average_shot_distance_ema_5", "tackles_att_third_ema_5",
+        "challenges_ema_5", "challenges_lost_ema_5", "errors_shot_ema_5",
+        "gk_psxg_ema_5", "gk_crosses_stopped_ema_5", "gk_crosses_ema_5",
+        "gk_def_actions_outside_pen_area_ema_5", "gk_avg_distance_def_actions_ema_5",
+        "luck_ema_5", "field_tilt_ema_5", "safe_control_ema_5",
+        "long_passes_acc_ema_5", "long_passes_share_ema_5", "box_penetration_ratio_ema_5",
+        "creativity_share_ema_5", "final_third_entry_share_ema_5", "passes_progressive_rate_ema_5",
+        "passes_progressive_share_ema_5", "shots_acc_ratio_ema_5", "shots_conversion_ratio_ema_5",
+        "goal_to_xg_ema_5", "gsaa_ema_5", "tackles_success_ratio_ema_5",
+        "challenges_success_ratio_ema_5", "high_press_ratio_ema_5", "disruption_volume_ema_5",
+        "ppda_global_ema_5", "gk_crosses_stopped_ratio_ema_5", "set_piece_sca_ratio_ema_5",
+        "take_on_sca_ratio_ema_5"
+    ]
+
+    REQUIRED_FEATURES = [
+        "kickoff_time", "comp_name", "match_code", "page_url", "match_report",
+        "home_team", "home_code", "away_team", "away_code", "home_point", "target",
+        "home_elo_rating", "away_elo_rating", "elo_rating_diff", "home_net_advantage", "home_elo_expectancy", "match_balance",
+        "home_rest_days", "away_rest_days", "rest_days_diff",
+        "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
+        "home_h2h_points", "away_h2h_points", "h2h_points_diff",
+        "home_home_points_ema_5", "home_away_points_ema_5", "home_home_dependency_5",
+        "away_home_points_ema_5", "away_away_points_ema_5", "away_home_dependency_5",
+        "home_xg_lagged", "away_xg_lagged",
+        "home_sca_passes_dead_ema_5", "away_sca_passes_dead_ema_5", "sca_passes_dead_ema_5_diff",
+        "home_passes_progressive_distance_ema_5", "away_passes_progressive_distance_ema_5", "passes_progressive_distance_ema_5_diff",
+        "home_passes_long_ema_5", "away_passes_long_ema_5", "passes_long_ema_5_diff",
+        "home_crosses_into_penalty_area_ema_5", "away_crosses_into_penalty_area_ema_5", "crosses_into_penalty_area_ema_5_diff",
+        "home_average_shot_distance_ema_5", "away_average_shot_distance_ema_5", "average_shot_distance_ema_5_diff",
+        "home_tackles_att_third_ema_5", "away_tackles_att_third_ema_5", "tackles_att_third_ema_5_diff",
+        "home_errors_shot_ema_5", "away_errors_shot_ema_5", "errors_shot_ema_5_diff",
+        "home_gk_avg_distance_def_actions_ema_5", "away_gk_avg_distance_def_actions_ema_5", "gk_avg_distance_def_actions_ema_5_diff",
+        "home_luck_ema_5", "away_luck_ema_5", "luck_ema_5_diff",
+        "home_field_tilt_ema_5", "away_field_tilt_ema_5", "field_tilt_ema_5_diff",
+        "home_ppda_global_ema_5", "away_ppda_global_ema_5", "ppda_global_ema_5_diff",
+        "home_xg_ema_5", "away_xg_ema_5", "xg_ema_5_diff",
+        "home_sca_take_ons_ema_5", "away_sca_take_ons_ema_5", "sca_take_ons_ema_5_diff",
+        "home_passes_into_penalty_area_ema_5", "away_passes_into_penalty_area_ema_5", "passes_into_penalty_area_ema_5_diff",
+        "home_creativity_share_ema_5", "away_creativity_share_ema_5", "creativity_share_ema_5_diff",
+        "home_final_third_entry_share_ema_5", "away_final_third_entry_share_ema_5", "final_third_entry_share_ema_5_diff",
+        "ah_line_open", "ah_line_close",
+        "home_open_real", "draw_open_real", "away_open_real",
+        "home_close_real", "draw_close_real", "away_close_real",
+        "home_real_net", "draw_real_net", "away_real_net",
+        "ah_home_open_real", "ah_away_open_real",
+        "ah_home_close_real", "ah_away_close_real",
+        "ah_home_real_net", "ah_away_real_net",
+        "vig_1x2_close", "vig_ah_close",
+        "entropy_1x2_open", "entropy_1x2_close",
+        "home_log_return", "ah_home_log_return",
+        "home_bias_ratio",
+        "ah_line_change"
+        # "home_gsaa_ema_5", "away_gsaa_ema_5", "gsaa_ema_5_diff",
+        # "home_possession_ema_5", "away_possession_ema_5", "possession_ema_5_diff",
+        # "home_passes_ema_5", "away_passes_ema_5", "passes_ema_5_diff",
+        # "home_xg_assist_ema_5", "away_xg_assist_ema_5", "xg_assist_ema_5_diff",
+        # "home_passes_progressive_ema_5", "away_passes_progressive_ema_5", "passes_progressive_ema_5_diff",
+        # "home_pass_xa_ema_5", "away_pass_xa_ema_5", "pass_xa_ema_5_diff",
+        # "home_challenges_ema_5", "away_challenges_ema_5", "challenges_ema_5_diff",
+        # "home_challenges_lost_ema_5", "away_challenges_lost_ema_5", "challenges_lost_ema_5_diff",
+        # "home_gk_psxg_ema_5", "away_gk_psxg_ema_5", "gk_psxg_ema_5_diff",
+        # "home_gk_crosses_stopped_ema_5", "away_gk_crosses_stopped_ema_5", "gk_crosses_stopped_ema_5_diff",
+        # "home_gk_crosses_ema_5", "away_gk_crosses_ema_5", "gk_crosses_ema_5_diff",
+        # "home_gk_def_actions_outside_pen_area_ema_5", "away_gk_def_actions_outside_pen_area_ema_5", "gk_def_actions_outside_pen_area_ema_5_diff",
+        # "home_safe_control_ema_5", "away_safe_control_ema_5", "safe_control_ema_5_diff",
+        # "home_long_passes_acc_ema_5", "away_long_passes_acc_ema_5", "long_passes_acc_ema_5_diff",
+        # "home_long_passes_share_ema_5", "away_long_passes_share_ema_5", "long_passes_share_ema_5_diff",
+        # "home_box_penetration_ratio_ema_5", "away_box_penetration_ratio_ema_5", "box_penetration_ratio_ema_5_diff",
+        # "home_passes_progressive_rate_ema_5", "away_passes_progressive_rate_ema_5", "passes_progressive_rate_ema_5_diff",
+        # "home_passes_progressive_share_ema_5", "away_passes_progressive_share_ema_5", "passes_progressive_share_ema_5_diff",
+        # "home_shots_acc_ratio_ema_5", "away_shots_acc_ratio_ema_5", "shots_acc_ratio_ema_5_diff",
+        # "home_shots_conversion_ratio_ema_5", "away_shots_conversion_ratio_ema_5", "shots_conversion_ratio_ema_5_diff",
+        # "home_goal_to_xg_ema_5", "away_goal_to_xg_ema_5", "goal_to_xg_ema_5_diff",
+        # "home_tackles_success_ratio_ema_5", "away_tackles_success_ratio_ema_5", "tackles_success_ratio_ema_5_diff",
+        # "home_challenges_success_ratio_ema_5", "away_challenges_success_ratio_ema_5", "challenges_success_ratio_ema_5_diff",
+        # "home_high_press_ratio_ema_5", "away_high_press_ratio_ema_5", "high_press_ratio_ema_5_diff",
+        # "home_disruption_volume_ema_5", "away_disruption_volume_ema_5", "disruption_volume_ema_5_diff",
+        # "home_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ratio_ema_5", "gk_crosses_stopped_ratio_ema_5_diff",
+        # "home_set_piece_sca_ratio_ema_5", "away_set_piece_sca_ratio_ema_5", "set_piece_sca_ratio_ema_5_diff",
+        # "home_take_on_sca_ratio_ema_5", "away_take_on_sca_ratio_ema_5", "take_on_sca_ratio_ema_5_diff"
+    ]
+
+    def query_batch_raw_data(self, comp_code: str, min_season: int, max_season: int) -> List[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            gca_home = aliased(GoalAndShotCreation)
+            gca_away = aliased(GoalAndShotCreation)
+            passing_home = aliased(Passing)
+            passing_away = aliased(Passing)
+            shooting_home = aliased(Shooting)
+            shooting_away = aliased(Shooting)
+            defensive_home = aliased(DefensiveAction)
+            defensive_away = aliased(DefensiveAction)
+            goalkeeping_home = aliased(GoalKeeping)
+            goalkeeping_away = aliased(GoalKeeping)
+            elo_rating_home = aliased(EloRating)
+            elo_rating_away = aliased(EloRating)
+
+            match_odds = aliased(Odds)
+
+            query = session.query(
+                MatchResult,
+                gca_home,
+                gca_away,
+                passing_home,
+                passing_away,
+                shooting_home,
+                shooting_away,
+                defensive_home,
+                defensive_away,
+                goalkeeping_home,
+                goalkeeping_away,
+                elo_rating_home,
+                elo_rating_away,
+                match_odds
+            ).outerjoin(
+                gca_home,
+                and_(
+                    MatchResult.match_code == gca_home.match_code,
+                    MatchResult.home_code == gca_home.team_code
+                )
+            ).outerjoin(
+                gca_away,
+                and_(
+                    MatchResult.match_code == gca_away.match_code,
+                    MatchResult.away_code == gca_away.team_code
+                )
+            ).outerjoin(
+                passing_home,
+                and_(
+                    MatchResult.match_code == passing_home.match_code,
+                    MatchResult.home_code == passing_home.team_code
+                )
+            ).outerjoin(
+                passing_away,
+                and_(
+                    MatchResult.match_code == passing_away.match_code,
+                    MatchResult.away_code == passing_away.team_code
+                )
+            ).outerjoin(
+                shooting_home,
+                and_(
+                    MatchResult.match_code == shooting_home.match_code,
+                    MatchResult.home_code == shooting_home.team_code
+                )
+            ).outerjoin(
+                shooting_away,
+                and_(
+                    MatchResult.match_code == shooting_away.match_code,
+                    MatchResult.away_code == shooting_away.team_code
+                )
+            ).outerjoin(
+                defensive_home,
+                and_(
+                    MatchResult.match_code == defensive_home.match_code,
+                    MatchResult.home_code == defensive_home.team_code
+                )
+            ).outerjoin(
+                defensive_away,
+                and_(
+                    MatchResult.match_code == defensive_away.match_code,
+                    MatchResult.away_code == defensive_away.team_code
+                )
+            ).outerjoin(
+                goalkeeping_home,
+                and_(
+                    MatchResult.match_code == goalkeeping_home.match_code,
+                    MatchResult.home_code == goalkeeping_home.team_code
+                )
+            ).outerjoin(
+                goalkeeping_away,
+                and_(
+                    MatchResult.match_code == goalkeeping_away.match_code,
+                    MatchResult.away_code == goalkeeping_away.team_code
+                )
+            ).outerjoin(
+                elo_rating_home,
+                and_(
+                    MatchResult.match_code == elo_rating_home.match_code,
+                    MatchResult.home_code == elo_rating_home.team_code
+                )
+            ).outerjoin(
+                elo_rating_away,
+                and_(
+                    MatchResult.match_code == elo_rating_away.match_code,
+                    MatchResult.away_code == elo_rating_away.team_code
+                )
+            ).outerjoin(
+                match_odds,
+                MatchResult.match_code == match_odds.match_code
+            ).filter(
+                MatchResult.comp_code == comp_code,
+                MatchResult.season >= min_season,
+                MatchResult.season <= max_season,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time)
+
+            results = query.all()
+
+            data = []
+            for row in results:
+                match_result = row[0]
+                gca_home_obj = row[1]
+                gca_away_obj = row[2]
+                passing_home_obj = row[3]
+                passing_away_obj = row[4]
+                shooting_home_obj = row[5]
+                shooting_away_obj = row[6]
+                defensive_home_obj = row[7]
+                defensive_away_obj = row[8]
+                goalkeeping_home_obj = row[9]
+                goalkeeping_away_obj = row[10]
+                elo_rating_home_obj = row[11]
+                elo_rating_away_obj = row[12]
+                match_odds_obj = row[13]
+
+                record = {
+                    "match_code": match_result.match_code,
+                    "match_report": match_result.match_report,
+                    "season": match_result.season,
+                    "comp_name": match_result.comp_name,
+                    "comp_code": match_result.comp_code,
+                    "kickoff_time": match_result.kickoff_time,
+                    "round": match_result.round,
+                    "venue": match_result.venue,
+                    "home_team": match_result.home_team,
+                    "home_code": match_result.home_code,
+                    "away_team": match_result.away_team,
+                    "away_code": match_result.away_code,
+                    "home_gf": match_result.home_gf,
+                    "away_gf": match_result.away_gf,
+                    "home_xg": match_result.home_xg,
+                    "away_xg": match_result.away_xg,
+                    "home_possession": match_result.home_possession,
+                    "away_possession": match_result.away_possession,
+                    "notes": match_result.notes
+                }
+
+                if elo_rating_home_obj:
+                    record.update({
+                        "home_pre_rating": float(elo_rating_home_obj.pre_rating),
+                        "home_post_rating": float(elo_rating_home_obj.post_rating),
+                        "home_expected_score": float(elo_rating_home_obj.expected_score),
+                        "home_game_count": elo_rating_home_obj.game_count
+                    })
+
+                if elo_rating_away_obj:
+                    record.update({
+                        "away_pre_rating": float(elo_rating_away_obj.pre_rating),
+                        "away_post_rating": float(elo_rating_away_obj.post_rating),
+                        "away_expected_score": float(elo_rating_away_obj.expected_score),
+                        "away_game_count": elo_rating_away_obj.game_count
+                    })
+
+                if gca_home_obj:
+                    record.update({
+                        "home_sca": gca_home_obj.shot_creating_actions,
+                        "home_sca_passes_dead": gca_home_obj.sca_passes_dead,
+                        "home_sca_take_ons": gca_home_obj.sca_take_ons
+                    })
+
+                if gca_away_obj:
+                    record.update({
+                        "away_sca": gca_away_obj.shot_creating_actions,
+                        "away_sca_passes_dead": gca_away_obj.sca_passes_dead,
+                        "away_sca_take_ons": gca_away_obj.sca_take_ons
+                    })
+
+                if passing_home_obj:
+                    record.update({
+                        "home_passes_completed": passing_home_obj.passes_completed,
+                        "home_passes": passing_home_obj.passes,
+                        "home_passes_progressive": passing_home_obj.progressive_passes,
+                        "home_passes_total_distance": passing_home_obj.passes_total_distance,
+                        "home_passes_progressive_distance": passing_home_obj.passes_progressive_distance,
+                        "home_passes_completed_long": passing_home_obj.passes_completed_long,
+                        "home_passes_long": passing_home_obj.passes_long,
+                        "home_assists": passing_home_obj.assists,
+                        "home_xg_assist": passing_home_obj.xg_assist,
+                        "home_pass_xa": passing_home_obj.pass_xa,
+                        "home_assisted_shots": passing_home_obj.assisted_shots,
+                        "home_passes_into_final_third": passing_home_obj.passes_into_final_third,
+                        "home_passes_into_penalty_area": passing_home_obj.passes_into_penalty_area,
+                        "home_crosses_into_penalty_area": passing_home_obj.crosses_into_penalty_area
+                    })
+
+                if passing_away_obj:
+                    record.update({
+                        "away_passes_completed": passing_away_obj.passes_completed,
+                        "away_passes": passing_away_obj.passes,
+                        "away_passes_progressive": passing_away_obj.progressive_passes,
+                        "away_passes_total_distance": passing_away_obj.passes_total_distance,
+                        "away_passes_progressive_distance": passing_away_obj.passes_progressive_distance,
+                        "away_passes_completed_long": passing_away_obj.passes_completed_long,
+                        "away_passes_long": passing_away_obj.passes_long,
+                        "away_assists": passing_away_obj.assists,
+                        "away_xg_assist": passing_away_obj.xg_assist,
+                        "away_pass_xa": passing_away_obj.pass_xa,
+                        "away_assisted_shots": passing_away_obj.assisted_shots,
+                        "away_passes_into_final_third": passing_away_obj.passes_into_final_third,
+                        "away_passes_into_penalty_area": passing_away_obj.passes_into_penalty_area,
+                        "away_crosses_into_penalty_area": passing_away_obj.crosses_into_penalty_area
+                    })
+
+                if shooting_home_obj:
+                    record.update({
+                        "home_shots": shooting_home_obj.shots,
+                        "home_shots_on_target": shooting_home_obj.shots_on_target,
+                        "home_shots_free_kicks": shooting_home_obj.shots_free_kicks,
+                        "home_average_shot_distance": shooting_home_obj.average_shot_distance
+                    })
+
+                if shooting_away_obj:
+                    record.update({
+                        "away_shots": shooting_away_obj.shots,
+                        "away_shots_on_target": shooting_away_obj.shots_on_target,
+                        "away_shots_free_kicks": shooting_away_obj.shots_free_kicks,
+                        "away_average_shot_distance": shooting_away_obj.average_shot_distance
+                    })
+
+                if defensive_home_obj:
+                    record.update({
+                        "home_tackles": defensive_home_obj.tackles,
+                        "home_tackles_won": defensive_home_obj.tackles_won,
+                        "home_tackles_def_third": defensive_home_obj.tackles_def_third,
+                        "home_tackles_mid_third": defensive_home_obj.tackles_mid_third,
+                        "home_tackles_att_third": defensive_home_obj.tackles_att_third,
+                        "home_challenge_tackles": defensive_home_obj.challenge_tackles,
+                        "home_challenges": defensive_home_obj.challenges,
+                        "home_challenges_lost": defensive_home_obj.challenges_lost,
+                        "home_blocks": defensive_home_obj.blocks,
+                        "home_blocked_shots": defensive_home_obj.blocked_shots,
+                        "home_blocked_passes": defensive_home_obj.blocked_passes,
+                        "home_interceptions": defensive_home_obj.interceptions,
+                        "home_clearances": defensive_home_obj.clearances,
+                        "home_errors_shot": defensive_home_obj.errors_shot
+                    })
+
+                if defensive_away_obj:
+                    record.update({
+                        "away_tackles": defensive_away_obj.tackles,
+                        "away_tackles_won": defensive_away_obj.tackles_won,
+                        "away_tackles_def_third": defensive_away_obj.tackles_def_third,
+                        "away_tackles_mid_third": defensive_away_obj.tackles_mid_third,
+                        "away_tackles_att_third": defensive_away_obj.tackles_att_third,
+                        "away_challenge_tackles": defensive_away_obj.challenge_tackles,
+                        "away_challenges": defensive_away_obj.challenges,
+                        "away_challenges_lost": defensive_away_obj.challenges_lost,
+                        "away_blocks": defensive_away_obj.blocks,
+                        "away_blocked_shots": defensive_away_obj.blocked_shots,
+                        "away_blocked_passes": defensive_away_obj.blocked_passes,
+                        "away_interceptions": defensive_away_obj.interceptions,
+                        "away_clearances": defensive_away_obj.clearances,
+                        "away_errors_shot": defensive_away_obj.errors_shot
+                    })
+
+                if goalkeeping_home_obj:
+                    record.update({
+                        "home_gk_shots_on_target_against": goalkeeping_home_obj.shots_on_target_against,
+                        "home_gk_psxg": goalkeeping_home_obj.psxg,
+                        "home_gk_psxg_net": goalkeeping_home_obj.psxg_net,
+                        "home_gk_crosses": goalkeeping_home_obj.crosses,
+                        "home_gk_crosses_stopped": goalkeeping_home_obj.crosses_stopped,
+                        "home_gk_def_actions_outside_pen_area": goalkeeping_home_obj.def_actions_outside_pen_area,
+                        "home_gk_avg_distance_def_actions": goalkeeping_home_obj.avg_distance_def_actions if goalkeeping_home_obj.avg_distance_def_actions else 0
+                    })
+
+                if goalkeeping_away_obj:
+                    record.update({
+                        "away_gk_shots_on_target_against": goalkeeping_away_obj.shots_on_target_against,
+                        "away_gk_psxg": goalkeeping_away_obj.psxg,
+                        "away_gk_psxg_net": goalkeeping_away_obj.psxg_net,
+                        "away_gk_crosses": goalkeeping_away_obj.crosses,
+                        "away_gk_crosses_stopped": goalkeeping_away_obj.crosses_stopped,
+                        "away_gk_def_actions_outside_pen_area": goalkeeping_away_obj.def_actions_outside_pen_area,
+                        "away_gk_avg_distance_def_actions": goalkeeping_away_obj.avg_distance_def_actions if goalkeeping_away_obj.avg_distance_def_actions else 0
+                    })
+
+                if match_odds_obj:
+                    record.update({
+                        "home_open_odds": match_odds_obj.home_open,
+                        "draw_open_odds": match_odds_obj.draw_open,
+                        "away_open_odds": match_odds_obj.away_open,
+                        "home_close_odds": match_odds_obj.home_close,
+                        "draw_close_odds": match_odds_obj.draw_close,
+                        "away_close_odds": match_odds_obj.away_close,
+                        "ah_line_open": match_odds_obj.ah_line_open,
+                        "ah_home_open_odds": match_odds_obj.ah_home_open,
+                        "ah_away_open_odds": match_odds_obj.ah_away_open,
+                        "ah_line_close": match_odds_obj.ah_line_close,
+                        "ah_home_close_odds": match_odds_obj.ah_home_close,
+                        "ah_away_close_odds": match_odds_obj.ah_away_close
+                    })
+
+                data.append(record)
+
+            return data
+
+    def query_single_raw_data(self, home_code: str, away_code: str, kickoff_time: datetime) -> List[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            home_stmt = session.query(MatchResult.match_code).filter(
+                or_(MatchResult.home_code == home_code, MatchResult.away_code == home_code),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(20)
+
+            away_stmt = session.query(MatchResult.match_code).filter(
+                or_(MatchResult.home_code == away_code, MatchResult.away_code == away_code),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(20)
+
+            h2h_stmt = session.query(MatchResult.match_code).filter(
+                or_(
+                    and_(MatchResult.home_code == home_code, MatchResult.away_code == away_code),
+                    and_(MatchResult.home_code == away_code, MatchResult.away_code == home_code)
+                ),
+                MatchResult.kickoff_time < kickoff_time,
+                MatchResult.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(MatchResult.kickoff_time.desc()).limit(5)
+
+            final_id_query = home_stmt.union(away_stmt, h2h_stmt)
+            match_codes = session.execute(final_id_query).scalars().all()
+
+            current_match = self._build_current_match(home_code, away_code, kickoff_time)
+            if not match_codes:
+                return [current_match]
+
+            history_matches = self._query_matches_by_codes(session, match_codes)
+            return history_matches + [current_match]
+
+    def _build_current_match(
+        self,
+        home_code: str,
+        away_code: str,
+        kickoff_time: datetime
+    ) -> Dict[str, Any]:
+        return {
+            "home_code": home_code,
+            "away_code": away_code,
+            "kickoff_time": kickoff_time
+        }
+
+    def _query_matches_by_codes(self, session, match_codes: List[str]) -> List[Dict[str, Any]]:
+        gca_home = aliased(GoalAndShotCreation)
+        gca_away = aliased(GoalAndShotCreation)
+        passing_home = aliased(Passing)
+        passing_away = aliased(Passing)
+        shooting_home = aliased(Shooting)
+        shooting_away = aliased(Shooting)
+        defensive_home = aliased(DefensiveAction)
+        defensive_away = aliased(DefensiveAction)
+        goalkeeping_home = aliased(GoalKeeping)
+        goalkeeping_away = aliased(GoalKeeping)
+
+        query = session.query(
+            MatchResult,
+            gca_home,
+            gca_away,
+            passing_home,
+            passing_away,
+            shooting_home,
+            shooting_away,
+            defensive_home,
+            defensive_away,
+            goalkeeping_home,
+            goalkeeping_away
+        ).outerjoin(
+            gca_home,
+            and_(
+                MatchResult.match_code == gca_home.match_code,
+                MatchResult.home_code == gca_home.team_code
+            )
+        ).outerjoin(
+            gca_away,
+            and_(
+                MatchResult.match_code == gca_away.match_code,
+                MatchResult.away_code == gca_away.team_code
+            )
+        ).outerjoin(
+            passing_home,
+            and_(
+                MatchResult.match_code == passing_home.match_code,
+                MatchResult.home_code == passing_home.team_code
+            )
+        ).outerjoin(
+            passing_away,
+            and_(
+                MatchResult.match_code == passing_away.match_code,
+                MatchResult.away_code == passing_away.team_code
+            )
+        ).outerjoin(
+            shooting_home,
+            and_(
+                MatchResult.match_code == shooting_home.match_code,
+                MatchResult.home_code == shooting_home.team_code
+            )
+        ).outerjoin(
+            shooting_away,
+            and_(
+                MatchResult.match_code == shooting_away.match_code,
+                MatchResult.away_code == shooting_away.team_code
+            )
+        ).outerjoin(
+            defensive_home,
+            and_(
+                MatchResult.match_code == defensive_home.match_code,
+                MatchResult.home_code == defensive_home.team_code
+            )
+        ).outerjoin(
+            defensive_away,
+            and_(
+                MatchResult.match_code == defensive_away.match_code,
+                MatchResult.away_code == defensive_away.team_code
+            )
+        ).outerjoin(
+            goalkeeping_home,
+            and_(
+                MatchResult.match_code == goalkeeping_home.match_code,
+                MatchResult.home_code == goalkeeping_home.team_code
+            )
+        ).outerjoin(
+            goalkeeping_away,
+            and_(
+                MatchResult.match_code == goalkeeping_away.match_code,
+                MatchResult.away_code == goalkeeping_away.team_code
+            )
+        ).filter(
+            MatchResult.match_code.in_(match_codes)
+        ).order_by(MatchResult.kickoff_time)
+
+        return self._parse_query_results(query.all())
+
+    def _parse_query_results(self, results) -> List[Dict[str, Any]]:
+        data = []
+        for row in results:
+            match_result = row[0]
+            gca_home_obj = row[1]
+            gca_away_obj = row[2]
+            passing_home_obj = row[3]
+            passing_away_obj = row[4]
+            shooting_home_obj = row[5]
+            shooting_away_obj = row[6]
+            defensive_home_obj = row[7]
+            defensive_away_obj = row[8]
+            goalkeeping_home_obj = row[9]
+            goalkeeping_away_obj = row[10]
+
+            record = {
+                "match_code": match_result.match_code,
+                "match_report": match_result.match_report,
+                "season": match_result.season,
+                "comp_name": match_result.comp_name,
+                "comp_code": match_result.comp_code,
+                "kickoff_time": match_result.kickoff_time,
+                "round": match_result.round,
+                "venue": match_result.venue,
+                "home_team": match_result.home_team,
+                "home_code": match_result.home_code,
+                "away_team": match_result.away_team,
+                "away_code": match_result.away_code,
+                "home_gf": match_result.home_gf,
+                "away_gf": match_result.away_gf,
+                "home_xg": match_result.home_xg,
+                "away_xg": match_result.away_xg,
+                "home_possession": match_result.home_possession,
+                "away_possession": match_result.away_possession,
+                "notes": match_result.notes
+            }
+
+            if gca_home_obj:
+                record.update({
+                    "home_sca": gca_home_obj.shot_creating_actions,
+                    "home_sca_passes_dead": gca_home_obj.sca_passes_dead,
+                    "home_sca_take_ons": gca_home_obj.sca_take_ons
+                })
+
+            if gca_away_obj:
+                record.update({
+                    "away_sca": gca_away_obj.shot_creating_actions,
+                    "away_sca_passes_dead": gca_away_obj.sca_passes_dead,
+                    "away_sca_take_ons": gca_away_obj.sca_take_ons
+                })
+
+            if passing_home_obj:
+                record.update({
+                    "home_passes_completed": passing_home_obj.passes_completed,
+                    "home_passes": passing_home_obj.passes,
+                    "home_passes_progressive": passing_home_obj.progressive_passes,
+                    "home_passes_total_distance": passing_home_obj.passes_total_distance,
+                    "home_passes_progressive_distance": passing_home_obj.passes_progressive_distance,
+                    "home_passes_completed_long": passing_home_obj.passes_completed_long,
+                    "home_passes_long": passing_home_obj.passes_long,
+                    "home_assists": passing_home_obj.assists,
+                    "home_xg_assist": passing_home_obj.xg_assist,
+                    "home_pass_xa": passing_home_obj.pass_xa,
+                    "home_assisted_shots": passing_home_obj.assisted_shots,
+                    "home_passes_into_final_third": passing_home_obj.passes_into_final_third,
+                    "home_passes_into_penalty_area": passing_home_obj.passes_into_penalty_area,
+                    "home_crosses_into_penalty_area": passing_home_obj.crosses_into_penalty_area
+                })
+
+            if passing_away_obj:
+                record.update({
+                    "away_passes_completed": passing_away_obj.passes_completed,
+                    "away_passes": passing_away_obj.passes,
+                    "away_passes_progressive": passing_away_obj.progressive_passes,
+                    "away_passes_total_distance": passing_away_obj.passes_total_distance,
+                    "away_passes_progressive_distance": passing_away_obj.passes_progressive_distance,
+                    "away_passes_completed_long": passing_away_obj.passes_completed_long,
+                    "away_passes_long": passing_away_obj.passes_long,
+                    "away_assists": passing_away_obj.assists,
+                    "away_xg_assist": passing_away_obj.xg_assist,
+                    "away_pass_xa": passing_away_obj.pass_xa,
+                    "away_assisted_shots": passing_away_obj.assisted_shots,
+                    "away_passes_into_final_third": passing_away_obj.passes_into_final_third,
+                    "away_passes_into_penalty_area": passing_away_obj.passes_into_penalty_area,
+                    "away_crosses_into_penalty_area": passing_away_obj.crosses_into_penalty_area
+                })
+
+            if shooting_home_obj:
+                record.update({
+                    "home_shots": shooting_home_obj.shots,
+                    "home_shots_on_target": shooting_home_obj.shots_on_target,
+                    "home_shots_free_kicks": shooting_home_obj.shots_free_kicks,
+                    "home_average_shot_distance": shooting_home_obj.average_shot_distance
+                })
+
+            if shooting_away_obj:
+                record.update({
+                    "away_shots": shooting_away_obj.shots,
+                    "away_shots_on_target": shooting_away_obj.shots_on_target,
+                    "away_shots_free_kicks": shooting_away_obj.shots_free_kicks,
+                    "away_average_shot_distance": shooting_away_obj.average_shot_distance
+                })
+
+            if defensive_home_obj:
+                record.update({
+                    "home_tackles": defensive_home_obj.tackles,
+                    "home_tackles_won": defensive_home_obj.tackles_won,
+                    "home_tackles_def_third": defensive_home_obj.tackles_def_third,
+                    "home_tackles_mid_third": defensive_home_obj.tackles_mid_third,
+                    "home_tackles_att_third": defensive_home_obj.tackles_att_third,
+                    "home_challenge_tackles": defensive_home_obj.challenge_tackles,
+                    "home_challenges": defensive_home_obj.challenges,
+                    "home_challenges_lost": defensive_home_obj.challenges_lost,
+                    "home_blocks": defensive_home_obj.blocks,
+                    "home_blocked_shots": defensive_home_obj.blocked_shots,
+                    "home_blocked_passes": defensive_home_obj.blocked_passes,
+                    "home_interceptions": defensive_home_obj.interceptions,
+                    "home_clearances": defensive_home_obj.clearances,
+                    "home_errors_shot": defensive_home_obj.errors_shot
+                })
+
+            if defensive_away_obj:
+                record.update({
+                    "away_tackles": defensive_away_obj.tackles,
+                    "away_tackles_won": defensive_away_obj.tackles_won,
+                    "away_tackles_def_third": defensive_away_obj.tackles_def_third,
+                    "away_tackles_mid_third": defensive_away_obj.tackles_mid_third,
+                    "away_tackles_att_third": defensive_away_obj.tackles_att_third,
+                    "away_challenge_tackles": defensive_away_obj.challenge_tackles,
+                    "away_challenges": defensive_away_obj.challenges,
+                    "away_challenges_lost": defensive_away_obj.challenges_lost,
+                    "away_blocks": defensive_away_obj.blocks,
+                    "away_blocked_shots": defensive_away_obj.blocked_shots,
+                    "away_blocked_passes": defensive_away_obj.blocked_passes,
+                    "away_interceptions": defensive_away_obj.interceptions,
+                    "away_clearances": defensive_away_obj.clearances,
+                    "away_errors_shot": defensive_away_obj.errors_shot
+                })
+
+            if goalkeeping_home_obj:
+                record.update({
+                    "home_gk_shots_on_target_against": goalkeeping_home_obj.shots_on_target_against,
+                    "home_gk_psxg": goalkeeping_home_obj.psxg,
+                    "home_gk_psxg_net": goalkeeping_home_obj.psxg_net,
+                    "home_gk_crosses": goalkeeping_home_obj.crosses,
+                    "home_gk_crosses_stopped": goalkeeping_home_obj.crosses_stopped,
+                    "home_gk_def_actions_outside_pen_area": goalkeeping_home_obj.def_actions_outside_pen_area,
+                    "home_gk_avg_distance_def_actions": goalkeeping_home_obj.avg_distance_def_actions if goalkeeping_home_obj.avg_distance_def_actions else 0
+                })
+
+            if goalkeeping_away_obj:
+                record.update({
+                    "away_gk_shots_on_target_against": goalkeeping_away_obj.shots_on_target_against,
+                    "away_gk_psxg": goalkeeping_away_obj.psxg,
+                    "away_gk_psxg_net": goalkeeping_away_obj.psxg_net,
+                    "away_gk_crosses": goalkeeping_away_obj.crosses,
+                    "away_gk_crosses_stopped": goalkeeping_away_obj.crosses_stopped,
+                    "away_gk_def_actions_outside_pen_area": goalkeeping_away_obj.def_actions_outside_pen_area,
+                    "away_gk_avg_distance_def_actions": goalkeeping_away_obj.avg_distance_def_actions if goalkeeping_away_obj.avg_distance_def_actions else 0
+                })
+
+            data.append(record)
+
+        return data
+
+    def do_transforms(self, stats: List[Dict[str, Any]], is_single: bool = False) -> Optional[pd.DataFrame]:
+        df = pd.DataFrame(stats)
+
+        MeanImputer(df).impute("home_average_shot_distance")
+        MeanImputer(df).impute("away_average_shot_distance")
+
+        df[HOME_POINT_COL] = np.select(
+            [df[HOME_GF_COL] > df[AWAY_GF_COL], df[HOME_GF_COL] == df[AWAY_GF_COL]],
+            [3, 1],
+            default=0
+        )
+        df[AWAY_POINT_COL] = np.select(
+            [df[HOME_GF_COL] > df[AWAY_GF_COL], df[HOME_GF_COL] == df[AWAY_GF_COL]],
+            [0, 1],
+            default=3
+        )
+        df[TARGET_COL] = np.where(df[HOME_POINT_COL] == 3, 2, df[HOME_POINT_COL])
+
+        deriver = TeamTimeSeriesDeriver(df)
+        deriver.derive_rest_days()
+        deriver.derive_lagged(XG_COL)
+        deriver.derive_rolling_sum(POINT_COL, default_value=0, window=5, min_periods=1)
+        deriver.derive_h2h_points()
+        deriver.derive_venue_performance(min_periods=2)
+        for feature in self.EMA_BASED_FEATURES:
+            deriver.derive_ema(feature, min_periods=2)
+        df = deriver.get_result()
+
+        if not is_single:
+            for feature in self.NOT_NONE_FEATURES:
+                df = Filter(df).drop(feature)
+
+        for feature, formula in self.FORMULA_BASED_FEATURES:
+            FormulaDeriver(df).mutate(feature, formula)
+
+        for feature in self.HOME_AWAY_DIFF_FEATURES:
+            name = f"{feature}_diff"
+            formula = f"{HOME_VENUE}_{feature} - {AWAY_VENUE}_{feature}"
+            FormulaDeriver(df).mutate(name, formula)
+
+        if not is_single:
+            EloRatingDeriver(df).derive()
+            OddsDeriver(df).derive()
+
+        return ColumnFilter(df).keep(self.REQUIRED_FEATURES).df
