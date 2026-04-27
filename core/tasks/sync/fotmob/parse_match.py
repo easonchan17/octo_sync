@@ -380,10 +380,7 @@ class ParseMatch(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                start_time, end_time = self.get_fetch_time_range(CrawlParams.MATCH_LOOKAHEAD_DAYS)
                 items = self.match_dao.get_pending_parse_items(
-                    start_time,
-                    end_time,
                     CrawlParams.PARSE_MAX_RETRIES,
                     CrawlParams.RAW_DATA_QUERY_LIMIT
                 )
@@ -413,7 +410,7 @@ class ParseMatch(PollTask):
 
                         self.match_dao.sync_parsed_data(parsed_data)
                         self.match_dao.mark_as_parsed(match_id, kickoff_time, match_status)
-                        self.logger.debug(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
+                        self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.match_dao.mark_parse_failed(match_id, full_stack_trace)

@@ -8,7 +8,7 @@ from ..base_dao import BaseDao
 from core.types.enums import MatchStatus
 
 class MatchDao(BaseDao):
-    def get_pending_fetch_items(self, start_time: datetime, end_time: datetime, league_ids: List[int], limit: int) -> List[Any]:
+    def get_pending_fetch_items(self, kickoff_before: datetime, league_ids: List[int], limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.match_id,
@@ -20,8 +20,7 @@ class MatchDao(BaseDao):
             ).outerjoin(
                 MatchRaw, Fixture.match_id == MatchRaw.match_id
             ).filter(
-                Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time < end_time,
+                Fixture.kickoff_time < kickoff_before,
                 Fixture.league_id.in_(league_ids),
                 ~Fixture.match_status.in_([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value]),
                 or_(
@@ -32,21 +31,13 @@ class MatchDao(BaseDao):
                 Fixture.kickoff_time.desc()
             ).limit(limit).all()
 
-    def get_pending_parse_items(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-        max_retries: int,
-        limit: int
-    ) -> List[Any]:
+    def get_pending_parse_items(self, max_retries: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 MatchRaw.match_id,
                 MatchRaw.kickoff_time,
                 MatchRaw.json_body
             ).filter(
-                MatchRaw.kickoff_time >= start_time,
-                MatchRaw.kickoff_time < end_time,
                 MatchRaw.is_fetched == True,
                 MatchRaw.is_parsed == False,
                 MatchRaw.parse_attempts < max_retries

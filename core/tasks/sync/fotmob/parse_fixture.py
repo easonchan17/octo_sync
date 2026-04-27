@@ -207,10 +207,7 @@ class ParseFixture(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                start_date, end_date = self.get_fetch_date_range(CrawlParams.FIXTURE_LOOKAHEAD_DAYS)
                 items = self.fixture_dao.get_pending_parse_items(
-                    start_date,
-                    end_date,
                     CrawlParams.PARSE_MAX_RETRIES,
                     CrawlParams.RAW_DATA_QUERY_LIMIT
                 )
@@ -254,7 +251,7 @@ class ParseFixture(PollTask):
                             self.get_refetch_interval(last_fetched_at, last_kickoff_time, parsed_fixtures)
                         )
 
-                        self.logger.debug(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
+                        self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
                         self.fixture_dao.mark_parse_failed(match_date, full_stack_trace)

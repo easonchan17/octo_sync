@@ -85,7 +85,7 @@ class ParseLeague(PollTask):
                             )
 
                         self.league_dao.mark_as_parsed(sport)
-                        self.logger.debug(f"Parsed raw leagues sport={sport} count={len(parsed_leagues)}")
+                        self.logger.info(f"Parsed raw leagues sport={sport} count={len(parsed_leagues)}")
 
                     except Exception as e:
                         self.league_dao.mark_parse_failed(sport)
