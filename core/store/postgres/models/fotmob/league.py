@@ -22,6 +22,25 @@ class LeagueRaw(Base, CrawlStatusMixin, RawJsonMixin):
     sport = Column(String(64), nullable=False, unique=True)
 
 
+class SeasonRaw(Base, CrawlStatusMixin, RawJsonMixin):
+    __tablename__ = 'season_raw'
+    __table_args__ = (
+        Index('idx_fotmob_season_raw_created_at', 'created_at'),
+        Index('idx_fotmob_season_raw_updated_at', 'updated_at'),
+        Index('idx_fotmob_season_raw_next_fetch_at', 'next_fetch_at'),
+        Index(
+            'idx_fotmob_season_raw_not_parsed',
+            'is_parsed',
+            postgresql_where=text("is_fetched = true and is_parsed = false")
+        ),
+        {'schema': SiteName.FOTMOB.value}
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    league_id = Column(Integer, nullable=False, unique=True)
+    league_name = Column(String(200), nullable=False)
+
+
 class League(Base):
     __tablename__ = 'leagues'
     __table_args__ = (

@@ -57,8 +57,8 @@ class SyncHistoryFixture(PollTask):
             return None
         return f"-{season}-{season + 1}"
 
-    def build_fixture_uri(self, fixture_uri: str, season_slug: Optional[str], page: int) -> str:
-        uri = fixture_uri[:-1]
+    def build_fixture_uri(self, league_uri: str, season_slug: Optional[str], page: int) -> str:
+        uri = league_uri[:-1]
 
         if season_slug:
             uri += season_slug
@@ -92,14 +92,14 @@ class SyncHistoryFixture(PollTask):
                     self.idle_sleep()
                     continue
 
-                for league_id, league_name, fixture_uri, max_season, season, page, fetch_attempts in items:
+                for league_id, league_name, league_uri, max_season, season, page, fetch_attempts in items:
                     if self.should_stop():
                         return
 
                     try:
                         season_slug = self.build_season_slug(season, max_season)
                         page_url = self.intercept_strategy.url.format(
-                            fixture_uri=self.build_fixture_uri(fixture_uri, season_slug, page)
+                            fixture_uri=self.build_fixture_uri(league_uri, season_slug, page)
                         )
                         future = self.interceptor.submit(
                             url=page_url,

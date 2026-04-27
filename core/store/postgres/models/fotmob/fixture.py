@@ -1,6 +1,6 @@
 from sqlalchemy.sql import func
 from ..base_model import Base
-from sqlalchemy import Column, Integer, String, DateTime, Index, Date, text
+from sqlalchemy import Column, Integer, String, DateTime, Index, Date, UniqueConstraint, text
 from core.store.postgres.models.base_model import CrawlStatusMixin, RawJsonMixin
 from core.types.enums import MatchStatus, SiteName
 
@@ -62,3 +62,23 @@ class Fixture(Base):
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
 
     raw_fetch_date = Column(Date, nullable=True)
+
+
+class HistoryFixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
+    __tablename__ = 'history_fixture_raw'
+    __table_args__ = (
+        UniqueConstraint('league_id', 'season', name='uq_history_fixture_raw_league_season'),
+        Index('idx_history_fixture_raw_created_at', 'created_at'),
+        Index('idx_history_fixture_raw_updated_at', 'updated_at'),
+        Index('idx_history_fixture_raw_next_fetch_at', 'next_fetch_at'),
+        Index(
+            'idx_history_fixture_raw_not_parsed',
+            'is_parsed',
+            postgresql_where=text("is_fetched = true and is_parsed = false")
+        ),
+        {'schema': SiteName.FOTMOB.value}
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    league_id = Column(Integer, nullable=False)
+    season = Column(Integer, nullable=False)
