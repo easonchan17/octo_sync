@@ -2,7 +2,7 @@ import logging
 from threading import Event
 from typing import Tuple, Optional
 from core.scheduler.base_task import BaseTask
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from core.browser.interceptor_manager import interceptor_manager
 
 class CrawlParams:
@@ -15,15 +15,17 @@ class CrawlParams:
     META_DATA_QUERY_LIMIT = 2000
     PARSE_MAX_RETRIES = 3
 
-    FIXTURE_LOOKAHEAD_DAYS = 7
-    MATCH_LOOKAHEAD_DAYS = 2
+    FIXTURE_LOOKBACK = timedelta(hours=24)
+    FIXTURE_LOOKAHEAD = timedelta(days=2)
 
+    MATCH_LOOKAHEAD = timedelta(days=2)
     MATCH_LIFESPAN = timedelta(hours=4)
-    MATCH_POST_KICKOFF_ARCHIVE_HOURS = 48
+    MATCH_SETTLEMENT = timedelta(days=2)
 
 class TaggedLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         return f"[{self.extra['tag']}] {msg}", kwargs
+
 class PollTask(BaseTask):
     def __init__(self, site_name: Optional[str] = None) -> None:
         super().__init__()
@@ -47,16 +49,6 @@ class PollTask(BaseTask):
 
         if not self.should_stop():
             self._idle_wake_event.clear()
-
-    def get_fetch_date_range(self, lookahead_days: int) -> Tuple[date, date]:
-        start_time = CrawlParams.START_DATE
-        end_time = datetime.now(timezone.utc) + timedelta(days=lookahead_days)
-        return start_time.date(), end_time.date()
-
-    def get_fetch_time_range(self, lookahead_days: float) -> Tuple[datetime, datetime]:
-        start_time = CrawlParams.START_DATE
-        end_time = datetime.now(timezone.utc) + timedelta(days=lookahead_days)
-        return start_time, end_time
 
     def get_fetch_season_range(self) -> Tuple[int, int]:
         return CrawlParams.START_SEASON, datetime.now(timezone.utc).year

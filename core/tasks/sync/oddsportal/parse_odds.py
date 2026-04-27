@@ -332,7 +332,7 @@ class BaseParseOdds(PollTask):
 
                         self._sync_parsed_data(parsed_odds)
                         self.odds_dao.mark_as_parsed(match_code, betting_type_id, scope_id)
-                        self.logger.debug(f"Parsed odds match_code={match_code} betting_type_id={betting_type_id} scope_id={scope_id} count={len(parsed_odds)}")
+                        self.logger.info(f"Parsed odds match_code={match_code} betting_type_id={betting_type_id} scope_id={scope_id} count={len(parsed_odds)}")
 
                     except Exception as e:
                         self.odds_dao.mark_parse_failed(match_code, betting_type_id, scope_id)

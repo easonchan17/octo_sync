@@ -1,9 +1,8 @@
 import traceback
-from datetime import date
 from core.types.enums import SiteName
 from core.scheduler.task_registry import TaskRegistry
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Any, Dict, Optional, List
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
 from core.tasks.poll_task import PollTask, CrawlParams
@@ -34,15 +33,14 @@ class SyncMatch(PollTask):
 
         self.refetch_strategy = (
             TimelineStrategy(min_interval=timedelta(minutes=10))
-            .add_segment(start_offset=timedelta(days=-2), end_offset=timedelta(hours=-2), interval=timedelta(hours=24))
+            .add_segment(start_offset=timedelta(days=-2), end_offset=timedelta(hours=-6), interval=timedelta(days=1))
+            .add_segment(start_offset=timedelta(hours=-6), end_offset=timedelta(hours=-2), interval=timedelta(hours=2))
             .add_segment(start_offset=timedelta(hours=-2), end_offset=timedelta(hours=-1), interval=timedelta(minutes=20))
             .add_segment(start_offset=timedelta(hours=-1), end_offset=timedelta(0), interval=timedelta(minutes=10))
             .add_segment(start_offset=timedelta(0), end_offset=timedelta(hours=8), interval=timedelta(hours=4))
-            .add_segment(start_offset=timedelta(hours=8), end_offset=timedelta(hours=28), interval=timedelta(hours=24))
-            .add_segment(start_offset=timedelta(hours=28), end_offset=timedelta(hours=48), interval=timedelta(hours=24))
+            .add_segment(start_offset=timedelta(hours=8), end_offset=timedelta(hours=28), interval=timedelta(days=1))
+            .add_segment(start_offset=timedelta(hours=28), end_offset=timedelta(hours=48), interval=timedelta(days=1))
         )
-
-        self.post_kickoff_archive_hours = CrawlParams.MATCH_POST_KICKOFF_ARCHIVE_HOURS
 
         self.retry_strategy = (
             AttemptStrategy()
@@ -52,27 +50,21 @@ class SyncMatch(PollTask):
             .add_segment(min_attempts=10, max_attempts=None, interval=timedelta(days=1))
         )
 
-    @property
-    def fetch_date_range(self) -> Tuple[date, date]:
-        start_date = datetime(2020, 1, 1, tzinfo=timezone.utc)
-        finish_date = datetime.now(timezone.utc) + timedelta(days=60)
-        return start_date.date(), finish_date.date()
-
     def get_pending_fetch_items(self) -> List[Any]:
         site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value)
         if not site_leagues:
             return []
 
-        start_time, end_time = self.get_fetch_time_range(CrawlParams.MATCH_LOOKAHEAD_DAYS)
+        kickoff_before = datetime.now(timezone.utc) + CrawlParams.MATCH_LOOKAHEAD
         league_ids = [int(league.league_id) for league in site_leagues]
-        return self.match_dao.get_pending_fetch_items(start_time, end_time, league_ids, CrawlParams.META_DATA_QUERY_LIMIT)
+        return self.match_dao.get_pending_fetch_items(kickoff_before, league_ids, CrawlParams.META_DATA_QUERY_LIMIT)
 
     def get_refetch_interval(self, league_id: int, league_name: str, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
         resolved_league = league_service.resolve(SiteName.FOTMOB.value, league_id, league_name)
         priority = resolved_league.priority if resolved_league else LeaguePriority.LEVEL_NONE.value
 
         if priority < LeaguePriority.LEVEL_BASIC.value:
-            archive_interval = (kickoff_time + timedelta(hours=self.post_kickoff_archive_hours)) - current_time
+            archive_interval = (kickoff_time + CrawlParams.MATCH_LIFESPAN + CrawlParams.MATCH_SETTLEMENT) - current_time
             return archive_interval if archive_interval > timedelta(0) else None
 
         return self.refetch_strategy.suggest_interval(kickoff_time, current_time)

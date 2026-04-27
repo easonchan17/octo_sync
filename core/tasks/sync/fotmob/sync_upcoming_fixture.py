@@ -43,8 +43,9 @@ class SyncUpcomingFixture(PollTask):
 
 
     def get_pending_fetch_items(self) -> List[Any]:
-        start_date, end_date = self.get_fetch_date_range(CrawlParams.FIXTURE_LOOKAHEAD_DAYS)
-
+        now = datetime.now(timezone.utc)
+        start_date = (now - CrawlParams.FIXTURE_LOOKBACK).date()
+        end_date = (now + CrawlParams.FIXTURE_LOOKAHEAD).date()
         return self.fixture_dao.get_pending_fetch_items(start_date, end_date)
 
     def get_refetch_interval(self, match_date: date, current_time: datetime) -> Optional[timedelta]:

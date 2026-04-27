@@ -132,7 +132,7 @@ class ParseUpcomingFixture(PollTask):
 
                         self.fixture_dao.sync_parsed_data(parsed_fixtures)
                         self.upcoming_fixture_dao.mark_as_parsed(league_id)
-                        self.logger.debug(f"Parsed upcoming fixture league_id={league_id} count={len(parsed_fixtures)}")
+                        self.logger.info(f"Parsed upcoming fixture league_id={league_id} count={len(parsed_fixtures)}")
 
                     except Exception as e:
                         self.upcoming_fixture_dao.mark_parse_failed(league_id)

@@ -34,21 +34,13 @@ class FixtureDao(BaseDao):
 
             return result
 
-    def get_pending_parse_items(
-        self,
-        start_date: date,
-        end_date: date,
-        max_retries: int,
-        limit: int
-    ) -> List[Any]:
+    def get_pending_parse_items(self, max_retries: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 FixtureRaw.match_date,
                 FixtureRaw.last_fetched_at,
                 FixtureRaw.json_body
             ).filter(
-                FixtureRaw.match_date >= start_date,
-                FixtureRaw.match_date <= end_date,
                 FixtureRaw.is_fetched == True,
                 FixtureRaw.is_parsed == False,
                 FixtureRaw.parse_attempts < max_retries
