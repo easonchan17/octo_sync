@@ -90,7 +90,7 @@ class ParseHistoryFixture(PollTask):
 
                         self.fixture_dao.sync_parsed_data(league_id, parsed_fixtures)
                         self.history_fixture_dao.mark_as_parsed(league_id, season)
-                        self.logger.debug(f"Parsed history fixture league_id={league_id} season={season} count={len(parsed_fixtures)}")
+                        self.logger.info(f"Parsed history fixture league_id={league_id} season={season} count={len(parsed_fixtures)}")
 
                     except Exception as e:
                         self.history_fixture_dao.mark_parse_failed(league_id, season)
