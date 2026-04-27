@@ -9,8 +9,8 @@ from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.types.enums import SiteName
 
-@TaskRegistry.poll('sync.fotmob.fixture')
-class SyncFixture(PollTask):
+@TaskRegistry.poll('sync.fotmob.upcoming_fixture')
+class SyncUpcomingFixture(PollTask):
     INTERCEPT_STRATEGY = {
         "url_template": "https://www.fotmob.com/?date={date}",
         "debug": False,
