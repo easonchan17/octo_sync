@@ -152,11 +152,11 @@ class BuildPlan:
 
     def __init__(
         self,
-        last_checkpoint: datetime = MIN_CHECKPOINT,
+        from_checkpoint: datetime = MIN_CHECKPOINT,
         lookback: timedelta = LOOKBACK,
         min_season: int = MIN_SEASON
     ) -> None:
-        self.last_checkpoint = last_checkpoint
+        self.from_checkpoint = from_checkpoint
         self.min_season = min_season
         self.build_time = datetime.now(timezone.utc)
         self.checkpoint = self.build_time - lookback
@@ -184,15 +184,15 @@ class BuildEloRating(PollTask):
                 build_log.created_at, build_log.checkpoint, BuildPlan.MIN_SEASON
             )
             if rebuild_time is not None:
-                return BuildPlan(last_checkpoint=rebuild_time)
+                return BuildPlan(from_checkpoint=rebuild_time)
 
-            return BuildPlan(last_checkpoint=build_log.checkpoint)
+            return BuildPlan(from_checkpoint=build_log.checkpoint)
 
         return None
 
     def _get_pending_build_items(self, build_plan: BuildPlan) -> List[Any]:
         items = self.elo_rating_dao.get_pending_build_items(
-            build_plan.last_checkpoint, build_plan.checkpoint, build_plan.min_season
+            build_plan.from_checkpoint, build_plan.checkpoint, build_plan.min_season
         )
         for item in items:
             if not MatchStatus(item.match_status).is_finalized:
@@ -217,14 +217,14 @@ class BuildEloRating(PollTask):
 
                 if not items:
                     self.logger.info("No pending fixtures to process")
-                    self.elo_rating_dao.add_build_log(build_plan.checkpoint, 0, interval)
+                    self.elo_rating_dao.add_build_log(build_plan.from_checkpoint, build_plan.checkpoint, 0, interval)
                     continue
 
-                prior_states = self.elo_rating_dao.get_prior_states(build_plan.last_checkpoint)
+                prior_states = self.elo_rating_dao.get_prior_states(build_plan.from_checkpoint)
                 ratings = EloRatingCalculator(prior_states).calculate(items)
 
                 self.elo_rating_dao.sync_built_data(ratings)
-                self.elo_rating_dao.add_build_log(build_plan.checkpoint, len(items), interval)
+                self.elo_rating_dao.add_build_log(build_plan.from_checkpoint, build_plan.checkpoint, len(items), interval)
 
                 self.logger.info(f"Elo rating build completed: {len(ratings)} records, checkpoint={build_plan.checkpoint}")
             except Exception as e:
