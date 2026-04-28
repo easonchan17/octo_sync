@@ -32,7 +32,7 @@ class EloRatingDao(BaseDao):
                 .scalar()
             )
 
-    def get_pending_build_items(self, last_checkpoint: datetime, checkpoint: datetime, min_season: int) -> List[Any]:
+    def get_pending_build_items(self, from_checkpoint: datetime, checkpoint: datetime, min_season: int) -> List[Any]:
         with self.db.get_session() as session:
             return (
                 session.query(
@@ -46,7 +46,7 @@ class EloRatingDao(BaseDao):
                     Fixture.match_status,
                 )
                 .filter(
-                    Fixture.kickoff_time >= last_checkpoint,
+                    Fixture.kickoff_time >= from_checkpoint,
                     Fixture.kickoff_time <= checkpoint,
                     Fixture.season >= min_season,
                 )
@@ -72,10 +72,11 @@ class EloRatingDao(BaseDao):
                 .all()
             )
 
-    def add_build_log(self, checkpoint: datetime, match_count: int, interval: Optional[timedelta]) -> None:
+    def add_build_log(self, from_checkpoint: datetime, checkpoint: datetime, match_count: int, interval: Optional[timedelta]) -> None:
         now = datetime.now(timezone.utc)
         with self.db.get_session() as session:
             session.add(EloRatingBuildLog(
+                from_checkpoint=from_checkpoint,
                 checkpoint=checkpoint,
                 next_build_at=now + interval if interval is not None else None,
                 match_count=match_count,
