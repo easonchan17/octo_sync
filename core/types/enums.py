@@ -69,7 +69,8 @@ class MatchStatus(IntEnum):
     def is_aborted(self) -> bool:
         return self in (
             MatchStatus.POSTPONED,
-            MatchStatus.CANCELLED
+            MatchStatus.CANCELLED,
+            MatchStatus.FINISHED_AWARDED
         )
 
     @property

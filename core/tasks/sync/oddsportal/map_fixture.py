@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from core.scheduler.task_registry import TaskRegistry
 from core.services.league.league_service import league_service
 from core.services.match_resolver import MatchItem, MatchResolver
-from core.store.postgres.daos.fotmob.fixture_dao import FixtureDao as FotmobFixtureDao
+from core.store.postgres.daos.fotmob.active_fixture_dao import ActiveFixtureDao as FotmobFixtureDao
 from core.store.postgres.daos.oddsportal.fixture_mapping_dao import FixtureMappingDao
 from core.tasks.refetch_strategy import AttemptStrategy
 from core.tasks.poll_task import PollTask

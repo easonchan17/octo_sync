@@ -1,21 +1,24 @@
 from decimal import Decimal
 from datetime import datetime
 from ..base_model import Base
-from sqlalchemy import Column, Integer, DateTime, Numeric, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, DateTime, Numeric, Index, UniqueConstraint, Text
 from core.types.enums import SiteName
 
 
-class EloRatingProgress(Base):
-    __tablename__ = 'elo_rating_progress'
+class EloRatingBuildLog(Base):
+    __tablename__ = 'elo_rating_build_logs'
     __table_args__ = (
-        Index('idx_elo_rating_progress_created_at', 'created_at'),
-        Index('idx_elo_rating_progress_updated_at', 'updated_at'),
+        Index('idx_elo_rating_build_logs_checkpoint', 'checkpoint'),
+        Index('idx_elo_rating_build_logs_created_at', 'created_at'),
+        Index('idx_elo_rating_build_logs_updated_at', 'updated_at'),
         {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    league_id = Column(Integer, nullable=False, unique=True)
-    season = Column(Integer, nullable=False)
+    checkpoint = Column[datetime](DateTime(timezone=True), nullable=False, unique=True)
+    match_count = Column(Integer, nullable=True)
+    next_build_at = Column[datetime](DateTime(timezone=True), nullable=True)
+
 
 class EloRating(Base):
     __tablename__ = 'elo_ratings'

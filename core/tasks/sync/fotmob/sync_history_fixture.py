@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from typing import Any, Dict, List, Optional
 from core.types.enums import SiteName
 from core.tasks.poll_task import PollTask
@@ -6,7 +6,7 @@ from core.scheduler.task_registry import TaskRegistry
 from core.browser.handlers.receivers import JsonReceiver
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.store.postgres.daos.fotmob import HistoryFixtureDao
-from core.tasks.refetch_strategy import AttemptStrategy
+from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.services.league.league_service import league_service
 
 
@@ -29,6 +29,11 @@ class SyncHistoryFixture(PollTask):
         self.payload = payload or {}
         self.history_fixture_dao = HistoryFixtureDao()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
+
+        self.refetch_strategy = (
+            TimelineStrategy(min_interval=timedelta(days=1))
+            .add_segment(start_offset=timedelta(0), end_offset=None, interval=timedelta(days=1))
+        )
 
         self.retry_strategy = (
             AttemptStrategy()
@@ -110,7 +115,9 @@ class SyncHistoryFixture(PollTask):
                             "json_body": result_set.first(),
                         })
 
-                        self.history_fixture_dao.mark_as_fetched(league_id, season, fetch_interval=None)
+                        current_time = datetime.now(timezone.utc)
+                        fetch_interval = self.refetch_strategy.suggest_interval(base_time=current_time, current_time=current_time) if season == max_season else None
+                        self.history_fixture_dao.mark_as_fetched(league_id, season, fetch_interval=fetch_interval)
                         self.logger.info(f"Synced history fixtures league_id={league_id} league_name={league_name} season={season}")
 
                     except Exception as e:

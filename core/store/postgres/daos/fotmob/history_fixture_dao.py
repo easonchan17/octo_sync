@@ -1,10 +1,11 @@
 import traceback
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, or_, and_
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
+from core.types.enums import MatchStatus
 from core.store.postgres.models.fotmob.league import League
-from core.store.postgres.models.fotmob.fixture import HistoryFixtureRaw
+from core.store.postgres.models.fotmob.fixture import HistoryFixtureRaw, Fixture
 from ..base_dao import BaseDao
 
 
@@ -135,3 +136,47 @@ class HistoryFixtureDao(BaseDao):
                 }
             )
             session.execute(insert_stmt)
+
+    def get_pending_build_items(self, after_kickoff: Optional[datetime]) -> List[Any]:
+        with self.db.get_session() as session:
+            query = session.query(
+                Fixture.match_id,
+                Fixture.home_id,
+                Fixture.away_id,
+                Fixture.kickoff_time,
+                Fixture.season,
+                Fixture.home_score,
+                Fixture.away_score
+            ).filter(
+                Fixture.match_status.in_(MatchStatus.natural_finals()),
+                Fixture.home_score.isnot(None),
+                Fixture.away_score.isnot(None),
+                Fixture.kickoff_time < datetime.now(timezone.utc) - timedelta(hours=24)
+            )
+            if after_kickoff is not None:
+                query = query.filter(Fixture.kickoff_time >= after_kickoff)
+            return query.order_by(
+                Fixture.kickoff_time.asc(), Fixture.match_id.asc()
+            ).all()
+
+    def sync_parsed_data(self, league_id: int, parsed_data: List[Dict[str, Any]]) -> None:
+        with self.db.get_session() as session:
+            insert_stmt = insert(Fixture).values(parsed_data)
+            assignment, where_clause = self.build_upsert_clauses(
+                Fixture,
+                insert_stmt,
+                {
+                    Fixture.id.key,
+                    Fixture.created_at.key,
+                    Fixture.match_id.key,
+                    Fixture.updated_at.key
+                }
+            )
+            insert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[Fixture.match_id.key],
+                set_=assignment,
+                where=where_clause
+            )
+            result = session.execute(insert_stmt)
+            upserted_count = result.rowcount
+            self.logger.debug(f"Sync history fixture league_id={league_id} completed. upserted: {upserted_count}")

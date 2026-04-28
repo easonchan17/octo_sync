@@ -54,7 +54,7 @@ class ParseLeague(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                items = self.league_dao.get_pending_parse_items(CrawlParams.PARSE_MAX_RETRIES, CrawlParams.RAW_DATA_QUERY_LIMIT)
+                items = self.league_dao.get_pending_parse_items(CrawlParams.PARSE_MAX_RETRIES, CrawlParams.PARSE_BATCH_SIZE)
 
                 if not items:
                     self.idle_sleep()

@@ -56,13 +56,14 @@ class SeasonDao(BaseDao):
                 SeasonRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, league_id: int, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
+    def mark_fetch_failed(self, league_id: int, league_name: str, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         if error_msg is None:
             error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             insert_stmt = insert(SeasonRaw).values(
                 league_id=league_id,
+                league_name=league_name,
                 html_body='',
                 is_fetched=False,
                 fetch_attempts=1,

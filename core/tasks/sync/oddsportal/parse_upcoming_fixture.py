@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask, CrawlParams
-from core.store.postgres.daos.oddsportal import UpcomingFixtureDao, FixtureDao
+from core.store.postgres.daos.oddsportal import UpcomingFixtureDao
 from core.logger.logger_manager import LoggerManager
 from core.types.enums import SiteName
 
@@ -100,14 +100,13 @@ class ParseUpcomingFixture(PollTask):
         super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.upcoming_fixture_dao = UpcomingFixtureDao()
-        self.fixture_dao = FixtureDao()
         self.parser = UpcomingFixtureParser()
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
                 items = self.upcoming_fixture_dao.get_pending_parse_items(
-                    CrawlParams.PARSE_MAX_RETRIES, CrawlParams.RAW_DATA_QUERY_LIMIT
+                    CrawlParams.PARSE_MAX_RETRIES, CrawlParams.PARSE_BATCH_SIZE
                 )
 
                 if not items:
@@ -130,7 +129,7 @@ class ParseUpcomingFixture(PollTask):
                             self.logger.error(f"Failed to parse upcoming fixture league_id={league_id}: fixtures is empty")
                             continue
 
-                        self.fixture_dao.sync_parsed_data(parsed_fixtures)
+                        self.upcoming_fixture_dao.sync_parsed_data(parsed_fixtures)
                         self.upcoming_fixture_dao.mark_as_parsed(league_id)
                         self.logger.info(f"Parsed upcoming fixture league_id={league_id} count={len(parsed_fixtures)}")
 

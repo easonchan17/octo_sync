@@ -1,6 +1,6 @@
 import traceback
 from typing import Any, Dict, List, Optional
-from core.store.postgres.daos.fotmob import FixtureDao
+from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.scheduler.task_registry import TaskRegistry
 from core.browser.handlers.receivers import JsonReceiver
 from datetime import date, datetime, time, timedelta, timezone
@@ -9,8 +9,8 @@ from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.types.enums import SiteName
 
-@TaskRegistry.poll('sync.fotmob.upcoming_fixture')
-class SyncUpcomingFixture(PollTask):
+@TaskRegistry.poll('sync.fotmob.active_fixture')
+class SyncActiveFixture(PollTask):
     INTERCEPT_STRATEGY = {
         "url_template": "https://www.fotmob.com/?date={date}",
         "debug": False,
@@ -26,7 +26,7 @@ class SyncUpcomingFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
-        self.fixture_dao = FixtureDao()
+        self.active_fixture_dao = ActiveFixtureDao()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.refetch_strategy = (
@@ -46,7 +46,7 @@ class SyncUpcomingFixture(PollTask):
         now = datetime.now(timezone.utc)
         start_date = (now - CrawlParams.FIXTURE_LOOKBACK).date()
         end_date = (now + CrawlParams.FIXTURE_LOOKAHEAD).date()
-        return self.fixture_dao.get_pending_fetch_items(start_date, end_date)
+        return self.active_fixture_dao.get_pending_fetch_items(start_date, end_date)
 
     def get_refetch_interval(self, match_date: date, current_time: datetime) -> Optional[timedelta]:
         local_tz = datetime.now().astimezone().tzinfo
@@ -76,7 +76,7 @@ class SyncUpcomingFixture(PollTask):
                         result_set = future.result()
                         if result_set is None:
                             self.logger.error(f"No response for {page_url}")
-                            self.fixture_dao.mark_fetch_failed(
+                            self.active_fixture_dao.mark_fetch_failed(
                                 cur_date,
                                 "No response",
                                 self.retry_strategy.suggest_interval(fetch_attempts)
@@ -85,7 +85,7 @@ class SyncUpcomingFixture(PollTask):
 
                         if result_set.is_empty():
                             self.logger.error(f"No fixture data for {page_url}")
-                            self.fixture_dao.mark_fetch_failed(
+                            self.active_fixture_dao.mark_fetch_failed(
                                 cur_date,
                                 "No data",
                                 self.retry_strategy.suggest_interval(fetch_attempts)
@@ -96,20 +96,20 @@ class SyncUpcomingFixture(PollTask):
 
                         if result_set.is_not_modified():
                             self.logger.warning(f"Fixture data is not modified for {page_url}")
-                            self.fixture_dao.mark_as_not_modified(cur_date, fetch_interval)
+                            self.active_fixture_dao.mark_as_not_modified(cur_date, fetch_interval)
                             continue
 
-                        self.fixture_dao.sync_raw_data({
+                        self.active_fixture_dao.sync_raw_data({
                             "source_url": page_url,
                             "match_date": cur_date,
                             "json_body": result_set.first()
                         })
 
-                        self.fixture_dao.mark_as_fetched(cur_date, fetch_interval)
+                        self.active_fixture_dao.mark_as_fetched(cur_date, fetch_interval)
                         self.logger.info(f"Synced fixtures: match_date={cur_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.fixture_dao.mark_fetch_failed(
+                        self.active_fixture_dao.mark_fetch_failed(
                             cur_date,
                             full_stack_trace,
                             self.retry_strategy.suggest_interval(fetch_attempts)
