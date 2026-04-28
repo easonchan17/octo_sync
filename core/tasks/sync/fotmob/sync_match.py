@@ -57,7 +57,7 @@ class SyncMatch(PollTask):
 
         kickoff_before = datetime.now(timezone.utc) + CrawlParams.MATCH_LOOKAHEAD
         league_ids = [int(league.league_id) for league in site_leagues]
-        return self.match_dao.get_pending_fetch_items(kickoff_before, league_ids, CrawlParams.META_DATA_QUERY_LIMIT)
+        return self.match_dao.get_pending_fetch_items(kickoff_before, league_ids, CrawlParams.FETCH_BATCH_SIZE)
 
     def get_refetch_interval(self, league_id: int, league_name: str, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
         resolved_league = league_service.resolve(SiteName.FOTMOB.value, league_id, league_name)

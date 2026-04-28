@@ -1,30 +1,38 @@
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Tuple
-from sqlalchemy import and_, func, desc
-from sqlalchemy.engine import Row
+from datetime import datetime, timedelta, timezone
+from typing import List, Dict, Any, Optional
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
-from core.types.enums import MatchStatus
-from core.store.postgres.models.fotmob.elo_rating import EloRating, EloRatingProgress
+from core.store.postgres.models.fotmob.elo_rating import EloRating, EloRatingBuildLog
 from core.store.postgres.models.fotmob.fixture import Fixture
 from ..base_dao import BaseDao
 
 
 class EloRatingDao(BaseDao):
-    def get_pending_build_items(self, league_ids: List[int]) -> List[Row]:
+    def get_latest_build_log(self) -> Optional[Any]:
         with self.db.get_session() as session:
             return (
                 session.query(
-                    EloRatingProgress.league_id,
-                    EloRatingProgress.season
+                    EloRatingBuildLog.checkpoint,
+                    EloRatingBuildLog.next_build_at,
+                    EloRatingBuildLog.created_at,
                 )
-                .filter(EloRatingProgress.league_id.in_(league_ids))
-                .all()
+                .order_by(EloRatingBuildLog.checkpoint.desc())
+                .first()
             )
 
-    def get_pending_fixtures(self, league_id: int, season: int) -> List[Row]:
-        finished_statuses = MatchStatus.natural_finals()
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    def get_rebuild_time(self, built_time: datetime, checkpoint: datetime, min_season: int) -> Optional[datetime]:
+        with self.db.get_session() as session:
+            return (
+                session.query(func.min(Fixture.kickoff_time))
+                .filter(
+                    Fixture.updated_at > built_time,
+                    Fixture.kickoff_time <= checkpoint,
+                    Fixture.season >= min_season,
+                )
+                .scalar()
+            )
 
+    def get_pending_build_items(self, last_checkpoint: datetime, checkpoint: datetime, min_season: int) -> List[Any]:
         with self.db.get_session() as session:
             return (
                 session.query(
@@ -34,53 +42,44 @@ class EloRatingDao(BaseDao):
                     Fixture.kickoff_time,
                     Fixture.season,
                     Fixture.home_score,
-                    Fixture.away_score
-                )
-                .outerjoin(
-                    EloRating,
-                    and_(EloRating.match_id == Fixture.match_id, EloRating.team_id == Fixture.home_id)
+                    Fixture.away_score,
+                    Fixture.match_status,
                 )
                 .filter(
-                    Fixture.league_id == league_id,
-                    Fixture.season == season,
-                    Fixture.match_status.in_(finished_statuses),
-                    Fixture.home_score.isnot(None),
-                    Fixture.away_score.isnot(None),
-                    Fixture.kickoff_time < cutoff,
-                    EloRating.id.is_(None)
+                    Fixture.kickoff_time >= last_checkpoint,
+                    Fixture.kickoff_time <= checkpoint,
+                    Fixture.season >= min_season,
                 )
-                .order_by(Fixture.kickoff_time.asc(), Fixture.match_id.asc())
+                .order_by(Fixture.kickoff_time.asc())
                 .all()
             )
 
-    def get_elo_snapshot(self, as_of: datetime) -> Tuple[Dict[int, float], Dict[int, int], Dict[int, int]]:
+    def get_prior_states(self, checkpoint: datetime) -> List[Any]:
         with self.db.get_session() as session:
-            subquery = (
+            return (
                 session.query(
                     EloRating.team_id,
                     EloRating.post_rating,
                     EloRating.season,
-                    func.count().over(partition_by=EloRating.team_id).label('total_count'),
-                    func.row_number().over(
-                        partition_by=EloRating.team_id,
-                        order_by=(desc(EloRating.kickoff_time), desc(EloRating.id))
-                    ).label('rn')
+                    EloRating.game_count,
                 )
-                .filter(EloRating.kickoff_time < as_of)
-                .subquery()
+                .filter(EloRating.kickoff_time < checkpoint)
+                .distinct(EloRating.team_id)
+                .order_by(
+                    EloRating.team_id,
+                    EloRating.kickoff_time.desc()
+                )
+                .all()
             )
 
-            latest_records = session.query(subquery).filter(subquery.c.rn == 1).all()
-
-            ratings: Dict[int, float] = {}
-            seasons: Dict[int, int] = {}
-            game_counts: Dict[int, int] = {}
-            for row in latest_records:
-                ratings[row.team_id] = float(row.post_rating)
-                seasons[row.team_id] = row.season
-                game_counts[row.team_id] = row.total_count
-
-            return ratings, seasons, game_counts
+    def add_build_log(self, checkpoint: datetime, match_count: int, interval: Optional[timedelta]) -> None:
+        now = datetime.now(timezone.utc)
+        with self.db.get_session() as session:
+            session.add(EloRatingBuildLog(
+                checkpoint=checkpoint,
+                next_build_at=now + interval if interval is not None else None,
+                match_count=match_count,
+            ))
 
     def sync_built_data(self, records: List[Dict[str, Any]]) -> None:
         with self.db.get_session() as session:

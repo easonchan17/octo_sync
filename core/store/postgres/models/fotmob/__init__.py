@@ -1,10 +1,10 @@
-from .fixture import FixtureRaw, Fixture, HistoryFixtureRaw
+from .fixture import ActiveFixtureRaw, Fixture, HistoryFixtureRaw
 from .league import LeagueRaw, League, SeasonRaw
 from .match import MatchRaw, MatchStat, MatchPlayerStat, MatchLineup
-from .elo_rating import EloRating
+from .elo_rating import EloRatingBuildLog, EloRating
 
 __all__ = [
-    'FixtureRaw',
+    'ActiveFixtureRaw',
     'Fixture',
     'HistoryFixtureRaw',
     'LeagueRaw',
@@ -14,5 +14,6 @@ __all__ = [
     'MatchStat',
     'MatchPlayerStat',
     'MatchLineup',
-    'EloRating',
+    'EloRatingBuildLog',
+    'EloRating'
 ]

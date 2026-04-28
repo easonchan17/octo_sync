@@ -43,7 +43,7 @@ class ParseSeason(PollTask):
         while not self.should_stop():
             try:
                 items = self.season_dao.get_pending_parse_items(
-                    CrawlParams.PARSE_MAX_RETRIES, CrawlParams.RAW_DATA_QUERY_LIMIT
+                    CrawlParams.PARSE_MAX_RETRIES, CrawlParams.PARSE_BATCH_SIZE
                 )
 
                 if not items:

@@ -382,7 +382,7 @@ class ParseMatch(PollTask):
             try:
                 items = self.match_dao.get_pending_parse_items(
                     CrawlParams.PARSE_MAX_RETRIES,
-                    CrawlParams.RAW_DATA_QUERY_LIMIT
+                    CrawlParams.PARSE_BATCH_SIZE
                 )
 
                 if not items:

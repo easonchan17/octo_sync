@@ -23,19 +23,19 @@ class HistoryFixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
     league_id = Column(Integer, nullable=False)
     season = Column(Integer, nullable=False)
 
-class FixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
-    __tablename__ = 'fixture_raw'
+class ActiveFixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):
+    __tablename__ = 'active_fixture_raw'
     __table_args__ = (
-        Index('idx_fixture_raw_created_at', 'created_at'),
-        Index('idx_fixture_raw_updated_at', 'updated_at'),
-        Index('idx_fixture_raw_next_fetch_at', 'next_fetch_at'),
+        Index('idx_active_fixture_raw_created_at', 'created_at'),
+        Index('idx_active_fixture_raw_updated_at', 'updated_at'),
+        Index('idx_active_fixture_raw_next_fetch_at', 'next_fetch_at'),
         Index(
-            'idx_fixture_raw_not_parsed',
+            'idx_active_fixture_raw_not_parsed',
             'match_date',
             postgresql_where=text("is_fetched = true and is_parsed = false")
         ),
         Index(
-            'idx_fixture_raw_not_fetched',
+            'idx_active_fixture_raw_not_fetched',
             'match_date',
             postgresql_where=text("is_fetched = false")
         ),

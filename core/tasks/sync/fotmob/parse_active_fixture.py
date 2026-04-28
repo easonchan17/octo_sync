@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, List
 from datetime import datetime, timezone, timedelta
 from core.types.enums import MatchStatus, SiteName
 from core.scheduler.task_registry import TaskRegistry
-from core.store.postgres.daos.fotmob import FixtureDao
+from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.tasks.poll_task import PollTask, CrawlParams
 from core.tasks.sync.fotmob.utils import extract_status
@@ -163,12 +163,12 @@ class LeagueParser:
         return results
 
 
-@TaskRegistry.poll("parse.fotmob.fixture")
-class ParseFixture(PollTask):
+@TaskRegistry.poll("parse.fotmob.active_fixture")
+class ParseActiveFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
-        self.fixture_dao = FixtureDao()
+        self.active_fixture_dao = ActiveFixtureDao()
         self.league_parser = LeagueParser()
         self.fixture_parser = FixtureParser()
 
@@ -207,9 +207,9 @@ class ParseFixture(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                items = self.fixture_dao.get_pending_parse_items(
+                items = self.active_fixture_dao.get_pending_parse_items(
                     CrawlParams.PARSE_MAX_RETRIES,
-                    CrawlParams.RAW_DATA_QUERY_LIMIT
+                    CrawlParams.PARSE_BATCH_SIZE
                 )
 
                 if not items:
@@ -223,7 +223,7 @@ class ParseFixture(PollTask):
                     try:
                         parsed_leagues = self.league_parser.parse(json_body)
                         if parsed_leagues is None:
-                            self.fixture_dao.mark_parse_failed(match_date, "League data is None")
+                            self.active_fixture_dao.mark_parse_failed(match_date, "League data is None")
                             continue
 
                         for league in parsed_leagues:
@@ -236,16 +236,16 @@ class ParseFixture(PollTask):
 
                         parsed_fixtures = self.fixture_parser.parse(json_body)
                         if parsed_fixtures is None:
-                            self.fixture_dao.mark_parse_failed(match_date, "Fixture data is None")
+                            self.active_fixture_dao.mark_parse_failed(match_date, "Fixture data is None")
                             continue
 
                         for fixture in parsed_fixtures:
                             fixture[Fixture.raw_fetch_date.key] = match_date
 
-                        self.fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
+                        self.active_fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
 
                         last_kickoff_time = self.get_last_kickoff_time(parsed_fixtures)
-                        self.fixture_dao.mark_as_parsed(
+                        self.active_fixture_dao.mark_as_parsed(
                             match_date,
                             last_kickoff_time,
                             self.get_refetch_interval(last_fetched_at, last_kickoff_time, parsed_fixtures)
@@ -254,7 +254,7 @@ class ParseFixture(PollTask):
                         self.logger.info(f"Parsed fixtures: last_kickoff_time={last_kickoff_time} match_date={match_date}")
                     except Exception as e:
                         full_stack_trace = traceback.format_exc()
-                        self.fixture_dao.mark_parse_failed(match_date, full_stack_trace)
+                        self.active_fixture_dao.mark_parse_failed(match_date, full_stack_trace)
                         self.logger.error(f"Failed to parse fixture data for {match_date}: {e}")
 
             except Exception as e:

@@ -85,6 +85,7 @@ class SyncSeason(PollTask):
                             self.logger.error(f"No response for {page_url}")
                             self.season_dao.mark_fetch_failed(
                                 league_id,
+                                league_name,
                                 self.retry_strategy.suggest_interval(fetch_attempts),
                                 "No response",
                             )
@@ -107,6 +108,7 @@ class SyncSeason(PollTask):
                     except Exception as e:
                         self.season_dao.mark_fetch_failed(
                             league_id,
+                            league_name,
                             self.retry_strategy.suggest_interval(fetch_attempts),
                         )
                         self.logger.error(f"Failed to sync season for league_id={league_id} league_name={league_name}: {e}")
