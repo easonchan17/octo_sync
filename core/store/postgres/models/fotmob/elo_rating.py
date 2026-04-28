@@ -15,6 +15,7 @@ class EloRatingBuildLog(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    from_checkpoint = Column[datetime](DateTime(timezone=True), nullable=False)
     checkpoint = Column[datetime](DateTime(timezone=True), nullable=False, unique=True)
     match_count = Column(Integer, nullable=True)
     next_build_at = Column[datetime](DateTime(timezone=True), nullable=True)
