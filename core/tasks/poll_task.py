@@ -6,13 +6,12 @@ from datetime import datetime, timedelta, timezone
 from core.browser.interceptor_manager import interceptor_manager
 
 class CrawlParams:
-    START_DATE = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    START_SEASON = 2024
+    EARLIEST_SEASON = 2020
 
     POLL_IDLE_SECONDS = 60
 
-    RAW_DATA_QUERY_LIMIT = 300
-    META_DATA_QUERY_LIMIT = 2000
+    PARSE_BATCH_SIZE = 300
+    FETCH_BATCH_SIZE = 2000
     PARSE_MAX_RETRIES = 3
 
     FIXTURE_LOOKBACK = timedelta(hours=24)
@@ -51,4 +50,4 @@ class PollTask(BaseTask):
             self._idle_wake_event.clear()
 
     def get_fetch_season_range(self) -> Tuple[int, int]:
-        return CrawlParams.START_SEASON, datetime.now(timezone.utc).year
+        return CrawlParams.EARLIEST_SEASON, datetime.now(timezone.utc).year

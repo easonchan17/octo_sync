@@ -4,7 +4,7 @@ from sqlalchemy import func, or_
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.league import League
-from core.store.postgres.models.oddsportal.fixture import UpcomingFixtureRaw
+from core.store.postgres.models.oddsportal.fixture import UpcomingFixtureRaw, Fixture
 from ..base_dao import BaseDao
 
 class UpcomingFixtureDao(BaseDao):
@@ -124,5 +124,25 @@ class UpcomingFixtureDao(BaseDao):
                     UpcomingFixtureRaw.html_body.key: insert_stmt.excluded.html_body,
                     UpcomingFixtureRaw.updated_at.key: func.now(),
                 }
+            )
+            session.execute(insert_stmt)
+
+    def sync_parsed_data(self, records: List[Dict[str, Any]]) -> None:
+        with self.db.get_session() as session:
+            insert_stmt = insert(Fixture).values(records)
+            assignment, where_clause = self.build_upsert_clauses(
+                Fixture,
+                insert_stmt,
+                {
+                    Fixture.id.key,
+                    Fixture.match_code.key,
+                    Fixture.created_at.key,
+                    Fixture.updated_at.key,
+                }
+            )
+            insert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[Fixture.match_code.key],
+                set_=assignment,
+                where=where_clause,
             )
             session.execute(insert_stmt)

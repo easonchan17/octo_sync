@@ -307,7 +307,7 @@ class BaseParseOdds(PollTask):
                     betting_type_id,
                     scope_id,
                     CrawlParams.PARSE_MAX_RETRIES,
-                    CrawlParams.RAW_DATA_QUERY_LIMIT
+                    CrawlParams.PARSE_BATCH_SIZE
                 )
 
                 if not items:

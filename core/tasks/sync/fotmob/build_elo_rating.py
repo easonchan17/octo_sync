@@ -1,47 +1,42 @@
 import math
-from collections import namedtuple
 from typing import List, Dict, Any, Optional
-from core.types.enums import SiteName
+from datetime import datetime, timedelta, timezone
+from core.types.enums import SiteName, MatchStatus
 from core.scheduler.task_registry import TaskRegistry
+from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.refetch_strategy import TimelineStrategy
 from core.store.postgres.daos.fotmob.elo_rating_dao import EloRatingDao
-from core.tasks.poll_task import PollTask
-
-MatchRecord = namedtuple('MatchRecord', ['match_id', 'home_id', 'away_id', 'kickoff_time', 'season', 'home_score', 'away_score'])
 
 class EloParams:
-    BASE_RATING = 1500
-    K_FACTOR = 20
-    HOME_ADVANTAGE = 100
-    REVERSION_RATE = 0.25
-    MIN_GAMES_FOR_STABILITY = 10
-
-class EloRatingCalculator:
     def __init__(
         self,
-        ratings: Dict[int, float],
-        seasons: Dict[int, int],
-        game_counts: Dict[int, int],
-        matches: List[Any],
-        base_rating: float = EloParams.BASE_RATING,
-        k_factor: float = EloParams.K_FACTOR,
-        home_advantage: float = EloParams.HOME_ADVANTAGE,
-        reversion_rate: float = EloParams.REVERSION_RATE,
-        min_game_for_stability: int = EloParams.MIN_GAMES_FOR_STABILITY
+        base_rating: float = 1500,
+        k_factor: float = 20,
+        home_advantage: float = 100,
+        reversion_rate: float = 0.25,
+        min_games_for_stability: int = 10,
     ) -> None:
-        self.matches = matches
-        self.ratings = dict(ratings)
-        self.seasons = dict(seasons)
-        self.game_counts = dict(game_counts)
         self.base_rating = base_rating
         self.k_factor = k_factor
         self.home_advantage = home_advantage
         self.reversion_rate = reversion_rate
-        self.min_game_for_stability = min_game_for_stability
+        self.min_games_for_stability = min_games_for_stability
 
-    def calculate(self) -> List[Dict[str, Any]]:
+class EloRatingCalculator:
+    def __init__(self, prior_states: List[Any], params: EloParams = EloParams()) -> None:
+        self.ratings = {row.team_id: float(row.post_rating) for row in prior_states}
+        self.seasons = {row.team_id: row.season for row in prior_states}
+        self.game_counts = {row.team_id: row.game_count for row in prior_states}
+        self.base_rating = params.base_rating
+        self.k_factor = params.k_factor
+        self.home_advantage = params.home_advantage
+        self.reversion_rate = params.reversion_rate
+        self.min_game_for_stability = params.min_games_for_stability
+
+    def calculate(self, matches: List[Any]) -> List[Dict[str, Any]]:
         elo_ratings = []
 
-        for match in self.matches:
+        for match in matches:
             home_id = match.home_id
             away_id = match.away_id
             season = match.season
@@ -150,56 +145,89 @@ class EloRatingCalculator:
         new_rating = old_rating * (1 - reversion_rate) + self.base_rating * reversion_rate
         self.ratings[team_id] = new_rating
 
+class BuildPlan:
+    LOOKBACK = timedelta(days=1)
+    MIN_SEASON = CrawlParams.EARLIEST_SEASON
+    MIN_CHECKPOINT = datetime.min.replace(tzinfo=timezone.utc)
+
+    def __init__(
+        self,
+        last_checkpoint: datetime = MIN_CHECKPOINT,
+        lookback: timedelta = LOOKBACK,
+        min_season: int = MIN_SEASON
+    ) -> None:
+        self.last_checkpoint = last_checkpoint
+        self.min_season = min_season
+        self.build_time = datetime.now(timezone.utc)
+        self.checkpoint = self.build_time - lookback
 
 @TaskRegistry.poll('build.fotmob.elo_rating')
 class BuildEloRating(PollTask):
-    def __init__(self) -> None:
+    def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
+        self.payload = payload or {}
         self.elo_rating_dao = EloRatingDao()
 
-    def get_pending_build_items(self, league_ids: List[int]) -> Dict[int, int]:
-        rows = self.elo_rating_dao.get_pending_build_items(league_ids)
-        return {row.league_id: row.season for row in rows}
+        self.refetch_strategy = (
+            TimelineStrategy(min_interval=timedelta(hours=4))
+            .add_segment(start_offset=timedelta(0), end_offset=None, interval=timedelta(hours=4))
+        )
+
+    def _get_build_plan(self) -> Optional[BuildPlan]:
+        build_log = self.elo_rating_dao.get_latest_build_log()
+
+        if build_log is None:
+            return BuildPlan()
+
+        if build_log.next_build_at is None or build_log.next_build_at <= datetime.now(timezone.utc):
+            rebuild_time = self.elo_rating_dao.get_rebuild_time(
+                build_log.created_at, build_log.checkpoint, BuildPlan.MIN_SEASON
+            )
+            if rebuild_time is not None:
+                return BuildPlan(last_checkpoint=rebuild_time)
+
+            return BuildPlan(last_checkpoint=build_log.checkpoint)
+
+        return None
+
+    def _get_pending_build_items(self, build_plan: BuildPlan) -> List[Any]:
+        items = self.elo_rating_dao.get_pending_build_items(
+            build_plan.last_checkpoint, build_plan.checkpoint, build_plan.min_season
+        )
+        for item in items:
+            if not MatchStatus(item.match_status).is_finalized:
+                raise ValueError(f"match_id={item.match_id} has unfinished status: {item.match_status}")
+
+        return [item for item in items if not MatchStatus(item.match_status).is_aborted]
+
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                league_ids = self._get_league_ids()
-                if not league_ids:
+                build_plan = self._get_build_plan()
+                if not build_plan:
+                    self.logger.info("Elo rating build not scheduled yet")
                     continue
 
-                progress = self.get_pending_build_items(league_ids)
+                items = self._get_pending_build_items(build_plan)
+                interval = self.refetch_strategy.suggest_interval(
+                    base_time=build_plan.build_time,
+                    current_time=build_plan.build_time
+                )
 
-                for league_id in league_ids:
-                    next_season = progress[league_id] + 1 if league_id in progress else self.get_fetch_season_range()[0]
+                if not items:
+                    self.logger.info("No pending fixtures to process")
+                    self.elo_rating_dao.add_build_log(build_plan.checkpoint, 0, interval)
+                    continue
 
-                    rows = self.elo_rating_dao.get_pending_fixtures(league_id, next_season)
-                    if not rows:
-                        break
+                prior_states = self.elo_rating_dao.get_prior_states(build_plan.last_checkpoint)
+                ratings = EloRatingCalculator(prior_states).calculate(items)
 
-                    matches = [
-                        MatchRecord(
-                            match_id=row.match_id,
-                            home_id=row.home_id,
-                            away_id=row.away_id,
-                            kickoff_time=row.kickoff_time,
-                            season=row.season,
-                            home_score=row.home_score,
-                            away_score=row.away_score
-                        )
-                        for row in rows
-                    ]
+                self.elo_rating_dao.sync_built_data(ratings)
+                self.elo_rating_dao.add_build_log(build_plan.checkpoint, len(items), interval)
 
-                    impact_time = matches[0].kickoff_time
-                    ratings, seasons_map, game_counts = self.elo_rating_dao.get_elo_snapshot(impact_time)
-
-                    elo_ratings = EloRatingCalculator(ratings, seasons_map, game_counts, matches).calculate()
-                    self.elo_rating_dao.sync_built_data(elo_ratings)
-                    break
+                self.logger.info(f"Elo rating build completed: {len(ratings)} records, checkpoint={build_plan.checkpoint}")
             except Exception as e:
-                self.logger.exception(f"Elo rating build failed: {e}")
+                self.logger.error(f"Elo rating build failed: {e}")
             finally:
                 self.idle_sleep()
-
-    def _get_league_ids(self) -> List[int]:
-        raise NotImplementedError

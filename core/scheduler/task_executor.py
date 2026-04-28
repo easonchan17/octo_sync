@@ -29,7 +29,7 @@ class TaskExecutor(Thread, Singleton):
                 if task is not None:
                     thread_pool.submit(task.execute)
                     tasks.append(task)
-                    self.logger.info(f"TaskExecutor executing task: {task.id} {task.name}")
+                    self.logger.debug(f"TaskExecutor executing task: {task.id} {task.name}")
             except Exception as e:
                 self.logger.error(f"Error in TaskExecutor thread: {e}")
             finally:

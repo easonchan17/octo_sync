@@ -4,7 +4,7 @@ from sqlalchemy import case, func, or_, and_
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.league import League
-from core.store.postgres.models.oddsportal.fixture import HistoryFixtureProgress, HistoryFixtureRaw
+from core.store.postgres.models.oddsportal.fixture import HistoryFixtureProgress, HistoryFixtureRaw, Fixture
 from ..base_dao import BaseDao
 
 class HistoryFixtureDao(BaseDao):
@@ -16,7 +16,7 @@ class HistoryFixtureDao(BaseDao):
                 League.page_url,
                 League.max_season,
                 func.coalesce(HistoryFixtureProgress.season, season).label('season'),
-                (func.coalesce(HistoryFixtureProgress.page, 0)+1).label('page'),
+                func.coalesce(HistoryFixtureProgress.page + 1, 1).label('page'),
                 func.coalesce(HistoryFixtureRaw.fetch_attempts, 0).label('fetch_attempts')
             ).outerjoin(
                 HistoryFixtureProgress,
@@ -164,5 +164,25 @@ class HistoryFixtureDao(BaseDao):
                     HistoryFixtureRaw.json_body.key: insert_stmt.excluded.json_body,
                     HistoryFixtureRaw.updated_at.key: func.now(),
                 }
+            )
+            session.execute(insert_stmt)
+
+    def sync_parsed_data(self, records: List[Dict[str, Any]]) -> None:
+        with self.db.get_session() as session:
+            insert_stmt = insert(Fixture).values(records)
+            assignment, where_clause = self.build_upsert_clauses(
+                Fixture,
+                insert_stmt,
+                {
+                    Fixture.id.key,
+                    Fixture.match_code.key,
+                    Fixture.created_at.key,
+                    Fixture.updated_at.key,
+                }
+            )
+            insert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[Fixture.match_code.key],
+                set_=assignment,
+                where=where_clause,
             )
             session.execute(insert_stmt)
