@@ -6,7 +6,7 @@ from .base import BaseSampleBuilder
 from core.scheduler.task_registry import TaskRegistry
 from core.types.enums import SiteName
 
-@TaskRegistry.job('winball.samples')
+@TaskRegistry.job('build.train.samples')
 class TrainSampleBuilder(BaseSampleBuilder):
     def execute(self) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         league_id = self.get_required_param("league_id")

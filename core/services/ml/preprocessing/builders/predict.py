@@ -3,7 +3,9 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 from core.utils.pandas_utils import save_dataframe
 from .base import BaseSampleBuilder
+from core.scheduler.task_registry import TaskRegistry
 
+@TaskRegistry.job('build.predict.samples')
 class PredictSampleBuilder(BaseSampleBuilder):
     def execute(self) -> Optional[Tuple[pd.DataFrame, pd.DataFrame]]:
         home_code = self.get_required_param("home_code")

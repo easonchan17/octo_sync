@@ -1,7 +1,7 @@
 import traceback
 from sqlalchemy import func, or_, and_
 from typing import List, Any, Dict, Optional
-from datetime import timedelta
+from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture
 from core.store.postgres.models.oddsportal.odds import OddsRaw, Odds1x2, OddsAh
@@ -55,7 +55,7 @@ class OddsDao(BaseDao):
                 OddsRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
-    def mark_fetch_failed(self, match_code: str, betting_type_id: int, scope_id: int, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
+    def mark_fetch_failed(self, match_code: str, betting_type_id: int, scope_id: int, kickoff_time: Optional[datetime], fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         if error_msg is None:
             error_msg = traceback.format_exc()
@@ -64,6 +64,7 @@ class OddsDao(BaseDao):
                 match_code=match_code,
                 betting_type_id=betting_type_id,
                 scope_id=scope_id,
+                kickoff_time=kickoff_time,
                 json_body={},
                 is_fetched=False,
                 fetch_attempts=1,
@@ -74,6 +75,7 @@ class OddsDao(BaseDao):
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[OddsRaw.match_code.key, OddsRaw.betting_type_id.key, OddsRaw.scope_id.key],
                 set_={
+                    OddsRaw.kickoff_time.key: func.coalesce(OddsRaw.kickoff_time, insert_stmt.excluded.kickoff_time),
                     OddsRaw.is_fetched.key: False,
                     OddsRaw.last_fetch_error.key: (error_msg or '')[:2000],
                     OddsRaw.fetch_attempts.key: OddsRaw.fetch_attempts + 1,
@@ -90,6 +92,7 @@ class OddsDao(BaseDao):
             insert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=[OddsRaw.match_code.key, OddsRaw.betting_type_id.key, OddsRaw.scope_id.key],
                 set_={
+                    OddsRaw.kickoff_time.key: insert_stmt.excluded.kickoff_time,
                     OddsRaw.source_url.key: insert_stmt.excluded.source_url,
                     OddsRaw.json_body.key: insert_stmt.excluded.json_body,
                     OddsRaw.updated_at.key: func.now(),

@@ -1,4 +1,3 @@
-from abc import ABC
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -28,7 +27,7 @@ from ..extractors.match_feature_extractor import MatchFeatureExtractor
 from ..extractors.player_feature_extractor import OutfieldPlayerFeatureExtractor, GoalkeeperFeatureExtractor
 
 
-class BaseSampleBuilder(BaseTask, ABC):
+class BaseSampleBuilder(BaseTask):
     OUTFIELD_FEATURES = [
         'finish_form',
         'creativity_form',
