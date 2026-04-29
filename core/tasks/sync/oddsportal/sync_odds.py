@@ -123,6 +123,7 @@ class BaseSyncOdds(PollTask):
                                 match_code,
                                 self.market.betting_type_id,
                                 self.market.scope_id,
+                                kickoff_time,
                                 self.retry_strategy.suggest_interval(fetch_attempts),
                                 "No response",
                             )
@@ -148,6 +149,7 @@ class BaseSyncOdds(PollTask):
                             match_code,
                             self.market.betting_type_id,
                             self.market.scope_id,
+                            kickoff_time,
                             self.retry_strategy.suggest_interval(fetch_attempts),
                         )
                         self.logger.error(f"Failed to sync odds for match_code={match_code}: {e}")
