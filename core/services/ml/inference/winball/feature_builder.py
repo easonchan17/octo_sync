@@ -7,7 +7,7 @@ from core.types.params import EloParams
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import FotmobFixture, Site, EloRating, PinnacleFixture, Moneyline, Spread
 from core.services.ml.preprocessing.transforms import EloRatingDeriver
-from core.services.ml.preprocessing.extractors.odds_feature_extractor import OddsDeriver
+from core.services.ml.preprocessing.builders.feature.odds import OddsDeriver
 from core.store.postgres.models.fbref import Fixture as FbrefFixture
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.services.ml.preprocessing import PredictSampleBuilder

@@ -15,6 +15,9 @@ plugins/
 tests/
 artifacts/
 
+scripts/
+
 README.md
-test.html
+CLAUDE.md
+TODO.md
 docs/

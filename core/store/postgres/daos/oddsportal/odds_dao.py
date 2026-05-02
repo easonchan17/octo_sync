@@ -59,6 +59,7 @@ class OddsDao(BaseDao):
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         if error_msg is None:
             error_msg = traceback.format_exc()
+
         with self.db.get_session() as session:
             insert_stmt = insert(OddsRaw).values(
                 match_code=match_code,

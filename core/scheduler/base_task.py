@@ -10,20 +10,6 @@ class BaseTask(ABC):
         self.name = name or self.__class__.__name__
         self.logger = LoggerManager.get_instance().get_logger(self.name)
         self.cancel_event = Event()
-        self.payload = None
-
-    def get_required_param(self, key: str) -> Any:
-        if self.payload is None:
-            raise ValueError("Payload is not set")
-
-        if key not in self.payload:
-            raise ValueError(f"{key} is required")
-
-        value = self.payload.get(key)
-        if value is None:
-            raise ValueError(f"{key} is required")
-
-        return value
 
     def cancel(self) -> None:
         self.cancel_event.set()
@@ -70,12 +56,6 @@ class Pipeline(BaseTask):
 class TaskWrapper(BaseTask):
     def __init__(self, task: BaseTask) -> None:
         self._task = task
-
-    def get_required_param(self, key: str) -> Any:
-        if self._task is None:
-            raise ValueError("Task is not set")
-
-        return self._task.get_required_param(key)
 
     def cancel(self) -> None:
         if self._task is None:

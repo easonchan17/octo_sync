@@ -108,6 +108,14 @@ class SyncHistoryFixture(PollTask):
                             )
                             continue
 
+                        current_time = datetime.now(timezone.utc)
+                        fetch_interval = self.refetch_strategy.suggest_interval(base_time=current_time, current_time=current_time) if season == max_season else None
+
+                        if result_set.is_not_modified():
+                            self.logger.warning(f"History fixture data is not modified for {page_url}")
+                            self.history_fixture_dao.mark_as_not_modified(league_id, season, fetch_interval)
+                            continue
+
                         self.history_fixture_dao.sync_raw_data({
                             "league_id": league_id,
                             "season": season,
@@ -115,8 +123,6 @@ class SyncHistoryFixture(PollTask):
                             "json_body": result_set.first(),
                         })
 
-                        current_time = datetime.now(timezone.utc)
-                        fetch_interval = self.refetch_strategy.suggest_interval(base_time=current_time, current_time=current_time) if season == max_season else None
                         self.history_fixture_dao.mark_as_fetched(league_id, season, fetch_interval=fetch_interval)
                         self.logger.info(f"Synced history fixtures league_id={league_id} league_name={league_name} season={season}")
 

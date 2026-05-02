@@ -204,42 +204,41 @@ class MatchPlayerStat(Base):
     punches = Column(Integer, nullable=True)
     throws = Column(Integer, nullable=True)
 
+    team_id = Column(Integer, nullable=True)
+    position_id = Column(Integer, nullable=True)
+    usual_position = Column(Integer, nullable=True)
+    is_goalkeeper = Column(Boolean, nullable=True)
 
 class MatchLineup(Base):
     __tablename__ = 'match_lineups'
     __table_args__ = (
         Index('idx_match_lineups_created_at', 'created_at'),
         Index('idx_match_lineups_updated_at', 'updated_at'),
-        Index('idx_match_lineups_match_id_team_id', 'match_id', 'team_id'),
-        Index('idx_match_lineups_match_team_opta_member', 'match_id', 'team_id', 'opta_id', 'member_id', 'member_name'),
-        UniqueConstraint('match_id', 'team_id', 'opta_id', 'member_id', 'member_name', name='uq_match_lineups_match_team_opta_member'),
+        UniqueConstraint('match_id', 'team_id', 'member_id', name='uq_match_lineups_match_team_member_id'),
         {'schema': SiteName.FOTMOB.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     match_id = Column(Integer, nullable=False)
+
     team_id = Column(Integer, nullable=False)
     team_name = Column(String(100), nullable=True)
 
+    member_id = Column(Integer, nullable=False)
+    member_name = Column(String(128), nullable=False)
+    opta_id = Column(String(64), nullable=True)
+    age = Column(Integer, nullable=True)
+
     country_code = Column(String(3), nullable=True)
     country_name = Column(String(100), nullable=True)
-    opta_id = Column(String(64), nullable=True)
-
-    member_id = Column(Integer, nullable=True)
-    member_name = Column(String(128), nullable=False)
-
-    age = Column(Integer, nullable=True)
 
     shirt_number = Column(Integer, nullable=True)
     position_id = Column(Integer, nullable=True)
+    position = Column(String(3), nullable=True)
     usual_playing_position_id = Column(Integer, nullable=True)
 
     is_starter = Column(Boolean, default=False)
     is_sub = Column(Boolean, default=False)
     is_captain = Column(Boolean, default=False)
-    is_coach = Column(Boolean, default=False)
 
     rating = Column(Float, nullable=True)
-
-    horizontal_layout = Column(JSONB(none_as_null=True), nullable=True)
-    vertical_layout = Column(JSONB(none_as_null=True), nullable=True)
