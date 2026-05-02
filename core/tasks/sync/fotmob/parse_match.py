@@ -195,7 +195,7 @@ class FormationResolver:
         "1-3-5-2": [
             [Position.GK],
             [Position.RCB, Position.CB, Position.LCB],
-            [Position.RWB, Position.RCM, Position.CDM, Position.LCM, Position.LWB],
+            [Position.RM, Position.RCM, Position.CDM, Position.LCM, Position.LM],
             [Position.RST, Position.LST]
         ],
         "1-3-4-2-1": [
@@ -229,14 +229,14 @@ class FormationResolver:
         "1-3-5-1-1": [
             [Position.GK],
             [Position.RCB, Position.CB, Position.LCB],
-            [Position.RWB, Position.RCM, Position.CDM, Position.LCM, Position.LWB],
+            [Position.RM, Position.RCM, Position.CDM, Position.LCM, Position.LM],
             [Position.CAM],
             [Position.ST]
         ],
         "1-3-3-3-1": [
             [Position.GK],
             [Position.RCB, Position.CB, Position.LCB],
-            [Position.RDM, Position.CDM, Position.LDM],
+            [Position.RCM, Position.CDM, Position.LCM],
             [Position.RM, Position.CAM, Position.LM],
             [Position.ST]
         ],
@@ -278,53 +278,53 @@ class FormationResolver:
         ],
         "1-5-3-2": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.RCM, Position.CM, Position.LCM],
             [Position.RST, Position.LST]
         ],
         "1-5-4-1": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.RM, Position.RCM, Position.LCM, Position.LM],
             [Position.ST]
         ],
         "1-5-2-3": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.RCM, Position.LCM],
             [Position.RW, Position.ST, Position.LW]
         ],
         "1-5-2-1-2": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.RCM, Position.LCM],
             [Position.CAM],
             [Position.RST, Position.LST]
         ],
         "1-5-3-1-1": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.RCM, Position.CM, Position.LCM],
             [Position.CAM],
             [Position.ST]
         ],
         "1-5-1-3-1": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.CDM],
             [Position.RM, Position.CAM, Position.LM],
             [Position.ST]
         ],
         "1-5-2-2-1": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.RCM, Position.LCM],
             [Position.RAM, Position.LAM],
             [Position.ST]
         ],
         "1-5-1-2-1-1": [
             [Position.GK],
-            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RWB, Position.RCB, Position.CB, Position.LCB, Position.LWB],
             [Position.CDM],
             [Position.RCM, Position.LCM],
             [Position.CAM],
@@ -332,17 +332,33 @@ class FormationResolver:
         ]
     }
 
-    ADVANCE_POSITION = {
-        Position.RB : Position.RWB,
-        Position.LB : Position.LWB,
-        Position.RCM: Position.RAM,
-        Position.LCM: Position.LAM
-    }
+    # ADVANCE_POSITION = {
+    #     Position.RB : Position.RWB,
+    #     Position.LB : Position.LWB,
 
-    DEEPER_POSITION = {
-        Position.RW: Position.RW,
-        Position.LW: Position.LW
-    }
+    #     Position.RWB: Position.RM,
+    #     Position.LWB: Position.LM,
+
+    #     Position.RM: Position.RW,
+    #     Position.LM: Position.LW,
+
+    #     Position.RCM: Position.RAM,
+    #     Position.LCM: Position.LAM
+    # }
+
+    # DEEPER_POSITION = {
+    #     Position.RW: Position.RM,
+    #     Position.LW: Position.LM,
+
+    #     Position.RAM: Position.RCM,
+    #     Position.LAM: Position.LCM,
+
+    #     Position.RM: Position.RWB,
+    #     Position.LM: Position.LWB,
+
+    #     Position.RWB: Position.RB,
+    #     Position.LWB: Position.LB
+    # }
 
     @staticmethod
     def _get_x(player: Dict[str, Any]) -> float:
@@ -371,18 +387,18 @@ class FormationResolver:
             raise ValueError(f"Unsupported formation: {formation}")
 
         for players_in_layer, positions_in_layer in zip(player_matrix, position_matrix):
-            base_y = self._get_y(players_in_layer[len(players_in_layer)//2])
-
+            # base_y = self._get_y(players_in_layer[len(players_in_layer)//2])
             for player, position in zip(players_in_layer, positions_in_layer):
-                current_y = self._get_y(player)
-                if current_y == base_y:
-                    player['position'] = position.value
-                elif current_y > base_y:
-                    self.logger.info(f'{formation} advance {position.value}')
-                    player['position'] = self.ADVANCE_POSITION[position].value
-                else:
-                    self.logger.info(f'{formation} deeper {position.value}')
-                    player['position'] = self.DEEPER_POSITION[position].value
+                player['position'] = position.value
+                # current_y = self._get_y(player)
+                # if current_y == base_y:
+                #     player['position'] = position.value
+                # elif current_y > base_y:
+                #     self.logger.info(f'{formation} advance {position.value}')
+                #     player['position'] = self.ADVANCE_POSITION[position].value
+                # else:
+                #     self.logger.info(f'{formation} deeper {position.value}')
+                #     player['position'] = self.DEEPER_POSITION[position].value
 
 
     def _build_formation(self, formation: str, players: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
