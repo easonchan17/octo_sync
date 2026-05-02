@@ -170,3 +170,9 @@ class Position(str, Enum):
     LST = "LST"  # Left Striker
     RST = "RST"  # Right Striker
     SS  = "SS"   # Second Striker
+
+    ATTACK_POSITIONS    = ["FW", "LW", "RW"]
+    PLAYMAKER_POSITIONS = ["AM", "CM", "LM", "RM", "DM", "WB"]
+    DEFENSE_POSITIONS   = ["DF", "CB", "LB", "RB", "DM", "WB"]
+    AERIAL_POSITIONS    = ["DF", "CB", "LB", "RB", "DM", "WB", "FW"]
+    GK_POSITIONS        = ["GK"]
