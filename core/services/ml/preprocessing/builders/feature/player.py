@@ -4,11 +4,9 @@ import pandas as pd
 from datetime import datetime
 from functools import cached_property
 from sqlalchemy import and_, or_
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from core.types.enums import MatchStatus
-from core.store.postgres.models import (
-    MatchResult, PlayerMatchStats
-)
+
 from ...transforms import (
     ColumnFilter,
     FormulaDeriver,
@@ -22,7 +20,6 @@ from ...constants import (
     TEAM_CODE_COL, HOME_CODE_COL,
     HOME_POSSESSION_COL, AWAY_POSSESSION_COL
 )
-
 
 class FeatureQuantiler:
     ATTACK_POSITIONS    = ["FW", "LW", "RW"]
