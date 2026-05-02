@@ -1,6 +1,6 @@
 import traceback, re
 from datetime import datetime, timezone
-from core.types.enums import SiteName
+from core.types.enums import SiteName, Position
 from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_registry import TaskRegistry
 from typing import Dict, Any, Optional, List, Callable, Tuple
@@ -64,6 +64,339 @@ def extract_value(stat: Dict[str, Any]) -> Optional[Any]:
 
 def extract_total(stat: Dict[str, Any]) -> Optional[Any]:
     return stat.get("total")
+
+class FormationResolver:
+    FORMATIONS = {
+        "1-4-4-2": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.RST, Position.LST]
+        ],
+        "1-4-3-3": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RCM, Position.CM, Position.LCM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-4-2-3-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RDM, Position.LDM],
+            [Position.RM, Position.CAM, Position.LM],
+            [Position.ST]
+        ],
+        "1-4-1-4-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.CDM],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.ST]
+        ],
+        "1-4-1-2-3": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.CDM],
+            [Position.RCM, Position.LCM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-4-2-1-3": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RDM, Position.LDM],
+            [Position.CAM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-4-4-1-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.CAM],
+            [Position.ST]
+        ],
+        "1-4-2-2-2": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RDM, Position.LDM],
+            [Position.RAM, Position.LAM],
+            [Position.RST, Position.LST]
+        ],
+        "1-4-3-1-2": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RCM, Position.CM, Position.LCM],
+            [Position.CAM],
+            [Position.RST, Position.LST]
+        ],
+        "1-4-1-2-1-2": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.CDM],
+            [Position.RCM, Position.LCM],
+            [Position.CAM],
+            [Position.RST, Position.LST]
+        ],
+        "1-4-5-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RM, Position.RCM, Position.CM, Position.LCM, Position.LM],
+            [Position.ST]
+        ],
+        "1-4-3-2-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RCM, Position.CM, Position.LCM],
+            [Position.RAM, Position.LAM],
+            [Position.ST]
+        ],
+        "1-4-2-4": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RCM, Position.LCM],
+            [Position.RW, Position.RST, Position.LST, Position.LW]
+        ],
+        "1-4-1-3-2": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.CDM],
+            [Position.RM, Position.CAM, Position.LM],
+            [Position.RST, Position.LST]
+        ],
+        "1-4-2-2-1-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.RDM, Position.LDM],
+            [Position.RM, Position.LM],
+            [Position.CAM],
+            [Position.ST]
+        ],
+        "1-4-1-2-2-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.LCB, Position.LB],
+            [Position.CDM],
+            [Position.RCM, Position.LCM],
+            [Position.RAM, Position.LAM],
+            [Position.ST]
+        ],
+        "1-3-4-3": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-3-1-2-1-3": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.CDM],
+            [Position.RCM, Position.LCM],
+            [Position.CAM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-3-5-2": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RWB, Position.RCM, Position.CDM, Position.LCM, Position.LWB],
+            [Position.RST, Position.LST]
+        ],
+        "1-3-4-2-1": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.RAM, Position.LAM],
+            [Position.ST]
+        ],
+        "1-3-4-1-2": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.CAM],
+            [Position.RST, Position.LST]
+        ],
+        "1-3-2-4-1": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RDM, Position.LDM],
+            [Position.RM, Position.RAM, Position.LAM, Position.LM],
+            [Position.ST]
+        ],
+        "1-3-1-4-2": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.CDM],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.RST, Position.LST]
+        ],
+        "1-3-5-1-1": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RWB, Position.RCM, Position.CDM, Position.LCM, Position.LWB],
+            [Position.CAM],
+            [Position.ST]
+        ],
+        "1-3-3-3-1": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RDM, Position.CDM, Position.LDM],
+            [Position.RM, Position.CAM, Position.LM],
+            [Position.ST]
+        ],
+        "1-3-3-2-2": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RCM, Position.CDM, Position.LCM],
+            [Position.RAM, Position.LAM],
+            [Position.RST, Position.LST]
+        ],
+        "1-3-3-1-3": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RCM, Position.CDM, Position.LCM],
+            [Position.CAM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-3-2-2-3": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RDM, Position.LDM],
+            [Position.RAM, Position.LAM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-3-2-3-2": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.RDM, Position.LDM],
+            [Position.RM, Position.CAM, Position.LM],
+            [Position.RST, Position.LST]
+        ],
+        "1-3-1-3-1-2": [
+            [Position.GK],
+            [Position.RCB, Position.CB, Position.LCB],
+            [Position.CDM],
+            [Position.RM, Position.CM, Position.LM],
+            [Position.CAM],
+            [Position.RST, Position.LST]
+        ],
+        "1-5-3-2": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RCM, Position.CM, Position.LCM],
+            [Position.RST, Position.LST]
+        ],
+        "1-5-4-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RM, Position.RCM, Position.LCM, Position.LM],
+            [Position.ST]
+        ],
+        "1-5-2-3": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RCM, Position.LCM],
+            [Position.RW, Position.ST, Position.LW]
+        ],
+        "1-5-2-1-2": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RCM, Position.LCM],
+            [Position.CAM],
+            [Position.RST, Position.LST]
+        ],
+        "1-5-3-1-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RCM, Position.CM, Position.LCM],
+            [Position.CAM],
+            [Position.ST]
+        ],
+        "1-5-1-3-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.CDM],
+            [Position.RM, Position.CAM, Position.LM],
+            [Position.ST]
+        ],
+        "1-5-2-2-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.RCM, Position.LCM],
+            [Position.RAM, Position.LAM],
+            [Position.ST]
+        ],
+        "1-5-1-2-1-1": [
+            [Position.GK],
+            [Position.RB, Position.RCB, Position.CB, Position.LCB, Position.LB],
+            [Position.CDM],
+            [Position.RCM, Position.LCM],
+            [Position.CAM],
+            [Position.ST]
+        ]
+    }
+
+    ADVANCE_POSITION = {
+        Position.RB : Position.RWB,
+        Position.LB : Position.LWB,
+        Position.RCM: Position.RAM,
+        Position.LCM: Position.LAM
+    }
+
+    DEEPER_POSITION = {
+        Position.RW: Position.RW,
+        Position.LW: Position.LW
+    }
+
+    @staticmethod
+    def _get_x(player: Dict[str, Any]) -> float:
+        return player.get('verticalLayout', {}).get('x', 0)
+
+    @staticmethod
+    def _get_y(player: Dict[str, Any]) -> float:
+        return player.get('verticalLayout', {}).get('y', 0)
+
+    @staticmethod
+    def _get_w(player: Dict[str, Any]) -> float:
+        return player.get('verticalLayout', {}).get('width', 0)
+
+    def __init__(self):
+        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+
+    def resolve(self, formation: str, players: List[Dict[str, Any]]) -> None:
+        if not formation or not players:
+            return
+
+        formation_ex = f"1-{formation}"
+        player_matrix = self._build_formation(formation_ex, players)
+
+        position_matrix = self.FORMATIONS.get(formation_ex)
+        if position_matrix is None:
+            raise ValueError(f"Unsupported formation: {formation}")
+
+        for players_in_layer, positions_in_layer in zip(player_matrix, position_matrix):
+            base_y = self._get_y(players_in_layer[len(players_in_layer)//2])
+
+            for player, position in zip(players_in_layer, positions_in_layer):
+                current_y = self._get_y(player)
+                if current_y == base_y:
+                    player['position'] = position.value
+                elif current_y > base_y:
+                    self.logger.info(f'{formation} advance {position.value}')
+                    player['position'] = self.ADVANCE_POSITION[position].value
+                else:
+                    self.logger.info(f'{formation} deeper {position.value}')
+                    player['position'] = self.DEEPER_POSITION[position].value
+
+
+    def _build_formation(self, formation: str, players: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+        counts = [int(count) for count in formation.split("-")]
+        sorted_players = sorted(players, key=self._get_y)
+
+        layers = []
+        offset = 0
+        for count in counts:
+            layer_players = sorted_players[offset:offset + count]
+            layers.append(sorted(layer_players, key=self._get_x))
+            offset += count
+
+        return layers
 
 class MatchParser:
     MATCH_STATS_MAPPING = {
@@ -189,9 +522,10 @@ class MatchParser:
             "countryName": [("country_name", lambda x: x)],
             "countryCode": [("country_code", lambda x: x)],
             "performance": [("rating", lambda x: x.get("rating"))],
-            "horizontalLayout": [("horizontal_layout", lambda x: x)],
-            "verticalLayout": [("vertical_layout", lambda x: x)],
+            # "horizontalLayout": [("horizontal_layout", lambda x: x)],
+            # "verticalLayout": [("vertical_layout", lambda x: x)],
             "positionId": [("position_id", lambda x: x)],
+            "position": [("position", lambda x: x)],
             "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x)],
             "isCaptain": [("is_captain", lambda x: bool(x))]
         },
@@ -219,6 +553,7 @@ class MatchParser:
 
     def __init__(self) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.formation_resolver = FormationResolver()
 
     def parse(self, json_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if not json_data:
@@ -281,11 +616,14 @@ class MatchParser:
             formation = team_data.get("formation")
             starters = team_data.get("starters", [])
             subs = team_data.get("subs", [])
-            coach = team_data.get("coach")
+            # coach = team_data.get("coach")
+
+            self.formation_resolver.resolve(formation, starters)
+
             groups = [
                 (starters, "starter", "is_starter"),
                 (subs, "sub", "is_sub"),
-                ([coach] if coach is not None else [], "coach", "is_coach")
+                # ([coach] if coach and coach.get("name") else [], "coach", "is_coach")
             ]
             records = []
             for members, role, flag in groups:
@@ -299,7 +637,9 @@ class MatchParser:
                         for target_key, extractor in targets:
                             record[target_key] = extractor(val)
                     record[flag] = True
-                    records.append(record)
+
+                    if record.get("member_id"):
+                        records.append(record)
             return formation, records
 
         lineup_type = raw_lineup.get("lineupType")
@@ -338,7 +678,11 @@ class MatchParser:
         match_id: int,
         player_id: int,
         player_name: str,
-        opta_id: str
+        opta_id: str,
+        team_id: int,
+        position_id: int,
+        is_goalkeeper: bool,
+        usual_position: int
     ) -> Dict[str, Any]:
         keys = MatchPlayerStat.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
         record = {key: None for key in keys}
@@ -346,6 +690,10 @@ class MatchParser:
         record["player_id"] = player_id
         record["player_name"] = player_name
         record["opta_id"] = opta_id
+        record["team_id"] = team_id
+        record["position_id"] = position_id
+        record["is_goalkeeper"] = is_goalkeeper
+        record["usual_position"] = usual_position
         return record
 
     def _parse_player_stats(self, match_id: int, player_datas: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
@@ -354,7 +702,14 @@ class MatchParser:
             player_id = player_data.get("id")
             player_name = player_data.get("name")
             opta_id = player_data.get("optaId")
-            record = self._create_player_stats_record(match_id, player_id, player_name, opta_id)
+            team_id = player_data.get("teamId")
+            position_id = player_data.get("positionId")
+            is_goalkeeper = player_data.get("isGoalkeeper")
+            usual_position = player_data.get("usualPosition")
+
+            record = self._create_player_stats_record(
+                match_id, player_id, player_name, opta_id, team_id, position_id, is_goalkeeper, usual_position)
+
             stat_groups = player_data.get("stats", [])
             for stat_group in stat_groups:
                 stats = stat_group.get("stats", {})
