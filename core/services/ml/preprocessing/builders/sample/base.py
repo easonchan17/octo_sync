@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
-from pathlib import Path
-from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
-from ..transforms import ColumnFilter, FormulaDeriver
-from ..constants import (
+from typing import Tuple
+from core.config.config_manager import ConfigManager
+from core.logger.logger_manager import LoggerManager
+from ...transforms import ColumnFilter, FormulaDeriver
+from ...constants import (
     MATCH_CODE_COL,
     TEAM_CODE_COL,
     HOME_CODE_COL,
@@ -22,12 +22,12 @@ PROGRESSION_REG_POSITIONS = ['LW', 'RW', 'WB', 'LM', 'RM', 'AM', 'LB', 'RB']
 DEFENSE_REG_POSITIONS     = ['CB', 'LB', 'RB', 'WB', 'DM']
 AERIAL_MAX_POSITIONS      = ['CB', 'DM', 'FW', 'WB']
 AERIAL_AVG_POSITIONS      = ['CB', 'DM', 'WB']
-from core.scheduler.base_task import BaseTask
-from ..extractors.match_feature_extractor import MatchFeatureExtractor
-from ..extractors.player_feature_extractor import OutfieldPlayerFeatureExtractor, GoalkeeperFeatureExtractor
 
+class BaseSampleBuilder:
+    def __init__(self) -> None:
+        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.config_manager = ConfigManager.get_instance()
 
-class BaseSampleBuilder(BaseTask):
     OUTFIELD_FEATURES = [
         'finish_form',
         'creativity_form',
@@ -160,22 +160,6 @@ class BaseSampleBuilder(BaseTask):
         'away_code',
         'home_point'
     ]
-
-    def __init__(self, payload: Optional[Dict[str, Any]]) -> None:
-        super().__init__()
-        self.payload = payload
-        self.match_feature_extractor = MatchFeatureExtractor(payload)
-        self.outfield_player_feature_extractor = OutfieldPlayerFeatureExtractor(payload)
-        self.goalkeeper_feature_extractor = GoalkeeperFeatureExtractor(payload)
-
-    def build_output_file(self, tag: str, comp_code: str, min_season: int, max_season: int, output_format: str) -> str:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"{tag}_{comp_code}_{min_season}_{max_season}_{timestamp}.{output_format}"
-
-    def check_output_path(self, output_path: str) -> Path:
-        output_dir = Path(output_path)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        return output_dir
 
     def aggregate(
         self,

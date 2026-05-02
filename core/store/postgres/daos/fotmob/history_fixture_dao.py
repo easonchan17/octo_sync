@@ -49,6 +49,21 @@ class HistoryFixtureDao(BaseDao):
                 HistoryFixtureRaw.created_at.asc()
             ).limit(limit).all()
 
+    def mark_as_not_modified(self, league_id: int, season: int, fetch_interval: Optional[timedelta]) -> None:
+        with self.db.get_session() as session:
+            session.query(HistoryFixtureRaw).filter(
+                HistoryFixtureRaw.league_id == league_id,
+                HistoryFixtureRaw.season == season,
+            ).update({
+                HistoryFixtureRaw.is_fetched.key: True,
+                HistoryFixtureRaw.last_fetch_error.key: None,
+                HistoryFixtureRaw.last_fetched_at.key: func.now(),
+                HistoryFixtureRaw.total_fetch_count.key: HistoryFixtureRaw.total_fetch_count + 1,
+                HistoryFixtureRaw.fetch_attempts.key: 0,
+                HistoryFixtureRaw.next_fetch_at.key: func.now() + fetch_interval if fetch_interval is not None else None,
+                HistoryFixtureRaw.updated_at.key: func.now(),
+            }, synchronize_session=False)
+
     def mark_as_fetched(self, league_id: int, season: int, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(HistoryFixtureRaw).filter(

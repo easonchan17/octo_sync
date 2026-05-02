@@ -2,25 +2,12 @@ import math
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta, timezone
 from core.types.enums import SiteName, MatchStatus
+from core.types.params import EloParams
 from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask, CrawlParams
 from core.tasks.refetch_strategy import TimelineStrategy
 from core.store.postgres.daos.fotmob.elo_rating_dao import EloRatingDao
 
-class EloParams:
-    def __init__(
-        self,
-        base_rating: float = 1500,
-        k_factor: float = 20,
-        home_advantage: float = 100,
-        reversion_rate: float = 0.25,
-        min_games_for_stability: int = 10,
-    ) -> None:
-        self.base_rating = base_rating
-        self.k_factor = k_factor
-        self.home_advantage = home_advantage
-        self.reversion_rate = reversion_rate
-        self.min_games_for_stability = min_games_for_stability
 
 class EloRatingCalculator:
     def __init__(self, prior_states: List[Any], params: EloParams = EloParams()) -> None:

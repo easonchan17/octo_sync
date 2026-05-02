@@ -1,5 +1,5 @@
 from enum import IntEnum, Enum
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, List, Dict, Any
 
 class OddsMarket(NamedTuple):
     betting_type_id: int
@@ -103,3 +103,70 @@ class MatchStatus(IntEnum):
             MatchStatus.EXTRA_TIME,
             MatchStatus.PENALTY
         )
+
+class Position(str, Enum):
+    # ==========================================
+    # Goalkeeper
+    # ==========================================
+    GK  = "GK"   # Goalkeeper
+
+    # ==========================================
+    # Defenders - Center Backs
+    # ==========================================
+    CB  = "CB"   # Center Back
+    LCB = "LCB"  # Left Center Back
+    RCB = "RCB"  # Right Center Back
+
+    # ==========================================
+    # Defenders - Full Backs
+    # ==========================================
+    LB  = "LB"   # Left Back
+    RB  = "RB"   # Right Back
+
+    # ==========================================
+    # Defenders/Midfielders - Wing Backs
+    # ==========================================
+    LWB = "LWB"  # Left Wing Back
+    RWB = "RWB"  # Right Wing Back
+
+    # ==========================================
+    # Midfielders - Defensive
+    # ==========================================
+    CDM = "CDM"  # Central Defensive Midfielder
+    LDM = "LDM"  # Left Defensive Midfielder
+    RDM = "RDM"  # Right Defensive Midfielder
+
+    # ==========================================
+    # Midfielders - Central
+    # ==========================================
+    CM  = "CM"   # Central Midfielder
+    LCM = "LCM"  # Left Central Midfielder
+    RCM = "RCM"  # Right Central Midfielder
+
+    # ==========================================
+    # Midfielders - Wide
+    # ==========================================
+    LM  = "LM"   # Left Midfielder
+    RM  = "RM"   # Right Midfielder
+
+    # ==========================================
+    # Midfielders - Attacking
+    # ==========================================
+    CAM = "CAM"  # Central Attacking Midfielder
+    LAM = "LAM"  # Left Attacking Midfielder
+    RAM = "RAM"  # Right Attacking Midfielder
+
+    # ==========================================
+    # Attackers - Wingers
+    # ==========================================
+    LW  = "LW"   # Left Winger
+    RW  = "RW"   # Right Winger
+
+    # ==========================================
+    # Attackers - Forwards & Strikers
+    # ==========================================
+    CF  = "CF"   # Center Forward
+    ST  = "ST"   # Striker
+    LST = "LST"  # Left Striker
+    RST = "RST"  # Right Striker
+    SS  = "SS"   # Second Striker

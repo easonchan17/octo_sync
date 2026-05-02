@@ -196,7 +196,7 @@ class MatchDao(BaseDao):
             }
         )
         insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[MatchLineup.match_id.key, MatchLineup.team_id.key, MatchLineup.opta_id.key, MatchLineup.member_id.key, MatchLineup.member_name.key],
+            index_elements=[MatchLineup.match_id.key, MatchLineup.team_id.key, MatchLineup.member_id.key],
             set_=assignment,
             where=where_clause
         )

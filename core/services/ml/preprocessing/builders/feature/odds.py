@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List, Optional
-from ..transforms import BaseDeriver, FormulaDeriver
-from ..constants import DEFAULT_DECIMALS
+from ...transforms import BaseDeriver, FormulaDeriver
+from ...constants import DEFAULT_DECIMALS
 
 
 class EntropyDeriver(BaseDeriver):
