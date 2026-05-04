@@ -77,8 +77,8 @@ def run_app() -> None:
     ConfigManager.get_instance().load_config(args.config)
 
     logger.info(f"🔧 Initializing logger manager...")
-    config = ConfigManager.get_instance().get_config("logger")
-    LoggerManager.get_instance().setup(config)
+    logger_config = ConfigManager.get_instance().get_config("logger")
+    LoggerManager.get_instance().setup(logger_config)
     logger.info("✅ Logger manager initialized")
 
     logger.info("🔧 Starting PostgreSQL manager...")
@@ -86,9 +86,9 @@ def run_app() -> None:
     logger.info("✅ PostgreSQL manager started")
 
     if not env_manager.is_ml:
-        config = ConfigManager.get_instance().get_config("browser")
-        launch_options = config.get("launch_options", {})
-        viewport = config['viewport']
+        browser_config = ConfigManager.get_instance().get_config("browser")
+        launch_options = browser_config["launch_options"]
+        viewport = browser_config['viewport']
 
         logger.info("🔧 Starting network interceptor...")
         interceptor_manager.start(

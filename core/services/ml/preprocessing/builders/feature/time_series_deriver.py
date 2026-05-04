@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Callable, Optional, Any
-from .base_deriver import BaseDeriver
+from ...transforms import BaseTransform
 from ...constants import (
     KICKOFF_TIME_COL,
     REST_DAYS_COL,
@@ -43,7 +43,7 @@ def _ema_calculator(
 
 
 
-class TimeSeriesDeriver(BaseDeriver):
+class TimeSeriesDeriver(BaseTransform):
     def __init__(self, df: pd.DataFrame) -> None:
         super().__init__(df)
         self._create_view()

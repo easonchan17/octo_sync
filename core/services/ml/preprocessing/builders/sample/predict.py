@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 from .base import BaseSampleBuilder
 from ..feature.match import MatchPredictFeatureBuilder
-from ..feature.player import OutfieldPlayerPredictFeatureBuilder, GoalkeeperPredictFeatureExtractor
+from ..feature.player import OutfieldPlayerPredictFeatureBuilder, GoalkeeperPredictFeatureBuilder
 
 class PredictSampleBuilder(BaseSampleBuilder):
     def __init__(
@@ -18,21 +18,21 @@ class PredictSampleBuilder(BaseSampleBuilder):
         self.kickoff_time = kickoff_time
         self.match_extractor = MatchPredictFeatureBuilder(home_code, away_code, kickoff_time)
         self.outfield_extractor = OutfieldPlayerPredictFeatureBuilder(home_code, away_code, kickoff_time)
-        self.goalkeeper_extractor = GoalkeeperPredictFeatureExtractor(home_code, away_code, kickoff_time)
+        self.goalkeeper_extractor = GoalkeeperPredictFeatureBuilder(home_code, away_code, kickoff_time)
 
     def execute(self) -> Optional[pd.DataFrame]:
         try:
-            match_stats, match_stats_df = self.match_extractor.build()
+            match_stats, match_stats_df = self.match_extractor.transform()
             if match_stats_df is None or match_stats_df.empty:
                 self.logger.error("No match stats data found")
                 return None
 
-            player_stats, outfield_player_stats_df = self.outfield_extractor.build()
+            player_stats, outfield_player_stats_df = self.outfield_extractor.transform()
             if outfield_player_stats_df is None or outfield_player_stats_df.empty:
                 self.logger.error("No outfield player stats data found")
                 return None
 
-            goalkeeper_stats, goalkeeper_stats_df = self.goalkeeper_extractor.build()
+            goalkeeper_stats, goalkeeper_stats_df = self.goalkeeper_extractor.transform()
             if goalkeeper_stats_df is None or goalkeeper_stats_df.empty:
                 self.logger.error("No goalkeeper stats data found")
                 return None

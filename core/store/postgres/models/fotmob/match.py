@@ -1,6 +1,4 @@
-from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Column, Integer, DateTime, Index, text, Float, String, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, DateTime, Index, text, Float, String, Boolean, UniqueConstraint, BigInteger
 from ..base_model import Base, CrawlStatusMixin, RawJsonMixin
 from core.types.enums import SiteName
 
@@ -51,6 +49,9 @@ class MatchStat(Base):
 
     home_possession = Column(Integer, nullable=True)
     away_possession = Column(Integer, nullable=True)
+
+    home_goals_penalty = Column(Integer, nullable=True)
+    away_goals_penalty = Column(Integer, nullable=True)
 
     home_shots = Column(Integer, nullable=True)
     away_shots = Column(Integer, nullable=True)
@@ -159,7 +160,46 @@ class MatchPlayerStat(Base):
 
     shots = Column(Integer, nullable=True)
     shots_on_target = Column(Integer, nullable=True)
-    blocked_shots = Column(Integer, nullable=True)
+    shots_blocked = Column(Integer, nullable=True)
+    shots_inside_box = Column(Integer, nullable=True)
+    shots_freekick = Column(Integer, nullable=True)
+    shots_fastbreak = Column(Integer, nullable=True)
+    shots_setpiece = Column(Integer, nullable=True)
+    shots_corner = Column(Integer, nullable=True)
+    shots_header = Column(Integer, nullable=True)
+    shots_penalty = Column(Integer, nullable=True)
+    shots_individual_play = Column(Integer, nullable=True)
+    shots_throw_in_set_piece = Column(Integer, nullable=True)
+
+    goals = Column(Integer, nullable=True)
+    goals_inside_box = Column(Integer, nullable=True)
+    goals_freekick = Column(Integer, nullable=True)
+    goals_fastbreak = Column(Integer, nullable=True)
+    goals_setpiece = Column(Integer, nullable=True)
+    goals_corner = Column(Integer, nullable=True)
+    goals_header = Column(Integer, nullable=True)
+    goals_penalty = Column(Integer, nullable=True)
+    goals_individual_play = Column(Integer, nullable=True)
+    goals_throw_in_set_piece = Column(Integer, nullable=True)
+
+    xg_inside_box = Column(Float, nullable=True)
+    xg_freekick = Column(Float, nullable=True)
+    xg_fastbreak = Column(Float, nullable=True)
+    xg_setpiece = Column(Float, nullable=True)
+    xg_corner = Column(Float, nullable=True)
+    xg_header = Column(Float, nullable=True)
+    xg_individual_play = Column(Float, nullable=True)
+    xg_throw_in_set_piece = Column(Float, nullable=True)
+
+    xgot_inside_box = Column(Float, nullable=True)
+    xgot_freekick = Column(Float, nullable=True)
+    xgot_fastbreak = Column(Float, nullable=True)
+    xgot_setpiece = Column(Float, nullable=True)
+    xgot_corner = Column(Float, nullable=True)
+    xgot_header = Column(Float, nullable=True)
+    xgot_individual_play = Column(Float, nullable=True)
+    xgot_throw_in_set_piece = Column(Float, nullable=True)
+
     touches = Column(Integer, nullable=True)
     touches_opp_box = Column(Integer, nullable=True)
     passes_into_final_third = Column(Integer, nullable=True)
@@ -169,10 +209,9 @@ class MatchPlayerStat(Base):
     long_passes_completed = Column(Integer, nullable=True)
     dispossessed = Column(Integer, nullable=True)
     chances_created = Column(Integer, nullable=True)
-    goals = Column(Integer, nullable=True)
     assists = Column(Integer, nullable=True)
-    npxg = Column(Float, nullable=True)
     xg = Column(Float, nullable=True)
+    npxg = Column(Float, nullable=True)
     xgot = Column(Float, nullable=True)
     xa = Column(Float, nullable=True)
 
@@ -208,6 +247,43 @@ class MatchPlayerStat(Base):
     position_id = Column(Integer, nullable=True)
     usual_position = Column(Integer, nullable=True)
     is_goalkeeper = Column(Boolean, nullable=True)
+
+class ShotStat(Base):
+    __tablename__ = 'match_shot_stats'
+    __table_args__ = (
+        Index('idx_match_shot_stats_created_at', 'created_at'),
+        Index('idx_match_shot_stats_updated_at', 'updated_at'),
+        Index('idx_match_shot_stats_match_team_player', 'match_id', 'team_id', 'player_id'),
+        UniqueConstraint('match_id', 'event_id', name='uq_match_shot_stats_match_id_event_id'),
+        {'schema': SiteName.FOTMOB.value}
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    match_id = Column(Integer, nullable=False)
+    event_id = Column(BigInteger, nullable=False)
+
+    period = Column(String(16), nullable=True)
+    min = Column(Integer, nullable=True)
+    min_added = Column(Integer, nullable=True)
+    x = Column(Float, nullable=True)
+    y = Column(Float, nullable=True)
+
+    team_id = Column(Integer, nullable=True)
+    keeper_id = Column(Integer, nullable=True)
+    player_id = Column(Integer, nullable=True)
+
+    shot_type = Column(String(32), nullable=True)
+    event_type = Column(String(32), nullable=True)
+    situation = Column(String(32), nullable=True)
+
+    is_blocked = Column(Boolean, nullable=True)
+    is_own_goal = Column(Boolean, nullable=True)
+    is_on_target = Column(Boolean, nullable=True)
+    is_saved_off_line = Column(Boolean, nullable=True)
+    is_inside_box = Column(Boolean, nullable=True)
+
+    xg = Column(Float, nullable=True)
+    xgot = Column(Float, nullable=True)
 
 class MatchLineup(Base):
     __tablename__ = 'match_lineups'

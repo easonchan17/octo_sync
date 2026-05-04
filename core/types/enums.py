@@ -171,8 +171,39 @@ class Position(str, Enum):
     RST = "RST"  # Right Striker
     SS  = "SS"   # Second Striker
 
-    ATTACK_POSITIONS    = ["FW", "LW", "RW"]
-    PLAYMAKER_POSITIONS = ["AM", "CM", "LM", "RM", "DM", "WB"]
-    DEFENSE_POSITIONS   = ["DF", "CB", "LB", "RB", "DM", "WB"]
-    AERIAL_POSITIONS    = ["DF", "CB", "LB", "RB", "DM", "WB", "FW"]
-    GK_POSITIONS        = ["GK"]
+    @classmethod
+    def get_attackers(cls) -> List[str]:
+        return [
+            cls.LW.value, cls.RW.value, cls.CF.value, cls.ST.value,
+            cls.LST.value, cls.RST.value, cls.SS.value
+        ]
+
+    @classmethod
+    def get_playmakers(cls) -> List[str]:
+        return [
+            cls.CAM.value, cls.LAM.value, cls.RAM.value, cls.CM.value,
+            cls.LCM.value, cls.RCM.value, cls.LM.value,  cls.RM.value,
+            cls.CDM.value, cls.LDM.value, cls.RDM.value, cls.LWB.value,
+            cls.RWB.value
+        ]
+
+    @classmethod
+    def get_defenders(cls) -> List[str]:
+        return [
+            cls.CB.value, cls.LCB.value, cls.RCB.value, cls.LB.value,
+            cls.RB.value, cls.CDM.value, cls.LDM.value, cls.RDM.value,
+            cls.LWB.value, cls.RWB.value
+        ]
+
+    @classmethod
+    def get_bombers(cls) -> List[str]:
+        return [
+            cls.CB.value, cls.LCB.value, cls.RCB.value, cls.LB.value,
+            cls.RB.value, cls.CDM.value, cls.LDM.value, cls.RDM.value,
+            cls.LWB.value, cls.RWB.value, cls.CF.value, cls.ST.value,
+            cls.LST.value, cls.RST.value, cls.SS.value
+        ]
+
+    @classmethod
+    def get_goalkeeper(cls) -> List[str]:
+        return [cls.GK.value]

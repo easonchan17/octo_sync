@@ -1,19 +1,19 @@
 import json
 import numpy as np
 import pandas as pd
+from sqlalchemy import and_
 from datetime import datetime
-from functools import cached_property
-from sqlalchemy import and_, or_
-from typing import Any, Dict, Optional
-from core.types.enums import MatchStatus
+from typing import Dict, Optional
+from core.types.enums import MatchStatus, Position
+from core.store.postgres.models.fotmob.fixture import Fixture
+from core.store.postgres.models.fotmob.match import MatchPlayerStat, MatchLineup
 
 from ...transforms import (
     ColumnFilter,
     FormulaDeriver,
-    TimeScaleDeriver,
     DefaultImputer,
-    PlayerTimeSeriesDeriver
 )
+from .time_series_deriver import PlayerTimeSeriesDeriver
 from .base import BaseFeatureBuilder
 from ...constants import (
     EPSILON, DEFAULT_DECIMALS, POSITION_COL, PRIMARY_POSITION_COL,
@@ -22,38 +22,32 @@ from ...constants import (
 )
 
 class FeatureQuantiler:
-    ATTACK_POSITIONS    = ["FW", "LW", "RW"]
-    PLAYMAKER_POSITIONS = ["AM", "CM", "LM", "RM", "DM", "WB"]
-    DEFENSE_POSITIONS   = ["DF", "CB", "LB", "RB", "DM", "WB"]
-    AERIAL_POSITIONS    = ["DF", "CB", "LB", "RB", "DM", "WB", "FW"]
-    GK_POSITIONS        = ["GK"]
-
-    FEATURE_POSITION_MAPPING = {
-        "npxg_per_90_ema_20":                                                          ATTACK_POSITIONS,
-        "shots_on_target_per_90_ema_20":                                               ATTACK_POSITIONS,
-        "non_penalty_goals_per_90_ema_20":                                             ATTACK_POSITIONS,
-        "shots_per_90_ema_20-shots_on_target_per_90_ema_20":                           ATTACK_POSITIONS,
-        "xg_assist_per_90_ema_20":                                                     PLAYMAKER_POSITIONS,
-        "shot_creating_actions_per_90_ema_20":                                         PLAYMAKER_POSITIONS,
-        "progressive_passes_per_90_ema_20":                                            PLAYMAKER_POSITIONS,
-        "key_passes_per_90_ema_20":                                                    PLAYMAKER_POSITIONS,
-        "progressive_carries_per_90_ema_20":                                           PLAYMAKER_POSITIONS,
-        "take_ons_won_per_90_ema_20":                                                  PLAYMAKER_POSITIONS,
-        "fouls_drawn_per_90_ema_20":                                                   PLAYMAKER_POSITIONS,
-        "dispossessed_per_90_ema_20+miscontrols_per_90_ema_20":                        PLAYMAKER_POSITIONS,
-        "tackles_won_per_90_adj_ema_20":                                               DEFENSE_POSITIONS,
-        "interceptions_per_90_adj_ema_20":                                             DEFENSE_POSITIONS,
-        "ball_recoveries_per_90_adj_ema_20":                                           DEFENSE_POSITIONS,
-        "blocks_per_90_adj_ema_20":                                                    DEFENSE_POSITIONS,
-        "challenges_lost_per_90_adj_ema_20":                                           DEFENSE_POSITIONS,
-        "aerials_won_per_90_ema_20":                                                   AERIAL_POSITIONS,
-        "aerials_lost_per_90_ema_20/(aerials_won_per_90_ema_20+aerials_lost_per_90_ema_20)": AERIAL_POSITIONS,
-        "gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20":                       GK_POSITIONS,
-        "gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20":                  GK_POSITIONS,
-        "gk_def_actions_outside_pen_area_per_90_ema_20":                              GK_POSITIONS,
+    POSITION_SCOPE = {
+        "npxg_per_90_ema_20":                                                          Position.get_attackers(),
+        "shots_on_target_per_90_ema_20":                                               Position.get_attackers(),
+        "non_penalty_goals_per_90_ema_20":                                             Position.get_attackers(),
+        "shots_per_90_ema_20-shots_on_target_per_90_ema_20":                           Position.get_attackers(),
+        "xg_assist_per_90_ema_20":                                                     Position.get_playmakers(),
+        "shot_creating_actions_per_90_ema_20":                                         Position.get_playmakers(),
+        "progressive_passes_per_90_ema_20":                                            Position.get_playmakers(),
+        "key_passes_per_90_ema_20":                                                    Position.get_playmakers(),
+        "progressive_carries_per_90_ema_20":                                           Position.get_playmakers(),
+        "take_ons_won_per_90_ema_20":                                                  Position.get_playmakers(),
+        "fouls_drawn_per_90_ema_20":                                                   Position.get_playmakers(),
+        "dispossessed_per_90_ema_20+miscontrols_per_90_ema_20":                        Position.get_playmakers(),
+        "tackles_won_per_90_adj_ema_20":                                               Position.get_defenders(),
+        "interceptions_per_90_adj_ema_20":                                             Position.get_defenders(),
+        "ball_recoveries_per_90_adj_ema_20":                                           Position.get_defenders(),
+        "blocks_per_90_adj_ema_20":                                                    Position.get_defenders(),
+        "challenges_lost_per_90_adj_ema_20":                                           Position.get_defenders(),
+        "aerials_won_per_90_ema_20":                                                   Position.get_bombers(),
+        "aerials_lost_per_90_ema_20/(aerials_won_per_90_ema_20+aerials_lost_per_90_ema_20)": Position.get_bombers(),
+        "gk_psxg_per_90_ema_20-gk_goals_against_per_90_ema_20":                       Position.get_goalkeeper(),
+        "gk_crosses_stopped_per_90_ema_20/gk_crosses_per_90_ema_20":                  Position.get_goalkeeper(),
+        "gk_def_actions_outside_pen_area_per_90_ema_20":                              Position.get_goalkeeper(),
     }
 
-    EMPIRICAL_BENCHMARKS = {
+    ELITE_THRESHOLDS = {
         "npxg_per_90_ema_20":                                                          0.8,
         "shots_on_target_per_90_ema_20":                                               1.5,
         "non_penalty_goals_per_90_ema_20":                                             0.8,
@@ -78,38 +72,19 @@ class FeatureQuantiler:
         "gk_def_actions_outside_pen_area_per_90_ema_20":                              2.0,
     }
 
-    def __init__(self, ):
-        self.quantiles = {}
+    def build(self, df: pd.DataFrame, quantile: float = 0.98, decimals: Optional[int] = DEFAULT_DECIMALS) -> Dict[str, float]:
+        quantiles = {}
 
+        for feature, positions in self.POSITION_SCOPE.items():
+            feature_series = df.eval(feature)
+            position_mask = df["position"].isin(positions)
 
-    @cached_property
-    def predefined_positions(self) -> set:
-        return {pos for positions in self.FEATURE_POSITION_MAPPING.values() for pos in positions}
-
-    def calculate(self, df: pd.DataFrame, quantile: float = 0.98, decimals: Optional[int] = DEFAULT_DECIMALS) -> Dict[str, float]:
-        observed_positions = set(df[PRIMARY_POSITION_COL].dropna().unique())
-        unexpected_positions = observed_positions - self.predefined_positions
-        if unexpected_positions:
-            self.logger.warning(f"Found unexpected positions in data: {sorted(unexpected_positions)}.")
-
-        for feature in self.FEATURE_POSITION_MAPPING.keys():
-            if feature not in df.columns:
-                calculated_series = df.eval(feature)
-            else:
-                calculated_series = df[feature]
-
-            positions = self.FEATURE_POSITION_MAPPING[feature]
-            position_mask = df[PRIMARY_POSITION_COL].isin(positions)
-
-            filtered_series = calculated_series[position_mask]
-            valid_data = filtered_series.replace([np.inf, -np.inf], np.nan).dropna()
-
+            valid_data = feature_series[position_mask].replace([np.inf, -np.inf], np.nan).dropna()
             if valid_data.empty:
-                position_info = f"positions {positions}" if positions else "all positions"
-                raise ValueError(f"Feature {feature} has no valid data after filtering by {position_info}")
+                raise ValueError(f"Feature {feature} has no valid data")
 
             quantile_val = valid_data.quantile(quantile)
-            if quantile_val == 0:
+            if quantile_val <= 0:
                 max_val = valid_data.max()
                 quantile_val = max_val if max_val > 0 else 1.0
 
@@ -119,14 +94,12 @@ class FeatureQuantiler:
             if quantile_val < EPSILON:
                 raise ValueError(f"Quantile value for {feature} is less than EPSILON: {quantile_val}")
 
-            self.quantiles[feature] = quantile_val
+            quantiles[feature] = quantile_val
 
-        self.logger.info(f"Feature Quantiler: {json.dumps(self.quantiles, indent=4, ensure_ascii=False)}")
-        self.logger.info(f"Empirical Benchmarks: {json.dumps(self.EMPIRICAL_BENCHMARKS, indent=4, ensure_ascii=False)}")
+        self.logger.info(f"Empirical THRESHOLDS: {json.dumps(self.ELITE_THRESHOLDS, indent=4, ensure_ascii=False)}")
+        self.logger.info(f"Actual THRESHOLDS: {json.dumps(quantiles, indent=4, ensure_ascii=False)}")
 
-        return self.quantiles
-
-
+        return quantiles
 
 class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
     TIME_SCALE_BASED_FEATURES = [
@@ -230,81 +203,104 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
         self.max_season = max_season
         self.quantiler = FeatureQuantiler()
 
-    def load(self) -> Optional[pd.DataFrame]:
+    def _load_data_frame(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
-            query = session.query(
-                PlayerMatchStats,
-                MatchResult
+            results = session.query(
+                Fixture,
+                MatchPlayerStat,
+                MatchLineup
             ).join(
-                MatchResult,
-                PlayerMatchStats.match_code == MatchResult.match_code
+                MatchPlayerStat,
+                MatchPlayerStat.match_id == Fixture.match_id
+            ).join(
+                MatchLineup,
+                and_(
+                    MatchLineup.match_id == MatchPlayerStat.match_id,
+                    MatchLineup.member_id == MatchPlayerStat.player_id
+                )
             ).filter(
-                MatchResult.comp_code == self.league_id,
-                MatchResult.season >= self.min_season,
-                MatchResult.season <= self.max_season,
-                MatchResult.match_status.in_(MatchStatus.natural_finals()),
-                ~PlayerMatchStats.position.like('GK%')
-            ).order_by(MatchResult.kickoff_time, PlayerMatchStats.player_code)
+                Fixture.league_id == self.league_id,
+                Fixture.season >= self.min_season,
+                Fixture.season <= self.max_season,
+                Fixture.match_status.in_(MatchStatus.natural_finals()),
+            ).order_by(Fixture.kickoff_time, MatchPlayerStat.player_id).all()
 
-            results = query.all()
-
-            data = []
-            for row in results:
-                player_stat = row[0]
-                match_result = row[1]
-
+            records = []
+            for fixture, player_stat, lineup in results:
                 record = {
-                    "match_code": match_result.match_code,
-                    "season": match_result.season,
-                    "comp_name": match_result.comp_name,
-                    "kickoff_time": match_result.kickoff_time,
-                    "venue": match_result.venue,
-                    "home_team": match_result.home_team,
-                    "home_code": match_result.home_code,
-                    "away_team": match_result.away_team,
-                    "away_code": match_result.away_code,
-                    "home_possession": match_result.home_possession,
-                    "away_possession": match_result.away_possession,
-                    "notes": match_result.notes,
-                    "player_code": player_stat.player_code,
-                    "team_code": player_stat.team_code,
+                    "match_id": fixture.match_id,
+                    "season": fixture.season,
+                    "kickoff_time": fixture.kickoff_time,
+                    "home_team": fixture.home_team,
+                    "home_id": fixture.home_id,
+                    "away_team": fixture.away_team,
+                    "away_id": fixture.away_id,
+                    "team_id": player_stat.team_id,
+                    "player_id": player_stat.player_id,
                     "player_name": player_stat.player_name,
-                    "position": player_stat.position,
-                    "minutes": player_stat.minutes,
-                    "is_starter": player_stat.is_starter,
-                    "goals": player_stat.goals,
-                    "penalties_made": player_stat.penalties_made,
+                    "is_starter": lineup.is_starter,
+                    "position": lineup.position,
+                    "rating": player_stat.rating,
+                    "fantasy_points": player_stat.fantasy_points,
+                    "minutes": player_stat.minutes_played,
                     "shots": player_stat.shots,
                     "shots_on_target": player_stat.shots_on_target,
-                    "npxg": player_stat.npxg,
-                    "xg_assist": player_stat.xg_assist,
-                    "shot_creating_actions": player_stat.shot_creating_actions,
-                    "progressive_passes": player_stat.progressive_passes,
-                    "key_passes": player_stat.key_passes,
-                    "progressive_carries": player_stat.progressive_carries,
-                    "take_ons_won": player_stat.take_ons_won,
-                    "fouls_drawn": player_stat.fouls_drawn,
+                    "blocked_shots": player_stat.blocked_shots,
+                    "touches": player_stat.touches,
+                    "touches_opp_box": player_stat.touches_opp_box,
+                    "passes_into_final_third": player_stat.passes_into_final_third,
+                    "passes": player_stat.passes,
+                    "passes_completed": player_stat.passes_completed,
+                    "long_passes": player_stat.long_passes,
+                    "long_passes_completed": player_stat.long_passes_completed,
                     "dispossessed": player_stat.dispossessed,
-                    "miscontrols": player_stat.miscontrols,
+                    "chances_created": player_stat.chances_created,
+                    "goals": player_stat.goals,
+                    "penalty_goals": player_stat.penalty_goals,
+                    "assists": player_stat.assists,
+                    "npxg": player_stat.npxg,
+                    "xg": player_stat.xg,
+                    "xgot": player_stat.xgot,
+                    "xa": player_stat.xa,
                     "tackles": player_stat.tackles,
-                    "tackles_won": player_stat.tackles_won,
                     "blocks": player_stat.blocks,
+                    "clearances": player_stat.clearances,
+                    "headed_clearance": player_stat.headed_clearance,
                     "interceptions": player_stat.interceptions,
-                    "ball_recoveries": player_stat.ball_recoveries,
-                    "challenges_lost": player_stat.challenges_lost,
+                    "recoveries": player_stat.recoveries,
+                    "dribbled_past": player_stat.dribbled_past,
+                    "duels_won": player_stat.duels_won,
+                    "duels_lost": player_stat.duels_lost,
+                    "ground_duels": player_stat.ground_duels,
+                    "ground_duels_won": player_stat.ground_duels_won,
+                    "aerials": player_stat.aerials,
                     "aerials_won": player_stat.aerials_won,
-                    "aerials_lost": player_stat.aerials_lost
+                    "fouls_suffered": player_stat.fouls_suffered,
+                    "fouls_committed": player_stat.fouls_committed,
+                    "saves": player_stat.saves,
+                    "goals_conceded": player_stat.goals_conceded,
+                    "xgot_faced": player_stat.xgot_faced,
+                    "goals_prevented": player_stat.goals_prevented,
+                    "keeper_sweeper": player_stat.keeper_sweeper,
+                    "keeper_high_claim": player_stat.keeper_high_claim,
+                    "keeper_diving_save": player_stat.keeper_diving_save,
+                    "saves_inside_box": player_stat.saves_inside_box,
+                    "punches": player_stat.punches,
+                    "throws": player_stat.throws
                 }
+                records.append(record)
 
-                data.append(record)
+            if records:
+                return pd.DataFrame(records)
 
-            return data
+            return None
 
-    def build(self, df: pd.DataFrame) -> Optional[pd.DataFrame]:
-        df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
+    def build(self) -> Optional[pd.DataFrame]:
+        df = self._load_data_frame()
 
-        FormulaDeriver(df).mutate("non_penalty_goals", "goals - penalties_made")
-        TimeScaleDeriver(df).scale(self.TIME_SCALE_BASED_FEATURES, exposure_col="minutes")
+        FormulaDeriver(df).mutate("np_goals", "goals - penalty_goals")
+
+        # TimeScaleDeriver(df).scale(self.TIME_SCALE_BASED_FEATURES, exposure_col="minutes_played")
 
         df["opponent_possession"] = np.where(
             df[TEAM_CODE_COL] == df[HOME_CODE_COL],
@@ -322,10 +318,11 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
             deriver.derive_ema(feature, span=20, min_periods=2)
 
         df = deriver.df
-        benchmarks = self.quantiler.calculate(df)
+
+        elite_thresholds = self.quantiler.build(df)
         for name, template in self.ABILITY_FORMULAS.items():
-            form_formula = template.format(span=5, epsilon=EPSILON).format(**benchmarks)
-            ability_formula = template.format(span=20, epsilon=EPSILON).format(**benchmarks)
+            form_formula = template.format(span=5, epsilon=EPSILON).format(**elite_thresholds)
+            ability_formula = template.format(span=20, epsilon=EPSILON).format(**elite_thresholds)
             FormulaDeriver(df).mutate(f"{name}_form", form_formula)
             FormulaDeriver(df).mutate(f"{name}_ability", ability_formula)
 
@@ -551,11 +548,11 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
 
             return data
 
-    def build(self, df: pd.DataFrame) -> Optional[pd.DataFrame]:
+    def transform(self, df: pd.DataFrame) -> Optional[pd.DataFrame]:
         df[PRIMARY_POSITION_COL] = df[POSITION_COL].str.split(",").str[0].str.strip()
         DefaultImputer(df).impute("gk_def_actions_outside_pen_area", 0)
 
-        TimeScaleDeriver(df).scale(self.TIME_SCALE_BASED_FEATURES, exposure_col="minutes")
+        # TimeScaleDeriver(df).scale(self.TIME_SCALE_BASED_FEATURES, exposure_col="minutes")
 
         deriver = PlayerTimeSeriesDeriver(df)
         deriver.derive_rest_days()
@@ -564,7 +561,7 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
             deriver.derive_ema(feature, span=20, min_periods=2)
 
         df = deriver.df.reset_index()
-        benchmarks = self.quantiler.calculate(df)
+        benchmarks = self.quantiler.build(df)
         for name, template in self.ABILITY_FORMULAS.items():
             form_formula = template.format(span=5, epsilon=EPSILON).format(**benchmarks)
             ability_formula = template.format(span=20, epsilon=EPSILON).format(**benchmarks)
@@ -574,12 +571,12 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
         return ColumnFilter(df).keep(self.REQUIRED_FEATURES).df
 
 
-# class GoalkeeperPredictFeatureExtractor(GoalkeeperFeatureBuilder):
-#     def __init__(self, home_code: str, away_code: str, kickoff_time: datetime) -> None:
-#         super().__init__()
-#         self.home_code = home_code
-#         self.away_code = away_code
-#         self.kickoff_time = kickoff_time
+class GoalkeeperPredictFeatureBuilder(GoalkeeperFeatureBuilder):
+    def __init__(self, home_code: str, away_code: str, kickoff_time: datetime) -> None:
+        super().__init__()
+        self.home_code = home_code
+        self.away_code = away_code
+        self.kickoff_time = kickoff_time
 
     # def query_raw_data(self, home_code: str, away_code: str, kickoff_time: datetime) -> List[Dict[str, Any]]:
     #     with self.db.get_session() as session:

@@ -1,10 +1,10 @@
 import numpy as np
 from typing import List, Optional
-from ...transforms import BaseDeriver, FormulaDeriver
+from ...transforms import BaseTransform, FormulaDeriver
 from ...constants import DEFAULT_DECIMALS
 
 
-class EntropyDeriver(BaseDeriver):
+class EntropyDeriver(BaseTransform):
     def derive(self, feature: str, probability_cols: List[str], decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
         self.ensure_column_does_not_exist(feature)
 
@@ -23,7 +23,7 @@ class EntropyDeriver(BaseDeriver):
         self.logger.info(f"Created {feature} from probability columns: {probability_cols}")
 
 
-class OddsDeriver(BaseDeriver):
+class OddsDeriver(BaseTransform):
     ODDS_FEATURES = [
         ("home_open_implied", "1 / home_open_odds"),
         ("draw_open_implied", "1 / draw_open_odds"),
