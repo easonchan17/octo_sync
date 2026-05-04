@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.fotmob.fixture import Fixture
-from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat
+from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat
 from ..base_dao import BaseDao
 from core.types.enums import MatchStatus
 
@@ -155,6 +155,7 @@ class MatchDao(BaseDao):
         lineup = parsed_data.get("lineup")
         match_stats = parsed_data.get("match_stats")
         player_stats = parsed_data.get("player_stats")
+        shot_stats = parsed_data.get('shot_stats')
 
         with self.db.get_session() as session:
             if lineup:
@@ -181,6 +182,9 @@ class MatchDao(BaseDao):
 
             if player_stats:
                 self._sync_player_stats(session, match_id, player_stats)
+
+            if shot_stats:
+                self._sync_shot_stats(session, match_id, shot_stats)
 
     def _sync_lineup(self, session, match_id: int, venue: str, lineup: List[Dict[str, Any]]) -> None:
         insert_stmt = insert(MatchLineup).values(lineup)
@@ -246,3 +250,25 @@ class MatchDao(BaseDao):
         result = session.execute(insert_stmt)
         upserted_count = result.rowcount
         self.logger.debug(f"Sync match {match_id} player stats completed. upserted: {upserted_count}")
+
+    def _sync_shot_stats(self, session, match_id: int, shot_stats: List[Dict[str, Any]]) -> None:
+        insert_stmt = insert(ShotStat).values(shot_stats)
+        assignment, where_clause = self.build_upsert_clauses(
+            ShotStat,
+            insert_stmt,
+            {
+                ShotStat.id.key,
+                ShotStat.created_at.key,
+                ShotStat.match_id.key,
+                ShotStat.event_id.key,
+                ShotStat.updated_at.key
+            }
+        )
+        insert_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=[ShotStat.match_id.key, ShotStat.event_id.key],
+            set_=assignment,
+            where=where_clause
+        )
+        result = session.execute(insert_stmt)
+        upserted_count = result.rowcount
+        self.logger.debug(f"Sync match {match_id} shot stats completed. upserted: {upserted_count}")

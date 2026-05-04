@@ -11,16 +11,6 @@ from .odds import OddsDeriver
 from .base import BaseFeatureBuilder
 
 class MatchFeatureBuilder(BaseFeatureBuilder):
-
-    # NOT_NONE_FEATURES = [
-    #     "home_rest_days",
-    #     "away_rest_days",
-    #     "home_gf_ema_5",
-    #     "away_gf_ema_5",
-    #     "home_venue_dependency",
-    #     "away_venue_dependency"
-    # ]
-
     FORMULA_BASED_FEATURES = [
         ("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5"),
         ("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5"),
@@ -115,8 +105,13 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
     ]
 
     REQUIRED_FEATURES = [
-        "kickoff_time", "comp_name", "match_code", "page_url", "match_report",
-        "home_team", "home_code", "away_team", "away_code", "home_point", "target",
+        "kickoff_time",
+        "comp_name",
+        "match_code",
+        "home_team", "home_code",
+        "away_team", "away_code",
+        "home_point",
+        "target",
         "home_elo_rating", "away_elo_rating", "elo_rating_diff", "home_net_advantage", "home_elo_expectancy", "match_balance",
         "home_rest_days", "away_rest_days", "rest_days_diff",
         "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
@@ -151,39 +146,12 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "home_log_return", "ah_home_log_return",
         "home_bias_ratio",
         "ah_line_change"
-        # "home_gsaa_ema_5", "away_gsaa_ema_5", "gsaa_ema_5_diff",
-        # "home_possession_ema_5", "away_possession_ema_5", "possession_ema_5_diff",
-        # "home_passes_ema_5", "away_passes_ema_5", "passes_ema_5_diff",
-        # "home_xg_assist_ema_5", "away_xg_assist_ema_5", "xg_assist_ema_5_diff",
-        # "home_passes_progressive_ema_5", "away_passes_progressive_ema_5", "passes_progressive_ema_5_diff",
-        # "home_pass_xa_ema_5", "away_pass_xa_ema_5", "pass_xa_ema_5_diff",
-        # "home_challenges_ema_5", "away_challenges_ema_5", "challenges_ema_5_diff",
-        # "home_challenges_lost_ema_5", "away_challenges_lost_ema_5", "challenges_lost_ema_5_diff",
-        # "home_gk_psxg_ema_5", "away_gk_psxg_ema_5", "gk_psxg_ema_5_diff",
-        # "home_gk_crosses_stopped_ema_5", "away_gk_crosses_stopped_ema_5", "gk_crosses_stopped_ema_5_diff",
-        # "home_gk_crosses_ema_5", "away_gk_crosses_ema_5", "gk_crosses_ema_5_diff",
-        # "home_gk_def_actions_outside_pen_area_ema_5", "away_gk_def_actions_outside_pen_area_ema_5", "gk_def_actions_outside_pen_area_ema_5_diff",
-        # "home_safe_control_ema_5", "away_safe_control_ema_5", "safe_control_ema_5_diff",
-        # "home_long_passes_acc_ema_5", "away_long_passes_acc_ema_5", "long_passes_acc_ema_5_diff",
-        # "home_long_passes_share_ema_5", "away_long_passes_share_ema_5", "long_passes_share_ema_5_diff",
-        # "home_box_penetration_ratio_ema_5", "away_box_penetration_ratio_ema_5", "box_penetration_ratio_ema_5_diff",
-        # "home_passes_progressive_rate_ema_5", "away_passes_progressive_rate_ema_5", "passes_progressive_rate_ema_5_diff",
-        # "home_passes_progressive_share_ema_5", "away_passes_progressive_share_ema_5", "passes_progressive_share_ema_5_diff",
-        # "home_shots_acc_ratio_ema_5", "away_shots_acc_ratio_ema_5", "shots_acc_ratio_ema_5_diff",
-        # "home_shots_conversion_ratio_ema_5", "away_shots_conversion_ratio_ema_5", "shots_conversion_ratio_ema_5_diff",
-        # "home_goal_to_xg_ema_5", "away_goal_to_xg_ema_5", "goal_to_xg_ema_5_diff",
-        # "home_tackles_success_ratio_ema_5", "away_tackles_success_ratio_ema_5", "tackles_success_ratio_ema_5_diff",
-        # "home_challenges_success_ratio_ema_5", "away_challenges_success_ratio_ema_5", "challenges_success_ratio_ema_5_diff",
-        # "home_high_press_ratio_ema_5", "away_high_press_ratio_ema_5", "high_press_ratio_ema_5_diff",
-        # "home_disruption_volume_ema_5", "away_disruption_volume_ema_5", "disruption_volume_ema_5_diff",
-        # "home_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ratio_ema_5", "gk_crosses_stopped_ratio_ema_5_diff",
-        # "home_set_piece_sca_ratio_ema_5", "away_set_piece_sca_ratio_ema_5", "set_piece_sca_ratio_ema_5_diff",
-        # "home_take_on_sca_ratio_ema_5", "away_take_on_sca_ratio_ema_5", "take_on_sca_ratio_ema_5_diff"
     ]
 
 class TeamFormBuilder:
     EMA_BASED_FEATURES = [
-        "gf", "xg",
+        "score",
+        "xg",
         "possession",
         "sca", "sca_passes_dead", "sca_take_ons",
         "passes", "passes_total_distance", "passes_progressive",
@@ -356,7 +324,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
         self.team_form_builder = TeamFormBuilder()
         self.elo_rating_builder = EloRatingBuilder()
 
-    def load(self) -> Optional[pd.DataFrame]:
+    def _load_data_frame(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
             HomeElo = aliased(EloRating)
             AwayElo = aliased(EloRating)
@@ -393,30 +361,90 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
                 if stat:
                     record.update({
-                        "home_xg": stat.home_xg,
-                        "away_xg": stat.away_xg,
+                        "home_formation": stat.home_formation,
+                        "away_formation": stat.away_formation,
                         "home_possession": stat.home_possession,
                         "away_possession": stat.away_possession,
+                        "home_penalty_goals": stat.home_penalty_goals,
+                        "away_penalty_goals": stat.away_penalty_goals,
                         "home_shots": stat.home_shots,
                         "away_shots": stat.away_shots,
                         "home_shots_on_target": stat.home_shots_on_target,
                         "away_shots_on_target": stat.away_shots_on_target,
+                        "home_shots_off_target": stat.home_shots_off_target,
+                        "away_shots_off_target": stat.away_shots_off_target,
+                        "home_hit_woodwork": stat.home_hit_woodwork,
+                        "away_hit_woodwork": stat.away_hit_woodwork,
+                        "home_shots_inside_box": stat.home_shots_inside_box,
+                        "away_shots_inside_box": stat.away_shots_inside_box,
+                        "home_shots_outside_box": stat.home_shots_outside_box,
+                        "away_shots_outside_box": stat.away_shots_outside_box,
+                        "home_big_chances": stat.home_big_chances,
+                        "away_big_chances": stat.away_big_chances,
+                        "home_big_chances_missed": stat.home_big_chances_missed,
+                        "away_big_chances_missed": stat.away_big_chances_missed,
+                        "home_xg": stat.home_xg,
+                        "away_xg": stat.away_xg,
+                        "home_xg_open_play": stat.home_xg_open_play,
+                        "away_xg_open_play": stat.away_xg_open_play,
+                        "home_xg_set_play": stat.home_xg_set_play,
+                        "away_xg_set_play": stat.away_xg_set_play,
+                        "home_npxg": stat.home_npxg,
+                        "away_npxg": stat.away_npxg,
+                        "home_xg_on_target": stat.home_xg_on_target,
+                        "away_xg_on_target": stat.away_xg_on_target,
                         "home_passes": stat.home_passes,
                         "away_passes": stat.away_passes,
                         "home_passes_completed": stat.home_passes_completed,
                         "away_passes_completed": stat.away_passes_completed,
-                        "home_passes_long": stat.home_long_passes,
-                        "away_passes_long": stat.away_long_passes,
-                        "home_passes_completed_long": stat.home_long_passes_completed,
-                        "away_passes_completed_long": stat.away_long_passes_completed,
+                        "home_own_half_passes": stat.home_own_half_passes,
+                        "away_own_half_passes": stat.away_own_half_passes,
+                        "home_opp_half_passes": stat.home_opp_half_passes,
+                        "away_opp_half_passes": stat.away_opp_half_passes,
+                        "home_long_passes": stat.home_long_passes,
+                        "away_long_passes": stat.away_long_passes,
+                        "home_long_passes_completed": stat.home_long_passes_completed,
+                        "away_long_passes_completed": stat.away_long_passes_completed,
+                        "home_crosses": stat.home_crosses,
+                        "away_crosses": stat.away_crosses,
+                        "home_crosses_completed": stat.home_crosses_completed,
+                        "away_crosses_completed": stat.away_crosses_completed,
+                        "home_throws": stat.home_throws,
+                        "away_throws": stat.away_throws,
+                        "home_corners": stat.home_corners,
+                        "away_corners": stat.away_corners,
                         "home_tackles": stat.home_tackles,
                         "away_tackles": stat.away_tackles,
                         "home_interceptions": stat.home_interceptions,
                         "away_interceptions": stat.away_interceptions,
-                        "home_blocks": stat.home_shot_blocks,
-                        "away_blocks": stat.away_shot_blocks,
+                        "home_shot_blocks": stat.home_shot_blocks,
+                        "away_shot_blocks": stat.away_shot_blocks,
                         "home_clearances": stat.home_clearances,
                         "away_clearances": stat.away_clearances,
+                        "home_keeper_saves": stat.home_keeper_saves,
+                        "away_keeper_saves": stat.away_keeper_saves,
+                        "home_duels_won": stat.home_duels_won,
+                        "away_duels_won": stat.away_duels_won,
+                        "home_ground_duels": stat.home_ground_duels,
+                        "away_ground_duels": stat.away_ground_duels,
+                        "home_ground_duels_won": stat.home_ground_duels_won,
+                        "away_ground_duels_won": stat.away_ground_duels_won,
+                        "home_aerials": stat.home_aerials,
+                        "away_aerials": stat.away_aerials,
+                        "home_aerials_won": stat.home_aerials_won,
+                        "away_aerials_won": stat.away_aerials_won,
+                        "home_dribbles": stat.home_dribbles,
+                        "away_dribbles": stat.away_dribbles,
+                        "home_dribbles_completed": stat.home_dribbles_completed,
+                        "away_dribbles_completed": stat.away_dribbles_completed,
+                        "home_offsides": stat.home_offsides,
+                        "away_offsides": stat.away_offsides,
+                        "home_fouls_committed": stat.home_fouls_committed,
+                        "away_fouls_committed": stat.away_fouls_committed,
+                        "home_yellow_cards": stat.home_yellow_cards,
+                        "away_yellow_cards": stat.away_yellow_cards,
+                        "home_red_cards": stat.home_red_cards,
+                        "away_red_cards": stat.away_red_cards,
                     })
                 if home_elo:
                     record.update({
@@ -435,7 +463,9 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
             return None
 
-    def build(self, df: pd.DataFrame) -> Optional[pd.DataFrame]:
+    def build(self) -> Optional[pd.DataFrame]:
+        df = self._load_data_frame()
+
         self._add_team_point_and_target(df)
 
         self.team_form_builder.build(df)

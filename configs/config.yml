@@ -47,7 +47,6 @@ artifact:
   dataset:
     training: artifacts/dataset/training
     prediction: artifacts/dataset/prediction
-    odds: artifacts/dataset/odds
 
 training:
   tasks:

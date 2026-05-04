@@ -7,7 +7,7 @@ from .builders.feature.player import (
     OutfieldPlayerPredictFeatureBuilder,
     GoalkeeperFeatureBuilder,
     GoalkeeperTrainFeatureBuilder,
-    GoalkeeperPredictFeatureExtractor,
+    GoalkeeperPredictFeatureBuilder,
 )
 from .builders.sample.base import BaseSampleBuilder
 from .builders.sample.train import TrainSampleBuilder
@@ -25,7 +25,7 @@ __all__ = [
     'OutfieldPlayerPredictFeatureBuilder',
     'GoalkeeperFeatureBuilder',
     'GoalkeeperTrainFeatureBuilder',
-    'GoalkeeperPredictFeatureExtractor',
+    'GoalkeeperPredictFeatureBuilder',
     'BaseSampleBuilder',
     'TrainSampleBuilder',
     'PredictSampleBuilder',

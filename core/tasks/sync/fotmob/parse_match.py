@@ -5,7 +5,7 @@ from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_registry import TaskRegistry
 from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.tasks.poll_task import PollTask, CrawlParams
-from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat
+from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat, ShotStat
 from core.tasks.sync.fotmob.utils import extract_status
 from core.store.postgres.daos.fotmob import MatchDao
 
@@ -415,7 +415,7 @@ class FormationResolver:
         return layers
 
 class MatchParser:
-    MATCH_STATS_MAPPING = {
+    MATCH_STATS_EXTRACTOR = {
         "BallPossesion": [(("home_possession", "away_possession"), extract_values)],
         "expected_goals": [(("home_xg", "away_xg"), extract_values)],
         "total_shots": [(("home_shots", "away_shots"), extract_values)],
@@ -471,7 +471,66 @@ class MatchParser:
         "expected_goals_non_penalty": [(("home_npxg", "away_npxg"), extract_values)],
     }
 
-    PLAYER_STATS_MAPPING = {
+    SHOT_STATS_EXTRACTOR = {
+        "id": [("event_id", lambda x: x)],
+        "period": [("period", lambda x: x)],
+        "min": [("min", lambda x: x)],
+        "minAdded": [("min_added", lambda x: x)],
+        "x": [("x", lambda x: x)],
+        "y": [("y", lambda x: x)],
+        "teamId": [("team_id", lambda x: x)],
+        "keeperId": [("keeper_id", lambda x: x)],
+        "playerId": [("player_id", lambda x: x)],
+        "shotType": [("shot_type", lambda x: x)],
+        "eventType": [("event_type", lambda x: x)],
+        "situation": [("situation", lambda x: x)],
+        "isBlocked": [("is_blocked", lambda x: x)],
+        "isOwnGoal": [("is_own_goal", lambda x: x)],
+        "isOnTarget": [("is_on_target", lambda x: x)],
+        "isSavedOffLine": [("is_saved_off_line", lambda x: x)],
+        "isFromInsideBox": [("is_inside_box", lambda x: x)],
+        "expectedGoals": [("xg", lambda x: x)],
+        "expectedGoalsOnTarget": [("xgot", lambda x: x)],
+    }
+
+    SHOT_STATS_COUNTER = {
+        "shots_inside_box":         lambda shot: 1 if shot.get("isFromInsideBox") is True else 0,
+        "shots_freekick":           lambda shot: 1 if shot.get("situation") == "FreeKick" else 0,
+        "shots_fastbreak":          lambda shot: 1 if shot.get("situation") == "FastBreak" else 0,
+        "shots_setpiece":           lambda shot: 1 if shot.get("situation") == "SetPiece" else 0,
+        "shots_corner":             lambda shot: 1 if shot.get("situation") == "FromCorner" else 0,
+        "shots_header":             lambda shot: 1 if shot.get("shotType") == "Header" else 0,
+        "shots_penalty":            lambda shot: 1 if shot.get("situation") == "Penalty" else 0,
+        "shots_individual_play":    lambda shot: 1 if shot.get("situation") == "IndividualPlay" else 0,
+        "shots_throw_in_set_piece": lambda shot: 1 if shot.get("situation") == "ThrowInSetPiece" else 0,
+        "goals_inside_box":         lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("isFromInsideBox") is True else 0,
+        "goals_freekick":           lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("situation") == "FreeKick" else 0,
+        "goals_fastbreak":          lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("situation") == "FastBreak" else 0,
+        "goals_setpiece":           lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("situation") == "SetPiece" else 0,
+        "goals_corner":             lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("situation") == "FromCorner" else 0,
+        "goals_header":             lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("shotType") == "Header" else 0,
+        "goals_penalty":            lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("situation") == "Penalty" else 0,
+        "goals_individual_play":    lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("situation") == "IndividualPlay" else 0,
+        "goals_throw_in_set_piece": lambda shot: 1 if shot.get("eventType") == "Goal" and shot.get("situation") == "ThrowInSetPiece" else 0,
+        "xg_inside_box":            lambda shot: (shot.get("expectedGoals") or 0) if shot.get("isFromInsideBox") is True else 0,
+        "xg_freekick":              lambda shot: (shot.get("expectedGoals") or 0) if shot.get("situation") == "FreeKick" else 0,
+        "xg_fastbreak":             lambda shot: (shot.get("expectedGoals") or 0) if shot.get("situation") == "FastBreak" else 0,
+        "xg_setpiece":              lambda shot: (shot.get("expectedGoals") or 0) if shot.get("situation") == "SetPiece" else 0,
+        "xg_corner":                lambda shot: (shot.get("expectedGoals") or 0) if shot.get("situation") == "FromCorner" else 0,
+        "xg_header":                lambda shot: (shot.get("expectedGoals") or 0) if shot.get("shotType") == "Header" else 0,
+        "xg_individual_play":       lambda shot: (shot.get("expectedGoals") or 0) if shot.get("situation") == "IndividualPlay" else 0,
+        "xg_throw_in_set_piece":    lambda shot: (shot.get("expectedGoals") or 0) if shot.get("situation") == "ThrowInSetPiece" else 0,
+        "xgot_inside_box":          lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("isFromInsideBox") is True else 0,
+        "xgot_freekick":            lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("situation") == "FreeKick" else 0,
+        "xgot_fastbreak":           lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("situation") == "FastBreak" else 0,
+        "xgot_setpiece":            lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("situation") == "SetPiece" else 0,
+        "xgot_corner":              lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("situation") == "FromCorner" else 0,
+        "xgot_header":              lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("shotType") == "Header" else 0,
+        "xgot_individual_play":     lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("situation") == "IndividualPlay" else 0,
+        "xgot_throw_in_set_piece":  lambda shot: (shot.get("expectedGoalsOnTarget") or 0) if shot.get("situation") == "ThrowInSetPiece" else 0,
+    }
+
+    PLAYER_STATS_EXTRACTOR = {
         "rating_title": [("rating", extract_value)],
         "minutes_played": [("minutes_played", extract_value)],
         "goals": [("goals", extract_value)],
@@ -483,7 +542,7 @@ class MatchParser:
         "fantasy_points": [("fantasy_points", extract_value)],
         "total_shots": [("shots", extract_value)],
         "ShotsOnTarget": [("shots_on_target", extract_value)],
-        "blocked_shots": [("blocked_shots", extract_value)],
+        "blocked_shots": [("shots_blocked", extract_value)],
         "touches": [("touches", extract_value)],
         "touches_opp_box": [("touches_opp_box", extract_value)],
         "passes_into_final_third": [("passes_into_final_third", extract_value)],
@@ -538,8 +597,6 @@ class MatchParser:
             "countryName": [("country_name", lambda x: x)],
             "countryCode": [("country_code", lambda x: x)],
             "performance": [("rating", lambda x: x.get("rating"))],
-            # "horizontalLayout": [("horizontal_layout", lambda x: x)],
-            # "verticalLayout": [("vertical_layout", lambda x: x)],
             "positionId": [("position_id", lambda x: x)],
             "position": [("position", lambda x: x)],
             "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x)],
@@ -576,9 +633,17 @@ class MatchParser:
             self.logger.error(f"json data is empty")
             return None
 
-        match_id = json_data.get('general', {}).get('matchId')
+        general = json_data.get('general', {})
+
+        match_id = general.get('matchId')
         if not match_id:
             self.logger.error(f"No match id found in response")
+            return None
+
+        home_id = general.get('homeTeam').get('id')
+        away_id = general.get('awayTeam').get('id')
+        if not home_id or not away_id:
+            self.logger.error(f"No team id found in response")
             return None
 
         content = json_data.get('content', {})
@@ -592,16 +657,19 @@ class MatchParser:
         if raw_lineup is not None:
             result["lineup"] = self._parse_lineup(match_id, raw_lineup)
 
+        home_goals_penalty, away_goals_penalty = 0, 0
+        raw_player_stats = content.get('playerStats')
+        if raw_player_stats is not None:
+            result["player_stats"], result["shot_stats"], home_goals_penalty, away_goals_penalty = self._parse_player_stats(match_id, home_id, away_id, raw_player_stats)
+
         stats_root = content.get('stats')
         periods = stats_root.get('Periods') if stats_root else None
         all_periods = periods.get('All') if periods else None
         stat_groups = all_periods.get('stats') if all_periods else None
         if stat_groups is not None:
             result["match_stats"] = self._parse_match_stats(match_id, stat_groups)
-
-        raw_player_stats = content.get('playerStats')
-        if raw_player_stats is not None:
-            result["player_stats"] = self._parse_player_stats(match_id, raw_player_stats)
+            result["match_stats"]["home_goals_penalty"] = home_goals_penalty
+            result["match_stats"]["away_goals_penalty"] = away_goals_penalty
 
         status = json_data.get('header', {}).get('status')
         match_status, kickoff_time, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
@@ -680,7 +748,7 @@ class MatchParser:
         for stat_group in stat_groups:
             stats = stat_group.get("stats", [])
             for stat in stats:
-                targets = self.MATCH_STATS_MAPPING.get(stat.get("key"))
+                targets = self.MATCH_STATS_EXTRACTOR.get(stat.get("key"))
                 if not targets:
                     continue
                 raw_vals = stat.get("stats", [None, None])
@@ -712,8 +780,16 @@ class MatchParser:
         record["usual_position"] = usual_position
         return record
 
-    def _parse_player_stats(self, match_id: int, player_datas: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
-        records = []
+    def _create_shot_stat_record(self, match_id: int) -> Dict[str, Any]:
+        keys = ShotStat.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
+        record = {key: None for key in keys}
+        record["match_id"] = match_id
+        return record
+
+    def _parse_player_stats(self, match_id: int, home_id: int, away_id: int, player_datas: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], int, int]:
+        player_records = []
+        shot_records = []
+        home_goals_penalty, away_goals_penalty = 0, 0
         for _, player_data in player_datas.items():
             player_id = player_data.get("id")
             player_name = player_data.get("name")
@@ -723,22 +799,42 @@ class MatchParser:
             is_goalkeeper = player_data.get("isGoalkeeper")
             usual_position = player_data.get("usualPosition")
 
-            record = self._create_player_stats_record(
+            player_record = self._create_player_stats_record(
                 match_id, player_id, player_name, opta_id, team_id, position_id, is_goalkeeper, usual_position)
 
             stat_groups = player_data.get("stats", [])
             for stat_group in stat_groups:
                 stats = stat_group.get("stats", {})
                 for _, stat in stats.items():
-                    targets = self.PLAYER_STATS_MAPPING.get(stat.get("key"))
+                    targets = self.PLAYER_STATS_EXTRACTOR.get(stat.get("key"))
                     if not targets:
                         continue
                     raw_val = stat.get("stat", {})
                     for target_key, extractor in targets:
-                        record[target_key] = extractor(raw_val)
-            records.append(record)
-        self.logger.debug(f"Parsed {len(records)} player stats for match {match_id}")
-        return records
+                        player_record[target_key] = extractor(raw_val)
+
+            shot_map = player_data.get("shotmap", [])
+            for shot in shot_map:
+                shot_record = self._create_shot_stat_record(match_id)
+                for source_key, targets in self.SHOT_STATS_EXTRACTOR.items():
+                    raw_val = shot.get(source_key)
+                    for target_key, extractor in targets:
+                        shot_record[target_key] = extractor(raw_val)
+                shot_records.append(shot_record)
+
+                for target_key, counter in self.SHOT_STATS_COUNTER.items():
+                    player_record[target_key] = (player_record[target_key] or 0) + counter(shot)
+
+            player_records.append(player_record)
+
+            goals_penalty = player_record["goals_penalty"] or 0
+            if team_id == home_id:
+                home_goals_penalty += goals_penalty
+            elif team_id == away_id:
+                away_goals_penalty += goals_penalty
+
+        self.logger.debug(f"Parsed {len(player_records)} player stats for match {match_id}")
+        return player_records, shot_records, home_goals_penalty, away_goals_penalty
 
 @TaskRegistry.poll('parse.fotmob.match')
 class ParseMatch(PollTask):
