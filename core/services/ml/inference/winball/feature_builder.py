@@ -7,7 +7,7 @@ from core.types.params import EloParams
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import FotmobFixture, Site, EloRating, PinnacleFixture, Moneyline, Spread
 from core.services.ml.preprocessing.transforms import EloRatingDeriver
-from core.services.ml.preprocessing.builders.feature.odds import OddsDeriver
+from core.services.ml.preprocessing.builders.feature.odds import OddsBuilder
 from core.store.postgres.models.fbref import Fixture as FbrefFixture
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.services.ml.preprocessing import PredictSampleBuilder
@@ -73,7 +73,7 @@ class FeatureBuilder:
         raw_data = {**market_odds, **elo_rating}
         df = pd.DataFrame([raw_data])
 
-        OddsDeriver(df).derive()
+        OddsBuilder(df).build()
         EloRatingDeriver(df).derive()
 
         return df.iloc[0].to_dict()

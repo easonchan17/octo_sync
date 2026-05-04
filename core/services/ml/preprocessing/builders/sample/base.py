@@ -3,18 +3,8 @@ import numpy as np
 from typing import Tuple
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
-from ...transforms import ColumnFilter, FormulaDeriver
-from ...constants import (
-    MATCH_CODE_COL,
-    TEAM_CODE_COL,
-    HOME_CODE_COL,
-    AWAY_CODE_COL,
-    PRIMARY_POSITION_COL,
-    IS_STARTER_COL,
-    IMPUTATION_QUANTILE,
-    EPSILON,
-    DEFAULT_DECIMALS
-)
+from ...transforms import ColumnFilter, FormulaMutator
+from ...constants import IMPUTATION_QUANTILE, EPSILON, DEFAULT_DECIMALS
 
 FINISH_REG_POSITIONS      = ['FW', 'LW', 'RW', 'AM', 'LM', 'RM', 'WB']
 CREATIVITY_REG_POSITIONS  = ['AM', 'CM', 'LM', 'RM', 'DM', 'LW', 'RW', 'WB']
@@ -167,33 +157,33 @@ class BaseSampleBuilder:
         outfield_player_stats_df: pd.DataFrame,
         goalkeeper_stats_df: pd.DataFrame
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        outfield_starters = outfield_player_stats_df[outfield_player_stats_df[IS_STARTER_COL] == True].copy()
+        outfield_starters = outfield_player_stats_df[outfield_player_stats_df["is_starter"] == True].copy()
         if outfield_starters.empty:
             raise ValueError("No outfield starters found")
 
-        outfield_count = outfield_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL]).size()
+        outfield_count = outfield_starters.groupby(["match_id", "team_id"]).size()
         if (outfield_count != 10).any():
             raise ValueError("Outfield starters count is not 10")
 
-        gk_starters = goalkeeper_stats_df[goalkeeper_stats_df[IS_STARTER_COL] == True].copy()
+        gk_starters = goalkeeper_stats_df[goalkeeper_stats_df["is_starter"] == True].copy()
         if gk_starters.empty:
             raise ValueError("No goalkeeper starters found")
 
-        gk_count = gk_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL]).size()
+        gk_count = gk_starters.groupby(["match_id", "team_id"]).size()
         if (gk_count != 1).any():
             raise ValueError("Goalkeeper starters count is not 1")
 
         outfield_stats_map = {}
         for feature in self.OUTFIELD_FEATURES:
-            quantile_by_position = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(IMPUTATION_QUANTILE)
-            outfield_stats_map[feature] = quantile_by_position.round(DEFAULT_DECIMALS).to_dict()
+            # quantile_by_position = outfield_starters.groupby(PRIMARY_POSITION_COL)[feature].quantile(IMPUTATION_QUANTILE)
+            outfield_stats_map[feature] = quantile_by_position.round(DEFAULT_DECIMALS).to_dict() # 存在问题，应该用上赛季对应usual_play_position_id该指标的中位数填充
 
         gk_stats_map = {}
         for feature in self.GK_FEATURES:
             gk_stats_map[feature] = round(float(gk_starters[feature].quantile(IMPUTATION_QUANTILE)), DEFAULT_DECIMALS)
 
         for feature in self.OUTFIELD_FEATURES:
-            fill_values = outfield_starters[PRIMARY_POSITION_COL].map(outfield_stats_map[feature])
+            # fill_values = outfield_starters[PRIMARY_POSITION_COL].map(outfield_stats_map[feature])
             outfield_starters[feature] = outfield_starters[feature].fillna(fill_values)
 
         for feature in self.GK_FEATURES:
@@ -204,10 +194,10 @@ class BaseSampleBuilder:
         for feature in self.HOME_AWAY_DIFF_FEATURES:
             name = f'{feature}_diff'
             formula = f"home_{feature} - away_{feature}"
-            FormulaDeriver(match_stats_df).mutate(name, formula)
+            FormulaMutator(match_stats_df).mutate(name, formula)
 
         for feature, formula in self.FORMULA_BASED_FEATURES:
-            FormulaDeriver(match_stats_df).mutate(feature, formula)
+            FormulaMutator(match_stats_df).mutate(feature, formula)
 
         match_stats_df_for_training = ColumnFilter(match_stats_df).drop(self.EXCLUDED_FEATURES).df
         return match_stats_df, match_stats_df_for_training
@@ -221,42 +211,42 @@ class BaseSampleBuilder:
         agg_rules = {}
 
         for positions, features, agg_func, suffix, fill_value in self.OUTFIELD_AGG_RULES:
-            mask = outfield_starters[PRIMARY_POSITION_COL].isin(positions)
+            mask = outfield_starters["position"].isin(positions)
             for feature in features:
                 tmp_col = f"{feature}{suffix}_tmp"
                 outfield_starters[tmp_col] = outfield_starters[feature].where(mask, fill_value)
                 agg_rules[tmp_col] = agg_func
 
-        team_stats = outfield_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL]).agg(agg_rules).round(DEFAULT_DECIMALS).reset_index()
-        gk_stats = gk_starters.groupby([MATCH_CODE_COL, TEAM_CODE_COL])[self.GK_FEATURES].first().reset_index()
+        team_stats = outfield_starters.groupby(["match_id", "team_id"]).agg(agg_rules).round(DEFAULT_DECIMALS).reset_index()
+        gk_stats = gk_starters.groupby(["match_id", "team_id"])[self.GK_FEATURES].first().reset_index()
 
         rename_dict = {
             col: col.replace('_reg_tmp', '_reg').replace('_max_tmp', '_max').replace('_avg_tmp', '_avg')
             for col in team_stats.columns if '_tmp' in col
         }
         team_stats = team_stats.rename(columns=rename_dict)
-        team_stats = team_stats.merge(gk_stats, on=[MATCH_CODE_COL, TEAM_CODE_COL], how='inner')
+        team_stats = team_stats.merge(gk_stats, on=["match_id", "team_id"], how='inner')
 
         home_stats = team_stats.copy()
         home_stats.columns = [
-            f"home_{col}" if col not in [MATCH_CODE_COL, TEAM_CODE_COL] else col for col in home_stats.columns
+            f"home_{col}" if col not in ["match_id", "team_id"] else col for col in home_stats.columns
         ]
         match_stats_df = match_stats_df.merge(
             home_stats,
-            left_on=[MATCH_CODE_COL, HOME_CODE_COL],
-            right_on=[MATCH_CODE_COL, TEAM_CODE_COL],
+            left_on=["match_id", "team_id"],
+            right_on=["match_id", "team_id"],
             how='inner'
         ).drop(columns=[TEAM_CODE_COL])
 
         away_stats = team_stats.copy()
         away_stats.columns = [
-            f"away_{col}" if col not in [MATCH_CODE_COL, TEAM_CODE_COL] else col for col in away_stats.columns
+            f"away_{col}" if col not in ["match_id", "team_id"] else col for col in away_stats.columns
         ]
         match_stats_df = match_stats_df.merge(
             away_stats,
-            left_on=[MATCH_CODE_COL, AWAY_CODE_COL],
-            right_on=[MATCH_CODE_COL, TEAM_CODE_COL],
+            left_on=["match_id", "team_id"],
+            right_on=["match_id", "team_id"],
             how='inner'
-        ).drop(columns=[TEAM_CODE_COL])
+        ).drop(columns=["team_id"])
 
         return match_stats_df
