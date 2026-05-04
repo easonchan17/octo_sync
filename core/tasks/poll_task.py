@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from core.browser.interceptor_manager import interceptor_manager
 
 class CrawlParams:
-    EARLIEST_SEASON = 2020
+    EARLIEST_SEASON = 2019
 
     POLL_IDLE_SECONDS = 60
 
