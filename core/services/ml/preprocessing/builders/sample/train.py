@@ -1,13 +1,14 @@
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional
 from .base import BaseSampleBuilder
-from core.types.enums import SiteName
+from core.types.enums import SiteName, Position
 from core.services.league import league_service
 from core.utils.pandas_utils import save_dataframe
 from ..feature.match import MatchTrainFeatureBuilder
-from ..feature.player import OutfieldPlayerTrainFeatureBuilder, GoalkeeperTrainFeatureBuilder
+from ..feature.player import PlayerTrainFeatureBuilder
+from ..feature.elo_rating import EloRatingBuilder
 
 class TrainSampleBuilder(BaseSampleBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
@@ -20,8 +21,8 @@ class TrainSampleBuilder(BaseSampleBuilder):
 
         site_league_id = int(league_service.get(self.league_id).site_leagues.get(SiteName.FOTMOB.value).league_id)
         self.match_builder = MatchTrainFeatureBuilder(site_league_id, min_season, max_season)
-        self.outfield_builder = OutfieldPlayerTrainFeatureBuilder(site_league_id, min_season, max_season)
-        self.goalkeeper_builder = GoalkeeperTrainFeatureBuilder(site_league_id, min_season, max_season)
+        self.elo_rating_builder = EloRatingBuilder(site_league_id, min_season, max_season)
+        self.player_builder = PlayerTrainFeatureBuilder(site_league_id, min_season, max_season)
 
     def build_output_path(self, tag: str) -> Path:
         output_dir = Path(self.output_path)
@@ -32,7 +33,6 @@ class TrainSampleBuilder(BaseSampleBuilder):
 
         return output_dir / filename
 
-
     def build(self) -> Optional[pd.DataFrame]:
         try:
             match_stats_df = self.match_builder.build()
@@ -40,29 +40,30 @@ class TrainSampleBuilder(BaseSampleBuilder):
                 self.logger.error("No match stats data found")
                 return None
 
+            elo_df = self.elo_rating_builder.build()
+            if elo_df is None or elo_df.empty:
+                self.logger.error("No elo rating data found")
+                return None
+
+            match_stats_df = match_stats_df.merge(elo_df, on='match_id', how='left')
             output_file = self.build_output_path("match_stats")
             save_dataframe(match_stats_df, output_file)
             self.logger.info(f"Match stats saved to: {str(output_file.resolve())}")
 
-            outfield_player_stats_df = self.outfield_builder.build()
-            if outfield_player_stats_df is None or outfield_player_stats_df.empty:
-                self.logger.error("No outfield player stats data found")
+            player_stats_df = self.player_builder.build()
+            if player_stats_df is None or player_stats_df.empty:
+                self.logger.error("No player stats data found")
                 return None
 
-            output_file = self.build_output_path("outfield_player_stats")
-            save_dataframe(outfield_player_stats_df, output_file)
-            self.logger.info(f"Outfield player stats saved to: {str(output_file.resolve())}")
+            output_file = self.build_output_path("player_stats")
+            save_dataframe(player_stats_df, output_file)
+            self.logger.info(f"Player stats saved to: {str(output_file.resolve())}")
 
-            goalkeeper_stats_df = self.goalkeeper_builder.build()
-            if goalkeeper_stats_df is None or goalkeeper_stats_df.empty:
-                self.logger.error("No goalkeeper stats data found")
-                return None
+            gk_positions = Position.get_goalkeeper()
+            outfield_stats_df = player_stats_df[~player_stats_df["position"].isin(gk_positions)]
+            goalkeeper_stats_df = player_stats_df[player_stats_df["position"].isin(gk_positions)]
 
-            output_file = self.build_output_path("goalkeeper_stats")
-            save_dataframe(goalkeeper_stats_df, output_file)
-            self.logger.info(f"Goalkeeper stats saved to: {str(output_file.resolve())}")
-
-            aggregated_df, aggregated_df_for_training = self.aggregate(match_stats_df, outfield_player_stats_df, goalkeeper_stats_df)
+            aggregated_df, aggregated_df_for_training = self.aggregate(match_stats_df, outfield_stats_df, goalkeeper_stats_df)
             if aggregated_df is None or aggregated_df.empty:
                 self.logger.error("No aggregated stats data found")
                 return None

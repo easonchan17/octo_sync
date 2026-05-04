@@ -1,29 +1,9 @@
-import numpy as np
-from typing import List, Optional
-from ...transforms import BaseTransform, FormulaDeriver
+from typing import Optional
+from .base import BaseFeatureBuilder
+from ...transforms import FormulaMutator
 from ...constants import DEFAULT_DECIMALS
 
-
-class EntropyDeriver(BaseTransform):
-    def derive(self, feature: str, probability_cols: List[str], decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
-        self.ensure_column_does_not_exist(feature)
-
-        for col in probability_cols:
-            self.ensure_column_exists(col)
-
-        p = self.df[probability_cols]
-        term = p * np.log(p.replace(0, 1.0))
-
-        entropy = -term.sum(axis=1, skipna=False)
-
-        if decimals is not None:
-            entropy = entropy.round(decimals)
-
-        self.df[feature] = entropy
-        self.logger.info(f"Created {feature} from probability columns: {probability_cols}")
-
-
-class OddsDeriver(BaseTransform):
+class OddsBuilder(BaseFeatureBuilder):
     ODDS_FEATURES = [
         ("home_open_implied", "1 / home_open_odds"),
         ("draw_open_implied", "1 / draw_open_odds"),
@@ -60,11 +40,18 @@ class OddsDeriver(BaseTransform):
         ("ah_home_log_return", "log(ah_home_close_real / ah_home_open_real)")
     ]
 
-    def derive(self, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
-        for feature, formula in self.ODDS_FEATURES:
-            FormulaDeriver(self.df).mutate(feature, formula, decimals)
+    def _load_data_frame(self) -> Optional[pd.DataFrame]:
+        pass
 
-        EntropyDeriver(self.df).derive("entropy_1x2_open", ['home_open_real', 'draw_open_real', 'away_open_real'], decimals)
-        EntropyDeriver(self.df).derive("entropy_1x2_close", ['home_close_real', 'draw_close_real', 'away_close_real'], decimals)
+    def build(self) -> None:
+        df = self._load_data_frame()
+
+        formula_mutator = FormulaMutator(df)
+        for feature, formula in self.ODDS_FEATURES:
+            formula_mutator.mutate(feature, formula)
+
+        entropy_mutator = EntropyMutator(df)
+        entropy_mutator.build("entropy_1x2_open", ['home_open_real', 'draw_open_real', 'away_open_real'], decimals)
+        entropy_mutator.build("entropy_1x2_close", ['home_close_real', 'draw_close_real', 'away_close_real'], decimals)
 
         self.logger.info("Created Odds Features")
