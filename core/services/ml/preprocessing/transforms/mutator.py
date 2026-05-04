@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional
+from typing import Optional, List
 from .base import BaseTransform
 from ..constants import DEFAULT_DECIMALS
 
@@ -14,3 +14,19 @@ class FormulaMutator(BaseTransform):
         self.df[col] = new_series
         self.logger.info(f"Created {col} with formula: {formula}")
         return self
+
+class EntropyMutator(BaseTransform):
+    def build(self, col: str, probability_cols: List[str], decimals: Optional[int] = DEFAULT_DECIMALS) -> 'EntropyMutator':
+        for col in probability_cols:
+            self._require_col(col)
+
+        p = self.df[probability_cols]
+        term = p * np.log(p.replace(0, 1.0))
+
+        entropy = -term.sum(axis=1, skipna=False)
+
+        if decimals is not None:
+            entropy = entropy.round(decimals)
+
+        self.df[col] = entropy
+        self.logger.info(f"Created {col} from probability columns: {probability_cols}")

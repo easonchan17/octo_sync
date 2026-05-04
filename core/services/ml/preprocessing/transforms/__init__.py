@@ -1,7 +1,7 @@
 from .base import BaseTransform
 from .filter import ColumnFilter, RowFilter
 from .imputer import BaseImputer, DefaultImputer, FormulaImputer, MeanImputer
-from .mutator import FormulaMutator as FormulaDeriver
+from .mutator import FormulaMutator as FormulaMutator
 
 __all__ = [
     'BaseTransform',
@@ -11,5 +11,5 @@ __all__ = [
     'DefaultImputer',
     'FormulaImputer',
     'MeanImputer',
-    'FormulaDeriver',
+    'FormulaMutator',
 ]

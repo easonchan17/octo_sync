@@ -3,11 +3,8 @@ import numpy as np
 from datetime import datetime
 from typing import Optional
 from core.types.enums import MatchStatus
-from core.types.params import EloParams
-from sqlalchemy.orm import aliased
-from core.store.postgres.models.fotmob import Fixture, MatchStat, EloRating
-from ...transforms import ColumnFilter, FormulaDeriver
-from .odds import OddsDeriver
+from core.store.postgres.models.fotmob import Fixture, MatchStat
+from ...transforms import ColumnFilter, FormulaMutator
 from .base import BaseFeatureBuilder
 
 class MatchFeatureBuilder(BaseFeatureBuilder):
@@ -287,34 +284,6 @@ class TeamFormBuilder:
             self._df[f"home_{derived_col}"] = home_rows[derived_col]
             self._df[f"away_{derived_col}"] = away_rows[derived_col]
 
-class EloRatingBuilder:
-    def build(self, df: pd.DataFrame, elo_params:  EloParams = EloParams()) -> None:
-        self.df = df
-
-        self.base_rating = elo_params.base_rating
-        self.home_advantage = elo_params.home_advantage
-        self.min_games_for_stability = elo_params.min_games_for_stability
-
-        home_trust_factor = ((self.df['home_game_count'] - 1) / self.min_games_for_stability).clip(upper=1.0)
-        home_elo_rating_series = self.df['home_pre_rating'] * home_trust_factor + self.base_rating * (1 - home_trust_factor)
-
-        away_trust_factor = ((self.df['away_game_count'] - 1) / self.min_games_for_stability).clip(upper=1.0)
-        away_elo_rating_series = self.df['away_pre_rating'] * away_trust_factor + self.base_rating * (1 - away_trust_factor)
-
-        elo_rating_diff_series = home_elo_rating_series - away_elo_rating_series
-        home_net_advantage_series = elo_rating_diff_series + self.home_advantage
-        match_balance_series = 0.1 + 0.9 * np.exp(-1 * (home_net_advantage_series / 400) ** 2)
-
-        home_expected_score_series = (1 / (1 + 10 ** (-home_net_advantage_series / 400))).clip(0.01, 0.99)
-
-        self.df['home_elo_rating'] = home_elo_rating_series
-        self.df['away_elo_rating'] = away_elo_rating_series
-        self.df['elo_rating_diff'] = elo_rating_diff_series
-
-        self.df['home_net_advantage'] = home_net_advantage_series
-        self.df['home_elo_expectancy'] = home_expected_score_series
-        self.df['match_balance'] = match_balance_series
-
 class MatchTrainFeatureBuilder(MatchFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
@@ -322,19 +291,11 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
         self.min_season = min_season
         self.max_season = max_season
         self.team_form_builder = TeamFormBuilder()
-        self.elo_rating_builder = EloRatingBuilder()
 
     def _load_data_frame(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
-            HomeElo = aliased(EloRating)
-            AwayElo = aliased(EloRating)
-
-            results = session.query(Fixture, MatchStat, HomeElo, AwayElo).outerjoin(
+            results = session.query(Fixture, MatchStat).outerjoin(
                 MatchStat, Fixture.match_id == MatchStat.match_id
-            ).outerjoin(
-                HomeElo, (HomeElo.match_id == Fixture.match_id) & (HomeElo.team_id == Fixture.home_id)
-            ).outerjoin(
-                AwayElo, (AwayElo.match_id == Fixture.match_id) & (AwayElo.team_id == Fixture.away_id)
             ).filter(
                 Fixture.league_id == self.league_id,
                 Fixture.season >= self.min_season,
@@ -343,7 +304,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
             ).order_by(Fixture.kickoff_time).all()
 
             records = []
-            for fixture, stat, home_elo, away_elo in results:
+            for fixture, stat in results:
                 record = {
                     "match_id": fixture.match_id,
                     "league_id": fixture.league_id,
@@ -446,16 +407,6 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                         "home_red_cards": stat.home_red_cards,
                         "away_red_cards": stat.away_red_cards,
                     })
-                if home_elo:
-                    record.update({
-                        "home_pre_rating": float(home_elo.pre_rating),
-                        "home_game_count": home_elo.game_count,
-                    })
-                if away_elo:
-                    record.update({
-                        "away_pre_rating": float(away_elo.pre_rating),
-                        "away_game_count": away_elo.game_count,
-                    })
                 records.append(record)
 
             if records:
@@ -469,11 +420,10 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
         self._add_team_point_and_target(df)
 
         self.team_form_builder.build(df)
-        self.elo_rating_builder.build(df)
 
         self._add_formula_features()
 
-        # OddsDeriver(df).derive()
+        # OddsBuilder(df).derive()
         return ColumnFilter(df).keep(self.REQUIRED_FEATURES).df
 
     def _add_team_point_and_target(self, df: pd.DataFrame) -> None:
@@ -486,7 +436,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
     def _add_formula_features(self, df: pd.DataFrame) -> None:
         for feature, formula in self.FORMULA_BASED_FEATURES:
-            FormulaDeriver(df).mutate(feature, formula)
+            FormulaMutator(df).mutate(feature, formula)
 
 
 class MatchPredictFeatureBuilder(MatchFeatureBuilder):

@@ -1,0 +1,84 @@
+import numpy as np
+import pandas as pd
+from typing import Optional
+from sqlalchemy.orm import aliased
+from core.types.enums import MatchStatus
+from core.types.params import EloParams
+from core.store.postgres.models.fotmob import Fixture, EloRating
+from .base import BaseFeatureBuilder
+
+
+class EloRatingBuilder(BaseFeatureBuilder):
+    def __init__(self, league_id: int, min_season: int, max_season: int, elo_params: EloParams = EloParams()) -> None:
+        super().__init__()
+        self.league_id = league_id
+        self.min_season = min_season
+        self.max_season = max_season
+        self.elo_params = elo_params
+
+    def _load_data_frame(self) -> Optional[pd.DataFrame]:
+        with self.db.get_session() as session:
+            HomeElo = aliased(EloRating)
+            AwayElo = aliased(EloRating)
+
+            results = session.query(Fixture, HomeElo, AwayElo).outerjoin(
+                HomeElo, (HomeElo.match_id == Fixture.match_id) & (HomeElo.team_id == Fixture.home_id)
+            ).outerjoin(
+                AwayElo, (AwayElo.match_id == Fixture.match_id) & (AwayElo.team_id == Fixture.away_id)
+            ).filter(
+                Fixture.league_id == self.league_id,
+                Fixture.season >= self.min_season,
+                Fixture.season <= self.max_season,
+                Fixture.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(Fixture.kickoff_time).all()
+
+            records = []
+            for fixture, home_elo, away_elo in results:
+                record = {"match_id": fixture.match_id}
+                if home_elo:
+                    record.update({
+                        "home_pre_rating": float(home_elo.pre_rating),
+                        "home_game_count": home_elo.game_count,
+                    })
+                if away_elo:
+                    record.update({
+                        "away_pre_rating": float(away_elo.pre_rating),
+                        "away_game_count": away_elo.game_count,
+                    })
+                records.append(record)
+
+            if records:
+                return pd.DataFrame(records)
+
+            return None
+
+    def build(self) -> Optional[pd.DataFrame]:
+        df = self._load_data_frame()
+        if df is None or df.empty:
+            return None
+
+        base_rating = self.elo_params.base_rating
+        home_advantage = self.elo_params.home_advantage
+        min_games_for_stability = self.elo_params.min_games_for_stability
+
+        home_trust_factor = ((df['home_game_count'] - 1) / min_games_for_stability).clip(upper=1.0)
+        home_elo_rating_series = df['home_pre_rating'] * home_trust_factor + base_rating * (1 - home_trust_factor)
+
+        away_trust_factor = ((df['away_game_count'] - 1) / min_games_for_stability).clip(upper=1.0)
+        away_elo_rating_series = df['away_pre_rating'] * away_trust_factor + base_rating * (1 - away_trust_factor)
+
+        elo_rating_diff_series = home_elo_rating_series - away_elo_rating_series
+        home_net_advantage_series = elo_rating_diff_series + home_advantage
+        match_balance_series = 0.1 + 0.9 * np.exp(-1 * (home_net_advantage_series / 400) ** 2)
+        home_expected_score_series = (1 / (1 + 10 ** (-home_net_advantage_series / 400))).clip(0.01, 0.99)
+
+        df['home_elo_rating'] = home_elo_rating_series
+        df['away_elo_rating'] = away_elo_rating_series
+        df['elo_rating_diff'] = elo_rating_diff_series
+        df['home_net_advantage'] = home_net_advantage_series
+        df['home_elo_expectancy'] = home_expected_score_series
+        df['match_balance'] = match_balance_series
+
+        self.logger.info("Built ELO rating features")
+
+        return df[['match_id', 'home_elo_rating', 'away_elo_rating', 'elo_rating_diff', 'home_net_advantage', 'home_elo_expectancy', 'match_balance']]
