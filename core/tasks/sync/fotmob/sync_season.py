@@ -91,6 +91,14 @@ class SyncSeason(PollTask):
                             )
                             continue
 
+                        current_time = datetime.now(timezone.utc)
+                        fetch_interval = self.refetch_strategy.suggest_interval(base_time=current_time, current_time=current_time)
+
+                        if result_set.is_not_modified():
+                            self.logger.warning(f"Season is not modified for {page_url}")
+                            self.season_dao.mark_as_not_modified(league_id, fetch_interval)
+                            continue
+
                         self.season_dao.sync_raw_data({
                             "league_id": league_id,
                             "league_name": league_name,
@@ -98,11 +106,7 @@ class SyncSeason(PollTask):
                             "json_body": result_set.first(),
                         })
 
-                        current_time = datetime.now(timezone.utc)
-                        self.season_dao.mark_as_fetched(
-                            league_id,
-                            self.refetch_strategy.suggest_interval(base_time=current_time, current_time=current_time)
-                        )
+                        self.season_dao.mark_as_fetched(league_id, fetch_interval)
                         self.logger.info(f"Synced season for league_id={league_id} league_name={league_name}")
 
                     except Exception as e:

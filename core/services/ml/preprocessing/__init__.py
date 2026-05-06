@@ -1,5 +1,6 @@
 from .builders.feature.base import BaseFeatureBuilder
-from .builders.feature.odds import EntropyBuilder, OddsBuilder
+from .builders.feature.odds import OddsFeatureBuilder
+from .builders.feature.elo_rating import EloRatingBuilder
 from .builders.feature.match import MatchFeatureBuilder, MatchTrainFeatureBuilder, MatchPredictFeatureBuilder
 from .builders.feature.player import (
     PlayerFeatureBuilder,
@@ -12,8 +13,8 @@ from .builders.sample.predict import PredictSampleBuilder
 
 __all__ = [
     'BaseFeatureBuilder',
-    'EntropyBuilder',
-    'OddsBuilder',
+    'OddsFeatureBuilder',
+    'EloRatingBuilder',
     'MatchFeatureBuilder',
     'MatchTrainFeatureBuilder',
     'MatchPredictFeatureBuilder',

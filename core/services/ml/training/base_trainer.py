@@ -1,15 +1,23 @@
 import pandas as pd
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from threading import Event
 from typing import Any, Tuple, Optional
 from core.utils.pandas_utils import load_dataframe
-from core.scheduler.base_task import BaseTask
+from core.logger.logger_manager import LoggerManager
 from sklearn.utils.class_weight import compute_sample_weight
 
-class BaseTrainer(BaseTask):
+class BaseTrainer(ABC):
     def __init__(self) -> None:
-        super().__init__()
         self.config = None
         self.tracker = None
+        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.cancel_event = Event()
+
+    def cancel(self) -> None:
+        self.cancel_event.set()
+
+    def should_stop(self) -> bool:
+        return self.cancel_event.is_set()
 
     @abstractmethod
     def create_model(self) -> Any:

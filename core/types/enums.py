@@ -12,6 +12,34 @@ class OddsMarkets:
     FT_AH  = OddsMarket(betting_type_id=5, scope_id=2, betting_type_slug='ah', outcomes={"home": "0", "away": "1"})
 
 
+class LineupRole(IntEnum):
+    UNAVAILABLE = 0
+    STARTER     = 1
+    SUB         = 2
+
+class BookmakerID(IntEnum):
+    BET365           = 16
+    _BOOKMAKER_27    = 27
+    _BOOKMAKER_43    = 43
+    BETFAIR_EXCHANGE = 44
+    ONEXBET          = 417
+    TWENTYTWOBET     = 500
+    _BOOKMAKER_549   = 549
+    GGBET            = 550
+    MELBET           = 573
+    BETINASIA        = 575
+    _BOOKMAKER_609   = 609
+    _BOOKMAKER_851   = 851
+    CLOUDBET         = 899
+    BETS_IO          = 909
+    BETFURY          = 911
+    MOZZARTBET       = 941
+    STAKE            = 997
+    ROOBET           = 1015
+    _BOOKMAKER_1133  = 1133
+    SHUFFLE          = 1159
+    _BOOKMAKER_1205  = 1205
+
 class UpsertStrategy(str, Enum):
     OVERWRITE = "overwrite"
     IF_ABSENT = "if_absent"
@@ -172,36 +200,17 @@ class Position(str, Enum):
     SS  = "SS"   # Second Striker
 
     @classmethod
-    def get_attackers(cls) -> List[str]:
+    def get_outfield(cls) -> List[str]:
         return [
-            cls.LW.value, cls.RW.value, cls.CF.value, cls.ST.value,
-            cls.LST.value, cls.RST.value, cls.SS.value
-        ]
-
-    @classmethod
-    def get_playmakers(cls) -> List[str]:
-        return [
-            cls.CAM.value, cls.LAM.value, cls.RAM.value, cls.CM.value,
-            cls.LCM.value, cls.RCM.value, cls.LM.value,  cls.RM.value,
-            cls.CDM.value, cls.LDM.value, cls.RDM.value, cls.LWB.value,
-            cls.RWB.value
-        ]
-
-    @classmethod
-    def get_defenders(cls) -> List[str]:
-        return [
-            cls.CB.value, cls.LCB.value, cls.RCB.value, cls.LB.value,
-            cls.RB.value, cls.CDM.value, cls.LDM.value, cls.RDM.value,
-            cls.LWB.value, cls.RWB.value
-        ]
-
-    @classmethod
-    def get_bombers(cls) -> List[str]:
-        return [
-            cls.CB.value, cls.LCB.value, cls.RCB.value, cls.LB.value,
-            cls.RB.value, cls.CDM.value, cls.LDM.value, cls.RDM.value,
-            cls.LWB.value, cls.RWB.value, cls.CF.value, cls.ST.value,
-            cls.LST.value, cls.RST.value, cls.SS.value
+            cls.CB.value, cls.LCB.value, cls.RCB.value,
+            cls.LB.value, cls.RB.value,
+            cls.LWB.value, cls.RWB.value,
+            cls.CDM.value, cls.LDM.value, cls.RDM.value,
+            cls.CM.value, cls.LCM.value, cls.RCM.value,
+            cls.LM.value, cls.RM.value,
+            cls.CAM.value, cls.LAM.value, cls.RAM.value,
+            cls.LW.value, cls.RW.value,
+            cls.CF.value, cls.ST.value, cls.LST.value, cls.RST.value, cls.SS.value,
         ]
 
     @classmethod

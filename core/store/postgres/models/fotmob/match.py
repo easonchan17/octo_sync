@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, DateTime, Index, text, Float, String, Boolean, UniqueConstraint, BigInteger
+from sqlalchemy import Column, Integer, SmallInteger, DateTime, Index, text, Float, String, Boolean, UniqueConstraint, BigInteger
 from ..base_model import Base, CrawlStatusMixin, RawJsonMixin
 from core.types.enums import SiteName
 
@@ -313,8 +313,8 @@ class MatchLineup(Base):
     position = Column(String(3), nullable=True)
     usual_playing_position_id = Column(Integer, nullable=True)
 
-    is_starter = Column(Boolean, default=False)
-    is_sub = Column(Boolean, default=False)
+    role = Column(SmallInteger, nullable=True)
     is_captain = Column(Boolean, default=False)
 
     rating = Column(Float, nullable=True)
+    market_value = Column(BigInteger, nullable=True)
