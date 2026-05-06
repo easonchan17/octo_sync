@@ -63,34 +63,37 @@ class JsHook(BaseHook):
                     max_redirects=0,
                     timeout=ctx.strategy.timeout * 1000
                 )
+
                 if response.status in (301, 302, 303, 307, 308):
                     location = response.headers.get('location')
                     if location is None:
                         self.logger.error(f"Redirect response without location header for: {request.url}")
                         return
+
                     response = await ctx.page_context.request.get(location)
 
-                def inject_script_to_head(body: str, script: str) -> str:
-                    script_tag = f"<script>{script}</script>"
+                if response.status in range(200, 300):
+                    def inject_script_to_head(body: str, script: str) -> str:
+                        script_tag = f"<script>{script}</script>"
 
-                    injected_body, _ = re.subn(
-                        r'(<head[^>]*>)',
-                        lambda m: m.group(1) + script_tag,
-                        body,
-                        count=1,
-                        flags=re.IGNORECASE
+                        injected_body, _ = re.subn(
+                            r'(<head[^>]*>)',
+                            lambda m: m.group(1) + script_tag,
+                            body,
+                            count=1,
+                            flags=re.IGNORECASE
+                        )
+
+                        return injected_body
+
+                    await route.fulfill(
+                        response=response,
+                        body=inject_script_to_head(await response.text(), js_rule.hook_script),
+                        headers=response.headers
                     )
+                    self.logger.info(f"Injected hook script into: {request.url}")
 
-                    return injected_body
-
-                await route.fulfill(
-                    response=response,
-                    body=inject_script_to_head(await response.text(), js_rule.hook_script),
-                    headers=response.headers
-                )
-                self.logger.info(f"Injected hook script into: {request.url}")
-
-                fulfilled = True
+                    fulfilled = True
             except Exception as e:
                 self.logger.error(f"Failed to inject hook script into: {request.url}: {e}", exc_info=True)
             finally:
