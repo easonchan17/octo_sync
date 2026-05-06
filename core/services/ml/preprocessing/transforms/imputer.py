@@ -6,28 +6,27 @@ from ..constants import DEFAULT_DECIMALS
 
 class BaseImputer(BaseTransform):
     @abstractmethod
-    def impute(self, col: str, *args, **kwargs) -> 'BaseImputer':
+    def impute(self, col: str, *args, **kwargs) -> None:
         ...
 
 class DefaultImputer(BaseImputer):
-    def impute(self, col: str, default_value: Any) -> 'DefaultImputer':
+    def impute(self, col: str, default_value: Any) -> None:
         if default_value is None:
             raise ValueError("Value cannot be None")
 
         null_mask = self._na_mask(col)
         if not null_mask.any():
-            return self
+            return
 
         self.df[col] = self.df[col].fillna(default_value)
         self.logger.info(f"Filled None values in {col} with value: {default_value}")
-        return self
 
 
 class FormulaImputer(BaseImputer):
-    def impute(self, col: str, formula: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> 'FormulaImputer':
+    def impute(self, col: str, formula: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
         null_mask = self._na_mask(col)
         if not null_mask.any():
-            return self
+            return
 
         if not formula:
             raise ValueError("Formula cannot be empty")
@@ -38,14 +37,13 @@ class FormulaImputer(BaseImputer):
 
         self.df.loc[null_mask, col] = values
         self.logger.info(f"Filled None values for {col} with formula: {formula}")
-        return self
 
 
 class MeanImputer(BaseImputer):
-    def impute(self, col: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> 'MeanImputer':
+    def impute(self, col: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
         null_mask = self._na_mask(col)
         if not null_mask.any():
-            return self
+            return
 
         mean_value = self.df[col].mean()
         if pd.isna(mean_value):
@@ -56,4 +54,3 @@ class MeanImputer(BaseImputer):
 
         self.df[col] = self.df[col].fillna(mean_value)
         self.logger.info(f"Filled None values in {col} with mean: {mean_value}")
-        return self

@@ -3,12 +3,13 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from .base import BaseSampleBuilder
-from core.types.enums import SiteName, Position
+from core.types.enums import SiteName
 from core.services.league import league_service
 from core.utils.pandas_utils import save_dataframe
 from ..feature.match import MatchTrainFeatureBuilder
 from ..feature.player import PlayerTrainFeatureBuilder
 from ..feature.elo_rating import EloRatingBuilder
+from ..feature.odds import OddsFeatureBuilder
 
 class TrainSampleBuilder(BaseSampleBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
@@ -19,10 +20,11 @@ class TrainSampleBuilder(BaseSampleBuilder):
         self.output_path = output_path
         self.output_format = output_format
 
-        site_league_id = int(league_service.get(self.league_id).site_leagues.get(SiteName.FOTMOB.value).league_id)
-        self.match_builder = MatchTrainFeatureBuilder(site_league_id, min_season, max_season)
-        self.elo_rating_builder = EloRatingBuilder(site_league_id, min_season, max_season)
-        self.player_builder = PlayerTrainFeatureBuilder(site_league_id, min_season, max_season)
+        fotmob_league_id = int(league_service.get(self.league_id).site_leagues.get(SiteName.FOTMOB.value).league_id)
+        self.match_builder = MatchTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.elo_rating_builder = EloRatingBuilder(fotmob_league_id, min_season, max_season)
+        self.player_builder = PlayerTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.odds_builder = OddsFeatureBuilder(fotmob_league_id, min_season, max_season)
 
     def build_output_path(self, tag: str) -> Path:
         output_dir = Path(self.output_path)
@@ -46,6 +48,14 @@ class TrainSampleBuilder(BaseSampleBuilder):
                 return None
 
             match_stats_df = match_stats_df.merge(elo_df, on='match_id', how='left')
+
+            odds_df = self.odds_builder.build()
+            if odds_df is None or odds_df.empty:
+                self.logger.error("No odds data found")
+                return None
+
+            match_stats_df = match_stats_df.merge(odds_df, on='match_id', how='left')
+
             output_file = self.build_output_path("match_stats")
             save_dataframe(match_stats_df, output_file)
             self.logger.info(f"Match stats saved to: {str(output_file.resolve())}")
@@ -59,11 +69,7 @@ class TrainSampleBuilder(BaseSampleBuilder):
             save_dataframe(player_stats_df, output_file)
             self.logger.info(f"Player stats saved to: {str(output_file.resolve())}")
 
-            gk_positions = Position.get_goalkeeper()
-            outfield_stats_df = player_stats_df[~player_stats_df["position"].isin(gk_positions)]
-            goalkeeper_stats_df = player_stats_df[player_stats_df["position"].isin(gk_positions)]
-
-            aggregated_df, aggregated_df_for_training = self.aggregate(match_stats_df, outfield_stats_df, goalkeeper_stats_df)
+            aggregated_df, aggregated_df_for_training = self.aggregate(match_stats_df, player_stats_df)
             if aggregated_df is None or aggregated_df.empty:
                 self.logger.error("No aggregated stats data found")
                 return None
