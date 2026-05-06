@@ -33,7 +33,9 @@ class PollTask(BaseTask):
         if site_name:
             self.logger = TaggedLogger(self.logger, {'tag': site_name})
         self._idle_wake_event = Event()
-        self._idle_timeout_seconds = CrawlParams.POLL_IDLE_SECONDS
+
+    def get_idle_timeout_seconds(self) -> float:
+        return CrawlParams.POLL_IDLE_SECONDS
 
     def cancel(self) -> None:
         super().cancel()
@@ -43,8 +45,8 @@ class PollTask(BaseTask):
         self._idle_wake_event.set()
 
     def idle_sleep(self) -> None:
-        self.logger.debug(f"Polling task {self.name} is idle, waiting for {self._idle_timeout_seconds} seconds")
-        self._idle_wake_event.wait(timeout=self._idle_timeout_seconds)
+        self.logger.debug(f"Polling task {self.name} is idle, waiting for {self.get_idle_timeout_seconds()} seconds")
+        self._idle_wake_event.wait(timeout=self.get_idle_timeout_seconds())
 
         if not self.should_stop():
             self._idle_wake_event.clear()

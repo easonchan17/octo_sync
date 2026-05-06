@@ -1,0 +1,13 @@
+{
+    "manifest_version": 2,
+    "name": "Odds Interceptor",
+    "version": "1.0",
+    "content_scripts": [
+        {
+            "matches": ["https://www.oddsportal.com/*"],
+            "js": ["content.js"],
+            "run_at": "document_start"
+        }
+    ],
+    "web_accessible_resources": ["inject.js"]
+}

@@ -10,23 +10,23 @@ from core.services.league.league_service import league_service
 
 @TaskRegistry.poll('sync.oddsportal.history_fixture')
 class SyncHistoryFixture(PollTask):
-    HOOK_SCRIPT = """(function() {
-        var _origParse = JSON.parse;
-        JSON.parse = function(text, reviver) {
-            var result = _origParse.call(this, text, reviver);
-            try {
-                if (result && typeof result === 'object' && result.d && result.d.pagination && result.d.pagination.url) {
-                    if (result.d.pagination.url.startsWith('https://www.oddsportal.com/ajax-sport-country-tournament-archive_')) {
-                        navigator.sendBeacon('/__app_trace__/fixtures/', JSON.stringify({
-                            url: window.location.href,
-                            data: result
-                        }));
-                    }
-                }
-            } catch (e) {}
-            return result;
-        };
-    })();"""
+    # HOOK_SCRIPT = """(function() {
+    #     var _origParse = JSON.parse;
+    #     JSON.parse = function(text, reviver) {
+    #         var result = _origParse.call(this, text, reviver);
+    #         try {
+    #             if (result && typeof result === 'object' && result.d && result.d.pagination && result.d.pagination.url) {
+    #                 if (result.d.pagination.url.startsWith('https://www.oddsportal.com/ajax-sport-country-tournament-archive_')) {
+    #                     navigator.sendBeacon('/__app_trace__/fixtures/', JSON.stringify({
+    #                         url: window.location.href,
+    #                         data: result
+    #                     }));
+    #                 }
+    #             }
+    #         } catch (e) {}
+    #         return result;
+    #     };
+    # })();"""
 
     INTERCEPT_STRATEGY = {
         "url_template": "https://www.oddsportal.com{fixture_uri}",
@@ -34,7 +34,7 @@ class SyncHistoryFixture(PollTask):
         "rules": [
             {
                 "type": InterceptType.JS,
-                "hook_script": HOOK_SCRIPT
+                # "hook_script": HOOK_SCRIPT
             }
         ]
     }

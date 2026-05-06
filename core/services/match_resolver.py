@@ -69,7 +69,8 @@ class MatchResolver(BaseService):
         )
 
         if best_score < self.similarity_threshold:
-            self.logger.warning(f"Low similarity: score={best_score}, source: {source}, target: {best_target}")
+            if best_score > 0:
+                self.logger.warning(f"Low similarity: score={best_score}, source: {source}, target: {best_target}")
             return None
 
         return best_target

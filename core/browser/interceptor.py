@@ -12,7 +12,7 @@ from core.browser.intercept_strategy import InterceptType, InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
 class Interceptor(Thread):
-    def __init__(self, request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 95) -> None:
+    def __init__(self, request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 95, addons: Optional[list] = None) -> None:
         super().__init__()
         self.page_pool = None
         self.task_queue: Optional[janus.Queue] = None
@@ -21,6 +21,7 @@ class Interceptor(Thread):
         self.viewport = viewport
         self.page_pool_size = page_pool_size
         self.sys_mem_threshold = sys_mem_threshold
+        self.addons = addons or []
 
     def submit(self, url: str, strategy: InterceptStrategy) -> Optional[Future]:
         parsed = urlparse(url)
@@ -69,7 +70,7 @@ class Interceptor(Thread):
         while not self.stop_event.is_set():
             intercepted_pages = 0
 
-            async with AsyncCamoufox(**self.launch_options) as browser:
+            async with AsyncCamoufox(**self.launch_options, addons=self.addons) as browser:
                 context = await browser.new_context(viewport=self.viewport)
                 self.page_pool = PagePool(context, self.page_pool_size)
 
