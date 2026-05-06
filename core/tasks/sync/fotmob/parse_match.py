@@ -1,6 +1,6 @@
-import traceback, re
+import traceback, re, json
 from datetime import datetime, timezone
-from core.types.enums import SiteName, Position
+from core.types.enums import SiteName, Position, LineupRole
 from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_registry import TaskRegistry
 from typing import Dict, Any, Optional, List, Callable, Tuple
@@ -588,40 +588,51 @@ class MatchParser:
     }
 
     LINEUP_MAPPING = {
-        "starter": {
-            "id": [("member_id", lambda x: x)],
-            "age": [("age", lambda x: x)],
-            "optaId": [("opta_id", lambda x: x)],
-            "name": [("member_name", lambda x: x)],
-            "shirtNumber": [("shirt_number", lambda x: int(x) if x and x.isdigit() else None)],
-            "countryName": [("country_name", lambda x: x)],
-            "countryCode": [("country_code", lambda x: x)],
-            "performance": [("rating", lambda x: x.get("rating"))],
-            "positionId": [("position_id", lambda x: x)],
-            "position": [("position", lambda x: x)],
-            "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x)],
-            "isCaptain": [("is_captain", lambda x: bool(x))]
-        },
-        "sub": {
-            "id": [("member_id", lambda x: x)],
-            "age": [("age", lambda x: x)],
-            "optaId": [("opta_id", lambda x: x)],
-            "name": [("member_name", lambda x: x)],
-            "shirtNumber": [("shirt_number", lambda x: int(x) if x and x.isdigit() else None)],
-            "countryName": [("country_name", lambda x: x)],
-            "countryCode": [("country_code", lambda x: x)],
-            "performance": [("rating", lambda x: x.get("rating"))],
-            "positionId": [("position_id", lambda x: x)],
-            "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x)]
-        },
-        "coach": {
-            "id": [("member_id", lambda x: x)],
-            "age": [("age", lambda x: x)],
-            "optaId": [("opta_id", lambda x: x)],
-            "name": [("member_name", lambda x: x)],
-            "countryName": [("country_name", lambda x: x)],
-            "countryCode": [("country_code", lambda x: x)]
-        }
+        # "starter": {
+        "id": [("member_id", lambda x: x)],
+        "age": [("age", lambda x: x)],
+        "name": [("member_name", lambda x: x)],
+        "countryName": [("country_name", lambda x: x)],
+        "countryCode": [("country_code", lambda x: x)],
+        "marketValue": [("market_value", lambda x: x or 0)],
+        "positionId": [("position_id", lambda x: x or 0)],
+        "position": [("position", lambda x: x or "")],
+        "performance": [("rating", lambda x: x.get("rating", 0))],
+        "shirtNumber": [("shirt_number", lambda x: int(x) if x and x.isdigit() else 0)],
+        "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x or 0)],
+        "isCaptain": [("is_captain", lambda x: bool(x))],
+        "optaId": [("opta_id", lambda x: x or "")],
+        # },
+        # "sub": {
+        #     "id": [("member_id", lambda x: x)],
+        #     "age": [("age", lambda x: x)],
+        #     "name": [("member_name", lambda x: x)],
+        #     "marketValue": [("market_value", lambda x: x)],
+        #     "countryName": [("country_name", lambda x: x)],
+        #     "countryCode": [("country_code", lambda x: x)],
+        #     "performance": [("rating", lambda x: x.get("rating"))],
+        #     "positionId": [("position_id", lambda x: x)],
+        #     "optaId": [("opta_id", lambda x: x)],
+        #     "shirtNumber": [("shirt_number", lambda x: int(x) if x and x.isdigit() else None)],
+        #     "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x)]
+        # },
+        # "unavailable": {
+        #     "id": [("member_id", lambda x: x)],
+        #     "age": [("age", lambda x: x)],
+        #     "name": [("member_name", lambda x: x)],
+        #     "marketValue": [("market_value", lambda x: x)],
+        #     "countryName": [("country_name", lambda x: x)],
+        #     "countryCode": [("country_code", lambda x: x)],
+        #     "positionId": [("position_id", lambda x: x)],
+        # },
+        # "coach": {
+        #     "id": [("member_id", lambda x: x)],
+        #     "age": [("age", lambda x: x)],
+        #     "optaId": [("opta_id", lambda x: x)],
+        #     "name": [("member_name", lambda x: x)],
+        #     "countryName": [("country_name", lambda x: x)],
+        #     "countryCode": [("country_code", lambda x: x)]
+        # }
     }
 
     def __init__(self) -> None:
@@ -700,30 +711,35 @@ class MatchParser:
             formation = team_data.get("formation")
             starters = team_data.get("starters", [])
             subs = team_data.get("subs", [])
-            # coach = team_data.get("coach")
+            unavailables = team_data.get("unavailable", [])
 
             self.formation_resolver.resolve(formation, starters)
 
             groups = [
-                (starters, "starter", "is_starter"),
-                (subs, "sub", "is_sub"),
-                # ([coach] if coach and coach.get("name") else [], "coach", "is_coach")
+                (LineupRole.STARTER, starters),
+                (LineupRole.SUB, subs),
+                (LineupRole.UNAVAILABLE, unavailables),
             ]
             records = []
-            for members, role, flag in groups:
-                field_mapping = self.LINEUP_MAPPING.get(role, {})
+            seen = set()
+            for lineup_role, members in groups:
                 for member in members:
                     record = self._create_lineup_record(match_id, team_id, team_name)
                     for key, val in member.items():
-                        targets = field_mapping.get(key)
+                        targets = self.LINEUP_MAPPING.get(key)
                         if not targets:
                             continue
+
                         for target_key, extractor in targets:
                             record[target_key] = extractor(val)
-                    record[flag] = True
 
-                    if record.get("member_id"):
+                    record["role"] = lineup_role.value
+
+                    member_id = record.get("member_id")
+                    if member_id and member_id not in seen:
+                        seen.add(member_id)
                         records.append(record)
+
             return formation, records
 
         lineup_type = raw_lineup.get("lineupType")
@@ -879,6 +895,10 @@ class ParseMatch(PollTask):
                         self.match_dao.mark_as_parsed(match_id, kickoff_time, match_status)
                         self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
                     except Exception as e:
+                        self.logger.error(
+                            f"Parse failed match_id={match_id} kickoff_time={kickoff_time}\n"
+                            f"{json.dumps(parsed_data, indent=2, default=str)}"
+                        )
                         full_stack_trace = traceback.format_exc()
                         self.match_dao.mark_parse_failed(match_id, full_stack_trace)
                         self.logger.error(f"Failed to parse match data for match {match_id}: {e}", exc_info=True)

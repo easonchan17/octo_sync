@@ -1,14 +1,14 @@
+import numpy as np
 import pandas as pd
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy import desc
-from core.types.enums import SiteName
 from core.types.params import EloParams
 from core.logger.logger_manager import LoggerManager
-from core.store.postgres.models import FotmobFixture, Site, EloRating, PinnacleFixture, Moneyline, Spread
-from core.services.ml.preprocessing.transforms import EloRatingDeriver
-from core.services.ml.preprocessing.builders.feature.odds import OddsBuilder
-from core.store.postgres.models.fbref import Fixture as FbrefFixture
+from core.store.postgres.models import FotmobFixture, EloRating, PinnacleFixture, Moneyline, Spread
+from core.services.ml.preprocessing.builders.feature.odds import OddsFeatureBuilder
+from core.services.ml.preprocessing.transforms import FormulaMutator, EntropyMutator
+from core.services.ml.preprocessing.constants import DEFAULT_DECIMALS
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.services.ml.preprocessing import PredictSampleBuilder
 
@@ -23,34 +23,21 @@ class FeatureBuilder:
         if not fixture_info:
             raise ValueError(f"Fixture with id {fixture_id} not found")
 
+        home_id = fixture_info['home_id']
+        away_id = fixture_info['away_id']
         match_id = fixture_info['match_id']
         kickoff_time = fixture_info['kickoff_time']
         self.logger.info(f"Building sample for fixture_id={fixture_id}, match_id={match_id}")
 
-        fbref_fixture = self._get_fbref_fixture(match_id)
-        if not fbref_fixture:
-            raise ValueError(f"No FBRef fixture found for match_id={match_id}")
+        aggregator = PredictSampleBuilder(home_id, away_id, kickoff_time)
+        aggregated_df = aggregator.execute()
+        if aggregated_df is None or aggregated_df.empty:
+            raise ValueError(f"No aggregated data for home_id={home_id} vs away_id={away_id}")
 
-        home_code = fbref_fixture.home_code
-        away_code = fbref_fixture.away_code
-        self.logger.info(f"Teams: home={home_code}, away={away_code}")
-
-        aggregator = PredictSampleBuilder({
-                "home_code": home_code,
-                "away_code": away_code,
-                "kickoff_time": kickoff_time,
-                "is_save": True
-            }
-        )
-
-        _, aggregated_df_for_training = aggregator.execute()
-        if aggregated_df_for_training is None or aggregated_df_for_training.empty:
-            raise ValueError(f"No aggregated data for {home_code} vs {away_code}")
-
-        result = aggregated_df_for_training.iloc[-1].to_dict()
+        result = aggregated_df.iloc[-1].to_dict()
 
         market_odds = self._get_pinnacle_odds(match_id)
-        elo_rating = self._get_elo_rating(home_code, away_code, kickoff_time)
+        elo_rating = self._get_elo_rating(home_id, away_id, kickoff_time)
 
         derived_features = self._derive_features(market_odds, elo_rating)
         result.update(derived_features)
@@ -70,13 +57,33 @@ class FeatureBuilder:
         self.logger.info("\n".join(lines))
 
     def _derive_features(self, market_odds: Dict[str, Any], elo_rating: Dict[str, Any]) -> Dict[str, Any]:
-        raw_data = {**market_odds, **elo_rating}
-        df = pd.DataFrame([raw_data])
+        df = pd.DataFrame([{**market_odds, **elo_rating}])
 
-        OddsBuilder(df).build()
-        EloRatingDeriver(df).derive()
+        FormulaMutator(df).mutate_batch(OddsFeatureBuilder.ODDS_FEATURES)
+        EntropyMutator(df).build("entropy_1x2_open", ['home_open_real', 'draw_open_real', 'away_open_real'], DEFAULT_DECIMALS)
+        EntropyMutator(df).build("entropy_1x2_close", ['home_close_real', 'draw_close_real', 'away_close_real'], DEFAULT_DECIMALS)
+        self._derive_elo_features(df)
 
         return df.iloc[0].to_dict()
+
+    def _derive_elo_features(self, df: pd.DataFrame) -> None:
+        elo_params = EloParams()
+
+        home_trust = ((df['home_game_count'] - 1) / elo_params.min_games_for_stability).clip(upper=1.0)
+        home_elo = df['home_pre_rating'] * home_trust + elo_params.base_rating * (1 - home_trust)
+
+        away_trust = ((df['away_game_count'] - 1) / elo_params.min_games_for_stability).clip(upper=1.0)
+        away_elo = df['away_pre_rating'] * away_trust + elo_params.base_rating * (1 - away_trust)
+
+        elo_diff = home_elo - away_elo
+        net_advantage = elo_diff + elo_params.home_advantage
+
+        df['home_elo_rating'] = home_elo
+        df['away_elo_rating'] = away_elo
+        df['elo_rating_diff'] = elo_diff
+        df['home_net_advantage'] = net_advantage
+        df['home_elo_expectancy'] = (1 / (1 + 10 ** (-net_advantage / 400))).clip(0.01, 0.99)
+        df['match_balance'] = 0.1 + 0.9 * np.exp(-1 * (net_advantage / 400) ** 2)
 
     def _get_fotmob_fixture(self, fixture_id: int) -> Optional[Dict[str, Any]]:
         with self.db.get_session() as session:
@@ -89,24 +96,12 @@ class FeatureBuilder:
 
             return {
                 'match_id': fixture.match_id,
-                'league_name': fixture.league_name,
                 'kickoff_time': fixture.kickoff_time,
-                'round': fixture.round,
+                'home_id': fixture.home_id,
                 'home_team': fixture.home_team,
+                'away_id': fixture.away_id,
                 'away_team': fixture.away_team
             }
-
-    def _get_fbref_fixture(self, match_id: int) -> Optional[FbrefFixture]:
-        with self.db.get_session() as session:
-            fixture = session.query(FbrefFixture).filter(
-                FbrefFixture.fixture_id == match_id
-            ).first()
-
-            if not fixture:
-                return None
-
-            session.expunge(fixture)
-            return fixture
 
     def _get_pinnacle_odds(self, fixture_id: int) -> Dict[str, Any]:
         with self.db.get_session() as session:
@@ -167,15 +162,16 @@ class FeatureBuilder:
                 'ah_away_close_odds': float(latest_spread[2])
             }
 
-    def _get_elo_rating(self, home_code: str, away_code: str, kickoff_time: datetime) -> Dict[str, Any]:
+    def _get_elo_rating(self, home_id: int, away_id: int, kickoff_time: datetime) -> Dict[str, Any]:
+        elo_params = EloParams()
         with self.db.get_session() as session:
             home_elo = session.query(EloRating).filter(
-                EloRating.team_code == home_code,
+                EloRating.team_id == home_id,
                 EloRating.kickoff_time < kickoff_time
             ).order_by(EloRating.kickoff_time.desc()).first()
 
             away_elo = session.query(EloRating).filter(
-                EloRating.team_code == away_code,
+                EloRating.team_id == away_id,
                 EloRating.kickoff_time < kickoff_time
             ).order_by(EloRating.kickoff_time.desc()).first()
 
@@ -187,7 +183,7 @@ class FeatureBuilder:
                 })
             else:
                 result.update({
-                    "home_pre_rating": EloParams.BASE_RATING,
+                    "home_pre_rating": elo_params.base_rating,
                     "home_game_count": 1
                 })
 
@@ -198,7 +194,7 @@ class FeatureBuilder:
                 })
             else:
                 result.update({
-                    "away_pre_rating": EloParams.BASE_RATING,
+                    "away_pre_rating": elo_params.base_rating,
                     "away_game_count": 1
                 })
 

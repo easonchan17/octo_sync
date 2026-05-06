@@ -195,6 +195,7 @@ class MatchDao(BaseDao):
                 MatchLineup.id.key,
                 MatchLineup.created_at.key,
                 MatchLineup.match_id.key,
+                MatchLineup.team_id.key,
                 MatchLineup.member_id.key,
                 MatchLineup.updated_at.key
             }

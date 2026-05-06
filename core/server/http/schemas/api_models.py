@@ -105,7 +105,7 @@ class MatchLineupResponse(BaseModel):
     member_name: str
     shirt_number: Optional[int] = None
     position_id: Optional[int] = None
-    is_starter: bool = False
+    role: int
     is_captain: bool = False
     rating: Optional[float] = None
 

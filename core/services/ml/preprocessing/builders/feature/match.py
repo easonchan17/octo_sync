@@ -9,184 +9,125 @@ from .base import BaseFeatureBuilder
 
 class MatchFeatureBuilder(BaseFeatureBuilder):
     FORMULA_BASED_FEATURES = [
-        ("home_luck_ema_5", "home_gf_ema_5 - home_xg_ema_5"),
-        ("away_luck_ema_5", "away_gf_ema_5 - away_xg_ema_5"),
-        ("home_field_tilt_ema_5", "home_passes_into_final_third_ema_5 / (home_passes_into_final_third_ema_5 + away_passes_into_final_third_ema_5)"),
-        ("away_field_tilt_ema_5", "1 - home_field_tilt_ema_5"),
-        ("home_safe_control_ema_5", "home_possession_ema_5 - home_field_tilt_ema_5"),
-        ("away_safe_control_ema_5", "away_possession_ema_5 - away_field_tilt_ema_5"),
-        ("home_long_passes_acc_ema_5", "home_passes_completed_long_ema_5 / home_passes_long_ema_5"),
-        ("away_long_passes_acc_ema_5", "away_passes_completed_long_ema_5 / away_passes_long_ema_5"),
-        ("home_long_passes_share_ema_5", "home_passes_long_ema_5 / home_passes_ema_5"),
-        ("away_long_passes_share_ema_5", "away_passes_long_ema_5 / away_passes_ema_5"),
-        ("home_box_penetration_ratio_ema_5", "home_passes_into_penalty_area_ema_5 / home_passes_into_final_third_ema_5"),
-        ("away_box_penetration_ratio_ema_5", "away_passes_into_penalty_area_ema_5 / away_passes_into_final_third_ema_5"),
-        ("home_creativity_share_ema_5", "home_pass_xa_ema_5 / home_xg_ema_5"),
-        ("away_creativity_share_ema_5", "away_pass_xa_ema_5 / away_xg_ema_5"),
-        ("home_final_third_entry_share_ema_5", "home_passes_into_final_third_ema_5 / home_passes_ema_5"),
-        ("away_final_third_entry_share_ema_5", "away_passes_into_final_third_ema_5 / away_passes_ema_5"),
-        ("home_passes_progressive_rate_ema_5", "home_passes_progressive_ema_5 / home_passes_ema_5"),
-        ("away_passes_progressive_rate_ema_5", "away_passes_progressive_ema_5 / away_passes_ema_5"),
-        ("home_passes_progressive_share_ema_5", "home_passes_progressive_distance_ema_5 / home_passes_total_distance_ema_5"),
-        ("away_passes_progressive_share_ema_5", "away_passes_progressive_distance_ema_5 / away_passes_total_distance_ema_5"),
-        ("home_shots_acc_ratio_ema_5", "home_shots_on_target_ema_5 / home_shots_ema_5"),
-        ("away_shots_acc_ratio_ema_5", "away_shots_on_target_ema_5 / away_shots_ema_5"),
-        ("home_shots_conversion_ratio_ema_5", "home_gf_ema_5 / home_shots_ema_5"),
-        ("away_shots_conversion_ratio_ema_5", "away_gf_ema_5 / away_shots_ema_5"),
-        ("home_goal_to_xg_ema_5", "home_gf_ema_5 / home_xg_ema_5"),
-        ("away_goal_to_xg_ema_5", "away_gf_ema_5 / away_xg_ema_5"),
-        ("home_gsaa_ema_5", "home_gk_psxg_ema_5 - away_gf_ema_5"),
-        ("away_gsaa_ema_5", "away_gk_psxg_ema_5 - home_gf_ema_5"),
-        ("home_tackles_success_ratio_ema_5", "home_tackles_won_ema_5 / home_tackles_ema_5"),
-        ("away_tackles_success_ratio_ema_5", "away_tackles_won_ema_5 / away_tackles_ema_5"),
-        ("home_challenges_success_ratio_ema_5", "(home_challenges_ema_5-home_challenges_lost_ema_5) / home_challenges_ema_5"),
-        ("away_challenges_success_ratio_ema_5", "(away_challenges_ema_5-away_challenges_lost_ema_5) / away_challenges_ema_5"),
-        ("home_high_press_ratio_ema_5", "home_tackles_att_third_ema_5 / home_tackles_ema_5"),
-        ("away_high_press_ratio_ema_5", "away_tackles_att_third_ema_5 / away_tackles_ema_5"),
-        ("home_disruption_volume_ema_5", "home_blocks_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5"),
-        ("away_disruption_volume_ema_5", "away_blocks_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5"),
-        ("home_ppda_global_ema_5", "away_passes_ema_5 / (home_tackles_ema_5 + home_blocks_ema_5 + home_interceptions_ema_5)"),
-        ("away_ppda_global_ema_5", "home_passes_ema_5 / (away_tackles_ema_5 + away_blocks_ema_5 + away_interceptions_ema_5)"),
-        ("home_gk_crosses_stopped_ratio_ema_5", "home_gk_crosses_stopped_ema_5 / home_gk_crosses_ema_5"),
-        ("away_gk_crosses_stopped_ratio_ema_5", "away_gk_crosses_stopped_ema_5 / away_gk_crosses_ema_5"),
-        ("home_set_piece_sca_ratio_ema_5", "home_sca_passes_dead_ema_5 / home_sca_ema_5"),
-        ("away_set_piece_sca_ratio_ema_5", "away_sca_passes_dead_ema_5 / away_sca_ema_5"),
-        ("home_take_on_sca_ratio_ema_5", "home_sca_take_ons_ema_5 / home_sca_ema_5"),
-        ("away_take_on_sca_ratio_ema_5", "away_sca_take_ons_ema_5 / away_sca_ema_5"),
-        ("rest_days_diff", "home_rest_days - away_rest_days"),
-        ("xg_ema_5_diff", "home_xg_ema_5 - away_xg_ema_5"),
-        ("possession_ema_5_diff", "home_possession_ema_5 - away_possession_ema_5"),
-        ("point_sum_5_diff", "home_point_sum_5 - away_point_sum_5"),
-        ("sca_passes_dead_ema_5_diff", "home_sca_passes_dead_ema_5 - away_sca_passes_dead_ema_5"),
-        ("sca_take_ons_ema_5_diff", "home_sca_take_ons_ema_5 - away_sca_take_ons_ema_5"),
-        ("passes_ema_5_diff", "home_passes_ema_5 - away_passes_ema_5"),
-        ("passes_progressive_ema_5_diff", "home_passes_progressive_ema_5 - away_passes_progressive_ema_5"),
-        ("passes_progressive_distance_ema_5_diff", "home_passes_progressive_distance_ema_5 - away_passes_progressive_distance_ema_5"),
-        ("passes_long_ema_5_diff", "home_passes_long_ema_5 - away_passes_long_ema_5"),
-        ("xg_assist_ema_5_diff", "home_xg_assist_ema_5 - away_xg_assist_ema_5"),
-        ("pass_xa_ema_5_diff", "home_pass_xa_ema_5 - away_pass_xa_ema_5"),
-        ("passes_into_penalty_area_ema_5_diff", "home_passes_into_penalty_area_ema_5 - away_passes_into_penalty_area_ema_5"),
-        ("crosses_into_penalty_area_ema_5_diff", "home_crosses_into_penalty_area_ema_5 - away_crosses_into_penalty_area_ema_5"),
-        ("average_shot_distance_ema_5_diff", "home_average_shot_distance_ema_5 - away_average_shot_distance_ema_5"),
-        ("tackles_att_third_ema_5_diff", "home_tackles_att_third_ema_5 - away_tackles_att_third_ema_5"),
-        ("challenges_ema_5_diff", "home_challenges_ema_5 - away_challenges_ema_5"),
-        ("challenges_lost_ema_5_diff", "home_challenges_lost_ema_5 - away_challenges_lost_ema_5"),
-        ("errors_shot_ema_5_diff", "home_errors_shot_ema_5 - away_errors_shot_ema_5"),
-        ("gk_psxg_ema_5_diff", "home_gk_psxg_ema_5 - away_gk_psxg_ema_5"),
-        ("gk_crosses_stopped_ema_5_diff", "home_gk_crosses_stopped_ema_5 - away_gk_crosses_stopped_ema_5"),
-        ("gk_crosses_ema_5_diff", "home_gk_crosses_ema_5 - away_gk_crosses_ema_5"),
-        ("gk_def_actions_outside_pen_area_ema_5_diff", "home_gk_def_actions_outside_pen_area_ema_5 - away_gk_def_actions_outside_pen_area_ema_5"),
-        ("gk_avg_distance_def_actions_ema_5_diff", "home_gk_avg_distance_def_actions_ema_5 - away_gk_avg_distance_def_actions_ema_5"),
-        ("luck_ema_5_diff", "home_luck_ema_5 - away_luck_ema_5"),
-        ("field_tilt_ema_5_diff", "home_field_tilt_ema_5 - away_field_tilt_ema_5"),
-        ("safe_control_ema_5_diff", "home_safe_control_ema_5 - away_safe_control_ema_5"),
-        ("long_passes_acc_ema_5_diff", "home_long_passes_acc_ema_5 - away_long_passes_acc_ema_5"),
-        ("long_passes_share_ema_5_diff", "home_long_passes_share_ema_5 - away_long_passes_share_ema_5"),
-        ("box_penetration_ratio_ema_5_diff", "home_box_penetration_ratio_ema_5 - away_box_penetration_ratio_ema_5"),
-        ("creativity_share_ema_5_diff", "home_creativity_share_ema_5 - away_creativity_share_ema_5"),
-        ("final_third_entry_share_ema_5_diff", "home_final_third_entry_share_ema_5 - away_final_third_entry_share_ema_5"),
-        ("passes_progressive_rate_ema_5_diff", "home_passes_progressive_rate_ema_5 - away_passes_progressive_rate_ema_5"),
-        ("passes_progressive_share_ema_5_diff", "home_passes_progressive_share_ema_5 - away_passes_progressive_share_ema_5"),
-        ("shots_acc_ratio_ema_5_diff", "home_shots_acc_ratio_ema_5 - away_shots_acc_ratio_ema_5"),
-        ("shots_conversion_ratio_ema_5_diff", "home_shots_conversion_ratio_ema_5 - away_shots_conversion_ratio_ema_5"),
-        ("goal_to_xg_ema_5_diff", "home_goal_to_xg_ema_5 - away_goal_to_xg_ema_5"),
-        ("gsaa_ema_5_diff", "home_gsaa_ema_5 - away_gsaa_ema_5"),
-        ("tackles_success_ratio_ema_5_diff", "home_tackles_success_ratio_ema_5 - away_tackles_success_ratio_ema_5"),
-        ("challenges_success_ratio_ema_5_diff", "home_challenges_success_ratio_ema_5 - away_challenges_success_ratio_ema_5"),
-        ("high_press_ratio_ema_5_diff", "home_high_press_ratio_ema_5 - away_high_press_ratio_ema_5"),
-        ("disruption_volume_ema_5_diff", "home_disruption_volume_ema_5 - away_disruption_volume_ema_5"),
-        ("ppda_global_ema_5_diff", "home_ppda_global_ema_5 - away_ppda_global_ema_5"),
-        ("gk_crosses_stopped_ratio_ema_5_diff", "home_gk_crosses_stopped_ratio_ema_5 - away_gk_crosses_stopped_ratio_ema_5"),
-        ("set_piece_sca_ratio_ema_5_diff", "home_set_piece_sca_ratio_ema_5 - away_set_piece_sca_ratio_ema_5"),
-        ("take_on_sca_ratio_ema_5_diff", "home_take_on_sca_ratio_ema_5 - away_take_on_sca_ratio_ema_5")
+        ("home_shots_acc_ema_5",              "home_shots_on_target_ema_5 / home_shots_ema_5"),
+        ("away_shots_acc_ema_5",              "away_shots_on_target_ema_5 / away_shots_ema_5"),
+        ("home_shots_conversion_ema_5",       "home_score_ema_5 / home_shots_ema_5"),
+        ("away_shots_conversion_ema_5",       "away_score_ema_5 / away_shots_ema_5"),
+        ("home_xg_per_shot_ema_5",            "home_xg_ema_5 / home_shots_ema_5"),
+        ("away_xg_per_shot_ema_5",            "away_xg_ema_5 / away_shots_ema_5"),
+        ("home_goal_to_xg_ema_5",             "home_score_ema_5 / home_xg_ema_5"),
+        ("away_goal_to_xg_ema_5",             "away_score_ema_5 / away_xg_ema_5"),
+        ("home_luck_ema_5",                   "home_score_ema_5 - home_xg_ema_5"),
+        ("away_luck_ema_5",                   "away_score_ema_5 - away_xg_ema_5"),
+        ("home_passes_acc_ema_5",             "home_passes_completed_ema_5 / home_passes_ema_5"),
+        ("away_passes_acc_ema_5",             "away_passes_completed_ema_5 / away_passes_ema_5"),
+        ("home_long_passes_acc_ema_5",        "home_long_passes_completed_ema_5 / home_long_passes_ema_5"),
+        ("away_long_passes_acc_ema_5",        "away_long_passes_completed_ema_5 / away_long_passes_ema_5"),
+        ("home_crosses_acc_ema_5",            "home_crosses_completed_ema_5 / home_crosses_ema_5"),
+        ("away_crosses_acc_ema_5",            "away_crosses_completed_ema_5 / away_crosses_ema_5"),
+        ("home_aerial_win_rate_ema_5",        "home_aerials_won_ema_5 / home_aerials_ema_5"),
+        ("away_aerial_win_rate_ema_5",        "away_aerials_won_ema_5 / away_aerials_ema_5"),
+        ("home_big_chances_missed_rate_ema_5","home_big_chances_missed_ema_5 / home_big_chances_ema_5"),
+        ("away_big_chances_missed_rate_ema_5","away_big_chances_missed_ema_5 / away_big_chances_ema_5"),
+        ("home_disruption_ema_5",             "home_tackles_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5"),
+        ("away_disruption_ema_5",             "away_tackles_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5"),
+        ("rest_days_diff",                    "home_rest_days - away_rest_days"),
+        ("xg_ema_5_diff",                     "home_xg_ema_5 - away_xg_ema_5"),
+        ("npxg_ema_5_diff",                   "home_npxg_ema_5 - away_npxg_ema_5"),
+        ("possession_ema_5_diff",             "home_possession_ema_5 - away_possession_ema_5"),
+        ("shots_ema_5_diff",                  "home_shots_ema_5 - away_shots_ema_5"),
+        ("shots_on_target_ema_5_diff",        "home_shots_on_target_ema_5 - away_shots_on_target_ema_5"),
+        ("big_chances_ema_5_diff",            "home_big_chances_ema_5 - away_big_chances_ema_5"),
+        ("passes_ema_5_diff",                 "home_passes_ema_5 - away_passes_ema_5"),
+        ("long_passes_ema_5_diff",            "home_long_passes_ema_5 - away_long_passes_ema_5"),
+        ("crosses_ema_5_diff",                "home_crosses_ema_5 - away_crosses_ema_5"),
+        ("tackles_ema_5_diff",                "home_tackles_ema_5 - away_tackles_ema_5"),
+        ("interceptions_ema_5_diff",          "home_interceptions_ema_5 - away_interceptions_ema_5"),
+        ("clearances_ema_5_diff",             "home_clearances_ema_5 - away_clearances_ema_5"),
+        ("keeper_saves_ema_5_diff",           "home_keeper_saves_ema_5 - away_keeper_saves_ema_5"),
+        ("luck_ema_5_diff",                   "home_luck_ema_5 - away_luck_ema_5"),
+        ("shots_acc_ema_5_diff",              "home_shots_acc_ema_5 - away_shots_acc_ema_5"),
+        ("shots_conversion_ema_5_diff",       "home_shots_conversion_ema_5 - away_shots_conversion_ema_5"),
+        ("aerial_win_rate_ema_5_diff",        "home_aerial_win_rate_ema_5 - away_aerial_win_rate_ema_5"),
+        ("point_sum_5_diff",                  "home_point_sum_5 - away_point_sum_5"),
     ]
 
     REQUIRED_FEATURES = [
-        "kickoff_time",
-        "comp_name",
-        "match_code",
-        "home_team", "home_code",
-        "away_team", "away_code",
-        "home_point",
+        "match_id", "kickoff_time", "season", "league_id", "league_name", "round",
+        "home_team", "home_id", "away_team", "away_id",
+        "home_score", "away_score", "home_goals_penalty", "away_goals_penalty",
+        "home_formation", "away_formation",
+        "home_point", "away_point",
         "target",
-        "home_elo_rating", "away_elo_rating", "elo_rating_diff", "home_net_advantage", "home_elo_expectancy", "match_balance",
         "home_rest_days", "away_rest_days", "rest_days_diff",
         "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
         "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
         "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
-        "home_xg_lagged", "away_xg_lagged",
-        "home_sca_passes_dead_ema_5", "away_sca_passes_dead_ema_5", "sca_passes_dead_ema_5_diff",
-        "home_passes_progressive_distance_ema_5", "away_passes_progressive_distance_ema_5", "passes_progressive_distance_ema_5_diff",
-        "home_passes_long_ema_5", "away_passes_long_ema_5", "passes_long_ema_5_diff",
-        "home_crosses_into_penalty_area_ema_5", "away_crosses_into_penalty_area_ema_5", "crosses_into_penalty_area_ema_5_diff",
-        "home_average_shot_distance_ema_5", "away_average_shot_distance_ema_5", "average_shot_distance_ema_5_diff",
-        "home_tackles_att_third_ema_5", "away_tackles_att_third_ema_5", "tackles_att_third_ema_5_diff",
-        "home_errors_shot_ema_5", "away_errors_shot_ema_5", "errors_shot_ema_5_diff",
-        "home_gk_avg_distance_def_actions_ema_5", "away_gk_avg_distance_def_actions_ema_5", "gk_avg_distance_def_actions_ema_5_diff",
-        "home_luck_ema_5", "away_luck_ema_5", "luck_ema_5_diff",
-        "home_field_tilt_ema_5", "away_field_tilt_ema_5", "field_tilt_ema_5_diff",
-        "home_ppda_global_ema_5", "away_ppda_global_ema_5", "ppda_global_ema_5_diff",
+        "home_lagged_xg", "away_lagged_xg",
         "home_xg_ema_5", "away_xg_ema_5", "xg_ema_5_diff",
-        "home_sca_take_ons_ema_5", "away_sca_take_ons_ema_5", "sca_take_ons_ema_5_diff",
-        "home_passes_into_penalty_area_ema_5", "away_passes_into_penalty_area_ema_5", "passes_into_penalty_area_ema_5_diff",
-        "home_creativity_share_ema_5", "away_creativity_share_ema_5", "creativity_share_ema_5_diff",
-        "home_final_third_entry_share_ema_5", "away_final_third_entry_share_ema_5", "final_third_entry_share_ema_5_diff",
-        "ah_line_open", "ah_line_close",
-        "home_open_real", "draw_open_real", "away_open_real",
-        "home_close_real", "draw_close_real", "away_close_real",
-        "home_real_net", "draw_real_net", "away_real_net",
-        "ah_home_open_real", "ah_away_open_real",
-        "ah_home_close_real", "ah_away_close_real",
-        "ah_home_real_net", "ah_away_real_net",
-        "vig_1x2_close", "vig_ah_close",
-        "entropy_1x2_open", "entropy_1x2_close",
-        "home_log_return", "ah_home_log_return",
-        "home_bias_ratio",
-        "ah_line_change"
+        "home_npxg_ema_5", "away_npxg_ema_5", "npxg_ema_5_diff",
+        "home_possession_ema_5", "away_possession_ema_5", "possession_ema_5_diff",
+        "home_shots_ema_5", "away_shots_ema_5", "shots_ema_5_diff",
+        "home_shots_on_target_ema_5", "away_shots_on_target_ema_5", "shots_on_target_ema_5_diff",
+        "home_big_chances_ema_5", "away_big_chances_ema_5", "big_chances_ema_5_diff",
+        "home_passes_ema_5", "away_passes_ema_5", "passes_ema_5_diff",
+        "home_long_passes_ema_5", "away_long_passes_ema_5", "long_passes_ema_5_diff",
+        "home_crosses_ema_5", "away_crosses_ema_5", "crosses_ema_5_diff",
+        "home_tackles_ema_5", "away_tackles_ema_5", "tackles_ema_5_diff",
+        "home_interceptions_ema_5", "away_interceptions_ema_5", "interceptions_ema_5_diff",
+        "home_clearances_ema_5", "away_clearances_ema_5", "clearances_ema_5_diff",
+        "home_keeper_saves_ema_5", "away_keeper_saves_ema_5", "keeper_saves_ema_5_diff",
+        "home_luck_ema_5", "away_luck_ema_5", "luck_ema_5_diff",
+        "home_shots_acc_ema_5", "away_shots_acc_ema_5", "shots_acc_ema_5_diff",
+        "home_shots_conversion_ema_5", "away_shots_conversion_ema_5", "shots_conversion_ema_5_diff",
+        "home_aerial_win_rate_ema_5", "away_aerial_win_rate_ema_5", "aerial_win_rate_ema_5_diff",
+        "home_long_passes_acc_ema_5", "away_long_passes_acc_ema_5",
+        "home_crosses_acc_ema_5", "away_crosses_acc_ema_5",
+        "home_big_chances_missed_rate_ema_5", "away_big_chances_missed_rate_ema_5",
+        "home_disruption_ema_5", "away_disruption_ema_5",
     ]
 
 class TeamFormBuilder:
     EMA_BASED_FEATURES = [
         "score",
         "xg",
+        "npxg",
         "possession",
-        "sca", "sca_passes_dead", "sca_take_ons",
-        "passes", "passes_total_distance", "passes_progressive",
-        "passes_progressive_distance", "passes_completed_long", "passes_long",
-        "xg_assist", "pass_xa", "passes_into_final_third",
-        "passes_into_penalty_area", "crosses_into_penalty_area",
-        "shots", "shots_on_target", "average_shot_distance",
-        "tackles", "tackles_won", "tackles_att_third",
-        "challenges", "challenges_lost", "blocks",
-        "interceptions", "clearances", "errors_shot",
-        "gk_psxg", "gk_crosses_stopped", "gk_crosses",
-        "gk_def_actions_outside_pen_area", "gk_avg_distance_def_actions"
+        "shots", "shots_on_target",
+        "big_chances", "big_chances_missed",
+        "passes", "passes_completed",
+        "long_passes", "long_passes_completed",
+        "crosses", "crosses_completed",
+        "tackles", "interceptions", "clearances", "shot_blocks",
+        "aerials", "aerials_won",
+        "keeper_saves",
     ]
 
-    def build(self, df: pd.DataFrame) -> None:
+    def build(self, df: pd.DataFrame) -> pd.DataFrame:
         self._create_view(df)
         self._build_rest_days()
         self._build_lagged_xg()
         self._build_recent_points()
         self._build_venue_dependency()
         self._build_ema_features()
+        return self.df.reset_index()
 
     def _create_view(self, df: pd.DataFrame) -> None:
-        self._df = df.set_index("match_id", drop=True)
+        self.df = df.set_index("match_id", drop=True)
 
-        kickoff_time_series = pd.to_datetime(self._df["kickoff_time"])
+        kickoff_time_series = pd.to_datetime(self.df["kickoff_time"])
 
         home_form = pd.DataFrame({
             "kickoff_time": kickoff_time_series,
-            "team_id": self._df["home_id"],
+            "team_id": self.df["home_id"],
             "is_home": True,
-            "match_id": self._df.index
+            "match_id": self.df.index
         })
         away_form = pd.DataFrame({
             "kickoff_time": kickoff_time_series,
-            "team_id": self._df["away_id"],
+            "team_id": self.df["away_id"],
             "is_home": False,
-            "match_id": self._df.index
+            "match_id": self.df.index
         })
 
         team_form = pd.concat([home_form, away_form], ignore_index=True)
@@ -198,28 +139,28 @@ class TeamFormBuilder:
 
         self._team_form["point"] = np.where(
             self._home_mask,
-            self._df.loc[self._team_form["match_id"], "home_point"].values,
-            self._df.loc[self._team_form["match_id"], "away_point"].values
+            self.df.loc[self._team_form["match_id"], "home_point"].values,
+            self.df.loc[self._team_form["match_id"], "away_point"].values
         )
         self._team_form["xg"] = np.where(
             self._home_mask,
-            self._df.loc[self._team_form["match_id"], "home_xg"].values,
-            self._df.loc[self._team_form["match_id"], "away_xg"].values
+            self.df.loc[self._team_form["match_id"], "home_xg"].values,
+            self.df.loc[self._team_form["match_id"], "away_xg"].values
         )
 
     def _build_rest_days(self) -> None:
         time_diff_series = self._team_form.groupby("team_id", observed=True)["kickoff_time"].diff()
         self._team_form["rest_days"] = time_diff_series / pd.Timedelta(days=1)
 
-        self._df["home_rest_days"] = self._team_form[self._home_mask].set_index("match_id")["rest_days"]
-        self._df["away_rest_days"] = self._team_form[self._away_mask].set_index("match_id")["rest_days"]
+        self.df["home_rest_days"] = self._team_form[self._home_mask].set_index("match_id")["rest_days"]
+        self.df["away_rest_days"] = self._team_form[self._away_mask].set_index("match_id")["rest_days"]
 
     def _build_lagged_xg(self) -> None:
         lagged_xg = self._team_form.groupby("team_id", observed=True, group_keys=False)["xg"].shift(1)
         self._team_form["lagged_xg"] = lagged_xg
 
-        self._df["home_lagged_xg"] = self._team_form[self._home_mask].set_index("match_id")["lagged_xg"]
-        self._df["away_lagged_xg"] = self._team_form[self._away_mask].set_index("match_id")["lagged_xg"]
+        self.df["home_lagged_xg"] = self._team_form[self._home_mask].set_index("match_id")["lagged_xg"]
+        self.df["away_lagged_xg"] = self._team_form[self._away_mask].set_index("match_id")["lagged_xg"]
 
     def _build_recent_points(self, span: int = 5, min_periods: int = 1) -> None:
         point_sum_5 = self._team_form.groupby("team_id", observed=True, group_keys=False)["point"].transform(
@@ -227,8 +168,8 @@ class TeamFormBuilder:
         )
         self._team_form["point_sum_5"] = point_sum_5
 
-        self._df["home_point_sum_5"] = self._team_form[self._home_mask].set_index("match_id")["point_sum_5"]
-        self._df["away_point_sum_5"] = self._team_form[self._away_mask].set_index("match_id")["point_sum_5"]
+        self.df["home_point_sum_5"] = self._team_form[self._home_mask].set_index("match_id")["point_sum_5"]
+        self.df["away_point_sum_5"] = self._team_form[self._away_mask].set_index("match_id")["point_sum_5"]
 
     def _build_venue_dependency(self, span: int = 5, min_periods: int = 1) -> None:
         def calc_venue_ema_points(is_home: bool, span: int, min_periods:int) -> pd.Series:
@@ -251,20 +192,20 @@ class TeamFormBuilder:
         home_rows = self._team_form[self._home_mask].set_index("match_id")
         away_rows = self._team_form[self._away_mask].set_index("match_id")
 
-        self._df["home_points_ema_5_at_home"] = home_rows["points_ema_5_at_home"]
-        self._df["home_points_ema_5_at_away"] = home_rows["points_ema_5_at_away"]
-        self._df["away_points_ema_5_at_home"] = away_rows["points_ema_5_at_home"]
-        self._df["away_points_ema_5_at_away"] = away_rows["points_ema_5_at_away"]
+        self.df["home_points_ema_5_at_home"] = home_rows["points_ema_5_at_home"]
+        self.df["home_points_ema_5_at_away"] = home_rows["points_ema_5_at_away"]
+        self.df["away_points_ema_5_at_home"] = away_rows["points_ema_5_at_home"]
+        self.df["away_points_ema_5_at_away"] = away_rows["points_ema_5_at_away"]
 
-        self._df["home_venue_dependency"] = self._df["home_points_ema_5_at_home"] - self._df["home_points_ema_5_at_away"]
-        self._df["away_venue_dependency"] = self._df["away_points_ema_5_at_home"] - self._df["away_points_ema_5_at_away"]
+        self.df["home_venue_dependency"] = self.df["home_points_ema_5_at_home"] - self.df["home_points_ema_5_at_away"]
+        self.df["away_venue_dependency"] = self.df["away_points_ema_5_at_home"] - self.df["away_points_ema_5_at_away"]
 
     def _build_ema_features(self, span: int = 5, min_periods: int = 1) -> None:
         for feature in self.EMA_BASED_FEATURES:
             self._team_form[feature] = np.where(
                 self._home_mask,
-                self._df.loc[self._team_form["match_id"], f"home_{feature}"].values,
-                self._df.loc[self._team_form["match_id"], f"away_{feature}"].values
+                self.df.loc[self._team_form["match_id"], f"home_{feature}"].values,
+                self.df.loc[self._team_form["match_id"], f"away_{feature}"].values
             )
 
             derived_col = f"{feature}_ema_{span}"
@@ -281,8 +222,8 @@ class TeamFormBuilder:
 
         for feature in self.EMA_BASED_FEATURES:
             derived_col = f"{feature}_ema_{span}"
-            self._df[f"home_{derived_col}"] = home_rows[derived_col]
-            self._df[f"away_{derived_col}"] = away_rows[derived_col]
+            self.df[f"home_{derived_col}"] = home_rows[derived_col]
+            self.df[f"away_{derived_col}"] = away_rows[derived_col]
 
 class MatchTrainFeatureBuilder(MatchFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
@@ -326,8 +267,8 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                         "away_formation": stat.away_formation,
                         "home_possession": stat.home_possession,
                         "away_possession": stat.away_possession,
-                        "home_penalty_goals": stat.home_penalty_goals,
-                        "away_penalty_goals": stat.away_penalty_goals,
+                        "home_goals_penalty": stat.home_goals_penalty,
+                        "away_goals_penalty": stat.away_goals_penalty,
                         "home_shots": stat.home_shots,
                         "away_shots": stat.away_shots,
                         "home_shots_on_target": stat.home_shots_on_target,
@@ -416,15 +357,13 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
     def build(self) -> Optional[pd.DataFrame]:
         df = self._load_data_frame()
+        if df is None or df.empty:
+            return None
 
         self._add_team_point_and_target(df)
-
-        self.team_form_builder.build(df)
-
-        self._add_formula_features()
-
-        # OddsBuilder(df).derive()
-        return ColumnFilter(df).keep(self.REQUIRED_FEATURES).df
+        df = self.team_form_builder.build(df)
+        self._add_formula_features(df)
+        return ColumnFilter(df).keep(self.REQUIRED_FEATURES)
 
     def _add_team_point_and_target(self, df: pd.DataFrame) -> None:
         is_home_win = df["home_score"] > df["away_score"]

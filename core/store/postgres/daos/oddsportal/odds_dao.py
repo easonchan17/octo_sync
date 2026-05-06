@@ -28,10 +28,11 @@ class OddsDao(BaseDao):
                     OddsRaw.scope_id == scope_id,
                 )
             ).filter(
-                or_(
-                    OddsRaw.match_code.is_(None),
-                    OddsRaw.next_fetch_at <= func.now()
-                )
+                OddsRaw.match_code == "URtGhaAm"
+                # or_(
+                #     OddsRaw.match_code.is_(None),
+                #     OddsRaw.next_fetch_at <= func.now()
+                # )
             ).order_by(
                 Fixture.kickoff_time.desc()
             ).limit(limit).all()

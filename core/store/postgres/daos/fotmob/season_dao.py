@@ -56,6 +56,20 @@ class SeasonDao(BaseDao):
                 SeasonRaw.updated_at.key: func.now(),
             }, synchronize_session=False)
 
+    def mark_as_not_modified(self, league_id: int, fetch_interval: Optional[timedelta]) -> None:
+        with self.db.get_session() as session:
+            session.query(SeasonRaw).filter(
+                SeasonRaw.league_id == league_id
+            ).update({
+                SeasonRaw.is_fetched.key: True,
+                SeasonRaw.last_fetch_error.key: None,
+                SeasonRaw.last_fetched_at.key: func.now(),
+                SeasonRaw.next_fetch_at.key: func.now() + fetch_interval if fetch_interval is not None else None,
+                SeasonRaw.total_fetch_count.key: SeasonRaw.total_fetch_count + 1,
+                SeasonRaw.fetch_attempts.key: 0,
+                SeasonRaw.updated_at.key: func.now()
+            }, synchronize_session=False)
+
     def mark_fetch_failed(self, league_id: int, league_name: str, fetch_interval: Optional[timedelta], error_msg: Optional[str] = None) -> None:
         next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
         if error_msg is None:
