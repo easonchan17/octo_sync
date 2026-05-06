@@ -99,7 +99,7 @@ class InterceptStrategy:
         if rule_extras:
             rules = [{**rule, **extra} if extra else rule for rule, extra in zip(rules, rule_extras)]
         debug = policy_config.get("debug", False)
-        timeout = policy_config.get("timeout", 300)
+        timeout = policy_config.get("timeout", 180)
         url = policy_config.get("url_template", policy_config.get("url"))
 
         policy = cls()

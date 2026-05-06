@@ -21,6 +21,8 @@ if sys.version_info < (3, 11):
     sys.exit("Python 3.14 or higher is required")
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 logger = LoggerManager.get_instance().get_logger(__name__)
 shutdown_event = Event()
 
@@ -101,7 +103,8 @@ def run_app() -> None:
             site_name=SiteName.ODDSPORTAL.value,
             request_interval=60.0,
             launch_options=launch_options,
-            viewport=viewport
+            viewport=viewport,
+            addons=[os.path.join(BASE_DIR, "core/browser/extensions/oddsportal_tracer")]
         )
         logger.info("✅ Network interceptor started")
 

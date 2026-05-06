@@ -9,21 +9,21 @@ from core.types.enums import SiteName
 
 @TaskRegistry.poll('sync.oddsportal.league')
 class SyncLeague(PollTask):
-    HOOK_SCRIPT = """(function() {
-        var _origParse = JSON.parse;
-        JSON.parse = function(text, reviver) {
-            var result = _origParse.call(this, text, reviver);
-            try {
-                if (result && typeof result === 'object' && result.d && result.d.football_all) {
-                    navigator.sendBeacon('/__app_trace__/leagues/', JSON.stringify({
-                        url: window.location.href,
-                        data: result
-                    }));
-                }
-            } catch (e) {}
-            return result;
-        };
-    })();"""
+    # HOOK_SCRIPT = """(function() {
+    #     var _origParse = JSON.parse;
+    #     JSON.parse = function(text, reviver) {
+    #         var result = _origParse.call(this, text, reviver);
+    #         try {
+    #             if (result && typeof result === 'object' && result.d && result.d.football_all) {
+    #                 navigator.sendBeacon('/__app_trace__/leagues/', JSON.stringify({
+    #                     url: window.location.href,
+    #                     data: result
+    #                 }));
+    #             }
+    #         } catch (e) {}
+    #         return result;
+    #     };
+    # })();"""
 
     INTERCEPT_STRATEGY = {
         "url": "https://www.oddsportal.com/#sport/football/all",
@@ -31,7 +31,7 @@ class SyncLeague(PollTask):
         "rules": [
             {
                 "type": InterceptType.JS,
-                "hook_script": HOOK_SCRIPT
+                # "hook_script": HOOK_SCRIPT
             }
         ]
     }

@@ -187,6 +187,8 @@ class BuildEloRating(PollTask):
 
         return [item for item in items if not MatchStatus(item.match_status).is_aborted]
 
+    def get_idle_timeout_seconds(self) -> float:
+        return 600
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():

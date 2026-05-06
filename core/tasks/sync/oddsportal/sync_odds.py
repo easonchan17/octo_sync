@@ -9,21 +9,21 @@ from datetime import datetime, timezone, timedelta
 from core.types.enums import OddsMarkets
 
 class BaseSyncOdds(PollTask):
-    HOOK_SCRIPT = """(function() {
-        var _origParse = JSON.parse;
-        JSON.parse = function(text, reviver) {
-            var result = _origParse.call(this, text, reviver);
-            try {
-                if (result && typeof result === 'object' && result.d && result.d.oddsdata) {
-                    navigator.sendBeacon('/__app_trace__/odds/', JSON.stringify({
-                        url: window.location.href,
-                        data: result
-                    }));
-                }
-            } catch (e) {}
-            return result;
-        };
-    })();"""
+    # HOOK_SCRIPT = """(function() {
+    #     var _origParse = JSON.parse;
+    #     JSON.parse = function(text, reviver) {
+    #         var result = _origParse.call(this, text, reviver);
+    #         try {
+    #             if (result && typeof result === 'object' && result.d && result.d.oddsdata) {
+    #                 navigator.sendBeacon('/__app_trace__/odds/', JSON.stringify({
+    #                     url: window.location.href,
+    #                     data: result
+    #                 }));
+    #             }
+    #         } catch (e) {}
+    #         return result;
+    #     };
+    # })();"""
 
     INTERCEPT_STRATEGY = {
         "url_template": "https://www.oddsportal.com/football/h2h/{first_team}/{second_team}/#{match_code}:{betting_type};{scope_id}",
@@ -31,7 +31,7 @@ class BaseSyncOdds(PollTask):
         "rules": [
             {
                 "type": InterceptType.JS,
-                "hook_script": HOOK_SCRIPT,
+                # "hook_script": HOOK_SCRIPT,
             }
         ]
     }
