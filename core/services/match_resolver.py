@@ -17,6 +17,59 @@ class MatchItem:
         return f"[L:{self.league_id}|M:{self.match_key}] [{self.kickoff_time}] {self.home_team} vs {self.away_team}"
 
 class MatchResolver(BaseService):
+    TEAM_ALIASES = {
+        # Premier League
+        "bournemouth": "afc bournemouth",
+        "leeds": "leeds united",
+        "manchester utd": "manchester united",
+        "tottenham": "tottenham hotspur",
+        "leicester": "leicester city",
+        "west brom": "west bromwich albion",
+        "brighton": "brighton & hove albion",
+        "sheffield utd": "sheffield united",
+        "wolves": "wolverhampton wanderers",
+        "ipswich": "ipswich town",
+        "newcastle": "newcastle united",
+        "luton": "luton town",
+        "west ham": "west ham united",
+        "nottingham": "nottingham forest",
+        "norwich": "norwich city",
+
+        # La Liga
+        "alaves": "deportivo alaves",
+        "oviedo": "real oviedo",
+        "betis": "real betis",
+        "huesca": "sd huesca",
+        "valladolid": "real valladolid",
+        "ath bilbao": "athletic club",
+        "granada cf": "granada",
+        "cadiz cf": "cadiz",
+        "atl. madrid": "atletico madrid",
+
+        # Serie A
+        "verona": "hellas verona",
+        "as roma": "roma",
+        "ac milan": "milan",
+
+        # Bundesliga
+        "heidenheim": "fc heidenheim",
+        "stuttgart": "vfb stuttgart",
+        "dortmund": "borussia dortmund",
+        "fc koln": "1. fc köln",
+        "dusseldorf": "fortuna düsseldorf",
+        "hertha berlin": "hertha bsc",
+        "greuther furth": "greuther fürth",
+        "mainz": "mainz 05",
+        "b. monchengladbach": "borussia mönchengladbach",
+        "bayern munich": "bayern münchen",
+        "schalke": "schalke 04",
+
+        # Ligue 1
+        "psg": "paris saint-germain",
+        "st etienne": "saint-etienne",
+        "clermont": "clermont foot"
+    }
+
     def __init__(self, kickoff_tolerance: timedelta = timedelta(minutes=15), similarity_threshold: int = 60) -> None:
         super().__init__()
         self.kickoff_tolerance = kickoff_tolerance
@@ -75,16 +128,24 @@ class MatchResolver(BaseService):
 
         return best_target
 
+    def _normalize_name(self, name: str) -> str:
+        clean_name = name.lower().strip()
+        return self.TEAM_ALIASES.get(clean_name, clean_name)
 
     def _calc_similarity(self, source: MatchItem, target: MatchItem) -> int:
         if source.league_id != target.league_id:
             return 0
 
-        if source.home_team == target.home_team or source.away_team == target.away_team:
+        src_home = self._normalize_name(source.home_team)
+        src_away = self._normalize_name(source.away_team)
+        tgt_home = self._normalize_name(target.home_team)
+        tgt_away = self._normalize_name(target.away_team)
+
+        if src_home == tgt_home or src_away == tgt_away:
             return 100
 
-        home_score = max(fuzz.token_set_ratio(source.home_team, target.home_team), self._acronym_score(source.home_team, target.home_team))
-        away_score = max(fuzz.token_set_ratio(source.away_team, target.away_team), self._acronym_score(source.away_team, target.away_team))
+        home_score = max(fuzz.token_set_ratio(src_home, tgt_home), self._acronym_score(src_home, tgt_home))
+        away_score = max(fuzz.token_set_ratio(src_away, tgt_away), self._acronym_score(src_away, tgt_away))
 
         return (home_score + away_score) // 2
 
