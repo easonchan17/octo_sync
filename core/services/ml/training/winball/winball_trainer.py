@@ -62,7 +62,7 @@ class WinballTrainer(BaseTrainer):
         self.logger.info(f'    Params: {current_params_dict}')
         return False
 
-    def execute(self, *args, **kwargs) -> None:
+    def train(self) -> None:
         try:
             X_train, y_train, X_test, y_test = self.load_dataset()
 
