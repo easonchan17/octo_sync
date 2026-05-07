@@ -32,6 +32,7 @@ class Odds1x2(Base):
     __table_args__ = (
         UniqueConstraint('match_code', 'betting_type_id', 'scope_id', 'bookmaker_id', 'quote_type', name='uq_odds_1x2_match_betting_scope_bookmaker_quote_type'),
         Index('idx_odds_1x2_match_code', 'match_code'),
+        Index('idx_odds_1x2_match_code_type_scope_quote', 'match_code', 'betting_type_id', 'scope_id', 'quote_type'),
         Index('idx_odds_1x2_created_at', 'created_at'),
         Index('idx_odds_1x2_updated_at', 'updated_at'),
         {'schema': SiteName.ODDSPORTAL.value}
@@ -71,6 +72,7 @@ class OddsAh(Base):
     __table_args__ = (
         UniqueConstraint('match_code', 'betting_type_id', 'scope_id', 'bookmaker_id', 'quote_type', 'handicap', name='uq_odds_ah_match_betting_scope_bookmaker_quote_type_handicap'),
         Index('idx_odds_ah_match_code', 'match_code'),
+        Index('idx_odds_ah_type_scope_quote_match_bookmaker', 'betting_type_id', 'scope_id', 'quote_type', 'match_code', 'bookmaker_id'),
         Index('idx_odds_ah_created_at', 'created_at'),
         Index('idx_odds_ah_updated_at', 'updated_at'),
         {'schema': SiteName.ODDSPORTAL.value}

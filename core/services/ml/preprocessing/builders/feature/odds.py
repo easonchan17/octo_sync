@@ -46,46 +46,7 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
         (BookmakerID.ONEXBET,          3),
     ]
 
-    _SHARP_COLS = ["home_open_real", "away_open_real", "home_close_real", "away_close_real"]
-
-    _SQL = text("""
-        WITH ah_main_line AS (
-            SELECT *,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY match_code, bookmaker_id
-                       ORDER BY ABS(1.0 / closing_home_odds - 1.0 / closing_away_odds)
-                   ) AS rn
-            FROM oddsportal.odds_ah
-            WHERE betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
-        )
-        SELECT
-            fm.match_id,
-            ox.bookmaker_id,
-            ox.opening_home_odds  AS home_open_odds,
-            ox.opening_draw_odds  AS draw_open_odds,
-            ox.opening_away_odds  AS away_open_odds,
-            ox.closing_home_odds  AS home_close_odds,
-            ox.closing_draw_odds  AS draw_close_odds,
-            ox.closing_away_odds  AS away_close_odds,
-            ah.opening_handicap   AS ah_line_open,
-            ah.opening_home_odds  AS ah_home_open_odds,
-            ah.opening_away_odds  AS ah_away_open_odds,
-            ah.handicap           AS ah_line_close,
-            ah.closing_home_odds  AS ah_home_close_odds,
-            ah.closing_away_odds  AS ah_away_close_odds
-        FROM fotmob.fixtures fm
-        JOIN oddsportal.fixtures op
-            ON op.ref_match_id = fm.match_id
-        JOIN oddsportal.odds_1x2 ox
-            ON ox.match_code = op.match_code
-            AND ox.betting_type_id = 1 AND ox.scope_id = 2 AND ox.quote_type = 'back'
-        LEFT JOIN ah_main_line ah
-            ON ah.match_code = op.match_code
-            AND ah.bookmaker_id = ox.bookmaker_id
-            AND ah.rn = 1
-        WHERE fm.league_id = :league_id
-          AND fm.season BETWEEN :min_season AND :max_season
-    """)
+    SHARP_COLS = ["home_open_real", "away_open_real", "home_close_real", "away_close_real"]
 
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
@@ -95,24 +56,64 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
 
     def _load_data_frame(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
-            result = session.execute(self._SQL, {
-                "league_id":   self.league_id,
-                "min_season":  self.min_season,
-                "max_season":  self.max_season,
+            result = session.execute(text("""
+                WITH ah_main_line AS (
+                    SELECT *,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY match_code, bookmaker_id
+                               ORDER BY ABS(1.0 / closing_home_odds - 1.0 / closing_away_odds)
+                           ) AS rn
+                    FROM oddsportal.odds_ah
+                    WHERE betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back' AND closing_home_odds > 1.0
+      AND closing_away_odds > 1.0
+                )
+                SELECT
+                    fm.match_id,
+                    ox.bookmaker_id,
+                    ox.opening_home_odds  AS home_open_odds,
+                    ox.opening_draw_odds  AS draw_open_odds,
+                    ox.opening_away_odds  AS away_open_odds,
+                    ox.closing_home_odds  AS home_close_odds,
+                    ox.closing_draw_odds  AS draw_close_odds,
+                    ox.closing_away_odds  AS away_close_odds,
+                    ah.opening_handicap   AS ah_line_open,
+                    ah.opening_home_odds  AS ah_home_open_odds,
+                    ah.opening_away_odds  AS ah_away_open_odds,
+                    ah.handicap           AS ah_line_close,
+                    ah.closing_home_odds  AS ah_home_close_odds,
+                    ah.closing_away_odds  AS ah_away_close_odds
+                FROM fotmob.fixtures fm
+                JOIN oddsportal.fixtures op
+                    ON op.ref_match_id = fm.match_id
+                JOIN oddsportal.odds_1x2 ox
+                    ON ox.match_code = op.match_code
+                    AND ox.betting_type_id = 1 AND ox.scope_id = 2 AND ox.quote_type = 'back'
+                LEFT JOIN ah_main_line ah
+                    ON ah.match_code = op.match_code
+                    AND ah.bookmaker_id = ox.bookmaker_id
+                    AND ah.rn = 1
+                WHERE fm.league_id = :league_id
+                  AND fm.season BETWEEN :min_season AND :max_season
+            """), {
+                "league_id":  self.league_id,
+                "min_season": self.min_season,
+                "max_season": self.max_season,
             })
+
             rows = result.fetchall()
             if not rows:
                 return None
+
             return pd.DataFrame(rows, columns=result.keys())
 
     def _extract_sharp_row(self, group: pd.DataFrame) -> pd.Series:
         for bookmaker_id, tier in self.SHARP_TIERS:
             match = group[group["bookmaker_id"] == bookmaker_id.value]
             if not match.empty:
-                row = match.iloc[0][self._SHARP_COLS].copy()
+                row = match.iloc[0][self.SHARP_COLS].copy()
                 row["sharp_source_level"] = tier
                 return row
-        fallback = group[self._SHARP_COLS].median()
+        fallback = group[self.SHARP_COLS].median()
         fallback["sharp_source_level"] = 4
         return fallback
 
