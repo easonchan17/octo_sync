@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional, List
 from core.scheduler.task_registry import TaskRegistry
-from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.poll_task import PollTask
+from core.types.params import CrawlParams
 from core.store.postgres.daos.fotmob import LeagueDao
 from core.logger.logger_manager import LoggerManager
 from core.services.league import league_service

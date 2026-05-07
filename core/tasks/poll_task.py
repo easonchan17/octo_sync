@@ -2,24 +2,9 @@ import logging
 from threading import Event
 from typing import Tuple, Optional
 from core.scheduler.base_task import BaseTask
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from core.browser.interceptor_manager import interceptor_manager
-
-class CrawlParams:
-    EARLIEST_SEASON = 2019
-
-    POLL_IDLE_SECONDS = 60
-
-    PARSE_BATCH_SIZE = 300
-    FETCH_BATCH_SIZE = 2000
-    PARSE_MAX_RETRIES = 3
-
-    FIXTURE_LOOKBACK = timedelta(hours=24)
-    FIXTURE_LOOKAHEAD = timedelta(days=2)
-
-    MATCH_LOOKAHEAD = timedelta(days=2)
-    MATCH_LIFESPAN = timedelta(hours=4)
-    MATCH_SETTLEMENT = timedelta(days=2)
+from core.types.params import CrawlParams
 
 class TaggedLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):
