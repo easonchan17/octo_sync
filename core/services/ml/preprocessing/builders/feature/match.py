@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
-from datetime import datetime
 from typing import Optional
+from datetime import datetime
+from sqlalchemy import func, select, and_
 from core.types.enums import MatchStatus
-from core.store.postgres.models.fotmob import Fixture, MatchStat
+from core.store.postgres.models.fotmob import Fixture, MatchStat, MatchPlayerStat
+
 from ...transforms import ColumnFilter, FormulaMutator
 from .base import BaseFeatureBuilder
 
@@ -21,8 +23,12 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         ("away_goal_to_xg_ema_5",             "away_score_ema_5 / away_xg_ema_5"),
         ("home_goal_minus_xg_ema_5",          "home_score_ema_5 - home_xg_ema_5"),
         ("away_goal_minus_xg_ema_5",          "away_score_ema_5 - away_xg_ema_5"),
-        ("home_opp_half_pass_rate_ema_5",    "home_opp_half_passes_ema_5 / home_passes_ema_5"),
-        ("away_opp_half_pass_rate_ema_5",    "away_opp_half_passes_ema_5 / away_passes_ema_5"),
+        ("home_opp_half_pass_rate_ema_5",         "home_opp_half_passes_ema_5 / home_passes_ema_5"),
+        ("away_opp_half_pass_rate_ema_5",         "away_opp_half_passes_ema_5 / away_passes_ema_5"),
+        ("home_final_third_entry_rate_ema_5",     "home_passes_into_final_third_ema_5 / home_passes_ema_5"),
+        ("away_final_third_entry_rate_ema_5",     "away_passes_into_final_third_ema_5 / away_passes_ema_5"),
+        ("home_threat_per_entry_ema_5",           "home_npxg_ema_5 / home_passes_into_final_third_ema_5"),
+        ("away_threat_per_entry_ema_5",           "away_npxg_ema_5 / away_passes_into_final_third_ema_5"),
         ("home_passes_acc_ema_5",             "home_passes_completed_ema_5 / home_passes_ema_5"),
         ("away_passes_acc_ema_5",             "away_passes_completed_ema_5 / away_passes_ema_5"),
         ("home_long_passes_acc_ema_5",        "home_long_passes_completed_ema_5 / home_long_passes_ema_5"),
@@ -36,13 +42,9 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         ("home_disruption_ema_5",             "home_tackles_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5"),
         ("away_disruption_ema_5",             "away_tackles_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5"),
         ("rest_days_diff",                    "home_rest_days - away_rest_days"),
-        ("xg_ema_5_diff",                     "home_xg_ema_5 - away_xg_ema_5"),
-        ("xg_per_shot_ema_5_diff",            "home_xg_per_shot_ema_5 - away_xg_per_shot_ema_5"),
         ("npxg_per_shot_ema_5_diff",          "home_npxg_per_shot_ema_5 - away_npxg_per_shot_ema_5"),
-        ("xga_ema_5_diff",                    "home_xga_ema_5 - away_xga_ema_5"),
-        ("npxga_ema_5_diff",                  "home_npxga_ema_5 - away_npxga_ema_5"),
         ("npxg_ema_5_diff",                   "home_npxg_ema_5 - away_npxg_ema_5"),
-        ("possession_ema_5_diff",             "home_possession_ema_5 - away_possession_ema_5"),
+        ("npxga_ema_5_diff",                  "home_npxga_ema_5 - away_npxga_ema_5"),
         ("shots_ema_5_diff",                  "home_shots_ema_5 - away_shots_ema_5"),
         ("shots_on_target_ema_5_diff",        "home_shots_on_target_ema_5 - away_shots_on_target_ema_5"),
         ("big_chances_ema_5_diff",            "home_big_chances_ema_5 - away_big_chances_ema_5"),
@@ -58,7 +60,10 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         ("shots_acc_ema_5_diff",              "home_shots_acc_ema_5 - away_shots_acc_ema_5"),
         ("shots_conversion_ema_5_diff",       "home_shots_conversion_ema_5 - away_shots_conversion_ema_5"),
         ("aerial_win_rate_ema_5_diff",        "home_aerial_win_rate_ema_5 - away_aerial_win_rate_ema_5"),
+        ("passes_into_final_third_ema_5_diff",    "home_passes_into_final_third_ema_5 - away_passes_into_final_third_ema_5"),
         ("opp_half_pass_rate_ema_5_diff",         "home_opp_half_pass_rate_ema_5 - away_opp_half_pass_rate_ema_5"),
+        ("final_third_entry_rate_ema_5_diff",     "home_final_third_entry_rate_ema_5 - away_final_third_entry_rate_ema_5"),
+        ("threat_per_entry_ema_5_diff",           "home_threat_per_entry_ema_5 - away_threat_per_entry_ema_5"),
         ("goal_to_xg_ema_5_diff",                "home_goal_to_xg_ema_5 - away_goal_to_xg_ema_5"),
         ("long_passes_acc_ema_5_diff",           "home_long_passes_acc_ema_5 - away_long_passes_acc_ema_5"),
         ("crosses_acc_ema_5_diff",               "home_crosses_acc_ema_5 - away_crosses_acc_ema_5"),
@@ -79,17 +84,14 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
         "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
         "home_lagged_xg", "away_lagged_xg",
-        "home_xg_ema_5", "away_xg_ema_5", "xg_ema_5_diff",
-        "home_xg_per_shot_ema_5", "away_xg_per_shot_ema_5", "xg_per_shot_ema_5_diff",
-        "home_npxg_per_shot_ema_5", "away_npxg_per_shot_ema_5", "npxg_per_shot_ema_5_diff",
-        "home_xga_ema_5", "away_xga_ema_5", "xga_ema_5_diff",
-        "home_npxga_ema_5", "away_npxga_ema_5", "npxga_ema_5_diff",
         "home_npxg_ema_5", "away_npxg_ema_5", "npxg_ema_5_diff",
-        "home_possession_ema_5", "away_possession_ema_5", "possession_ema_5_diff",
+        "home_npxga_ema_5", "away_npxga_ema_5", "npxga_ema_5_diff",
+        "home_npxg_per_shot_ema_5", "away_npxg_per_shot_ema_5", "npxg_per_shot_ema_5_diff",
         "home_shots_ema_5", "away_shots_ema_5", "shots_ema_5_diff",
         "home_shots_on_target_ema_5", "away_shots_on_target_ema_5", "shots_on_target_ema_5_diff",
         "home_big_chances_ema_5", "away_big_chances_ema_5", "big_chances_ema_5_diff",
         "home_passes_ema_5", "away_passes_ema_5", "passes_ema_5_diff",
+        "home_passes_into_final_third_ema_5", "away_passes_into_final_third_ema_5", "passes_into_final_third_ema_5_diff",
         "home_long_passes_ema_5", "away_long_passes_ema_5", "long_passes_ema_5_diff",
         "home_crosses_ema_5", "away_crosses_ema_5", "crosses_ema_5_diff",
         "home_tackles_ema_5", "away_tackles_ema_5", "tackles_ema_5_diff",
@@ -107,6 +109,8 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "home_big_chances_missed_rate_ema_5", "away_big_chances_missed_rate_ema_5", "big_chances_missed_rate_ema_5_diff",
         "home_disruption_ema_5", "away_disruption_ema_5", "disruption_ema_5_diff",
         "home_opp_half_pass_rate_ema_5", "away_opp_half_pass_rate_ema_5", "opp_half_pass_rate_ema_5_diff",
+        "home_final_third_entry_rate_ema_5", "away_final_third_entry_rate_ema_5", "final_third_entry_rate_ema_5_diff",
+        "home_threat_per_entry_ema_5", "away_threat_per_entry_ema_5", "threat_per_entry_ema_5_diff",
     ]
 
 class TeamFormBuilder:
@@ -114,10 +118,10 @@ class TeamFormBuilder:
         "score",
         "xg", "xga",
         "npxg", "npxga",
-        "possession",
         "shots", "shots_on_target",
         "big_chances", "big_chances_missed",
         "passes", "passes_completed",
+        "passes_into_final_third",
         "opp_half_passes",
         "long_passes", "long_passes_completed",
         "crosses", "crosses_completed",
@@ -258,7 +262,30 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
     def _load_data_frame(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
-            results = session.query(Fixture, MatchStat).outerjoin(
+            home_pift = (
+                select(func.sum(MatchPlayerStat.passes_into_final_third))
+                .where(and_(
+                    MatchPlayerStat.match_id == Fixture.match_id,
+                    MatchPlayerStat.team_id == Fixture.home_id,
+                ))
+                .correlate(Fixture)
+                .scalar_subquery()
+            )
+            away_pift = (
+                select(func.sum(MatchPlayerStat.passes_into_final_third))
+                .where(and_(
+                    MatchPlayerStat.match_id == Fixture.match_id,
+                    MatchPlayerStat.team_id == Fixture.away_id,
+                ))
+                .correlate(Fixture)
+                .scalar_subquery()
+            )
+
+            results = session.query(
+                Fixture, MatchStat,
+                home_pift.label("home_passes_into_final_third"),
+                away_pift.label("away_passes_into_final_third"),
+            ).outerjoin(
                 MatchStat, Fixture.match_id == MatchStat.match_id
             ).filter(
                 Fixture.league_id == self.league_id,
@@ -268,7 +295,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
             ).order_by(Fixture.kickoff_time).all()
 
             records = []
-            for fixture, stat in results:
+            for fixture, stat, home_passes_into_final_third, away_passes_into_final_third in results:
                 record = {
                     "match_id": fixture.match_id,
                     "league_id": fixture.league_id,
@@ -282,6 +309,8 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                     "away_id": fixture.away_id,
                     "home_score": fixture.home_score,
                     "away_score": fixture.away_score,
+                    "home_passes_into_final_third": home_passes_into_final_third or 0,
+                    "away_passes_into_final_third": away_passes_into_final_third or 0,
                 }
 
                 if stat:

@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 from typing import Optional
 from sqlalchemy import text
-from .base import BaseFeatureBuilder
-from ...transforms import FormulaMutator, EntropyMutator
 from core.types.enums import BookmakerID
+
+from ...transforms import FormulaMutator, EntropyMutator
+from .base import BaseFeatureBuilder
 
 class SharpOddsBuilder:
     SHARP_TIERS = [

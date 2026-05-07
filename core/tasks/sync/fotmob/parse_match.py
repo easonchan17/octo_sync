@@ -589,7 +589,6 @@ class MatchParser:
     }
 
     LINEUP_MAPPING = {
-        # "starter": {
         "id": [("member_id", lambda x: x)],
         "age": [("age", lambda x: x)],
         "name": [("member_name", lambda x: x)],
@@ -602,38 +601,7 @@ class MatchParser:
         "shirtNumber": [("shirt_number", lambda x: int(x) if x and x.isdigit() else 0)],
         "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x or 0)],
         "isCaptain": [("is_captain", lambda x: bool(x))],
-        "optaId": [("opta_id", lambda x: x or "")],
-        # },
-        # "sub": {
-        #     "id": [("member_id", lambda x: x)],
-        #     "age": [("age", lambda x: x)],
-        #     "name": [("member_name", lambda x: x)],
-        #     "marketValue": [("market_value", lambda x: x)],
-        #     "countryName": [("country_name", lambda x: x)],
-        #     "countryCode": [("country_code", lambda x: x)],
-        #     "performance": [("rating", lambda x: x.get("rating"))],
-        #     "positionId": [("position_id", lambda x: x)],
-        #     "optaId": [("opta_id", lambda x: x)],
-        #     "shirtNumber": [("shirt_number", lambda x: int(x) if x and x.isdigit() else None)],
-        #     "usualPlayingPositionId": [("usual_playing_position_id", lambda x: x)]
-        # },
-        # "unavailable": {
-        #     "id": [("member_id", lambda x: x)],
-        #     "age": [("age", lambda x: x)],
-        #     "name": [("member_name", lambda x: x)],
-        #     "marketValue": [("market_value", lambda x: x)],
-        #     "countryName": [("country_name", lambda x: x)],
-        #     "countryCode": [("country_code", lambda x: x)],
-        #     "positionId": [("position_id", lambda x: x)],
-        # },
-        # "coach": {
-        #     "id": [("member_id", lambda x: x)],
-        #     "age": [("age", lambda x: x)],
-        #     "optaId": [("opta_id", lambda x: x)],
-        #     "name": [("member_name", lambda x: x)],
-        #     "countryName": [("country_name", lambda x: x)],
-        #     "countryCode": [("country_code", lambda x: x)]
-        # }
+        "optaId": [("opta_id", lambda x: x or "")]
     }
 
     def __init__(self) -> None:
