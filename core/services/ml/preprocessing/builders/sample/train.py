@@ -43,18 +43,12 @@ class TrainSampleBuilder(BaseSampleBuilder):
                 return None
 
             elo_df = self.elo_rating_builder.build()
-            if elo_df is None or elo_df.empty:
-                self.logger.error("No elo rating data found")
-                return None
-
-            match_stats_df = match_stats_df.merge(elo_df, on='match_id', how='left')
+            if elo_df is not None and not elo_df.empty:
+                match_stats_df = match_stats_df.merge(elo_df, on='match_id', how='left')
 
             odds_df = self.odds_builder.build()
-            if odds_df is None or odds_df.empty:
-                self.logger.error("No odds data found")
-                return None
-
-            match_stats_df = match_stats_df.merge(odds_df, on='match_id', how='left')
+            if odds_df is not None and not odds_df.empty:
+                match_stats_df = match_stats_df.merge(odds_df, on='match_id', how='left')
 
             output_file = self.build_output_path("match_stats")
             save_dataframe(match_stats_df, output_file)
