@@ -3,7 +3,8 @@ from abc import abstractmethod
 from typing import Any, Dict, List, Optional
 from core.scheduler.task_registry import TaskRegistry
 from core.types.enums import OddsMarket, OddsMarkets, SiteName
-from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.poll_task import PollTask
+from core.types.params import CrawlParams
 from core.store.postgres.daos.oddsportal import OddsDao
 from core.logger.logger_manager import LoggerManager
 from core.utils.datetime_utils import from_timestamp

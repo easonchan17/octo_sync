@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, List
 from core.store.postgres.daos.fotmob import MatchDao
 from core.browser.handlers.receivers import JsonReceiver
-from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.poll_task import PollTask
+from core.types.params import CrawlParams
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.services.league import league_service

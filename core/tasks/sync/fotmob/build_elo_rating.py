@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 from core.types.enums import SiteName, MatchStatus
 from core.types.params import EloParams
 from core.scheduler.task_registry import TaskRegistry
-from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.poll_task import PollTask
+from core.types.params import CrawlParams
 from core.tasks.refetch_strategy import TimelineStrategy
 from core.store.postgres.daos.fotmob.elo_rating_dao import EloRatingDao
 
