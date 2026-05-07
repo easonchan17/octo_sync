@@ -4,7 +4,8 @@ from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.scheduler.task_registry import TaskRegistry
 from core.browser.handlers.receivers import JsonReceiver
 from datetime import date, datetime, time, timedelta, timezone
-from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.poll_task import PollTask
+from core.types.params import CrawlParams
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.types.enums import SiteName

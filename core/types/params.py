@@ -1,3 +1,21 @@
+from datetime import timedelta
+
+class CrawlParams:
+    EARLIEST_SEASON = 2019
+
+    POLL_IDLE_SECONDS = 60
+
+    PARSE_BATCH_SIZE = 300
+    FETCH_BATCH_SIZE = 2000
+    PARSE_MAX_RETRIES = 3
+
+    FIXTURE_LOOKBACK = timedelta(hours=24)
+    FIXTURE_LOOKAHEAD = timedelta(days=2)
+
+    MATCH_LOOKAHEAD = timedelta(days=2)
+    MATCH_LIFESPAN = timedelta(hours=4)
+    MATCH_SETTLEMENT = timedelta(days=2)
+
 class EloParams:
     def __init__(
         self,

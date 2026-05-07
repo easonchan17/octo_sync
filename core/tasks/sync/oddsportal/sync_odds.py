@@ -2,36 +2,20 @@ from core.types.enums import SiteName
 from typing import Any, Dict, Optional
 from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.daos.oddsportal import OddsDao
-from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.poll_task import PollTask
+from core.types.params import CrawlParams
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
 from datetime import datetime, timezone, timedelta
 from core.types.enums import OddsMarkets
 
 class BaseSyncOdds(PollTask):
-    # HOOK_SCRIPT = """(function() {
-    #     var _origParse = JSON.parse;
-    #     JSON.parse = function(text, reviver) {
-    #         var result = _origParse.call(this, text, reviver);
-    #         try {
-    #             if (result && typeof result === 'object' && result.d && result.d.oddsdata) {
-    #                 navigator.sendBeacon('/__app_trace__/odds/', JSON.stringify({
-    #                     url: window.location.href,
-    #                     data: result
-    #                 }));
-    #             }
-    #         } catch (e) {}
-    #         return result;
-    #     };
-    # })();"""
-
     INTERCEPT_STRATEGY = {
         "url_template": "https://www.oddsportal.com/football/h2h/{first_team}/{second_team}/#{match_code}:{betting_type};{scope_id}",
         "debug": False,
         "rules": [
             {
-                "type": InterceptType.JS,
-                # "hook_script": HOOK_SCRIPT,
+                "type": InterceptType.JS
             }
         ]
     }

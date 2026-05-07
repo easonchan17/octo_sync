@@ -5,7 +5,8 @@ from core.types.enums import MatchStatus, SiteName
 from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.store.postgres.models.fotmob.fixture import Fixture
-from core.tasks.poll_task import PollTask, CrawlParams
+from core.tasks.poll_task import PollTask
+from core.types.params import CrawlParams
 from core.tasks.sync.fotmob.utils import extract_status
 from core.tasks.refetch_strategy import ScheduleStrategy, ScheduleSegment
 from core.services.league import league_service
