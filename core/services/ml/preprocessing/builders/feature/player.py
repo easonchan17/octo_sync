@@ -9,7 +9,7 @@ from core.store.postgres.models.fotmob.match import MatchPlayerStat, MatchLineup
 
 from ...transforms import FormulaMutator, ColumnFilter
 from .base import BaseFeatureBuilder
-from ...constants import EPSILON, DEFAULT_DECIMALS
+from ...constants import EPSILON
 
 
 class FeatureQuantiler:
@@ -33,7 +33,7 @@ class FeatureQuantiler:
         "keeper_high_claim_per_90_ema_20":       1.5,
     }
 
-    def build(self, df: pd.DataFrame, quantile: float = 0.98, decimals: Optional[int] = DEFAULT_DECIMALS) -> Dict[str, float]:
+    def build(self, df: pd.DataFrame, quantile: float = 0.98, decimals: Optional[int] = None) -> Dict[str, float]:
         quantiles = {}
 
         for feature in self.ELITE_THRESHOLDS:

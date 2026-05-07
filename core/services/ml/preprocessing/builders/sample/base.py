@@ -5,7 +5,7 @@ from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
 from core.types.enums import Position, LineupRole
 from ...transforms import ColumnFilter, FormulaMutator
-from ...constants import IMPUTATION_QUANTILE, EPSILON, DEFAULT_DECIMALS
+from ...constants import IMPUTATION_QUANTILE, EPSILON
 
 class BaseSampleBuilder:
     def __init__(self) -> None:
@@ -104,7 +104,7 @@ class BaseSampleBuilder:
         stats_map = {}
         for feature in self.PLAYER_FEATURES:
             quantile_by_position = starters.groupby("position")[feature].quantile(IMPUTATION_QUANTILE)
-            stats_map[feature] = quantile_by_position.round(DEFAULT_DECIMALS).to_dict()
+            stats_map[feature] = quantile_by_position.to_dict()
 
         for feature in self.PLAYER_FEATURES:
             fill_values = starters["position"].map(stats_map[feature])
@@ -137,7 +137,7 @@ class BaseSampleBuilder:
                 starters[tmp_col] = starters[feature].where(mask, fill_value)
                 agg_rules[tmp_col] = agg_func
 
-        team_stats = starters.groupby(["match_id", "team_id"]).agg(agg_rules).round(DEFAULT_DECIMALS).reset_index()
+        team_stats = starters.groupby(["match_id", "team_id"]).agg(agg_rules).reset_index()
 
         rename_dict = {col: col.removesuffix('_tmp') for col in team_stats.columns if col.endswith('_tmp')}
         team_stats = team_stats.rename(columns=rename_dict)

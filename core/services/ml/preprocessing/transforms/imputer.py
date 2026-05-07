@@ -2,7 +2,6 @@ import pandas as pd
 from abc import abstractmethod
 from typing import Any, Optional
 from .base import BaseTransform
-from ..constants import DEFAULT_DECIMALS
 
 class BaseImputer(BaseTransform):
     @abstractmethod
@@ -23,7 +22,7 @@ class DefaultImputer(BaseImputer):
 
 
 class FormulaImputer(BaseImputer):
-    def impute(self, col: str, formula: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
+    def impute(self, col: str, formula: str, decimals: Optional[int] = None) -> None:
         null_mask = self._na_mask(col)
         if not null_mask.any():
             return
@@ -40,7 +39,7 @@ class FormulaImputer(BaseImputer):
 
 
 class MeanImputer(BaseImputer):
-    def impute(self, col: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
+    def impute(self, col: str, decimals: Optional[int] = None) -> None:
         null_mask = self._na_mask(col)
         if not null_mask.any():
             return

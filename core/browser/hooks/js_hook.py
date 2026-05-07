@@ -22,6 +22,9 @@ class JsHook(BaseHook):
 
         async def _trace_handler(route, request) -> None:
             try:
+                if js_rule.pattern and not request.url.endswith(js_rule.pattern):
+                    return
+
                 if not request.post_data:
                     self.logger.warning(f"Empty trace body from: {request.url}")
                     return
