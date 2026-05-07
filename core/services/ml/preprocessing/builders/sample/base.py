@@ -91,7 +91,7 @@ class BaseSampleBuilder:
         match_stats_df: pd.DataFrame,
         player_stats_df: pd.DataFrame,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        starters = player_stats_df[player_stats_df["role"] == LineupRole.STARTER].copy()
+        starters = player_stats_df[player_stats_df["role"] == LineupRole.STARTER.value].copy()
         if starters.empty:
             raise ValueError("No starters found")
 

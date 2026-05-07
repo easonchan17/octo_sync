@@ -33,7 +33,7 @@ class FeatureQuantiler:
         "keeper_high_claim_per_90_ema_20":       1.5,
     }
 
-    def build(self, df: pd.DataFrame, quantile: float = 0.98, decimals: Optional[int] = None) -> Dict[str, float]:
+    def build(self, df: pd.DataFrame, quantile: float = 0.98) -> Dict[str, float]:
         quantiles = {}
 
         for feature in self.ELITE_THRESHOLDS:
@@ -45,9 +45,6 @@ class FeatureQuantiler:
             if quantile_val <= 0:
                 max_val = valid_data.max()
                 quantile_val = max_val if max_val > 0 else 1.0
-
-            if decimals is not None:
-                quantile_val = round(float(quantile_val), decimals)
 
             if quantile_val < EPSILON:
                 raise ValueError(f"Quantile value for {feature} is less than EPSILON: {quantile_val}")

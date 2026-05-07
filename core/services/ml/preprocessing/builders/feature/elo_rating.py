@@ -5,8 +5,8 @@ from sqlalchemy.orm import aliased
 from core.types.enums import MatchStatus
 from core.types.params import EloParams
 from core.store.postgres.models.fotmob import Fixture, EloRating
-from .base import BaseFeatureBuilder
 
+from .base import BaseFeatureBuilder
 
 class EloRatingBuilder(BaseFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int, elo_params: EloParams = EloParams()) -> None:
