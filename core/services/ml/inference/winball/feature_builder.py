@@ -1,14 +1,13 @@
 import numpy as np
 import pandas as pd
+from sqlalchemy import desc
 from datetime import datetime
 from typing import Dict, Any, Optional
-from sqlalchemy import desc
 from core.types.params import EloParams
 from core.logger.logger_manager import LoggerManager
-from core.store.postgres.models import FotmobFixture, EloRating, PinnacleFixture, Moneyline, Spread
+from core.store.postgres.models import FotmobFixture, EloRating
 from core.services.ml.preprocessing.builders.feature.odds import OddsFeatureBuilder
 from core.services.ml.preprocessing.transforms import FormulaMutator, EntropyMutator
-from core.services.ml.preprocessing.constants import DEFAULT_DECIMALS
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.services.ml.preprocessing import PredictSampleBuilder
 
@@ -60,8 +59,8 @@ class FeatureBuilder:
         df = pd.DataFrame([{**market_odds, **elo_rating}])
 
         FormulaMutator(df).mutate_batch(OddsFeatureBuilder.ODDS_FEATURES)
-        EntropyMutator(df).build("entropy_1x2_open", ['home_open_real', 'draw_open_real', 'away_open_real'], DEFAULT_DECIMALS)
-        EntropyMutator(df).build("entropy_1x2_close", ['home_close_real', 'draw_close_real', 'away_close_real'], DEFAULT_DECIMALS)
+        EntropyMutator(df).mutate("entropy_1x2_open", ['home_open_real', 'draw_open_real', 'away_open_real'])
+        EntropyMutator(df).mutate("entropy_1x2_close", ['home_close_real', 'draw_close_real', 'away_close_real'])
         self._derive_elo_features(df)
 
         return df.iloc[0].to_dict()
