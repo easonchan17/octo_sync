@@ -1,10 +1,9 @@
 import numpy as np
 from typing import Optional, List, Any
 from .base import BaseTransform
-from ..constants import DEFAULT_DECIMALS
 
 class FormulaMutator(BaseTransform):
-    def mutate(self, col: str, formula: str, decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
+    def mutate(self, col: str, formula: str, decimals: Optional[int] = None) -> None:
         self._require_no_col(col)
 
         new_series = self.df.eval(formula, local_dict={'np': np, 'log': np.log})
@@ -14,12 +13,12 @@ class FormulaMutator(BaseTransform):
         self.df[col] = new_series
         self.logger.info(f"Created {col} with formula: {formula}")
 
-    def mutate_batch(self, cols: List[Any]) -> None:
+    def mutate_batch(self, cols: List[Any], decimals: Optional[int] = None) -> None:
         for col, formula in cols:
-            self.mutate(col, formula)
+            self.mutate(col, formula, decimals=decimals)
 
 class EntropyMutator(BaseTransform):
-    def build(self, col: str, probability_cols: List[str], decimals: Optional[int] = DEFAULT_DECIMALS) -> None:
+    def mutate(self, col: str, probability_cols: List[str], decimals: Optional[int] = None) -> None:
         for prob_col in probability_cols:
             self._require_col(prob_col)
 

@@ -68,6 +68,10 @@ class TrainSampleBuilder(BaseSampleBuilder):
                 self.logger.error("No aggregated stats data found")
                 return None
 
+            for df in [aggregated_df, aggregated_df_for_training]:
+                num_cols = df.select_dtypes(include='number').columns
+                df[num_cols] = df[num_cols].round(4)
+
             output_file = self.build_output_path("aggregated_stats")
             save_dataframe(aggregated_df, output_file)
             self.logger.info(f"Aggregated stats saved to: {str(output_file.resolve())}")

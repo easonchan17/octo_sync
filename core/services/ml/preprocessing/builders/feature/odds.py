@@ -4,12 +4,38 @@ from typing import Optional
 from sqlalchemy import text
 from .base import BaseFeatureBuilder
 from ...transforms import FormulaMutator, EntropyMutator
-from ...constants import DEFAULT_DECIMALS
 from core.types.enums import BookmakerID
 
+class SharpOddsBuilder:
+    SHARP_TIERS = [
+        (BookmakerID.BETFAIR_EXCHANGE, 1),
+        (BookmakerID.BETINASIA,        2),
+        (BookmakerID.ONEXBET,          3),
+    ]
+
+    SHARP_COLS = ["home_open_real", "away_open_real", "home_close_real", "away_close_real"]
+
+
+    def build(self, df: pd.DataFrame) -> pd.DataFrame:
+        return (
+            df.groupby("match_id")
+              .apply(self._resolve_sharp_odds)
+              .reset_index()
+        )
+
+    def _resolve_sharp_odds(self, df: pd.DataFrame) -> pd.Series:
+        for bookmaker_id, tier in self.SHARP_TIERS:
+            match = df[df["bookmaker_id"] == bookmaker_id.value]
+            if not match.empty:
+                row = match.iloc[0][self.SHARP_COLS].copy()
+                row["sharp_source_level"] = tier
+                return row
+
+        fallback = df[self.SHARP_COLS].median()
+        fallback["sharp_source_level"] = 4
+        return fallback
 
 class OddsFeatureBuilder(BaseFeatureBuilder):
-
     ODDS_FORMULAS = [
         ("home_open_implied",     "1 / home_open_odds"),
         ("draw_open_implied",     "1 / draw_open_odds"),
@@ -38,15 +64,10 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
         ("ah_away_open_real",     "ah_away_open_implied / vig_ah_open"),
         ("ah_home_close_real",    "ah_home_close_implied / vig_ah_close"),
         ("ah_away_close_real",    "ah_away_close_implied / vig_ah_close"),
+        ("home_moved_up",         "1.0 * (home_close_real > home_open_real)"),
+        ("away_moved_up",         "1.0 * (away_close_real > away_open_real)"),
     ]
 
-    SHARP_TIERS = [
-        (BookmakerID.BETFAIR_EXCHANGE, 1),
-        (BookmakerID.BETINASIA,        2),
-        (BookmakerID.ONEXBET,          3),
-    ]
-
-    SHARP_COLS = ["home_open_real", "away_open_real", "home_close_real", "away_close_real"]
 
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
@@ -106,17 +127,6 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
 
             return pd.DataFrame(rows, columns=result.keys())
 
-    def _extract_sharp_row(self, group: pd.DataFrame) -> pd.Series:
-        for bookmaker_id, tier in self.SHARP_TIERS:
-            match = group[group["bookmaker_id"] == bookmaker_id.value]
-            if not match.empty:
-                row = match.iloc[0][self.SHARP_COLS].copy()
-                row["sharp_source_level"] = tier
-                return row
-        fallback = group[self.SHARP_COLS].median()
-        fallback["sharp_source_level"] = 4
-        return fallback
-
     def build(self) -> Optional[pd.DataFrame]:
         df = self._load_data_frame()
         if df is None or df.empty:
@@ -124,22 +134,13 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
 
         FormulaMutator(df).mutate_batch(self.ODDS_FORMULAS)
 
-        df["home_moved_up"] = (df["home_close_real"] > df["home_open_real"]).astype(float)
-        df["away_moved_up"] = (df["away_close_real"] > df["away_open_real"]).astype(float)
-
-        ah_close = pd.to_numeric(df["ah_line_close"], errors='coerce')
-        ah_open  = pd.to_numeric(df["ah_line_open"],  errors='coerce')
         df["ah_line_moved_up"] = np.where(
-            ah_close.notna() & ah_open.notna(),
-            (ah_close > ah_open).astype(float),
+            df["ah_line_close"].notna() & df["ah_line_open"].notna(),
+            (df["ah_line_close"] > df["ah_line_open"]).astype(float),
             np.nan,
         )
 
-        sharp_df = (
-            df.groupby("match_id")
-              .apply(self._extract_sharp_row)
-              .reset_index()
-        )
+        sharp_df = SharpOddsBuilder().build(df)
 
         market_df = df.groupby("match_id").agg(
             bookmaker_count               = ("bookmaker_id",     "count"),
@@ -168,24 +169,23 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
 
         result_df = sharp_df.merge(market_df, on="match_id", how="inner")
 
-        result_df["sharp_vs_market_home_open_diff"]  = (result_df["home_open_real"]        - result_df["median_home_open_real"]).round(DEFAULT_DECIMALS)
-        result_df["sharp_vs_market_away_open_diff"]  = (result_df["away_open_real"]        - result_df["median_away_open_real"]).round(DEFAULT_DECIMALS)
-        result_df["sharp_vs_market_home_close_diff"] = (result_df["home_close_real"]       - result_df["market_median_home_real"]).round(DEFAULT_DECIMALS)
-        result_df["sharp_vs_market_away_close_diff"] = (result_df["away_close_real"]       - result_df["market_median_away_real"]).round(DEFAULT_DECIMALS)
-        result_df["sharp_pure_home_log_return"]      = np.log(result_df["home_close_real"] / result_df["home_open_real"]).round(DEFAULT_DECIMALS)
-        result_df["sharp_pure_away_log_return"]      = np.log(result_df["away_close_real"] / result_df["away_open_real"]).round(DEFAULT_DECIMALS)
-        result_df["home_std_change"]                 = (result_df["home_prob_close_std"]   - result_df["home_prob_open_std"]).round(DEFAULT_DECIMALS)
-        result_df["market_home_bias_ratio"]          = (result_df["median_home_open_real"] / result_df["median_away_open_real"]).round(DEFAULT_DECIMALS)
+        result_df["sharp_vs_market_home_open_diff"]  = result_df["home_open_real"]        - result_df["median_home_open_real"]
+        result_df["sharp_vs_market_away_open_diff"]  = result_df["away_open_real"]        - result_df["median_away_open_real"]
+        result_df["sharp_vs_market_home_close_diff"] = result_df["home_close_real"]       - result_df["market_median_home_real"]
+        result_df["sharp_vs_market_away_close_diff"] = result_df["away_close_real"]       - result_df["market_median_away_real"]
+        result_df["sharp_pure_home_log_return"]      = np.log(result_df["home_close_real"] / result_df["home_open_real"])
+        result_df["sharp_pure_away_log_return"]      = np.log(result_df["away_close_real"] / result_df["away_open_real"])
+        result_df["home_std_change"]                 = result_df["home_prob_close_std"]   - result_df["home_prob_open_std"]
+        result_df["market_home_bias_ratio"]          = result_df["median_home_open_real"] / result_df["median_away_open_real"]
         result_df["synthetic_vig_close"]             = (
             1 / result_df["max_home_close_odds"] +
             1 / result_df["max_draw_close_odds"] +
             1 / result_df["max_away_close_odds"]
-        ).round(DEFAULT_DECIMALS)
+        )
 
-        EntropyMutator(result_df).build(
+        EntropyMutator(result_df).mutate(
             "market_entropy_close",
-            ["market_median_home_real", "market_median_draw_real", "market_median_away_real"],
-            DEFAULT_DECIMALS,
+            ["market_median_home_real", "market_median_draw_real", "market_median_away_real"]
         )
 
         result_df = result_df.drop(columns=[

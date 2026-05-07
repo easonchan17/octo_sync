@@ -15,7 +15,8 @@ class BaseSyncOdds(PollTask):
         "debug": False,
         "rules": [
             {
-                "type": InterceptType.JS
+                "type": InterceptType.JS,
+                "pattern": "/__app_trace__/odds/"
             }
         ]
     }
