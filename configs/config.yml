@@ -86,6 +86,6 @@ training:
             min_child_weight: { type: Integer, low: 1, high: 20 }
             gamma: { type: Real, low: 0, high: 5.0 }
             subsample: { type: Real, low: 0.5, high: 0.9 }
-            colsample_bytree: { type: Real, low: 0.5, high: 0.9 }
-            reg_alpha: { type: Real, low: 1.0e-5, high: 10, prior: log-uniform }
-            reg_lambda: { type: Real, low: 1.0e-5, high: 10, prior: log-uniform }
+            colsample_bytree: { type: Real, low: 0.5, high: 0.7 }
+            reg_alpha: { type: Real, low: 0.1, high: 10, prior: log-uniform }
+            reg_lambda: { type: Real, low: 0.5, high: 10, prior: log-uniform }
