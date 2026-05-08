@@ -11,7 +11,6 @@ class JsHook(BaseHook):
     def __init__(self) -> None:
         super().__init__()
         self._latch: Optional[SignalLatch] = None
-        self._trace_handler = None
 
     async def setup(self, ctx: HookContext) -> None:
         js_rule = ctx.strategy.find_rule(type=InterceptType.JS)
@@ -51,12 +50,6 @@ class JsHook(BaseHook):
                     await route.fulfill(status=200, body="ok")
 
         await ctx.page_context.route(self.TRACE_ROUTE_PATTERN, _trace_handler)
-        self._trace_handler = _trace_handler
-
-    async def destroy(self, ctx: HookContext) -> None:
-        with suppress(Exception):
-            if self._trace_handler:
-                await ctx.page_context.unroute(self.TRACE_ROUTE_PATTERN, self._trace_handler)
 
     async def execute(self, ctx: HookContext) -> bool:
         if self._latch is None:

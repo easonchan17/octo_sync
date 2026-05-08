@@ -10,6 +10,7 @@ from ..feature.match import MatchTrainFeatureBuilder
 from ..feature.player import PlayerTrainFeatureBuilder
 from ..feature.elo_rating import EloRatingBuilder
 from ..feature.odds import OddsFeatureBuilder
+from ...transforms import ColumnFilter
 
 class TrainSampleBuilder(BaseSampleBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
@@ -63,24 +64,21 @@ class TrainSampleBuilder(BaseSampleBuilder):
             save_dataframe(player_stats_df, output_file)
             self.logger.info(f"Player stats saved to: {str(output_file.resolve())}")
 
-            aggregated_df, aggregated_df_for_training = self.aggregate(match_stats_df, player_stats_df)
-            if aggregated_df is None or aggregated_df.empty:
-                self.logger.error("No aggregated stats data found")
+            merged_df = match_stats_df.merge(player_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
+            if merged_df is None or merged_df.empty:
+                self.logger.error("No merged stats data found")
                 return None
 
-            for df in [aggregated_df, aggregated_df_for_training]:
-                num_cols = df.select_dtypes(include='number').columns
-                df[num_cols] = df[num_cols].round(4)
+            output_file = self.build_output_path("merged_stats")
+            save_dataframe(merged_df, output_file)
+            self.logger.info(f"Merged stats saved to: {str(output_file.resolve())}")
 
-            output_file = self.build_output_path("aggregated_stats")
-            save_dataframe(aggregated_df, output_file)
-            self.logger.info(f"Aggregated stats saved to: {str(output_file.resolve())}")
+            train_sample_df = ColumnFilter(merged_df).drop(self.EXCLUDED_FEATURES).round(4)
+            output_file = self.build_output_path("train_sample")
+            save_dataframe(train_sample_df, output_file)
+            self.logger.info(f"Train sample saved to: {str(output_file.resolve())}")
 
-            output_file = self.build_output_path("aggregated_stats_for_training")
-            save_dataframe(aggregated_df_for_training, output_file)
-            self.logger.info(f"Aggregated stats for training saved to: {str(output_file.resolve())}")
-
-            return aggregated_df_for_training
+            return train_sample_df
         except Exception as e:
-            self.logger.error(f"Error aggregating stats: {e}", exc_info=True)
+            self.logger.error(f"Error build train sample: {e}", exc_info=True)
             return None

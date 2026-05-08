@@ -9,7 +9,7 @@ from core.store.postgres.models.fotmob.match import MatchPlayerStat, MatchLineup
 
 from ...transforms import FormulaMutator, ColumnFilter
 from .base import BaseFeatureBuilder
-from ...constants import EPSILON
+from ...constants import EPSILON, IMPUTATION_QUANTILE
 
 
 class FeatureQuantiler:
@@ -28,9 +28,6 @@ class FeatureQuantiler:
         "blocks_per_90_adj_ema_20":              2.0,
         "aerials_won_per_90_ema_20":             5.0,
         "aerials_per_90_ema_20":                 7.0,
-        "goals_prevented_per_90_ema_20":         1.0,
-        "keeper_sweeper_per_90_ema_20":          2.0,
-        "keeper_high_claim_per_90_ema_20":       1.5,
     }
 
     def build(self, df: pd.DataFrame, quantile: float = 0.98) -> Dict[str, float]:
@@ -138,24 +135,77 @@ class PlayerFeatureBuilder(BaseFeatureBuilder):
             "+ 0.3 * aerials_won_per_90_ema_{span} / (aerials_per_90_ema_{span} + {epsilon}) "
             "/ ({{aerials_won_per_90_ema_20}} / ({{aerials_per_90_ema_20}} + {epsilon}))"
         ),
-        "goalkeeping": (
-            "0.6 * goals_prevented_per_90_ema_{span} / {{goals_prevented_per_90_ema_20}} "
-            "+ 0.3 * keeper_sweeper_per_90_ema_{span} / {{keeper_sweeper_per_90_ema_20}} "
-            "+ 0.1 * keeper_high_claim_per_90_ema_{span} / {{keeper_high_claim_per_90_ema_20}}"
-        ),
     }
 
-    REQUIRED_FEATURES = [
-        "match_id", "team_id",
-        "kickoff_time", "player_id", "player_name",
-        "position", "role", "minutes", "rest_days",
-        "finish_form", "finish_ability",
-        "creativity_form", "creativity_ability",
-        "progression_form", "progression_ability",
-        "defense_form", "defense_ability",
-        "aerial_form", "aerial_ability",
-        "goalkeeping_form", "goalkeeping_ability",
+    AGG_RULES = [
+        (Position.get_outfield(),   ['finish_form', 'finish_ability'],          'sum', '_reg', 0.0),
+        (Position.get_outfield(),   ['creativity_form', 'creativity_ability'],   'sum', '_reg', 0.0),
+        (Position.get_outfield(),   ['progression_form', 'progression_ability'], 'sum', '_reg', 0.0),
+        (Position.get_outfield(),   ['defense_form', 'defense_ability'],         'sum', '_reg', 0.0),
+        (Position.get_outfield(),   ['aerial_form', 'aerial_ability'],           'max', '_max', np.nan),
+        (Position.get_goalkeeper(), ['goals_prevented_per_90_ema_5', 'goals_prevented_per_90_ema_20', 'keeper_sweeper_per_90_ema_5', 'keeper_high_claim_per_90_ema_5'], 'max', '', np.nan),
     ]
+
+    FORMULA_FEATURES = [
+        ('finish_form_reg_diff',        'home_finish_form_reg - away_finish_form_reg'),
+        ('creativity_form_reg_diff',    'home_creativity_form_reg - away_creativity_form_reg'),
+        ('progression_form_reg_diff',   'home_progression_form_reg - away_progression_form_reg'),
+        ('defense_form_reg_diff',       'home_defense_form_reg - away_defense_form_reg'),
+        ('aerial_form_max_diff',        'home_aerial_form_max - away_aerial_form_max'),
+        ('finish_ability_reg_diff',     'home_finish_ability_reg - away_finish_ability_reg'),
+        ('creativity_ability_reg_diff', 'home_creativity_ability_reg - away_creativity_ability_reg'),
+        ('progression_ability_reg_diff','home_progression_ability_reg - away_progression_ability_reg'),
+        ('defense_ability_reg_diff',    'home_defense_ability_reg - away_defense_ability_reg'),
+        ('aerial_ability_max_diff',     'home_aerial_ability_max - away_aerial_ability_max'),
+        ('goals_prevented_ema_5_diff',  'home_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_5'),
+        ('home_keeper_form_momentum',   'home_goals_prevented_per_90_ema_5 - home_goals_prevented_per_90_ema_20'),
+        ('away_keeper_form_momentum',   'away_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_20'),
+        ('home_attack_form', 'home_finish_form_reg + home_creativity_form_reg + home_progression_form_reg'),
+        ('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg'),
+        ('home_defense_form', 'home_defense_form_reg + home_aerial_form_max'),
+        ('away_defense_form', 'away_defense_form_reg + away_aerial_form_max'),
+        ('home_attack_vs_away_defense_form', 'home_attack_form - away_defense_form'),
+        ('away_attack_vs_home_defense_form', 'away_attack_form - home_defense_form'),
+        ('net_form', 'home_attack_vs_away_defense_form - away_attack_vs_home_defense_form'),
+        ('home_attack_ability', 'home_finish_ability_reg + home_creativity_ability_reg + home_progression_ability_reg'),
+        ('away_attack_ability', 'away_finish_ability_reg + away_creativity_ability_reg + away_progression_ability_reg'),
+        ('home_defense_ability', 'home_defense_ability_reg + home_aerial_ability_max'),
+        ('away_defense_ability', 'away_defense_ability_reg + away_aerial_ability_max'),
+        ('home_attack_vs_away_defense_ability', 'home_attack_ability - away_defense_ability'),
+        ('away_attack_vs_home_defense_ability', 'away_attack_ability - home_defense_ability'),
+        ('net_ability', 'home_attack_vs_away_defense_ability - away_attack_vs_home_defense_ability'),
+        ('draw_proxy', f'1/(abs(net_ability)+{EPSILON})'),
+        ('home_attack_form_over_ability', 'home_attack_form - home_attack_ability'),
+        ('away_attack_form_over_ability', 'away_attack_form - away_attack_ability'),
+        ('home_defense_form_over_ability', 'home_defense_form - home_defense_ability'),
+        ('away_defense_form_over_ability', 'away_defense_form - away_defense_ability'),
+        ('home_total_luck', 'home_attack_form_over_ability + home_defense_form_over_ability'),
+        ('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability')
+    ]
+
+    def _aggregate_to_match(self, df: pd.DataFrame) -> pd.DataFrame:
+        agg_rules = {}
+        for positions, features, agg_func, suffix, fill_value in self.AGG_RULES:
+            mask = df["position"].isin(positions)
+            for feature in features:
+                col = f"{feature}{suffix}"
+                df[col] = df[feature].where(mask, fill_value)
+                agg_rules[col] = agg_func
+
+        team_stats = df.groupby(["match_id", "team_id"]).agg(agg_rules).reset_index()
+        stat_cols = [col for col in team_stats.columns if col not in ["match_id", "team_id"]]
+
+        match_home_map = df.drop_duplicates("match_id")[["match_id", "home_id", "away_id"]]
+
+        home_stats = team_stats.rename(columns={**{col: f"home_{col}" for col in stat_cols}, "team_id": "home_id"})
+        away_stats = team_stats.rename(columns={**{col: f"away_{col}" for col in stat_cols}, "team_id": "away_id"})
+
+        match_df = match_home_map.merge(home_stats, on=["match_id", "home_id"], how="inner")
+        match_df = match_df.merge(away_stats, on=["match_id", "away_id"], how="inner")
+
+        FormulaMutator(match_df).mutate_batch(self.FORMULA_FEATURES)
+
+        return match_df
 
 
 class PlayerTrainFeatureBuilder(PlayerFeatureBuilder):
@@ -276,15 +326,24 @@ class PlayerTrainFeatureBuilder(PlayerFeatureBuilder):
                 df.loc[non_gk_mask, feature] * 50.0 / df.loc[non_gk_mask, "opponent_possession"]
             )
 
-        self.player_form_builder.build(df, self.EMA_FEATURES)
-        df = self.player_form_builder.df
+        df = self.player_form_builder.build(df, self.EMA_FEATURES)
 
         thresholds = self.quantiler.build(df)
-
         self._apply_ability_formulas(df, self.ABILITY_FORMULAS, thresholds)
 
-        return ColumnFilter(df).keep(self.REQUIRED_FEATURES)
+        imputable = [f"{name}_form" for name in self.ABILITY_FORMULAS] + \
+                    [f"{name}_ability" for name in self.ABILITY_FORMULAS]
+        for feature in imputable:
+            quantile_by_position = df.groupby("position")[feature].quantile(IMPUTATION_QUANTILE)
+            df[feature] = df[feature].fillna(df["position"].map(quantile_by_position))
 
+        starters_count = df.groupby(["match_id", "team_id"]).size()
+        invalid = starters_count[starters_count != 11]
+        if not invalid.empty:
+            self.logger.error(f"Invalid starters:\n{invalid.reset_index().to_string(index=False)}")
+            raise ValueError("Starters count is not 11")
+
+        return self._aggregate_to_match(df)
 
 class PlayerPredictFeatureBuilder(PlayerFeatureBuilder):
     def __init__(self, home_id: int, away_id: int, kickoff_time: datetime) -> None:
