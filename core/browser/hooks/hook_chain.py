@@ -1,3 +1,4 @@
+from contextlib import suppress
 from core.browser.hooks.base_hook import BaseHook, HookContext
 
 
@@ -18,3 +19,6 @@ class HookChain:
     async def destroy(self, ctx: HookContext) -> None:
         for hook in self._hooks:
             await hook.destroy(ctx)
+
+        with suppress(Exception):
+            await ctx.page_context.unroute_all(behavior='wait')

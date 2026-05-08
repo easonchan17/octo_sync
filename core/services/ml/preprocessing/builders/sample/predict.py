@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import datetime
 from typing import Optional
 from .base import BaseSampleBuilder
+from ...transforms import ColumnFilter
 from ..feature.match import MatchPredictFeatureBuilder
 from ..feature.player import PlayerPredictFeatureBuilder
 
@@ -31,12 +32,12 @@ class PredictSampleBuilder(BaseSampleBuilder):
                 self.logger.error("No player stats data found")
                 return None
 
-            aggregated_df, aggregated_df_for_prediction = self.aggregate(match_stats_df, player_stats_df)
-            if aggregated_df is None or aggregated_df.empty:
-                self.logger.error("No aggregated stats data found")
+            merged_df = match_stats_df.merge(player_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
+            if merged_df.empty:
+                self.logger.error("No merged stats data found")
                 return None
 
-            return aggregated_df_for_prediction
+            return ColumnFilter(merged_df).drop(self.EXCLUDED_FEATURES)
         except Exception as e:
             self.logger.error(f"Error aggregating stats: {e}", exc_info=True)
             return None
