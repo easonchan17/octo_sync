@@ -3,7 +3,7 @@ import numpy as np
 from typing import Tuple
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
-from core.types.enums import Position, LineupRole
+from core.types.enums import Position
 from ...transforms import ColumnFilter, FormulaMutator
 from ...constants import IMPUTATION_QUANTILE, EPSILON
 
@@ -36,22 +36,19 @@ class BaseSampleBuilder:
         (Position.get_goalkeeper(), ['goalkeeping_form', 'goalkeeping_ability'],                  'max', '',     np.nan),
     ]
 
-    HOME_AWAY_DIFF_FEATURES = [
-        'finish_form_reg',
-        'creativity_form_reg',
-        'progression_form_reg',
-        'defense_form_reg',
-        'aerial_form_max',
-        'goalkeeping_form',
-        'finish_ability_reg',
-        'creativity_ability_reg',
-        'progression_ability_reg',
-        'defense_ability_reg',
-        'aerial_ability_max',
-        'goalkeeping_ability'
-    ]
-
     FORMULA_BASED_FEATURES = [
+        ('finish_form_reg_diff',        'home_finish_form_reg - away_finish_form_reg'),
+        ('creativity_form_reg_diff',    'home_creativity_form_reg - away_creativity_form_reg'),
+        ('progression_form_reg_diff',   'home_progression_form_reg - away_progression_form_reg'),
+        ('defense_form_reg_diff',       'home_defense_form_reg - away_defense_form_reg'),
+        ('aerial_form_max_diff',        'home_aerial_form_max - away_aerial_form_max'),
+        ('goalkeeping_form_diff',       'home_goalkeeping_form - away_goalkeeping_form'),
+        ('finish_ability_reg_diff',     'home_finish_ability_reg - away_finish_ability_reg'),
+        ('creativity_ability_reg_diff', 'home_creativity_ability_reg - away_creativity_ability_reg'),
+        ('progression_ability_reg_diff','home_progression_ability_reg - away_progression_ability_reg'),
+        ('defense_ability_reg_diff',    'home_defense_ability_reg - away_defense_ability_reg'),
+        ('aerial_ability_max_diff',     'home_aerial_ability_max - away_aerial_ability_max'),
+        ('goalkeeping_ability_diff',    'home_goalkeeping_ability - away_goalkeeping_ability'),
         ('home_attack_form', 'home_finish_form_reg + home_creativity_form_reg + home_progression_form_reg'),
         ('away_attack_form', 'away_finish_form_reg + away_creativity_form_reg + away_progression_form_reg'),
         ('home_defense_form', 'home_defense_form_reg + home_aerial_form_max + home_goalkeeping_form'),
@@ -86,58 +83,35 @@ class BaseSampleBuilder:
         "home_point", "away_point",
     ]
 
-    def aggregate(
-        self,
-        match_stats_df: pd.DataFrame,
-        player_stats_df: pd.DataFrame,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        starters = player_stats_df[player_stats_df["role"] == LineupRole.STARTER.value].copy()
-        if starters.empty:
-            raise ValueError("No starters found")
-
-        starters_count = starters.groupby(["match_id", "team_id"]).size()
+    def aggregate(self, match_stats_df: pd.DataFrame, starter_stats_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        starters_count = starter_stats_df.groupby(["match_id", "team_id"]).size()
         invalid = starters_count[starters_count != 11]
         if not invalid.empty:
             self.logger.error(f"Invalid starters:\n{invalid.reset_index().to_string(index=False)}")
             raise ValueError("Starters count is not 11")
 
-        stats_map = {}
         for feature in self.PLAYER_FEATURES:
-            quantile_by_position = starters.groupby("position")[feature].quantile(IMPUTATION_QUANTILE)
-            stats_map[feature] = quantile_by_position.to_dict()
+            quantile_by_position = starter_stats_df.groupby("position")[feature].quantile(IMPUTATION_QUANTILE)
+            fill_values = starter_stats_df["position"].map(quantile_by_position)
+            starter_stats_df[feature] = starter_stats_df[feature].fillna(fill_values)
 
-        for feature in self.PLAYER_FEATURES:
-            fill_values = starters["position"].map(stats_map[feature])
-            starters[feature] = starters[feature].fillna(fill_values)
-
-        match_stats_df = self._aggregate_team_stats(match_stats_df, starters)
-
-        for feature in self.HOME_AWAY_DIFF_FEATURES:
-            name = f'{feature}_diff'
-            formula = f"home_{feature} - away_{feature}"
-            FormulaMutator(match_stats_df).mutate(name, formula)
-
-        for feature, formula in self.FORMULA_BASED_FEATURES:
-            FormulaMutator(match_stats_df).mutate(feature, formula)
+        match_stats_df = self._aggregate_team_stats(match_stats_df, starter_stats_df)
+        FormulaMutator(match_stats_df).mutate_batch(self.FORMULA_BASED_FEATURES)
 
         match_stats_df_for_training = ColumnFilter(match_stats_df).drop(self.EXCLUDED_FEATURES)
         return match_stats_df, match_stats_df_for_training
 
-    def _aggregate_team_stats(
-        self,
-        match_stats_df: pd.DataFrame,
-        starters: pd.DataFrame,
-    ) -> pd.DataFrame:
+    def _aggregate_team_stats(self, match_stats_df: pd.DataFrame, starter_stats_df: pd.DataFrame) -> pd.DataFrame:
         agg_rules = {}
 
         for positions, features, agg_func, suffix, fill_value in self.AGG_RULES:
-            mask = starters["position"].isin(positions)
+            mask = starter_stats_df["position"].isin(positions)
             for feature in features:
                 tmp_col = f"{feature}{suffix}_tmp"
-                starters[tmp_col] = starters[feature].where(mask, fill_value)
+                starter_stats_df[tmp_col] = starter_stats_df[feature].where(mask, fill_value)
                 agg_rules[tmp_col] = agg_func
 
-        team_stats = starters.groupby(["match_id", "team_id"]).agg(agg_rules).reset_index()
+        team_stats = starter_stats_df.groupby(["match_id", "team_id"]).agg(agg_rules).reset_index()
 
         rename_dict = {col: col.removesuffix('_tmp') for col in team_stats.columns if col.endswith('_tmp')}
         team_stats = team_stats.rename(columns=rename_dict)
