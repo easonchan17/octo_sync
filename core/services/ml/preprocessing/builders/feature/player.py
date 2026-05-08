@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy import and_
 from datetime import datetime
 from typing import Dict, List, Optional
-from core.types.enums import MatchStatus, Position
+from core.types.enums import MatchStatus, Position, LineupRole
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.fotmob.match import MatchPlayerStat, MatchLineup, MatchStat
 
@@ -191,6 +191,7 @@ class PlayerTrainFeatureBuilder(PlayerFeatureBuilder):
                 Fixture.season >= self.min_season,
                 Fixture.season <= self.max_season,
                 Fixture.match_status.in_(MatchStatus.natural_finals()),
+                MatchLineup.role == LineupRole.STARTER.value,
             ).order_by(Fixture.kickoff_time, MatchPlayerStat.player_id).all()
 
             records = []
