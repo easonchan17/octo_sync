@@ -4,7 +4,7 @@ from typing import Optional
 from .base import BaseSampleBuilder
 from ...transforms import ColumnFilter
 from ..feature.match import MatchPredictFeatureBuilder
-from ..feature.player import PlayerPredictFeatureBuilder
+from ..feature.player import OutfieldPlayerPredictFeatureBuilder
 
 class PredictSampleBuilder(BaseSampleBuilder):
     def __init__(
@@ -18,7 +18,7 @@ class PredictSampleBuilder(BaseSampleBuilder):
         self.away_id = away_id
         self.kickoff_time = kickoff_time
         self.match_builder = MatchPredictFeatureBuilder(home_id, away_id, kickoff_time)
-        self.player_builder = PlayerPredictFeatureBuilder(home_id, away_id, kickoff_time)
+        self.player_builder = OutfieldPlayerPredictFeatureBuilder(home_id, away_id, kickoff_time)
 
     def execute(self) -> Optional[pd.DataFrame]:
         try:
