@@ -3,9 +3,10 @@ from .builders.feature.odds import OddsFeatureBuilder
 from .builders.feature.elo_rating import EloRatingBuilder
 from .builders.feature.match import MatchFeatureBuilder, MatchTrainFeatureBuilder, MatchPredictFeatureBuilder
 from .builders.feature.player import (
-    PlayerFeatureBuilder,
-    PlayerTrainFeatureBuilder,
-    PlayerPredictFeatureBuilder,
+    OutfieldPlayerFeatureBuilder,
+    OutfieldPlayerTrainFeatureBuilder,
+    GoalkeeperTrainFeatureBuilder,
+    OutfieldPlayerPredictFeatureBuilder,
 )
 from .builders.sample.base import BaseSampleBuilder
 from .builders.sample.train import TrainSampleBuilder
@@ -18,9 +19,10 @@ __all__ = [
     'MatchFeatureBuilder',
     'MatchTrainFeatureBuilder',
     'MatchPredictFeatureBuilder',
-    'PlayerFeatureBuilder',
-    'PlayerTrainFeatureBuilder',
-    'PlayerPredictFeatureBuilder',
+    'OutfieldPlayerFeatureBuilder',
+    'OutfieldPlayerTrainFeatureBuilder',
+    'GoalkeeperTrainFeatureBuilder',
+    'OutfieldPlayerPredictFeatureBuilder',
     'BaseSampleBuilder',
     'TrainSampleBuilder',
     'PredictSampleBuilder',

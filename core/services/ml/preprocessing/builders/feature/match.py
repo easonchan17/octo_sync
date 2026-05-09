@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from sqlalchemy import func, select, and_
 from core.types.enums import MatchStatus
@@ -10,8 +10,10 @@ from ...transforms import ColumnFilter, FormulaMutator
 from .base import BaseFeatureBuilder
 
 class MatchFeatureBuilder(BaseFeatureBuilder):
-    EMA_FEATURES = [
-        "score", "shots", "shots_on_target", "big_chances", "big_chances_missed",
+    TEAM_FEATURES = [
+        "point", "score",
+        "shots", "shots_on_target",
+        "big_chances", "big_chances_missed",
         "xg", "xga", "npxg", "npxga", "xg_on_target", "xg_set_play",
         "passes", "passes_completed", "long_passes", "long_passes_completed", "crosses", "crosses_completed", "passes_into_final_third", "opp_half_passes",
         "tackles", "interceptions", "clearances", "shot_blocks",
@@ -19,7 +21,7 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "keeper_saves",
     ]
 
-    FORMULA_FEATURES = [
+    FORMULAS = [
         ("home_shots_acc_ema_5",              "home_shots_on_target_ema_5 / home_shots_ema_5"),
         ("away_shots_acc_ema_5",              "away_shots_on_target_ema_5 / away_shots_ema_5"),
         ("home_shots_conversion_ema_5",       "home_score_ema_5 / home_shots_ema_5"),
@@ -56,7 +58,9 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         ("away_keeper_performance_ema_5",      "home_xg_on_target_ema_5 - home_score_ema_5"),
         ("home_disruption_ema_5",             "home_tackles_ema_5 + home_interceptions_ema_5 + home_clearances_ema_5"),
         ("away_disruption_ema_5",             "away_tackles_ema_5 + away_interceptions_ema_5 + away_clearances_ema_5"),
-        ("rest_days_diff",                    "home_rest_days - away_rest_days"),
+        ("home_venue_dependency",             "home_points_ema_5_at_home - home_points_ema_5_at_away"),
+        ("away_venue_dependency",             "away_points_ema_5_at_home - away_points_ema_5_at_away"),
+        ("schedule_rest_days_diff",            "home_schedule_rest_days - away_schedule_rest_days"),
         ("npxg_per_shot_ema_5_diff",          "home_npxg_per_shot_ema_5 - away_npxg_per_shot_ema_5"),
         ("set_piece_reliance_ema_5_diff",     "home_set_piece_reliance_ema_5 - away_set_piece_reliance_ema_5"),
         ("shot_quality_index_ema_5_diff",     "home_shot_quality_index_ema_5 - away_shot_quality_index_ema_5"),
@@ -90,14 +94,14 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         ("point_sum_5_diff",                     "home_point_sum_5 - away_point_sum_5"),
     ]
 
-    REQUIRED_FEATURES = [
+    OUTPUT = [
         "match_id", "kickoff_time", "season", "league_id", "league_name", "round",
         "home_team", "home_id", "away_team", "away_id",
         "home_score", "away_score", "home_goals_penalty", "away_goals_penalty",
         "home_formation", "away_formation",
         "home_point", "away_point",
         "target",
-        "home_rest_days", "away_rest_days", "rest_days_diff",
+        "home_schedule_rest_days", "away_schedule_rest_days", "schedule_rest_days_diff",
         "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
         "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
         "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
@@ -134,127 +138,14 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "home_threat_per_entry_ema_5", "away_threat_per_entry_ema_5", "threat_per_entry_ema_5_diff",
     ]
 
-class TeamStatBuilder:
-    def __init__(self, stat_cols: List[str]):
-        self.stat_cols = stat_cols
-
-    @property
-    def group_by_team(self):
-        return self.team_form.groupby("team_id", observed=True, group_keys=False)
-
-    def build(self, df: pd.DataFrame) -> pd.DataFrame:
-        self._create_view(df)
-
-        # stats ema
-        home_vals = self.df.loc[self.team_form["match_id"], [f"home_{feature}" for feature in self.stat_cols]].values
-        away_vals = self.df.loc[self.team_form["match_id"], [f"away_{feature}" for feature in self.stat_cols]].values
-        self.team_form[self.stat_cols] = np.where(self.home_mask.values[:, None], home_vals, away_vals)
-
-        ema_cols = [f"{col}_ema_5" for col in self.stat_cols]
-        self.team_form[ema_cols] = (
-            self.group_by_team[self.stat_cols]
-            .transform(lambda group: group.ewm(span=5, min_periods=3, adjust=False).mean().shift(1))
-            .values
-        )
-
-        home_rows = self.team_form[self.home_mask].set_index("match_id")
-        away_rows = self.team_form[self.away_mask].set_index("match_id")
-        ema_assignment = pd.concat([
-            home_rows[ema_cols].rename(columns=lambda col: f"home_{col}"),
-            away_rows[ema_cols].rename(columns=lambda col: f"away_{col}"),
-        ], axis=1)
-        self.df[ema_assignment.columns] = ema_assignment
-
-        # rest days
-        time_diff_series = self.group_by_team["kickoff_time"].diff()
-        self.team_form["rest_days"] = time_diff_series / pd.Timedelta(days=1)
-        self.df["home_rest_days"] = self.team_form[self.home_mask].set_index("match_id")["rest_days"]
-        self.df["away_rest_days"] = self.team_form[self.away_mask].set_index("match_id")["rest_days"]
-
-        # lagged xg
-        self.team_form["lagged_xg"] = self.group_by_team["xg"].shift(1)
-        self.df["home_lagged_xg"] = self.team_form[self.home_mask].set_index("match_id")["lagged_xg"]
-        self.df["away_lagged_xg"] = self.team_form[self.away_mask].set_index("match_id")["lagged_xg"]
-
-        # rolling point sum (5 games)
-        self.team_form["point_sum_5"] = self.group_by_team["point"].transform(
-            lambda group: group.rolling(window=5, min_periods=1).sum().shift(1)
-        )
-        self.df["home_point_sum_5"] = self.team_form[self.home_mask].set_index("match_id")["point_sum_5"]
-        self.df["away_point_sum_5"] = self.team_form[self.away_mask].set_index("match_id")["point_sum_5"]
-
-        # venue ema points & dependency
-        self.team_form["points_ema_5_at_home"] = self.team_form.assign(
-            _temp=self.team_form["point"].where(self.team_form["is_home"]==True, np.nan)
-        ).groupby("team_id", observed=True, group_keys=False)["_temp"].transform(
-            lambda group: group.ewm(
-                span=5, min_periods=1, adjust=False, ignore_na=True
-            ).mean().shift(1).ffill()
-        )
-        self.team_form["points_ema_5_at_away"] = self.team_form.assign(
-            _temp=self.team_form["point"].where(self.team_form["is_home"]==False, np.nan)
-        ).groupby("team_id", observed=True, group_keys=False)["_temp"].transform(
-            lambda group: group.ewm(
-                span=5, min_periods=1, adjust=False, ignore_na=True
-            ).mean().shift(1).ffill()
-        )
-
-        home_rows = self.team_form[self.home_mask].set_index("match_id")
-        away_rows = self.team_form[self.away_mask].set_index("match_id")
-        self.df["home_points_ema_5_at_home"] = home_rows["points_ema_5_at_home"]
-        self.df["home_points_ema_5_at_away"] = home_rows["points_ema_5_at_away"]
-        self.df["away_points_ema_5_at_home"] = away_rows["points_ema_5_at_home"]
-        self.df["away_points_ema_5_at_away"] = away_rows["points_ema_5_at_away"]
-        self.df["home_venue_dependency"] = self.df["home_points_ema_5_at_home"] - self.df["home_points_ema_5_at_away"]
-        self.df["away_venue_dependency"] = self.df["away_points_ema_5_at_home"] - self.df["away_points_ema_5_at_away"]
-
-        return self.df.reset_index()
-
-    def _create_view(self, df: pd.DataFrame) -> None:
-        self.df = df.set_index("match_id", drop=True)
-
-        kickoff_time_series = pd.to_datetime(self.df["kickoff_time"])
-
-        home_form = pd.DataFrame({
-            "kickoff_time": kickoff_time_series,
-            "team_id": self.df["home_id"],
-            "is_home": True,
-            "match_id": self.df.index
-        })
-        away_form = pd.DataFrame({
-            "kickoff_time": kickoff_time_series,
-            "team_id": self.df["away_id"],
-            "is_home": False,
-            "match_id": self.df.index
-        })
-
-        team_form = pd.concat([home_form, away_form], ignore_index=True)
-        team_form["team_id"] = team_form["team_id"].astype("category")
-        self.team_form = team_form.sort_values(["team_id", "kickoff_time"]).reset_index(drop=True)
-
-        self.home_mask = self.team_form["is_home"]
-        self.away_mask = ~self.team_form["is_home"]
-
-        self.team_form["point"] = np.where(
-            self.home_mask,
-            self.df.loc[self.team_form["match_id"], "home_point"].values,
-            self.df.loc[self.team_form["match_id"], "away_point"].values
-        )
-        self.team_form["xg"] = np.where(
-            self.home_mask,
-            self.df.loc[self.team_form["match_id"], "home_xg"].values,
-            self.df.loc[self.team_form["match_id"], "away_xg"].values
-        )
-
 class MatchTrainFeatureBuilder(MatchFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
         self.league_id = league_id
         self.min_season = min_season
         self.max_season = max_season
-        self.team_stat_builder = TeamStatBuilder(self.EMA_FEATURES)
 
-    def _load_data_frame(self) -> Optional[pd.DataFrame]:
+    def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
             home_pift = (
                 select(func.sum(MatchPlayerStat.passes_into_final_third))
@@ -396,16 +287,10 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                     })
                 records.append(record)
 
-            if records:
-                return pd.DataFrame(records)
+            return pd.DataFrame(records) if records else None
 
-            return None
-
-    def build(self) -> Optional[pd.DataFrame]:
-        df = self._load_data_frame()
-        if df is None or df.empty:
-            return None
-
+    def _build(self, df: pd.DataFrame) -> pd.DataFrame:
+        # target
         is_home_win = df["home_score"] > df["away_score"]
         is_draw = df["home_score"] == df["away_score"]
 
@@ -413,15 +298,78 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
         df["away_point"] = np.select([is_home_win, is_draw], [0, 1], default=3)
         df["target"] = np.select([is_home_win, is_draw], [2, 1], default=0)
 
+        # xga
         df["home_xga"] = df["away_xg"]
         df["away_xga"] = df["home_xg"]
         df["home_npxga"] = df["away_npxg"]
         df["away_npxga"] = df["home_npxg"]
 
-        df = self.team_stat_builder.build(df)
+        # team stats
+        df = df.set_index("match_id", drop=True)
+        kickoff_time_series = pd.to_datetime(df["kickoff_time"])
+        home_stats = pd.DataFrame({
+            "kickoff_time": kickoff_time_series,
+            "team_id": df["home_id"],
+            "is_home": True,
+            "match_id": df.index
+        })
+        away_stats = pd.DataFrame({
+            "kickoff_time": kickoff_time_series,
+            "team_id": df["away_id"],
+            "is_home": False,
+            "match_id": df.index
+        })
+        team_stats = pd.concat([home_stats, away_stats], ignore_index=True)
+        team_stats["team_id"] = team_stats["team_id"].astype("category")
+        team_stats = team_stats.sort_values(["team_id", "kickoff_time"]).reset_index(drop=True)
 
-        FormulaMutator(df).mutate_batch(self.FORMULA_FEATURES)
-        return ColumnFilter(df).keep(self.REQUIRED_FEATURES)
+        home_mask = team_stats["is_home"]
+        away_mask = ~team_stats["is_home"]
+
+        team_stats[self.TEAM_FEATURES] = np.where(
+            home_mask.values[:, None],
+            df.loc[team_stats["match_id"], [f"home_{col}" for col in self.TEAM_FEATURES]].values,
+            df.loc[team_stats["match_id"], [f"away_{col}" for col in self.TEAM_FEATURES]].values
+        )
+
+        group_by_team = team_stats.groupby("team_id", observed=True, group_keys=False)
+        ema_cols = [f"{col}_ema_5" for col in self.TEAM_FEATURES]
+        team_stats[ema_cols] = (
+            group_by_team[self.TEAM_FEATURES]
+            .transform(lambda group: group.ewm(span=5, min_periods=3, adjust=False).mean().shift(1))
+            .values
+        )
+        team_stats["schedule_rest_days"] = group_by_team["kickoff_time"].diff() / pd.Timedelta(days=1)
+        team_stats["lagged_xg"] = group_by_team["xg"].shift(1)
+        team_stats["point_sum_5"] = group_by_team["point"].transform(
+            lambda group: group.rolling(window=5, min_periods=1).sum().shift(1)
+        )
+        team_stats["points_ema_5_at_home"] = team_stats.assign(
+            _temp=team_stats["point"].where(team_stats["is_home"]==True, np.nan)
+        ).groupby("team_id", observed=True, group_keys=False)["_temp"].transform(
+            lambda group: group.ewm(
+                span=5, min_periods=1, adjust=False, ignore_na=True
+            ).mean().shift(1).ffill()
+        )
+        team_stats["points_ema_5_at_away"] = team_stats.assign(
+            _temp=team_stats["point"].where(team_stats["is_home"]==False, np.nan)
+        ).groupby("team_id", observed=True, group_keys=False)["_temp"].transform(
+            lambda group: group.ewm(
+                span=5, min_periods=1, adjust=False, ignore_na=True
+            ).mean().shift(1).ffill()
+        )
+
+        # pivot team-level back to match-level (long → wide)
+        pivot_cols = ema_cols + ["schedule_rest_days", "lagged_xg", "point_sum_5", "points_ema_5_at_home", "points_ema_5_at_away"]
+        match_stats = pd.concat([
+            team_stats[home_mask].set_index("match_id")[pivot_cols].rename(columns=lambda col: f"home_{col}"),
+            team_stats[away_mask].set_index("match_id")[pivot_cols].rename(columns=lambda col: f"away_{col}"),
+        ], axis=1)
+        df[match_stats.columns] = match_stats
+        df = df.reset_index()
+
+        FormulaMutator(df).mutate_batch(self.FORMULAS)
+        return ColumnFilter(df).keep(self.OUTPUT)
 
 
 class MatchPredictFeatureBuilder(MatchFeatureBuilder):

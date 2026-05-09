@@ -1,6 +1,6 @@
 import pandas as pd
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Any, List, Optional
 from .base import BaseTransform
 
 class BaseImputer(BaseTransform):
@@ -53,3 +53,16 @@ class MeanImputer(BaseImputer):
 
         self.df[col] = self.df[col].fillna(mean_value)
         self.logger.info(f"Filled None values in {col} with mean: {mean_value}")
+
+
+class QuantileImputer(BaseImputer):
+    def impute(self, cols: List[str], quantile: float) -> None:
+        fill_values = self.df[cols].quantile(quantile)
+        self.df[cols] = self.df[cols].fillna(fill_values)
+        self.logger.info(f"Filled {len(cols)} cols with quantile({quantile})")
+
+    def impute_by_group(self, cols: List[str], quantile: float, group_by: str) -> None:
+        quantiles = self.df.groupby(group_by)[cols].quantile(quantile)
+        fill_df = quantiles.loc[self.df[group_by].values].set_axis(self.df.index)
+        self.df[cols] = self.df[cols].fillna(fill_df)
+        self.logger.info(f"Filled {len(cols)} cols with quantile({quantile}) grouped by {group_by}")
