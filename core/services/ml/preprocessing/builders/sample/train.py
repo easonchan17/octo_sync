@@ -7,7 +7,7 @@ from core.types.enums import SiteName
 from core.services.league import league_service
 from core.utils.pandas_utils import save_dataframe
 from ..feature.match import MatchTrainFeatureBuilder
-from ..feature.player import PlayerTrainFeatureBuilder
+from ..feature.player import OutfieldPlayerTrainFeatureBuilder, GoalkeeperTrainFeatureBuilder
 from ..feature.elo_rating import EloRatingBuilder
 from ..feature.odds import OddsFeatureBuilder
 from ...transforms import ColumnFilter
@@ -24,7 +24,8 @@ class TrainSampleBuilder(BaseSampleBuilder):
         fotmob_league_id = int(league_service.get(self.league_id).site_leagues.get(SiteName.FOTMOB.value).league_id)
         self.match_builder = MatchTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
         self.elo_rating_builder = EloRatingBuilder(fotmob_league_id, min_season, max_season)
-        self.player_builder = PlayerTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.outfield_builder = OutfieldPlayerTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.gk_builder = GoalkeeperTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
         self.odds_builder = OddsFeatureBuilder(fotmob_league_id, min_season, max_season)
 
     def build_output_path(self, tag: str) -> Path:
@@ -55,11 +56,17 @@ class TrainSampleBuilder(BaseSampleBuilder):
             save_dataframe(match_stats_df, output_file)
             self.logger.info(f"Match stats saved to: {str(output_file.resolve())}")
 
-            player_stats_df = self.player_builder.build()
-            if player_stats_df is None or player_stats_df.empty:
-                self.logger.error("No player stats data found")
+            outfield_stats_df = self.outfield_builder.build()
+            if outfield_stats_df is None or outfield_stats_df.empty:
+                self.logger.error("No outfield player stats data found")
                 return None
 
+            gk_stats_df = self.gk_builder.build()
+            if gk_stats_df is None or gk_stats_df.empty:
+                self.logger.error("No goalkeeper stats data found")
+                return None
+
+            player_stats_df = outfield_stats_df.merge(gk_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
             output_file = self.build_output_path("player_stats")
             save_dataframe(player_stats_df, output_file)
             self.logger.info(f"Player stats saved to: {str(output_file.resolve())}")

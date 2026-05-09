@@ -33,7 +33,7 @@ class OddsDao(BaseDao):
                     OddsRaw.next_fetch_at <= func.now()
                 )
             ).order_by(
-                Fixture.kickoff_time.desc()
+                Fixture.kickoff_time.asc()
             ).limit(limit).all()
 
     def mark_as_fetched(self, match_code: str, betting_type_id: int, scope_id: int, fetch_interval: Optional[timedelta]) -> None:

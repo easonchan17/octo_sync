@@ -16,7 +16,7 @@ class EloRatingBuilder(BaseFeatureBuilder):
         self.max_season = max_season
         self.elo_params = elo_params
 
-    def _load_data_frame(self) -> Optional[pd.DataFrame]:
+    def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
             HomeElo = aliased(EloRating)
             AwayElo = aliased(EloRating)
@@ -47,16 +47,10 @@ class EloRatingBuilder(BaseFeatureBuilder):
                     })
                 records.append(record)
 
-            if records:
-                return pd.DataFrame(records)
+            return pd.DataFrame(records) if records else None
 
-            return None
 
-    def build(self) -> Optional[pd.DataFrame]:
-        df = self._load_data_frame()
-        if df is None or df.empty:
-            return None
-
+    def _build(self, df: pd.DataFrame) -> pd.DataFrame:
         base_rating = self.elo_params.base_rating
         home_advantage = self.elo_params.home_advantage
         min_games_for_stability = self.elo_params.min_games_for_stability
