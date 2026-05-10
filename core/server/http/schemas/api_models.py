@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from typing import List, TypeVar, Generic, Optional, Dict, Any
 from datetime import datetime
 from enum import IntEnum
@@ -31,27 +31,6 @@ class Pagination(BaseModel):
 class Paginated(BaseModel, Generic[T]):
     pagination: Pagination
     items: List[T]
-
-
-# ==============================================================================
-# Site Models
-# ==============================================================================
-class SiteBase(BaseModel):
-    name: str
-    url: HttpUrl
-
-
-class SiteRequest(SiteBase):
-    pass
-
-
-class SiteResponse(SiteBase):
-    id: int
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 # ==============================================================================
