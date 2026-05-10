@@ -60,65 +60,6 @@ class GroupedFixturesResponse(BaseModel):
 
 
 # ==============================================================================
-# Match Detail Models
-# ==============================================================================
-class MatchStatResponse(BaseModel):
-    home_possession: Optional[int] = None
-    away_possession: Optional[int] = None
-    home_shots: Optional[int] = None
-    away_shots: Optional[int] = None
-    home_xg: Optional[float] = None
-    away_xg: Optional[float] = None
-    home_corners: Optional[int] = None
-    away_corners: Optional[int] = None
-
-    class Config:
-        from_attributes = True
-
-
-class MatchLineupResponse(BaseModel):
-    match_id: int
-    team_id: int
-    team_name: Optional[str] = None
-    member_id: int
-    member_name: str
-    shirt_number: Optional[int] = None
-    position_id: Optional[int] = None
-    role: int
-    is_captain: bool = False
-    rating: Optional[float] = None
-
-    class Config:
-        from_attributes = True
-
-
-class MatchPlayerStatResponse(BaseModel):
-    match_id: int
-    player_id: int
-    player_name: str
-    rating: Optional[float] = None
-    minutes_played: Optional[int] = None
-    goals: Optional[int] = None
-    assists: Optional[int] = None
-    shots: Optional[int] = None
-    xg: Optional[float] = None
-    xa: Optional[float] = None
-
-    class Config:
-        from_attributes = True
-
-
-class MatchDetailResponse(BaseModel):
-    fixture: FixtureResponse
-    match_stats: Optional[MatchStatResponse] = None
-    lineups: List[MatchLineupResponse] = []
-    player_stats: List[MatchPlayerStatResponse] = []
-
-    class Config:
-        from_attributes = True
-
-
-# ==============================================================================
 # Cron Models
 # ==============================================================================
 class CronStatus(BaseModel):

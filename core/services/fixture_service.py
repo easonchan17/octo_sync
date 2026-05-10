@@ -2,40 +2,13 @@ from datetime import datetime
 from typing import List, Dict, Any
 from core.services.league import league_service
 from core.services.base_service import BaseService
-from core.store.postgres.models.fotmob import Fixture
+from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.types.enums import SiteName
 
 class FixtureService(BaseService):
-    def get_fixtures(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-        league_ids: List[int],
-    ) -> List[Fixture]:
-        with self.db.get_session() as session:
-            fixtures = session.query(
-                Fixture.id,
-                Fixture.league_id,
-                Fixture.league_name,
-                Fixture.kickoff_time,
-                Fixture.round,
-                Fixture.home_team,
-                Fixture.home_id,
-                Fixture.away_team,
-                Fixture.away_id,
-                Fixture.home_score,
-                Fixture.away_score,
-                Fixture.match_status,
-            ).filter(
-                Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time < end_time,
-                Fixture.league_id.in_(league_ids)
-            ).order_by(
-                Fixture.league_id.asc(),
-                Fixture.kickoff_time.asc()
-            ).all()
-
-            return fixtures
+    def __init__(self):
+        super().__init__()
+        self.fixture_dao = ActiveFixtureDao()
 
     def get_grouped_fixtures(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         leagues = {
@@ -46,7 +19,9 @@ class FixtureService(BaseService):
         if not leagues:
             return []
 
-        fixtures = self.get_fixtures(start_time, end_time, list(leagues.keys()))
+        fixtures = self.fixture_dao.get_by_time_range(
+            start_time, end_time, list(leagues.keys())
+        )
         if not fixtures:
             return []
 
