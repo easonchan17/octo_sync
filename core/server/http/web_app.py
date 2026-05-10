@@ -9,7 +9,6 @@ from starlette.responses import JSONResponse
 from core.config.env_manager import env_manager
 from core.logger.logger_manager import LoggerManager
 from core.server.http.controllers.system.model_controller import ModelController
-from core.server.http.controllers.app.prediction_controller import PredictionController
 from core.server.http.controllers.app.fixture_controller import FixtureController
 from core.server.http.controllers.app.league_controller import LeagueController
 from core.server.http.controllers.app.match_controller import MatchController
@@ -53,9 +52,6 @@ class WebApp:
 
         model_controller = ModelController()
         self.app.include_router(model_controller.router, prefix="/api", tags=["models"])
-
-        prediction_controller = PredictionController()
-        self.app.include_router(prediction_controller.router, prefix="/api", tags=["predictions"])
 
         fixture_controller = FixtureController()
         self.app.include_router(fixture_controller.router, prefix="/api", tags=["fixtures"])

@@ -8,5 +8,5 @@ class MatchService(BaseService):
         super().__init__()
         self.match_dao = MatchDao()
 
-    def get_match_detail(self, match_id: int) -> Dict[str, Any]:
+    def get_detail(self, match_id: int) -> Dict[str, Any]:
         return self.match_dao.get_raw_data(match_id)

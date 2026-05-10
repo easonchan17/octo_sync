@@ -1,19 +1,19 @@
 from fastapi import HTTPException, Query
 from core.server.http.controllers.base_controller import BaseController
-from core.services.prediction_service import PredictionService
+from core.services.model_service import ModelService
 from core.server.http.schemas.api_models import Paginated, Pagination, ModelResponse
 
 class ModelController(BaseController):
     def __init__(self) -> None:
         super().__init__()
-        self.prediction_service = PredictionService()
+        self.model_service = ModelService()
         self.router.get("/models", response_model=Paginated[ModelResponse])(self.get_models)
         self.router.post("/models/{family}/{version}/load", response_model=str)(self.load_model)
         self.router.post("/models/{family}/{version}/unload", response_model=str)(self.unload_model)
 
     def load_model(self, family: str, version: str) -> str:
         try:
-            return self.prediction_service.load_model(family, version)
+            return self.model_service.load(family, version)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
@@ -22,7 +22,7 @@ class ModelController(BaseController):
 
     def unload_model(self, family: str, version: str) -> str:
         try:
-            return self.prediction_service.unload_model(version)
+            return self.model_service.unload(version)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
@@ -35,12 +35,12 @@ class ModelController(BaseController):
         page_size: int = Query(20, ge=1, le=100, description="Page size")
     ) -> Paginated[ModelResponse]:
         try:
-            total, records = self.prediction_service.get_models(
+            total, records = self.model_service.get_list(
                 page=page,
                 page_size=page_size
             )
 
-            loaded_versions = self.prediction_service.get_loaded_versions()
+            loaded_versions = self.model_service.get_loaded_versions()
             items = [
                 ModelResponse.model_validate({
                     **record.to_dict(),
@@ -60,4 +60,3 @@ class ModelController(BaseController):
         except Exception as e:
             self.logger.error(f"Failed to get models: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to get models: {str(e)}")
-
