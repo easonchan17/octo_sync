@@ -33,6 +33,7 @@ class OddsDao(BaseDao):
                     OddsRaw.next_fetch_at <= func.now()
                 )
             ).order_by(
+                Fixture.league_id.asc(),
                 Fixture.kickoff_time.asc()
             ).limit(limit).all()
 

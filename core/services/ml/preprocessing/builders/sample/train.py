@@ -67,11 +67,17 @@ class TrainSampleBuilder(BaseSampleBuilder):
                 return None
 
             player_stats_df = outfield_stats_df.merge(gk_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
+            dropped = len(outfield_stats_df) - len(player_stats_df)
+            if dropped > 0:
+                self.logger.warning(f"Player stats merge dropped {dropped} matches")
             output_file = self.build_output_path("player_stats")
             save_dataframe(player_stats_df, output_file)
             self.logger.info(f"Player stats saved to: {str(output_file.resolve())}")
 
             merged_df = match_stats_df.merge(player_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
+            dropped = len(match_stats_df) - len(merged_df)
+            if dropped > 0:
+                self.logger.warning(f"Match+player merge dropped {dropped} matches")
             if merged_df is None or merged_df.empty:
                 self.logger.error("No merged stats data found")
                 return None
@@ -81,6 +87,7 @@ class TrainSampleBuilder(BaseSampleBuilder):
             self.logger.info(f"Merged stats saved to: {str(output_file.resolve())}")
 
             train_sample_df = ColumnFilter(merged_df).drop(self.EXCLUDED_FEATURES).round(4)
+            train_sample_df = train_sample_df.dropna(subset=["home_shots_ema_5", "away_shots_ema_5"])
             output_file = self.build_output_path("train_sample")
             save_dataframe(train_sample_df, output_file)
             self.logger.info(f"Train sample saved to: {str(output_file.resolve())}")

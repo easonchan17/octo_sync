@@ -18,7 +18,8 @@ class HookChain:
 
     async def destroy(self, ctx: HookContext) -> None:
         for hook in self._hooks:
-            await hook.destroy(ctx)
+            with suppress(Exception):
+                await hook.destroy(ctx)
 
         with suppress(Exception):
-            await ctx.page_context.unroute_all(behavior='wait')
+            await ctx.page_context.unroute_all(behavior='ignoreErrors')
