@@ -13,7 +13,7 @@ task_thread_pool:
 
 browser:
   launch_options:
-    headless: false
+    headless: true
     geoip: true
     os:
       - "windows"

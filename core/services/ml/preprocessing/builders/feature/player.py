@@ -9,8 +9,8 @@ from core.store.postgres.models.fotmob.match import MatchPlayerStat, MatchLineup
 
 from ...transforms import FormulaMutator, DefaultImputer, QuantileImputer
 from .base import BaseFeatureBuilder
-from ...constants import EPSILON, IMPUTATION_QUANTILE
 
+EPSILON = 1e-6
 
 class FeatureQuantiler:
     ELITE_THRESHOLDS = {
@@ -273,7 +273,7 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
         per90_cols = [f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]
         df[per90_cols] = np.where(
             df["minutes"].values[:, None] >= 30,
-            df[self.PLAYED_TIME_ADJ].values * 90 / df["minutes"].values[:, None],
+            df[self.PLAYED_TIME_ADJ].astype(float).values * 90 / df["minutes"].values[:, None],
             np.nan,
         )
 
@@ -329,10 +329,10 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
 
         # team rest days
         team_stats["outfield_rest_days"] = team_stats["weighted_rest_days_sum"] / team_stats["rating_ability_sum"]
+        team_stats = team_stats.drop(columns=["weighted_rest_days_sum", "rating_ability_sum"])
 
         # split home / away
-        team_stat_cols = [col for col in team_stats.columns
-                     if col not in {"match_id", "team_id", "weighted_rest_days_sum", "rating_ability_sum"}]
+        team_stat_cols = [col for col in team_stats.columns if col not in {"match_id", "team_id"}]
         home_stats = team_stats.rename(columns={**{col: f"home_{col}" for col in team_stat_cols}, "team_id": "home_id"})
         away_stats = team_stats.rename(columns={**{col: f"away_{col}" for col in team_stat_cols}, "team_id": "away_id"})
 
@@ -432,8 +432,10 @@ class GoalkeeperTrainFeatureBuilder(BaseFeatureBuilder):
             raise ValueError("GK starters count is not 1")
 
         # per-90
-        df[[f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]] = (
-            df[self.PLAYED_TIME_ADJ] * 90 / (df["minutes"] + EPSILON).values[:, None]
+        df[[f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]] = np.where(
+            df["minutes"].values[:, None] >= 30,
+            df[self.PLAYED_TIME_ADJ].astype(float).values * 90 / df["minutes"].values[:, None],
+            np.nan,
         )
 
         # possession-adjusted
