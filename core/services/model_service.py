@@ -37,10 +37,10 @@ class ModelService(BaseService):
     def get_record(self, version: str) -> TrainingRecord:
         return self.training_record_dao.get_by_version(version)
 
-    def predict(self, fixture_id: int, version: Optional[str] = None) -> Dict[str, Any]:
+    def predict(self, match_id: int, version: Optional[str] = None) -> Dict[str, Any]:
         predictor = self.predictor_manager.get(version)
 
         if not predictor:
             raise ValueError(f"Model {version} is not loaded. Call load() first.")
 
-        return predictor.predict(fixture_id)
+        return predictor.predict(match_id)
