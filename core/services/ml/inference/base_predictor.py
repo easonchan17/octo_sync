@@ -43,5 +43,5 @@ class BasePredictor(ABC):
         pass
 
     @abstractmethod
-    def predict(self, fixture_id: int) -> Dict[str, Any]:
+    def predict(self, match_id: int) -> Dict[str, Any]:
         pass

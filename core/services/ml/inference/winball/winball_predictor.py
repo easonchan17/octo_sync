@@ -3,13 +3,12 @@ from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.models import TrainingRecord
 from core.services.ml.models.xgboost_classifier import XGBoostClassifier
 from core.services.ml.inference.base_predictor import BasePredictor
-from .feature_builder import FeatureBuilder
+from core.services.ml.preprocessing import PredictSampleBuilder
 
 @TaskRegistry.job('winball.inference')
 class WinballPredictor(BasePredictor):
     def __init__(self) -> None:
         super().__init__()
-        self.feature_builder = FeatureBuilder()
 
     def load(self, record: TrainingRecord) -> bool:
         model_path = self._resolve_model_path(record.model_path)
@@ -33,18 +32,21 @@ class WinballPredictor(BasePredictor):
             self.logger.error(f"Failed to load model: {e}", exc_info=True)
             return False
 
-    def predict(self, fixture_id: int) -> Dict[str, Any]:
+    def predict(self, match_id: int) -> Dict[str, Any]:
         if self.model is None:
-            raise ValueError("No model loaded. Call load_model() first.")
+            raise ValueError("No model loaded. Call load() first.")
 
         try:
-            payload = self.feature_builder.build(fixture_id)
+            payload = PredictSampleBuilder(match_id).build()
+            if payload is None:
+                raise ValueError(f"Failed to build predict sample for match_id={match_id}")
+
             df = self._prepare_features(payload)
             probabilities = self.model.predict_proba(df)
             classes = self.model.classes_
 
             return {
-                "fixture_id": fixture_id,
+                "match_id": match_id,
                 "model_version": self.model_version,
                 "probabilities": {
                     str(int(cls)): float(prob) for cls, prob in zip(classes, probabilities[0])
