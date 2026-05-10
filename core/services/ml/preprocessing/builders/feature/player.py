@@ -176,7 +176,6 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
         ('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability')
     ]
 
-class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
         self.league_id = league_id
@@ -348,7 +347,7 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
 
         return match_df
 
-class GoalkeeperTrainFeatureBuilder(BaseFeatureBuilder):
+class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
     PLAYED_TIME_ADJ = [
         "goals_prevented", "keeper_sweeper", "keeper_high_claim",
     ]
@@ -483,11 +482,3 @@ class GoalkeeperTrainFeatureBuilder(BaseFeatureBuilder):
         # cross-team features
         FormulaMutator(match_df).mutate_batch(self.FORMULAS)
         return match_df
-
-
-class OutfieldPlayerPredictFeatureBuilder(OutfieldPlayerFeatureBuilder):
-    def __init__(self, home_id: int, away_id: int, kickoff_time: datetime) -> None:
-        super().__init__()
-        self.home_id = home_id
-        self.away_id = away_id
-        self.kickoff_time = kickoff_time

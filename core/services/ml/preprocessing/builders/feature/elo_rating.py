@@ -8,7 +8,7 @@ from core.store.postgres.models.fotmob import Fixture, EloRating
 
 from .base import BaseFeatureBuilder
 
-class EloRatingBuilder(BaseFeatureBuilder):
+class EloRatingFeatureBuilder(BaseFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int, elo_params: EloParams = EloParams()) -> None:
         super().__init__()
         self.league_id = league_id
