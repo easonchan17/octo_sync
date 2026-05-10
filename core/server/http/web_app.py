@@ -8,8 +8,6 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.responses import JSONResponse
 from core.config.env_manager import env_manager
 from core.logger.logger_manager import LoggerManager
-from core.server.http.controllers.system.site_controller import SiteController
-from core.server.http.controllers.system.task_controller import TaskController
 from core.server.http.controllers.system.model_controller import ModelController
 from core.server.http.controllers.app.prediction_controller import PredictionController
 from core.server.http.controllers.app.fixture_controller import FixtureController
@@ -52,12 +50,6 @@ class WebApp:
         @self.app.get("/health")
         async def health_check() -> dict[str, str]:
             return {"status": "healthy"}
-
-        site_controller = SiteController()
-        self.app.include_router(site_controller.router, prefix="/api", tags=["sites"])
-
-        task_controller = TaskController()
-        self.app.include_router(task_controller.router, prefix="/api", tags=["tasks"])
 
         model_controller = ModelController()
         self.app.include_router(model_controller.router, prefix="/api", tags=["models"])
