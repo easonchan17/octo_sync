@@ -185,3 +185,27 @@ class ActiveFixtureDao(BaseDao):
             result = session.execute(insert_stmt)
             upserted_count = result.rowcount
             self.logger.debug(f"Sync match date={match_date} fixtures completed. upserted: {upserted_count}")
+
+    def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.id,
+                Fixture.league_id,
+                Fixture.league_name,
+                Fixture.kickoff_time,
+                Fixture.round,
+                Fixture.home_team,
+                Fixture.home_id,
+                Fixture.away_team,
+                Fixture.away_id,
+                Fixture.home_score,
+                Fixture.away_score,
+                Fixture.match_status,
+            ).filter(
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time < end_time,
+                Fixture.league_id.in_(league_ids)
+            ).order_by(
+                Fixture.league_id.asc(),
+                Fixture.kickoff_time.asc()
+            ).all()

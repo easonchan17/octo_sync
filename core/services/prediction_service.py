@@ -1,12 +1,14 @@
 from typing import List, Tuple, Dict, Any, Optional
 from core.services.base_service import BaseService
-from core.store.postgres.models import TrainingRecord, Status
+from core.store.postgres.models import TrainingRecord
+from core.store.postgres.daos.common import TrainingRecordDao
 from core.services.ml.inference.predictor_manager import get_predictor_manager
 
 class PredictionService(BaseService):
     def __init__(self):
         super().__init__()
         self.predictor_manager = get_predictor_manager()
+        self.training_record_dao = TrainingRecordDao()
 
     def load_model(self, family: str, version: str) -> str:
         record = self.get_training_record(version)
@@ -38,31 +40,7 @@ class PredictionService(BaseService):
         return self.predictor_manager.get_loaded_versions()
 
     def get_models(self, page: int = 1, page_size: int = 20) -> Tuple[int, List[TrainingRecord]]:
-        with self.db.get_session() as session:
-            query = session.query(TrainingRecord).filter(
-                TrainingRecord.status == Status.ACTIVE.value
-            ).order_by(
-                TrainingRecord.created_at.desc()
-            )
-
-            total = query.count()
-            offset = (page - 1) * page_size
-            records = query.offset(offset).limit(page_size).all()
-
-            session.expunge_all()
-            return total, records
+        return self.training_record_dao.get_list(page, page_size)
 
     def get_training_record(self, version: str) -> TrainingRecord:
-        with self.db.get_session() as session:
-            record = session.query(
-                TrainingRecord
-            ).filter(
-                TrainingRecord.model_version == version,
-                TrainingRecord.status == Status.ACTIVE.value
-            ).first()
-
-            if not record:
-                raise ValueError(f"Model version {version} not found in database")
-
-            session.expunge(record)
-            return record
+        return self.training_record_dao.get_by_version(version)

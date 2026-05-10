@@ -46,11 +46,9 @@ class RateLimiter:
         delay = self.base_interval * random.uniform(1.0, 1.5)
         target_time = max(backoff_time, last_time + delay)
 
-        current_time = time.time()
-        if target_time > current_time:
-            wait_time = target_time - current_time
-            self.logger.debug(f"Throttling request to {hostname}, waiting {wait_time:.2f}s")
-            await asyncio.sleep(wait_time)
+        wait_time = max(target_time - time.time(), random.uniform(1.0, 3.0))
+        self.logger.debug(f"Throttling request to {hostname}, waiting {wait_time:.2f}s")
+        await asyncio.sleep(wait_time)
 
         self.last_request[hostname] = time.time()
 
