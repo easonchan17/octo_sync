@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional
 from sqlalchemy import text
-from core.types.enums import BookmakerID
+from core.types.enums import BookmakerID, MatchStatus
 
 from ...transforms import FormulaMutator, EntropyMutator, ColumnFilter
 from .base import BaseFeatureBuilder
@@ -34,30 +34,8 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
         ("home_log_return",       "log(home_close_real / home_open_real)"),
         ("draw_log_return",       "log(draw_close_real / draw_open_real)"),
         ("away_log_return",       "log(away_close_real / away_open_real)"),
-        ("ah_home_open_implied",  "1 / ah_home_open_odds"),
-        ("ah_away_open_implied",  "1 / ah_away_open_odds"),
-        ("ah_home_close_implied", "1 / ah_home_close_odds"),
-        ("ah_away_close_implied", "1 / ah_away_close_odds"),
-        ("vig_ah_open",           "ah_home_open_implied + ah_away_open_implied"),
-        ("vig_ah_close",          "ah_home_close_implied + ah_away_close_implied"),
-        ("ah_home_open_real",     "ah_home_open_implied / vig_ah_open"),
-        ("ah_away_open_real",     "ah_away_open_implied / vig_ah_open"),
-        ("ah_home_close_real",    "ah_home_close_implied / vig_ah_close"),
-        ("ah_away_close_real",    "ah_away_close_implied / vig_ah_close"),
         ("home_moved_up",         "1.0 * (home_close_real > home_open_real)"),
         ("away_moved_up",         "1.0 * (away_close_real > away_open_real)"),
-    ]
-
-    FORMULAS2 = [
-        ("sharp_vs_market_home_open_diff",  "home_open_real - median_home_open_real"),
-        ("sharp_vs_market_away_open_diff",  "away_open_real - median_away_open_real"),
-        ("sharp_vs_market_home_close_diff", "home_close_real - market_median_home_real"),
-        ("sharp_vs_market_away_close_diff", "away_close_real - market_median_away_real"),
-        ("sharp_pure_home_log_return",      "log(home_close_real / home_open_real)"),
-        ("sharp_pure_away_log_return",      "log(away_close_real / away_open_real)"),
-        ("home_std_change",                 "home_prob_close_std - home_prob_open_std"),
-        ("market_home_bias_ratio",          "median_home_open_real / median_away_open_real"),
-        ("synthetic_vig_close",             "1 / max_home_close_odds + 1 / max_draw_close_odds + 1 / max_away_close_odds"),
     ]
 
     MARKET_AGG = {
@@ -84,6 +62,18 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
         "max_draw_close_odds":           ("draw_close_odds",  "max"),
         "max_away_close_odds":           ("away_close_odds",  "max"),
     }
+
+    FORMULAS2 = [
+        ("sharp_vs_market_home_open_diff",  "home_open_real - median_home_open_real"),
+        ("sharp_vs_market_away_open_diff",  "away_open_real - median_away_open_real"),
+        ("sharp_vs_market_home_close_diff", "home_close_real - market_median_home_real"),
+        ("sharp_vs_market_away_close_diff", "away_close_real - market_median_away_real"),
+        ("sharp_pure_home_log_return",      "log(home_close_real / home_open_real)"),
+        ("sharp_pure_away_log_return",      "log(away_close_real / away_open_real)"),
+        ("home_std_change",                 "home_prob_close_std - home_prob_open_std"),
+        ("market_home_bias_ratio",          "median_home_open_real / median_away_open_real"),
+        ("synthetic_vig_close",             "1 / max_home_close_odds + 1 / max_draw_close_odds + 1 / max_away_close_odds"),
+    ]
 
     OUTPUT = [
         "match_id",
@@ -149,10 +139,12 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
                     AND ah.rn = 1
                 WHERE fm.league_id = :league_id
                   AND fm.season BETWEEN :min_season AND :max_season
+                  AND fm.match_status = ANY(:match_statuses)
             """), {
-                "league_id":  self.league_id,
-                "min_season": self.min_season,
-                "max_season": self.max_season,
+                "league_id":      self.league_id,
+                "min_season":     self.min_season,
+                "max_season":     self.max_season,
+                "match_statuses": MatchStatus.natural_finals(),
             })
 
             records = result.fetchall()
@@ -163,7 +155,7 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
 
         df["ah_line_moved_up"] = np.where(
             df["ah_line_close"].notna() & df["ah_line_open"].notna(),
-            (df["ah_line_close"] > df["ah_line_open"]).astype(float),
+            (pd.to_numeric(df["ah_line_close"], errors='coerce') > pd.to_numeric(df["ah_line_open"], errors='coerce')).astype(float),
             np.nan,
         )
 

@@ -101,7 +101,7 @@ def run_app() -> None:
         )
         interceptor_manager.start(
             site_name=SiteName.ODDSPORTAL.value,
-            request_interval=60.0,
+            request_interval=10.0,
             launch_options=launch_options,
             viewport=viewport,
             addons=[os.path.join(BASE_DIR, "core/browser/extensions/oddsportal_tracer")]
