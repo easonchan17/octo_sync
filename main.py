@@ -37,9 +37,6 @@ def signal_handler(signum, frame) -> None:
     get_cron_manager().stop()
     logger.info("✅ Cron stopped")
 
-    logger.info("🔧 Stopping poll manager...")
-    get_poll_manager().stop()
-    logger.info("✅ Poll manager stopped")
 
     if not env_manager.is_ml:
         logger.info("🔧 Stopping interceptor manager...")
@@ -101,7 +98,7 @@ def run_app() -> None:
         )
         interceptor_manager.start(
             site_name=SiteName.ODDSPORTAL.value,
-            request_interval=10.0,
+            request_interval=12.0,
             launch_options=launch_options,
             viewport=viewport,
             addons=[os.path.join(BASE_DIR, "core/browser/extensions/oddsportal_tracer")]
