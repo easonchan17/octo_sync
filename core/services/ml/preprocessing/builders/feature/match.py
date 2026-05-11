@@ -138,6 +138,8 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "home_threat_per_entry_ema_5", "away_threat_per_entry_ema_5", "threat_per_entry_ema_5_diff",
     ]
 
+
+class MatchTrainFeatureBuilder(MatchFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
         self.league_id = league_id
@@ -289,7 +291,6 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
             return pd.DataFrame(records) if records else None
 
     def _build(self, df: pd.DataFrame) -> pd.DataFrame:
-        # target
         is_home_win = df["home_score"] > df["away_score"]
         is_draw = df["home_score"] == df["away_score"]
 
@@ -297,13 +298,11 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         df["away_point"] = np.select([is_home_win, is_draw], [0, 1], default=3)
         df["target"] = np.select([is_home_win, is_draw], [2, 1], default=0)
 
-        # xga
         df["home_xga"] = df["away_xg"]
         df["away_xga"] = df["home_xg"]
         df["home_npxga"] = df["away_npxg"]
         df["away_npxga"] = df["home_npxg"]
 
-        # team stats
         df = df.set_index("match_id", drop=True)
         kickoff_time_series = pd.to_datetime(df["kickoff_time"])
         home_stats = pd.DataFrame({
@@ -331,7 +330,6 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
             df.loc[team_stats["match_id"], [f"away_{col}" for col in self.TEAM_FEATURES]].values
         )
 
-        # ema
         group_by_team = team_stats.groupby("team_id", observed=True, group_keys=False)
         ema_cols = [f"{col}_ema_5" for col in self.TEAM_FEATURES]
         team_stats[ema_cols] = (
@@ -359,7 +357,6 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
             ).mean().shift(1).ffill()
         )
 
-        # pivot team-level back to match-level (long → wide)
         pivot_cols = ema_cols + ["schedule_rest_days", "lagged_xg", "point_sum_5", "points_ema_5_at_home", "points_ema_5_at_away"]
         match_stats = pd.concat([
             team_stats[home_mask].set_index("match_id")[pivot_cols].rename(columns=lambda col: f"home_{col}"),
@@ -368,6 +365,222 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         df[match_stats.columns] = match_stats
         df = df.reset_index()
 
-        # formulas
         FormulaMutator(df).mutate_batch(self.FORMULAS)
         return ColumnFilter(df).keep(self.OUTPUT)
+
+
+class MatchLatestFeatureBuilder(MatchFeatureBuilder):
+    def __init__(self, min_kickoff_time: datetime) -> None:
+        super().__init__()
+        self.min_kickoff_time = min_kickoff_time
+
+    def _load(self) -> Optional[pd.DataFrame]:
+        with self.db.get_session() as session:
+            home_pift = (
+                select(func.sum(MatchPlayerStat.passes_into_final_third))
+                .where(and_(
+                    MatchPlayerStat.match_id == Fixture.match_id,
+                    MatchPlayerStat.team_id == Fixture.home_id,
+                ))
+                .correlate(Fixture)
+                .scalar_subquery()
+            )
+            away_pift = (
+                select(func.sum(MatchPlayerStat.passes_into_final_third))
+                .where(and_(
+                    MatchPlayerStat.match_id == Fixture.match_id,
+                    MatchPlayerStat.team_id == Fixture.away_id,
+                ))
+                .correlate(Fixture)
+                .scalar_subquery()
+            )
+
+            results = session.query(
+                Fixture, MatchStat,
+                home_pift.label("home_passes_into_final_third"),
+                away_pift.label("away_passes_into_final_third"),
+            ).outerjoin(
+                MatchStat, Fixture.match_id == MatchStat.match_id
+            ).filter(
+                Fixture.kickoff_time >= self.min_kickoff_time,
+                Fixture.season.isnot(None),
+                Fixture.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(Fixture.kickoff_time).all()
+
+            records = []
+            for fixture, stat, home_passes_into_final_third, away_passes_into_final_third in results:
+                record = {
+                    "match_id": fixture.match_id,
+                    "league_id": fixture.league_id,
+                    "league_name": fixture.league_name,
+                    "season": fixture.season,
+                    "kickoff_time": fixture.kickoff_time,
+                    "round": fixture.round,
+                    "home_team": fixture.home_team,
+                    "home_id": fixture.home_id,
+                    "away_team": fixture.away_team,
+                    "away_id": fixture.away_id,
+                    "home_score": fixture.home_score,
+                    "away_score": fixture.away_score,
+                    "home_passes_into_final_third": home_passes_into_final_third or 0,
+                    "away_passes_into_final_third": away_passes_into_final_third or 0,
+                }
+
+                if stat:
+                    record.update({
+                        "home_formation": stat.home_formation,
+                        "away_formation": stat.away_formation,
+                        "home_possession": stat.home_possession,
+                        "away_possession": stat.away_possession,
+                        "home_goals_penalty": stat.home_goals_penalty,
+                        "away_goals_penalty": stat.away_goals_penalty,
+                        "home_shots": stat.home_shots,
+                        "away_shots": stat.away_shots,
+                        "home_shots_on_target": stat.home_shots_on_target,
+                        "away_shots_on_target": stat.away_shots_on_target,
+                        "home_shots_off_target": stat.home_shots_off_target,
+                        "away_shots_off_target": stat.away_shots_off_target,
+                        "home_hit_woodwork": stat.home_hit_woodwork,
+                        "away_hit_woodwork": stat.away_hit_woodwork,
+                        "home_shots_inside_box": stat.home_shots_inside_box,
+                        "away_shots_inside_box": stat.away_shots_inside_box,
+                        "home_shots_outside_box": stat.home_shots_outside_box,
+                        "away_shots_outside_box": stat.away_shots_outside_box,
+                        "home_big_chances": stat.home_big_chances,
+                        "away_big_chances": stat.away_big_chances,
+                        "home_big_chances_missed": stat.home_big_chances_missed,
+                        "away_big_chances_missed": stat.away_big_chances_missed,
+                        "home_xg": stat.home_xg,
+                        "away_xg": stat.away_xg,
+                        "home_xg_open_play": stat.home_xg_open_play,
+                        "away_xg_open_play": stat.away_xg_open_play,
+                        "home_xg_set_play": stat.home_xg_set_play,
+                        "away_xg_set_play": stat.away_xg_set_play,
+                        "home_npxg": stat.home_npxg,
+                        "away_npxg": stat.away_npxg,
+                        "home_xg_on_target": stat.home_xg_on_target,
+                        "away_xg_on_target": stat.away_xg_on_target,
+                        "home_passes": stat.home_passes,
+                        "away_passes": stat.away_passes,
+                        "home_passes_completed": stat.home_passes_completed,
+                        "away_passes_completed": stat.away_passes_completed,
+                        "home_own_half_passes": stat.home_own_half_passes,
+                        "away_own_half_passes": stat.away_own_half_passes,
+                        "home_opp_half_passes": stat.home_opp_half_passes,
+                        "away_opp_half_passes": stat.away_opp_half_passes,
+                        "home_long_passes": stat.home_long_passes,
+                        "away_long_passes": stat.away_long_passes,
+                        "home_long_passes_completed": stat.home_long_passes_completed,
+                        "away_long_passes_completed": stat.away_long_passes_completed,
+                        "home_crosses": stat.home_crosses,
+                        "away_crosses": stat.away_crosses,
+                        "home_crosses_completed": stat.home_crosses_completed,
+                        "away_crosses_completed": stat.away_crosses_completed,
+                        "home_throws": stat.home_throws,
+                        "away_throws": stat.away_throws,
+                        "home_corners": stat.home_corners,
+                        "away_corners": stat.away_corners,
+                        "home_tackles": stat.home_tackles,
+                        "away_tackles": stat.away_tackles,
+                        "home_interceptions": stat.home_interceptions,
+                        "away_interceptions": stat.away_interceptions,
+                        "home_shot_blocks": stat.home_shot_blocks,
+                        "away_shot_blocks": stat.away_shot_blocks,
+                        "home_clearances": stat.home_clearances,
+                        "away_clearances": stat.away_clearances,
+                        "home_keeper_saves": stat.home_keeper_saves,
+                        "away_keeper_saves": stat.away_keeper_saves,
+                        "home_duels_won": stat.home_duels_won,
+                        "away_duels_won": stat.away_duels_won,
+                        "home_ground_duels": stat.home_ground_duels,
+                        "away_ground_duels": stat.away_ground_duels,
+                        "home_ground_duels_won": stat.home_ground_duels_won,
+                        "away_ground_duels_won": stat.away_ground_duels_won,
+                        "home_aerials": stat.home_aerials,
+                        "away_aerials": stat.away_aerials,
+                        "home_aerials_won": stat.home_aerials_won,
+                        "away_aerials_won": stat.away_aerials_won,
+                        "home_dribbles": stat.home_dribbles,
+                        "away_dribbles": stat.away_dribbles,
+                        "home_dribbles_completed": stat.home_dribbles_completed,
+                        "away_dribbles_completed": stat.away_dribbles_completed,
+                        "home_offsides": stat.home_offsides,
+                        "away_offsides": stat.away_offsides,
+                        "home_fouls_committed": stat.home_fouls_committed,
+                        "away_fouls_committed": stat.away_fouls_committed,
+                        "home_yellow_cards": stat.home_yellow_cards,
+                        "away_yellow_cards": stat.away_yellow_cards,
+                        "home_red_cards": stat.home_red_cards,
+                        "away_red_cards": stat.away_red_cards,
+                    })
+                records.append(record)
+
+            return pd.DataFrame(records) if records else None
+
+    def _build(self, df: pd.DataFrame) -> pd.DataFrame:
+        is_home_win = df["home_score"] > df["away_score"]
+        is_draw = df["home_score"] == df["away_score"]
+
+        df["home_point"] = np.select([is_home_win, is_draw], [3, 1], default=0)
+        df["away_point"] = np.select([is_home_win, is_draw], [0, 1], default=3)
+
+        df["home_xga"] = df["away_xg"]
+        df["away_xga"] = df["home_xg"]
+        df["home_npxga"] = df["away_npxg"]
+        df["away_npxga"] = df["home_npxg"]
+
+        df = df.set_index("match_id", drop=True)
+        kickoff_time_series = pd.to_datetime(df["kickoff_time"])
+        home_stats = pd.DataFrame({
+            "kickoff_time": kickoff_time_series,
+            "team_id": df["home_id"],
+            "is_home": True,
+            "match_id": df.index
+        })
+        away_stats = pd.DataFrame({
+            "kickoff_time": kickoff_time_series,
+            "team_id": df["away_id"],
+            "is_home": False,
+            "match_id": df.index
+        })
+        team_stats = pd.concat([home_stats, away_stats], ignore_index=True)
+        team_stats["team_id"] = team_stats["team_id"].astype("category")
+        team_stats = team_stats.sort_values(["team_id", "kickoff_time"]).reset_index(drop=True)
+
+        home_mask = team_stats["is_home"]
+
+        team_stats[self.TEAM_FEATURES] = np.where(
+            home_mask.values[:, None],
+            df.loc[team_stats["match_id"], [f"home_{col}" for col in self.TEAM_FEATURES]].values,
+            df.loc[team_stats["match_id"], [f"away_{col}" for col in self.TEAM_FEATURES]].values
+        )
+
+        group_by_team = team_stats.groupby("team_id", observed=True, group_keys=False)
+        ema_cols = [f"{col}_ema_5" for col in self.TEAM_FEATURES]
+        team_stats[ema_cols] = (
+            group_by_team[self.TEAM_FEATURES]
+            .transform(lambda group: group.ewm(span=5, min_periods=3, adjust=False).mean().shift(0))
+            .values
+        )
+        team_stats["schedule_rest_days"] = group_by_team["kickoff_time"].diff() / pd.Timedelta(days=1)
+        team_stats["lagged_xg"] = group_by_team["xg"].shift(0)
+        team_stats["point_sum_5"] = group_by_team["point"].transform(
+            lambda group: group.rolling(window=5, min_periods=1).sum().shift(0)
+        )
+        team_stats["points_ema_5_at_home"] = team_stats.assign(
+            _temp=team_stats["point"].where(team_stats["is_home"]==True, np.nan)
+        ).groupby("team_id", observed=True, group_keys=False)["_temp"].transform(
+            lambda group: group.ewm(
+                span=5, min_periods=1, adjust=False, ignore_na=True
+            ).mean().shift(0).ffill()
+        )
+        team_stats["points_ema_5_at_away"] = team_stats.assign(
+            _temp=team_stats["point"].where(team_stats["is_home"]==False, np.nan)
+        ).groupby("team_id", observed=True, group_keys=False)["_temp"].transform(
+            lambda group: group.ewm(
+                span=5, min_periods=1, adjust=False, ignore_na=True
+            ).mean().shift(0).ffill()
+        )
+
+        state_cols = ema_cols + ["schedule_rest_days", "lagged_xg", "point_sum_5", "points_ema_5_at_home", "points_ema_5_at_away"]
+        return team_stats[["team_id", "kickoff_time"] + state_cols]
