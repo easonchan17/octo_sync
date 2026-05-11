@@ -176,12 +176,17 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
         ('away_total_luck', 'away_attack_form_over_ability + away_defense_form_over_ability')
     ]
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.quantiler = FeatureQuantiler()
+
+
+class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
         self.league_id = league_id
         self.min_season = min_season
         self.max_season = max_season
-        self.quantiler = FeatureQuantiler()
 
     def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
@@ -259,16 +264,13 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
 
             return pd.DataFrame(records) if records else None
 
-
     def _build(self, df: pd.DataFrame) -> pd.DataFrame:
-        # validate
         outfield_counts = df.groupby(["match_id", "team_id"]).size()
         invalid_teams = outfield_counts[outfield_counts != 10]
         if not invalid_teams.empty:
             self.logger.error(f"Invalid outfield starters:\n{invalid_teams.reset_index().to_string(index=False)}")
             raise ValueError("Outfield starters count is not 10")
 
-        # per-90
         per90_cols = [f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]
         df[per90_cols] = np.where(
             df["minutes"].values[:, None] >= 30,
@@ -276,21 +278,17 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
             np.nan,
         )
 
-        # possession-adjusted
         opp_possession = np.where(df["team_id"] == df["home_id"], df["away_possession"], df["home_possession"]).clip(1)
         adj_cols = [f"{col}_adj" for col in self.POSSESSION_ADJ]
         df[adj_cols] = df[self.POSSESSION_ADJ].values * 50.0 / opp_possession[:, None]
 
-        # combined rating
         df["combined_rating"] = df[["fotmob_rating", "upstream_rating"]].mean(axis=1, skipna=True).fillna(6.0)
 
         group_by_player = df.groupby("player_id", observed=True, group_keys=False)
 
-        # rest days
         df["rest_days"] = group_by_player["kickoff_time"].diff() / pd.Timedelta(days=1)
         DefaultImputer(df).impute("rest_days", 4.0)
 
-        # ema
         ema_cols_5 = [f"{col}_ema_5" for col in self.EMA]
         df[ema_cols_5] = (
             group_by_player[self.EMA]
@@ -304,7 +302,6 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
             .values
         )
 
-        # ability scores
         thresholds = self.quantiler.build(df)
         form_features = [
             (f"{col}_form", formula.format(span=5, epsilon=EPSILON).format(**thresholds))
@@ -316,36 +313,159 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
         ]
         FormulaMutator(df).mutate_batch(form_features + ability_features)
 
-        # impute
         impute_cols = [col for col, _ in form_features + ability_features]
         QuantileImputer(df).impute_by_group(impute_cols, quantile=0.5, group_by="position")
 
-        # weighted rest days
         df["weighted_rest_days"] = df["rest_days"] * df["rating_ability"]
 
-        # aggregate to team
         team_stats = df.groupby(["match_id", "team_id"]).agg(**self.OUTFIELD_AGG).reset_index()
 
-        # team rest days
         team_stats["outfield_rest_days"] = team_stats["weighted_rest_days_sum"] / team_stats["rating_ability_sum"]
         team_stats = team_stats.drop(columns=["weighted_rest_days_sum", "rating_ability_sum"])
 
-        # split home / away
         team_stat_cols = [col for col in team_stats.columns if col not in {"match_id", "team_id"}]
         home_stats = team_stats.rename(columns={**{col: f"home_{col}" for col in team_stat_cols}, "team_id": "home_id"})
         away_stats = team_stats.rename(columns={**{col: f"away_{col}" for col in team_stat_cols}, "team_id": "away_id"})
 
-        # build match features
         match_df = (
             df[["match_id", "home_id", "away_id"]].drop_duplicates("match_id")
             .merge(home_stats, on=["match_id", "home_id"], how="inner")
             .merge(away_stats, on=["match_id", "away_id"], how="inner")
         )
 
-        # cross-team features
         FormulaMutator(match_df).mutate_batch(self.FORMULAS)
 
         return match_df
+
+
+class OutfieldPlayerLatestFeatureBuilder(OutfieldPlayerFeatureBuilder):
+    def __init__(self, min_kickoff_time: datetime) -> None:
+        super().__init__()
+        self.min_kickoff_time = min_kickoff_time
+
+    def _load(self) -> Optional[pd.DataFrame]:
+        with self.db.get_session() as session:
+            results = session.query(
+                Fixture,
+                MatchPlayerStat,
+                MatchLineup,
+                MatchStat,
+            ).join(
+                MatchPlayerStat,
+                MatchPlayerStat.match_id == Fixture.match_id
+            ).join(
+                MatchLineup,
+                and_(
+                    MatchLineup.match_id == MatchPlayerStat.match_id,
+                    MatchLineup.member_id == MatchPlayerStat.player_id
+                )
+            ).outerjoin(
+                MatchStat,
+                MatchStat.match_id == Fixture.match_id
+            ).filter(
+                Fixture.kickoff_time >= self.min_kickoff_time,
+                Fixture.season.isnot(None),
+                Fixture.match_status.in_(MatchStatus.natural_finals()),
+                MatchLineup.role == LineupRole.STARTER.value,
+                MatchLineup.position.notin_(Position.get_goalkeeper()),
+            ).order_by(Fixture.kickoff_time, MatchPlayerStat.player_id).all()
+
+            records = []
+            for fixture, player_stat, lineup, match_stat in results:
+                record = {
+                    "match_id": fixture.match_id,
+                    "season": fixture.season,
+                    "kickoff_time": fixture.kickoff_time,
+                    "home_id": fixture.home_id,
+                    "away_id": fixture.away_id,
+                    "home_possession": match_stat.home_possession if match_stat else 50,
+                    "away_possession": match_stat.away_possession if match_stat else 50,
+                    "team_id": player_stat.team_id,
+                    "player_id": player_stat.player_id,
+                    "player_name": player_stat.player_name,
+                    "role": lineup.role,
+                    "position": lineup.position,
+                    "minutes": player_stat.minutes_played,
+                    "non_penalty_goals": (player_stat.goals or 0) - (player_stat.goals_penalty or 0),
+                    "npxg": player_stat.npxg,
+                    "xg": player_stat.xg,
+                    "xgot": player_stat.xgot,
+                    "xa": player_stat.xa,
+                    "shots": player_stat.shots,
+                    "shots_on_target": player_stat.shots_on_target,
+                    "passes": player_stat.passes,
+                    "passes_completed": player_stat.passes_completed,
+                    "long_passes": player_stat.long_passes,
+                    "long_passes_completed": player_stat.long_passes_completed,
+                    "passes_into_final_third": player_stat.passes_into_final_third,
+                    "chances_created": player_stat.chances_created,
+                    "assists": player_stat.assists,
+                    "dispossessed": player_stat.dispossessed,
+                    "tackles": player_stat.tackles,
+                    "blocks": player_stat.blocks,
+                    "clearances": player_stat.clearances,
+                    "interceptions": player_stat.interceptions,
+                    "recoveries": player_stat.recoveries,
+                    "aerials": player_stat.aerials,
+                    "aerials_won": player_stat.aerials_won,
+                    "fouls_committed": player_stat.fouls_committed,
+                    "fouls_suffered": player_stat.fouls_suffered,
+                    "dribbled_past": player_stat.dribbled_past,
+                    "fotmob_rating": player_stat.rating,
+                    "upstream_rating": lineup.rating,
+                }
+                records.append(record)
+
+            return pd.DataFrame(records) if records else None
+
+    def _build(self, df: pd.DataFrame) -> pd.DataFrame:
+        per90_cols = [f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]
+        df[per90_cols] = np.where(
+            df["minutes"].values[:, None] >= 30,
+            df[self.PLAYED_TIME_ADJ].astype(float).values * 90 / df["minutes"].values[:, None],
+            np.nan,
+        )
+
+        opp_possession = np.where(df["team_id"] == df["home_id"], df["away_possession"], df["home_possession"]).clip(1)
+        adj_cols = [f"{col}_adj" for col in self.POSSESSION_ADJ]
+        df[adj_cols] = df[self.POSSESSION_ADJ].values * 50.0 / opp_possession[:, None]
+
+        df["combined_rating"] = df[["fotmob_rating", "upstream_rating"]].mean(axis=1, skipna=True).fillna(6.0)
+
+        group_by_player = df.groupby("player_id", observed=True, group_keys=False)
+
+        df["rest_days"] = group_by_player["kickoff_time"].diff() / pd.Timedelta(days=1)
+        DefaultImputer(df).impute("rest_days", 4.0)
+
+        ema_cols_5 = [f"{col}_ema_5" for col in self.EMA]
+        df[ema_cols_5] = (
+            group_by_player[self.EMA]
+            .transform(lambda group: group.ewm(span=5, min_periods=3, adjust=False).mean().shift(0))
+            .values
+        )
+        ema_cols_20 = [f"{col}_ema_20" for col in self.EMA]
+        df[ema_cols_20] = (
+            group_by_player[self.EMA]
+            .transform(lambda group: group.ewm(span=20, min_periods=3, adjust=False).mean().shift(0))
+            .values
+        )
+
+        thresholds = self.quantiler.build(df)
+        form_features = [
+            (f"{col}_form", formula.format(span=5, epsilon=EPSILON).format(**thresholds))
+            for col, formula in self.ABILITY_FORMULAS.items()
+        ]
+        ability_features = [
+            (f"{col}_ability", formula.format(span=20, epsilon=EPSILON).format(**thresholds))
+            for col, formula in self.ABILITY_FORMULAS.items()
+        ]
+        FormulaMutator(df).mutate_batch(form_features + ability_features)
+
+        ability_cols = [col for col, _ in form_features + ability_features]
+        QuantileImputer(df).impute_by_group(ability_cols, quantile=0.5, group_by="position")
+
+        return df[["player_id", "team_id", "kickoff_time", "position"] + ability_cols]
+
 
 class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
     PLAYED_TIME_ADJ = [
@@ -366,6 +486,8 @@ class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
         ("away_keeper_form_momentum",   "away_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_20"),
     ]
 
+
+class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
     def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
         super().__init__()
         self.league_id = league_id
@@ -423,32 +545,27 @@ class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
             return pd.DataFrame(records) if records else None
 
     def _build(self, df: pd.DataFrame) -> pd.DataFrame:
-        # validate
         gk_counts = df.groupby(["match_id", "team_id"]).size()
         invalid_teams = gk_counts[gk_counts != 1]
         if not invalid_teams.empty:
             self.logger.error(f"Invalid GK starters:\n{invalid_teams.reset_index().to_string(index=False)}")
             raise ValueError("GK starters count is not 1")
 
-        # per-90
         df[[f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]] = np.where(
             df["minutes"].values[:, None] >= 30,
             df[self.PLAYED_TIME_ADJ].astype(float).values * 90 / df["minutes"].values[:, None],
             np.nan,
         )
 
-        # possession-adjusted
         opp_possession = np.where(df["team_id"] == df["home_id"], df["away_possession"], df["home_possession"]).clip(1)
         adj_cols = [f"{col}_adj" for col in self.POSSESSION_ADJ]
         df[adj_cols] = df[self.POSSESSION_ADJ].values * 50.0 / opp_possession[:, None]
 
         group_by_player = df.groupby("player_id", observed=True, group_keys=False)
 
-        # rest days
         df["rest_days"] = group_by_player["kickoff_time"].diff() / pd.Timedelta(days=1)
         DefaultImputer(df).impute("rest_days", 4.0)
 
-        # ema
         ema_cols_5 = [f"{col}_ema_5" for col in self.EMA]
         df[ema_cols_5] = (
             group_by_player[self.EMA]
@@ -461,24 +578,108 @@ class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
             .transform(lambda group: group.ewm(span=20, min_periods=3, adjust=False).mean().shift(1))
             .values
         )
+        QuantileImputer(df).impute(ema_cols_5 + ema_cols_20, quantile=0.5)
 
-        # aggregate to team
         output_cols = ema_cols_5 + ema_cols_20 + ["rest_days"]
         team_stats = df.groupby(["match_id", "team_id"])[output_cols].max().reset_index()
         team_stats = team_stats.rename(columns={"rest_days": "gk_rest_days"})
 
-        # split home / away
         rename_cols = ema_cols_5 + ema_cols_20 + ["gk_rest_days"]
         home_stats = team_stats.rename(columns={**{col: f"home_{col}" for col in rename_cols}, "team_id": "home_id"})
         away_stats = team_stats.rename(columns={**{col: f"away_{col}" for col in rename_cols}, "team_id": "away_id"})
 
-        # build match features
         match_df = (
             df[["match_id", "home_id", "away_id"]].drop_duplicates("match_id")
             .merge(home_stats, on=["match_id", "home_id"], how="inner")
             .merge(away_stats, on=["match_id", "away_id"], how="inner")
         )
 
-        # cross-team features
         FormulaMutator(match_df).mutate_batch(self.FORMULAS)
         return match_df
+
+
+class GoalkeeperLatestFeatureBuilder(GoalkeeperFeatureBuilder):
+    def __init__(self, min_kickoff_time: datetime) -> None:
+        super().__init__()
+        self.min_kickoff_time = min_kickoff_time
+
+    def _load(self) -> Optional[pd.DataFrame]:
+        with self.db.get_session() as session:
+            results = session.query(
+                Fixture,
+                MatchPlayerStat,
+                MatchLineup,
+                MatchStat,
+            ).join(
+                MatchPlayerStat,
+                MatchPlayerStat.match_id == Fixture.match_id
+            ).join(
+                MatchLineup,
+                and_(
+                    MatchLineup.match_id == MatchPlayerStat.match_id,
+                    MatchLineup.member_id == MatchPlayerStat.player_id
+                )
+            ).outerjoin(
+                MatchStat,
+                MatchStat.match_id == Fixture.match_id
+            ).filter(
+                Fixture.kickoff_time >= self.min_kickoff_time,
+                Fixture.season.isnot(None),
+                Fixture.match_status.in_(MatchStatus.natural_finals()),
+                MatchLineup.role == LineupRole.STARTER.value,
+                MatchLineup.position.in_(Position.get_goalkeeper()),
+            ).order_by(Fixture.kickoff_time, MatchPlayerStat.player_id).all()
+
+            records = []
+            for fixture, player_stat, lineup, match_stat in results:
+                record = {
+                    "match_id": fixture.match_id,
+                    "season": fixture.season,
+                    "kickoff_time": fixture.kickoff_time,
+                    "home_id": fixture.home_id,
+                    "away_id": fixture.away_id,
+                    "home_possession": match_stat.home_possession if match_stat else 50,
+                    "away_possession": match_stat.away_possession if match_stat else 50,
+                    "team_id": player_stat.team_id,
+                    "player_id": player_stat.player_id,
+                    "position": lineup.position,
+                    "minutes": player_stat.minutes_played,
+                    "goals_prevented": player_stat.goals_prevented,
+                    "keeper_sweeper": player_stat.keeper_sweeper,
+                    "keeper_high_claim": player_stat.keeper_high_claim,
+                }
+                records.append(record)
+
+            return pd.DataFrame(records) if records else None
+
+    def _build(self, df: pd.DataFrame) -> pd.DataFrame:
+        df[[f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]] = np.where(
+            df["minutes"].values[:, None] >= 30,
+            df[self.PLAYED_TIME_ADJ].astype(float).values * 90 / df["minutes"].values[:, None],
+            np.nan,
+        )
+
+        opp_possession = np.where(df["team_id"] == df["home_id"], df["away_possession"], df["home_possession"]).clip(1)
+        adj_cols = [f"{col}_adj" for col in self.POSSESSION_ADJ]
+        df[adj_cols] = df[self.POSSESSION_ADJ].values * 50.0 / opp_possession[:, None]
+
+        group_by_player = df.groupby("player_id", observed=True, group_keys=False)
+
+        df["rest_days"] = group_by_player["kickoff_time"].diff() / pd.Timedelta(days=1)
+        DefaultImputer(df).impute("rest_days", 4.0)
+
+        ema_cols_5 = [f"{col}_ema_5" for col in self.EMA]
+        df[ema_cols_5] = (
+            group_by_player[self.EMA]
+            .transform(lambda group: group.ewm(span=5, min_periods=3, adjust=False).mean().shift(0))
+            .values
+        )
+        ema_cols_20 = [f"{col}_ema_20" for col in self.EMA]
+        df[ema_cols_20] = (
+            group_by_player[self.EMA]
+            .transform(lambda group: group.ewm(span=20, min_periods=3, adjust=False).mean().shift(0))
+            .values
+        )
+        QuantileImputer(df).impute(ema_cols_5 + ema_cols_20, quantile=0.5)
+
+        return df[["player_id", "team_id", "kickoff_time"] + ema_cols_5 + ema_cols_20 + ["rest_days"]]

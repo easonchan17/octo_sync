@@ -6,10 +6,10 @@ from .base import BaseSampleBuilder
 from core.types.enums import SiteName
 from core.services.league import league_service
 from core.utils.pandas_utils import save_dataframe
-from ..feature.match import MatchFeatureBuilder
-from ..feature.player import OutfieldPlayerFeatureBuilder, GoalkeeperFeatureBuilder
-from ..feature.elo_rating import EloRatingFeatureBuilder
-from ..feature.odds import OddsFeatureBuilder
+from ..feature.match import MatchTrainFeatureBuilder
+from ..feature.player import OutfieldPlayerTrainFeatureBuilder, GoalkeeperTrainFeatureBuilder
+from ..feature.elo_rating import EloRatingTrainFeatureBuilder
+from ..feature.odds import OddsTrainFeatureBuilder
 from ...transforms import ColumnFilter
 
 class TrainSampleBuilder(BaseSampleBuilder):
@@ -22,11 +22,11 @@ class TrainSampleBuilder(BaseSampleBuilder):
         self.output_format = output_format
 
         fotmob_league_id = int(league_service.get(self.league_id).site_leagues.get(SiteName.FOTMOB.value).league_id)
-        self.match_builder = MatchFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.elo_rating_builder = EloRatingFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.outfield_builder = OutfieldPlayerFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.gk_builder = GoalkeeperFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.odds_builder = OddsFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.match_builder = MatchTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.elo_rating_builder = EloRatingTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.outfield_builder = OutfieldPlayerTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.gk_builder = GoalkeeperTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        self.odds_builder = OddsTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
 
     def build_output_path(self, tag: str) -> Path:
         output_dir = Path(self.output_path)
