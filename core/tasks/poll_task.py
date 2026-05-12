@@ -31,9 +31,10 @@ class PollTask(BaseTask):
     def wake_idle(self) -> None:
         self._idle_wake_event.set()
 
-    def idle_sleep(self) -> None:
-        self.logger.debug(f"Polling task {self.name} is idle, waiting for {self.get_idle_timeout_seconds()} seconds")
-        self._idle_wake_event.wait(timeout=self.get_idle_timeout_seconds())
+    def idle_sleep(self, timeout: Optional[float] = None) -> None:
+        wait_seconds = timeout if timeout is not None else self.get_idle_timeout_seconds()
+        self.logger.debug(f"Polling task {self.name} is idle, waiting for {wait_seconds} seconds")
+        self._idle_wake_event.wait(timeout=wait_seconds)
 
         if not self.should_stop():
             self._idle_wake_event.clear()

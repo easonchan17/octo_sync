@@ -138,6 +138,7 @@ class BaseSyncOdds(PollTask):
                             self.retry_strategy.suggest_interval(fetch_attempts),
                         )
                         self.logger.error(f"Failed to sync odds for match_code={match_code}: {e}")
+                        self.idle_sleep()
 
             except Exception as e:
                 self.logger.error(f"Sync odds loop error: {e}", exc_info=True)
