@@ -40,22 +40,13 @@ class ModelController(BaseController):
                 page_size=page_size
             )
 
-            loaded_versions = self.model_service.get_loaded_versions()
-            items = [
-                ModelResponse.model_validate({
-                    **record.to_dict(),
-                    "is_loaded": record.model_version in loaded_versions
-                })
-                for record in records
-            ]
-
             return Paginated[ModelResponse](
                 pagination=Pagination(
                     page=page,
                     page_size=page_size,
                     total=total
                 ),
-                items=items
+                items=[ModelResponse.model_validate(record) for record in records]
             )
         except Exception as e:
             self.logger.error(f"Failed to get models: {e}", exc_info=True)

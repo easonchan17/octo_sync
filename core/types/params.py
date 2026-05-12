@@ -3,8 +3,6 @@ from datetime import timedelta
 class CrawlParams:
     EARLIEST_SEASON = 2019
 
-    POLL_IDLE_SECONDS = 60
-
     PARSE_BATCH_SIZE = 300
     FETCH_BATCH_SIZE = 2000
     PARSE_MAX_RETRIES = 3

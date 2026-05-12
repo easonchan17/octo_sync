@@ -1,18 +1,70 @@
+import pandas as pd
 from copy import deepcopy
+from abc import ABC, abstractmethod
+from threading import Event
 from skopt import BayesSearchCV
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional, Tuple
+from core.utils.pandas_utils import load_dataframe
+from core.logger.logger_manager import LoggerManager
 from core.services.ml.models.xgboost_classifier import XGBoostClassifier
 from sklearn.model_selection import TimeSeriesSplit
-from .winball_config import WinballConfig
+from sklearn.utils.class_weight import compute_sample_weight
 from skopt.space import Real, Integer
-from ..base_trainer import BaseTrainer
-from ..base_tracker import BaseTracker
+from .train_config import WinballTrainConfig
+from .train_tracker import TrainTracker
+
+
+class BaseTrainer(ABC):
+    def __init__(self) -> None:
+        self.config = None
+        self.tracker = None
+        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.cancel_event = Event()
+
+    def cancel(self) -> None:
+        self.cancel_event.set()
+
+    def should_stop(self) -> bool:
+        return self.cancel_event.is_set()
+
+    @abstractmethod
+    def create_model(self) -> Any:
+        pass
+
+    @abstractmethod
+    def create_optimizer(self, model: Any) -> Any:
+        pass
+
+    def build_sample_weight(self, y_train: pd.Series) -> Optional[pd.Series]:
+        return pd.Series(
+            compute_sample_weight('balanced', y=y_train),
+            index=y_train.index
+        )
+
+    def load_dataset(self) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
+        if self.config is None:
+            raise ValueError("Config is not set")
+
+        dataset_name = self.config.dataset_name
+        df = load_dataframe(self.config.dataset_dir / dataset_name)
+
+        target_col = self.config.target_col
+        y = df[target_col].copy()
+        X = df.drop(columns=[target_col], axis=1)
+        self.logger.info(X.head())
+
+        split_idx = int(len(X) * (1 - self.config.test_set_size))
+        X_train, X_test = X.iloc[:split_idx].copy(), X.iloc[split_idx:].copy()
+        y_train, y_test = y.iloc[:split_idx].copy(), y.iloc[split_idx:].copy()
+
+        return X_train, y_train, X_test, y_test
+
 
 class WinballTrainer(BaseTrainer):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
-        self.config = WinballConfig(payload)
-        self.tracker = BaseTracker(self.config)
+        self.config = WinballTrainConfig(payload)
+        self.tracker = TrainTracker(self.config)
 
     def create_model(self) -> XGBoostClassifier:
         return XGBoostClassifier(

@@ -6,7 +6,7 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.responses import JSONResponse
-from core.config.env_manager import env_manager
+from core.config.env_manager import get_env_manager
 from core.logger.logger_manager import LoggerManager
 from core.server.http.controllers.system.model_controller import ModelController
 from core.server.http.controllers.app.fixture_controller import FixtureController
@@ -25,14 +25,14 @@ class WebApp:
             openapi_url=None
         )
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.env_manager = get_env_manager()
         self._setup_middleware()
         self._setup_routes()
         self._setup_docs_protection()
 
-    @staticmethod
-    def _verify_credentials(credentials: HTTPBasicCredentials = Depends(HTTPBasic())) -> str:
-        correct_username = env_manager.DOCS_USERNAME
-        correct_password = env_manager.DOCS_PASSWORD
+    def _verify_credentials(self, credentials: HTTPBasicCredentials = Depends(HTTPBasic())) -> str:
+        correct_username = self.env_manager.DOCS_USERNAME
+        correct_password = self.env_manager.DOCS_PASSWORD
 
         is_correct_username = secrets.compare_digest(credentials.username, correct_username)
         is_correct_password = secrets.compare_digest(credentials.password, correct_password)
@@ -66,7 +66,7 @@ class WebApp:
         self.app.include_router(cron_controller.router, prefix="/api", tags=["cron"])
 
     def _setup_docs_protection(self) -> None:
-        if not env_manager.docs_enabled:
+        if not self.env_manager.docs_enabled:
             return
 
         @self.app.get("/openapi.json", include_in_schema=False)

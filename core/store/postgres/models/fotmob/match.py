@@ -318,3 +318,18 @@ class MatchLineup(Base):
 
     rating = Column(Float, nullable=True)
     market_value = Column(BigInteger, nullable=True)
+
+
+class FormCacheBuildLog(Base):
+    __tablename__ = 'form_cache_build_logs'
+    __table_args__ = (
+        Index('idx_form_cache_build_logs_built_at', 'built_at'),
+        Index('idx_form_cache_build_logs_created_at', 'created_at'),
+        Index('idx_form_cache_build_logs_updated_at', 'updated_at'),
+        {'schema': SiteName.FOTMOB.value}
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    built_at = Column(DateTime(timezone=True), nullable=False)
+    checkpoint = Column(DateTime(timezone=True), nullable=False)
+    match_count = Column(Integer, nullable=False)

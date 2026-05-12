@@ -2,26 +2,38 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-from .base import BaseSampleBuilder
 from core.types.enums import SiteName
-from core.services.league import league_service
+from core.logger.logger_manager import LoggerManager
+from core.config.config_manager import ConfigManager
+from core.services.league import get_league_service
 from core.utils.pandas_utils import save_dataframe
-from ..feature.match import MatchTrainFeatureBuilder
-from ..feature.player import OutfieldPlayerTrainFeatureBuilder, GoalkeeperTrainFeatureBuilder
-from ..feature.elo_rating import EloRatingTrainFeatureBuilder
-from ..feature.odds import OddsTrainFeatureBuilder
-from ...transforms import ColumnFilter
+from core.services.ml.preprocessing.builders.match import MatchTrainFeatureBuilder
+from core.services.ml.preprocessing.builders.player import OutfieldPlayerTrainFeatureBuilder, GoalkeeperTrainFeatureBuilder
+from core.services.ml.preprocessing.builders.elo_rating import EloRatingTrainFeatureBuilder
+from core.services.ml.preprocessing.builders.odds import OddsTrainFeatureBuilder
+from core.services.ml.preprocessing.transforms import ColumnFilter
 
-class TrainSampleBuilder(BaseSampleBuilder):
+class TrainSampleBuilder:
+    EXCLUDED_FEATURES = [
+        "match_id", "kickoff_time", "season", "league_id", "league_name", "round",
+        "home_team", "home_id", "away_team", "away_id",
+        "home_score", "away_score",
+        "home_goals_penalty", "away_goals_penalty",
+        "home_formation", "away_formation",
+        "home_point", "away_point",
+    ]
+
     def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
-        super().__init__()
+        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.config_manager = ConfigManager.get_instance()
         self.league_id = league_id
         self.min_season = min_season
         self.max_season = max_season
         self.output_path = output_path
         self.output_format = output_format
+        self.league_service = get_league_service()
 
-        fotmob_league_id = int(league_service.get(self.league_id).site_leagues.get(SiteName.FOTMOB.value).league_id)
+        fotmob_league_id = int(self.league_service.get(self.league_id).site_leagues.get(SiteName.FOTMOB.value).league_id)
         self.match_builder = MatchTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
         self.elo_rating_builder = EloRatingTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
         self.outfield_builder = OutfieldPlayerTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
