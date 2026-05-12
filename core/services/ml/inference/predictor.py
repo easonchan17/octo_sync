@@ -27,19 +27,6 @@ class BasePredictor(ABC):
 
         return path
 
-    def _prepare_features(self, payload: Dict[str, Any]) -> pd.DataFrame:
-        df = pd.DataFrame([payload])
-
-        if self.feature_names:
-            missing_features = set(self.feature_names) - set(df.columns)
-            if missing_features:
-                for feature in missing_features:
-                    df[feature] = 0
-
-            df = df[self.feature_names]
-
-        return df
-
     @abstractmethod
     def load(self, record: TrainingRecord) -> bool:
         pass
@@ -80,4 +67,13 @@ class WinballPredictor(BasePredictor):
         if self.model is None:
             raise ValueError("No model loaded. Call load() first.")
 
-        raise NotImplementedError
+        df = pd.DataFrame([features])
+        proba = self.model.predict_proba(df)[0]
+        prediction = int(self.model.predict(df)[0])
+        probabilities = {str(cls): float(prob) for cls, prob in zip(self.model.classes_, proba)}
+
+        return {
+            "model_version": self.model_version,
+            "probabilities": probabilities,
+            "prediction": prediction
+        }

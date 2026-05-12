@@ -103,7 +103,7 @@ class ModelResponse(BaseModel):
         from_attributes = True
 
 class PredictionResponse(BaseModel):
-    fixture_id: int
+    match_code: str
     model_version: str
     probabilities: Dict[str, float]
     prediction: int
