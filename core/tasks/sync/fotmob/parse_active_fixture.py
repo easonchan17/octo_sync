@@ -7,9 +7,10 @@ from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
-from core.tasks.sync.fotmob.utils import extract_status
+from core.config.env_manager import get_env_manager
+from core.tasks.sync.fotmob.utils import extract_status, make_match_code
 from core.tasks.refetch_strategy import ScheduleStrategy, ScheduleSegment
-from core.services.league import league_service
+from core.services.league import get_league_service
 
 class PageUrlBuilder:
     _STOP_WORDS = frozenset({"a", "an", "the", "and", "or", "of", "to", "in", "for", "on", "with", "as", "by"})
@@ -169,7 +170,9 @@ class ParseActiveFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
+        self.env_manager = get_env_manager()
         self.active_fixture_dao = ActiveFixtureDao()
+        self.league_service = get_league_service()
         self.league_parser = LeagueParser()
         self.fixture_parser = FixtureParser()
 
@@ -187,7 +190,7 @@ class ParseActiveFixture(PollTask):
         )
 
     def get_refetch_interval(self, last_fetch_time: datetime, max_sheduled_time: datetime, fixtures: List[Any]) -> Optional[timedelta]:
-        site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value)
+        site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
 
         match_status_key = Fixture.match_status.key
         kickoff_key = Fixture.kickoff_time.key
@@ -228,7 +231,7 @@ class ParseActiveFixture(PollTask):
                             continue
 
                         for league in parsed_leagues:
-                            league_service.resolve(
+                            self.league_service.resolve(
                                 SiteName.FOTMOB.value,
                                 league['league_id'],
                                 league['league_name'],
@@ -242,6 +245,13 @@ class ParseActiveFixture(PollTask):
 
                         for fixture in parsed_fixtures:
                             fixture[Fixture.raw_fetch_date.key] = match_date
+                            fixture[Fixture.match_code.key] = make_match_code(
+                                fixture[Fixture.match_id.key],
+                                fixture[Fixture.home_id.key],
+                                fixture[Fixture.away_id.key],
+                                self.env_manager.MATCH_CODE_SALT
+                            )
+
 
                         self.active_fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
 

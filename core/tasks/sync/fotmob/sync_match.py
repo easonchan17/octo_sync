@@ -9,7 +9,7 @@ from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
-from core.services.league import league_service
+from core.services.league import get_league_service
 from core.types.enums import LeaguePriority
 
 @TaskRegistry.poll('sync.fotmob.match')
@@ -30,6 +30,7 @@ class SyncMatch(PollTask):
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.match_dao = MatchDao()
+        self.league_service = get_league_service()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.refetch_strategy = (
@@ -52,7 +53,7 @@ class SyncMatch(PollTask):
         )
 
     def get_pending_fetch_items(self) -> List[Any]:
-        site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value)
+        site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
         if not site_leagues:
             return []
 
@@ -61,7 +62,7 @@ class SyncMatch(PollTask):
         return self.match_dao.get_pending_fetch_items(kickoff_before, league_ids, CrawlParams.FETCH_BATCH_SIZE)
 
     def get_refetch_interval(self, league_id: int, league_name: str, kickoff_time: datetime, current_time: datetime) -> Optional[timedelta]:
-        resolved_league = league_service.resolve(SiteName.FOTMOB.value, league_id, league_name)
+        resolved_league = self.league_service.resolve(SiteName.FOTMOB.value, league_id, league_name)
         priority = resolved_league.priority if resolved_league else LeaguePriority.LEVEL_NONE.value
 
         if priority < LeaguePriority.LEVEL_BASIC.value:

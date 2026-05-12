@@ -1,12 +1,11 @@
-from .base_predictor import BasePredictor
-from .predictor_manager import PredictorManager, get_predictor_manager
-from .feature_cache import FeatureCache, get_feature_cache, feature_cache
+from .predictor import BasePredictor, WinballPredictor
+from .predict_service import FormCache, PredictorManager, PredictService, get_predict_service
 
 __all__ = [
     'BasePredictor',
+    'WinballPredictor',
+    'FormCache',
     'PredictorManager',
-    'get_predictor_manager',
-    'FeatureCache',
-    'get_feature_cache',
-    'feature_cache',
+    'PredictService',
+    'get_predict_service',
 ]

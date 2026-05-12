@@ -4,7 +4,7 @@ from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.daos.fotmob import LeagueDao
 from core.logger.logger_manager import LoggerManager
-from core.services.league import league_service
+from core.services.league import get_league_service
 from core.types.enums import SiteName
 
 
@@ -53,6 +53,7 @@ class ParseLeague(PollTask):
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.league_dao = LeagueDao()
+        self.league_service = get_league_service()
         self.parser = LeagueParser()
 
     def execute(self, *args, **kwargs) -> None:
@@ -77,7 +78,7 @@ class ParseLeague(PollTask):
                         self.league_dao.sync_parsed_data(parsed_leagues)
 
                         for league in parsed_leagues:
-                            league_service.resolve(
+                            self.league_service.resolve(
                                 SiteName.FOTMOB.value,
                                 str(league["league_id"]),
                                 league["league_name"],

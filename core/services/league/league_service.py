@@ -1,5 +1,5 @@
 import zlib
-from functools import lru_cache
+from functools import cache
 from dataclasses import dataclass
 from core.types.enums import LeaguePriority
 from sqlalchemy.dialects.postgresql import insert
@@ -256,8 +256,6 @@ class LeagueService(BaseService):
         ]
 
 
-@lru_cache(maxsize=1)
+@cache
 def get_league_service() -> LeagueService:
     return LeagueService()
-
-league_service = get_league_service()

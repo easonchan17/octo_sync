@@ -9,6 +9,7 @@ from .parse_league import ParseLeague
 from .parse_season import ParseSeason
 from .parse_history_fixture import ParseHistoryFixture
 from .build_elo_rating import BuildEloRating
+from .build_form_cache import BuildFormCache
 
 __all__ = [
     'SyncActiveFixture',
@@ -21,5 +22,6 @@ __all__ = [
     'ParseLeague',
     'ParseSeason',
     'ParseHistoryFixture',
-    'BuildEloRating'
+    'BuildEloRating',
+    'BuildFormCache',
 ]

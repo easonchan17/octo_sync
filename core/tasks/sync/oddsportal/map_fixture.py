@@ -2,7 +2,7 @@ from core.types.enums import SiteName
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from core.scheduler.task_registry import TaskRegistry
-from core.services.league.league_service import league_service
+from core.services.league.league_service import get_league_service
 from core.services.match_resolver import MatchItem, MatchResolver
 from core.store.postgres.daos.fotmob.active_fixture_dao import ActiveFixtureDao as FotmobFixtureDao
 from core.store.postgres.daos.oddsportal.fixture_mapping_dao import FixtureMappingDao
@@ -19,6 +19,7 @@ class MapFixture(PollTask):
         super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.fotmob_dao = FotmobFixtureDao()
         self.oddsportal_dao = FixtureMappingDao()
+        self.league_service = get_league_service()
         self.match_resolver = MatchResolver(
             kickoff_tolerance=self.KICKOFF_TOLERANCE,
             similarity_threshold=self.SIMILARITY_THRESHOLD
@@ -49,8 +50,8 @@ class MapFixture(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                oddsportal_site_leagues = league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
-                fotmob_site_leagues = league_service.get_site_leagues(SiteName.FOTMOB.value)
+                oddsportal_site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
+                fotmob_site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
 
                 oddsportal_league_map = {int(league.league_id): league.ref_league_id for league in oddsportal_site_leagues}
                 fotmob_league_map = {int(league.league_id): league.ref_league_id for league in fotmob_site_leagues}
@@ -65,7 +66,7 @@ class MapFixture(PollTask):
 
                 start_time = oddsportal_fixtures[-1].kickoff_time - self.KICKOFF_TOLERANCE
                 end_time = oddsportal_fixtures[0].kickoff_time + self.KICKOFF_TOLERANCE
-                fotmob_fixtures = self.fotmob_dao.get_fixtures(
+                fotmob_fixtures = self.fotmob_dao.get_by_time_range(
                     start_time,
                     end_time,
                     list(fotmob_league_map.keys())

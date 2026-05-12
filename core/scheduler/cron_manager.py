@@ -1,10 +1,10 @@
 from threading import Lock
-from functools import lru_cache
+from functools import cache
 from itertools import count
 from typing import Callable, Optional
 from apscheduler.triggers.cron import CronTrigger
 from core.logger.logger_manager import LoggerManager
-from core.config.env_manager import env_manager
+from core.config.env_manager import get_env_manager
 from core.scheduler.task_registry import TaskRegistry, TaskType
 from apscheduler.schedulers.base import STATE_PAUSED, STATE_RUNNING
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -12,6 +12,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 class CronManager:
     def __init__(self) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.env_manager = get_env_manager()
         self.scheduler = BackgroundScheduler()
         self._id_counter = count(1)
         self._lock = Lock()
@@ -29,7 +30,7 @@ class CronManager:
             self.load_jobs()
 
     def load_jobs(self) -> None:
-        current_env = env_manager.value
+        current_env = self.env_manager.value
         entries = TaskRegistry.get_entries(TaskType.CRON)
 
         for entry in entries:
@@ -134,6 +135,6 @@ class CronManager:
                 self.logger.error(f"Failed to remove cron job {job_id}: {e}")
                 return False
 
-@lru_cache(maxsize=None)
+@cache
 def get_cron_manager() -> CronManager:
     return CronManager()

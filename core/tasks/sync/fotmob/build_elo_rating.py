@@ -151,6 +151,8 @@ class BuildPlan:
 
 @TaskRegistry.poll('build.fotmob.elo_rating')
 class BuildEloRating(PollTask):
+    POLL_IDLE_SECONDS = 600
+
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
@@ -188,8 +190,6 @@ class BuildEloRating(PollTask):
 
         return [item for item in items if not MatchStatus(item.match_status).is_aborted]
 
-    def get_idle_timeout_seconds(self) -> float:
-        return 600
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():

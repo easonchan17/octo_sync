@@ -61,6 +61,7 @@ class Fixture(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    match_code = Column(String(64), nullable=True, unique=True)
     match_id = Column(Integer, nullable=False, unique=True)
     league_name = Column(String(200), nullable=False)
     league_id = Column(Integer, nullable=False)

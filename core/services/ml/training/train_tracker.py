@@ -7,10 +7,10 @@ from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import TrainingRecord
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 from sklearn.metrics import classification_report, confusion_matrix, log_loss
-from core.services.ml.training.base_trainer_config import BaseTrainerConfig
+from .train_config import BaseTrainConfig
 
-class BaseTracker:
-    def __init__(self, config: BaseTrainerConfig) -> None:
+class TrainTracker:
+    def __init__(self, config: BaseTrainConfig) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self.db = PostgreSQLManager.get_instance()
         self.config = config

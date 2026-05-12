@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Dict, Any
-from core.services.league import league_service
+from core.services.league import get_league_service
 from core.services.base_service import BaseService
 from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.types.enums import SiteName
@@ -9,11 +9,12 @@ class FixtureService(BaseService):
     def __init__(self):
         super().__init__()
         self.fixture_dao = ActiveFixtureDao()
+        self.league_service = get_league_service()
 
     def get_grouped_fixtures(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         leagues = {
             int(league.site_leagues[SiteName.FOTMOB.value].league_id): league
-            for league in league_service.get_leagues()
+            for league in self.league_service.get_leagues()
             if SiteName.FOTMOB.value in league.site_leagues
         }
         if not leagues:
