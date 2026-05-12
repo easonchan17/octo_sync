@@ -5,7 +5,8 @@ from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.daos.fotmob import HistoryFixtureDao
 from core.logger.logger_manager import LoggerManager
-from core.tasks.sync.fotmob.utils import extract_status
+from core.config.env_manager import get_env_manager
+from core.tasks.sync.fotmob.utils import extract_status, make_match_code
 from core.types.enums import SiteName
 
 
@@ -65,6 +66,7 @@ class ParseHistoryFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
+        self.env_manager = get_env_manager()
         self.history_fixture_dao = HistoryFixtureDao()
         self.parser = HistoryFixtureParser()
 
@@ -87,6 +89,14 @@ class ParseHistoryFixture(PollTask):
                             self.history_fixture_dao.mark_parse_failed(league_id, season, "Parsed fixtures is empty")
                             self.logger.error(f"Failed to parse history fixture league_id={league_id} season={season}: fixtures is empty")
                             continue
+
+                        for fixture in parsed_fixtures:
+                            fixture["match_code"] = make_match_code(
+                                fixture["match_id"],
+                                fixture["home_id"],
+                                fixture["away_id"],
+                                self.env_manager.MATCH_CODE_SALT
+                            )
 
                         self.history_fixture_dao.sync_parsed_data(league_id, parsed_fixtures)
                         self.history_fixture_dao.mark_as_parsed(league_id, season)

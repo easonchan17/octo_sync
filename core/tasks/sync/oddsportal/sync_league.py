@@ -85,3 +85,4 @@ class SyncLeague(PollTask):
                     self.retry_strategy.suggest_interval(fetch_attempts)
                 )
                 self.logger.error(f"Failed to sync leagues for sport={self.sport_name}: {e}")
+                self.idle_sleep()
