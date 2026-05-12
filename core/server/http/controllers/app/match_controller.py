@@ -25,7 +25,7 @@ class MatchController(BaseController):
     def predict(self, match_code: str) -> PredictionResponse:
         try:
             result = self.model_service.predict(match_code)
-            return PredictionResponse(**result)
+            return PredictionResponse(**result, match_code=match_code)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
