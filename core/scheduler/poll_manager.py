@@ -1,5 +1,5 @@
 import re
-from functools import lru_cache
+from functools import cache
 from typing import Optional
 from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_executor import TaskExecutor
@@ -28,6 +28,6 @@ class PollManager:
             TaskExecutor.get_instance().submit(task)
             self.logger.info(f"Started poll task: {name}")
 
-@lru_cache(maxsize=None)
+@cache
 def get_poll_manager() -> PollManager:
     return PollManager()

@@ -1,5 +1,5 @@
 import threading
-from functools import lru_cache
+from functools import cache
 from typing import Optional, Dict
 from concurrent.futures import Future
 from core.logger.logger_manager import LoggerManager
@@ -49,8 +49,6 @@ class InterceptorManager:
             self.logger.info(f"Stopped interceptor for site: {site_name}")
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_interceptor_manager() -> InterceptorManager:
     return InterceptorManager()
-
-interceptor_manager = get_interceptor_manager()

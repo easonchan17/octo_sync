@@ -6,7 +6,7 @@ from sqlalchemy import func, select, and_
 from core.types.enums import MatchStatus
 from core.store.postgres.models.fotmob import Fixture, MatchStat, MatchPlayerStat
 
-from ...transforms import ColumnFilter, FormulaMutator
+from ..transforms import ColumnFilter, FormulaMutator
 from .base import BaseFeatureBuilder
 
 class MatchFeatureBuilder(BaseFeatureBuilder):

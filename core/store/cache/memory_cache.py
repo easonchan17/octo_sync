@@ -1,6 +1,6 @@
 import copy
 from threading import RLock
-from functools import lru_cache
+from functools import cache
 from typing import Any, Dict, Optional
 
 class MemoryCache:
@@ -49,8 +49,6 @@ class MemoryCache:
         with self._lock:
             self._cache.pop(scope, None)
 
-@lru_cache(maxsize=None)
+@cache
 def get_memory_cache() -> MemoryCache:
     return MemoryCache()
-
-memory_cache = get_memory_cache()

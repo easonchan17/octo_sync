@@ -7,7 +7,7 @@ from core.store.postgres.daos.oddsportal import SeasonDao
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import TimelineStrategy, AttemptStrategy
 from core.browser.handlers.receivers.html_receiver import HtmlReceiver
-from core.services.league.league_service import league_service
+from core.services.league.league_service import get_league_service
 
 @TaskRegistry.poll('sync.oddsportal.season')
 class SyncSeason(PollTask):
@@ -26,6 +26,7 @@ class SyncSeason(PollTask):
         super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.season_dao = SeasonDao()
+        self.league_service = get_league_service()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.refetch_strategy = (
@@ -45,7 +46,7 @@ class SyncSeason(PollTask):
         return f"{fixture_uri[:-1]}/results/"
 
     def get_pending_fetch_items(self) -> List[Any]:
-        site_leagues = league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
+        site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
         if not site_leagues:
             return []
 

@@ -6,7 +6,7 @@ from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.daos.oddsportal import HistoryFixtureDao
 from core.browser.intercept_strategy import InterceptStrategy, InterceptType
 from core.tasks.refetch_strategy import AttemptStrategy
-from core.services.league.league_service import league_service
+from core.services.league.league_service import get_league_service
 
 @TaskRegistry.poll('sync.oddsportal.history_fixture')
 class SyncHistoryFixture(PollTask):
@@ -25,6 +25,7 @@ class SyncHistoryFixture(PollTask):
         super().__init__(site_name=SiteName.ODDSPORTAL.value)
         self.payload = payload or {}
         self.history_fixture_dao = HistoryFixtureDao()
+        self.league_service = get_league_service()
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
 
         self.retry_strategy = (
@@ -53,7 +54,7 @@ class SyncHistoryFixture(PollTask):
         return uri
 
     def get_pending_fetch_items(self) -> List[Any]:
-        site_leagues = league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
+        site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
         if not site_leagues:
             return []
 

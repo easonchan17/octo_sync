@@ -1,6 +1,12 @@
+import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional, Tuple
 from core.types.enums import MatchStatus
+
+
+def make_match_code(match_id: int, home_id: int, away_id: int, salt: str) -> str:
+    raw = f"{salt}:{match_id}:{home_id}:{away_id}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 def parse_scores(scores: str) -> Tuple[Optional[int], Optional[int]]:

@@ -1,5 +1,5 @@
 from enum import Enum
-from functools import lru_cache
+from functools import cache
 from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,6 +13,7 @@ class EnvManager(BaseSettings):
     ENV: EnvType = Field(..., description="Run environment")
     DOCS_USERNAME: Optional[str] = Field(default=None, description="HTTP Basic username for /docs and /redoc; set with DOCS_PASSWORD to enable docs")
     DOCS_PASSWORD: Optional[str] = Field(default=None, description="HTTP Basic password for docs; set with DOCS_USERNAME to enable docs")
+    MATCH_CODE_SALT: str = Field(..., description="Salt for match code generation")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -43,8 +44,6 @@ class EnvManager(BaseSettings):
     def value(self) -> str:
         return self.ENV.value
 
-@lru_cache(maxsize=None)
+@cache
 def get_env_manager() -> EnvManager:
     return EnvManager()
-
-env_manager = get_env_manager()

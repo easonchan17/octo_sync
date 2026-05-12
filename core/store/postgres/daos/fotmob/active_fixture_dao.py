@@ -48,21 +48,6 @@ class ActiveFixtureDao(BaseDao):
                 ActiveFixtureRaw.created_at.asc()
             ).limit(limit).all()
 
-    def get_fixtures(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
-        with self.db.get_session() as session:
-            return session.query(
-                Fixture.id,
-                Fixture.match_id,
-                Fixture.league_id,
-                Fixture.kickoff_time,
-                Fixture.home_team,
-                Fixture.away_team
-            ).filter(
-                Fixture.kickoff_time >= start_time,
-                Fixture.kickoff_time <= end_time,
-                Fixture.league_id.in_(league_ids)
-            ).all()
-
     def mark_as_not_modified(self, match_date: date, fetch_interval: Optional[timedelta]) -> None:
         with self.db.get_session() as session:
             session.query(ActiveFixtureRaw).filter(
@@ -186,10 +171,30 @@ class ActiveFixtureDao(BaseDao):
             upserted_count = result.rowcount
             self.logger.debug(f"Sync match date={match_date} fixtures completed. upserted: {upserted_count}")
 
+    def get_by_match_id(self, match_id: int) -> Optional[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.match_id,
+                Fixture.league_id,
+                Fixture.league_name,
+                Fixture.kickoff_time,
+                Fixture.round,
+                Fixture.home_team,
+                Fixture.home_id,
+                Fixture.away_team,
+                Fixture.away_id,
+                Fixture.home_score,
+                Fixture.away_score,
+                Fixture.match_status,
+            ).filter(
+                Fixture.match_id == match_id
+            ).first()
+
     def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.id,
+                Fixture.match_id,
                 Fixture.league_id,
                 Fixture.league_name,
                 Fixture.kickoff_time,
@@ -209,3 +214,4 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.league_id.asc(),
                 Fixture.kickoff_time.asc()
             ).all()
+
