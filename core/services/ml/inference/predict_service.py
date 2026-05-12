@@ -1,3 +1,4 @@
+import pandas as pd
 from threading import Lock
 from functools import cache
 from datetime import datetime
@@ -6,10 +7,11 @@ from core.logger.logger_manager import LoggerManager
 from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.models import TrainingRecord
 from core.services.ml.inference.predictor import BasePredictor
-from core.services.ml.preprocessing.builders.match import MatchLatestFeatureBuilder
+from core.services.ml.preprocessing.builders.match import MatchLatestFeatureBuilder, MatchFeatureBuilder
 from core.services.ml.preprocessing.builders.player import OutfieldPlayerLatestFeatureBuilder, GoalkeeperLatestFeatureBuilder
 from core.services.ml.preprocessing.builders.elo_rating import EloRatingPredictFeatureBuilder
 from core.services.ml.preprocessing.builders.odds import OddsPredictFeatureBuilder
+from core.services.ml.preprocessing.transforms import FormulaMutator
 
 
 class FormCache:
@@ -104,6 +106,9 @@ class PredictService:
         if features is None:
             raise ValueError(f"Failed to build prediction sample for match_id={match_id}")
 
+        if predictor.feature_names:
+            features = {k: features.get(k) for k in predictor.feature_names}
+
         return predictor.predict(features)
 
     def build_features(self, match_id: int, home_id: int, away_id: int) -> Optional[Dict[str, Any]]:
@@ -122,6 +127,10 @@ class PredictService:
             for key, value in away_state.items():
                 if key != "kickoff_time":
                     features[f"away_{key}"] = value
+
+            df = pd.DataFrame([features])
+            FormulaMutator(df).mutate_batch(MatchFeatureBuilder.FORMULAS)
+            features = df.iloc[0].to_dict()
 
             elo_df = EloRatingPredictFeatureBuilder(match_id, home_id, away_id).build()
             if elo_df is not None and not elo_df.empty:
