@@ -6,7 +6,7 @@ from core.types.params import CrawlParams
 from core.store.postgres.daos.fotmob import HistoryFixtureDao
 from core.logger.logger_manager import LoggerManager
 from core.config.env_manager import get_env_manager
-from core.tasks.sync.fotmob.utils import extract_status, make_match_code
+from core.tasks.sync.fotmob.utils import extract_status, encode_id
 from core.types.enums import SiteName
 
 
@@ -91,12 +91,9 @@ class ParseHistoryFixture(PollTask):
                             continue
 
                         for fixture in parsed_fixtures:
-                            fixture["match_code"] = make_match_code(
-                                fixture["match_id"],
-                                fixture["home_id"],
-                                fixture["away_id"],
-                                self.env_manager.MATCH_CODE_SALT
-                            )
+                            fixture["match_code"] = encode_id(fixture["match_id"], self.env_manager.MATCH_CODE_SALT)
+                            fixture["home_code"] = encode_id(fixture["home_id"], self.env_manager.TEAM_CODE_SALT)
+                            fixture["away_code"] = encode_id(fixture["away_id"], self.env_manager.TEAM_CODE_SALT)
 
                         self.history_fixture_dao.sync_parsed_data(league_id, parsed_fixtures)
                         self.history_fixture_dao.mark_as_parsed(league_id, season)

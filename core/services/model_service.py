@@ -36,9 +36,9 @@ class ModelService(BaseService):
         items = [{**record.to_dict(), "is_loaded": record.model_version in loaded_versions} for record in records]
         return total, items
 
-    def predict(self, match_id: int, version: Optional[str] = None) -> Dict[str, Any]:
-        fixture = self.fixture_dao.get_by_match_id(match_id)
+    def predict(self, match_code: str, version: Optional[str] = None) -> Dict[str, Any]:
+        fixture = self.fixture_dao.get_by_match_code(match_code)
         if fixture is None:
-            raise ValueError(f"Fixture not found for match_id={match_id}")
+            raise ValueError(f"Fixture not found for match_code={match_code}")
 
-        return self.predict_service.predict(match_id, fixture.home_id, fixture.away_id, version)
+        return self.predict_service.predict(fixture.match_id, fixture.home_id, fixture.away_id, version)

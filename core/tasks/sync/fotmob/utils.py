@@ -51,6 +51,6 @@ def extract_status(status: Dict[str, Any], time_window: timedelta) -> Tuple[int,
     return MatchStatus.TIMED.value, utctime, None, None
 
 
-def make_match_code(match_id: int, home_id: int, away_id: int, salt: str) -> str:
-    raw = f"{salt}:{match_id}:{home_id}:{away_id}"
+def encode_id(raw_id: int, salt: str) -> str:
+    raw = f"{salt}:{raw_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]

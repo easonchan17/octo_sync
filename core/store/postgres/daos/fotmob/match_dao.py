@@ -274,9 +274,11 @@ class MatchDao(BaseDao):
         upserted_count = result.rowcount
         self.logger.debug(f"Sync match {match_id} shot stats completed. upserted: {upserted_count}")
 
-    def get_raw_data(self, match_id: int) -> Dict[str, Any]:
+    def get_raw_data(self, match_code: str) -> Dict[str, Any]:
         with self.db.get_session() as session:
-            row = session.query(MatchRaw.json_body).filter(MatchRaw.match_id == match_id).first()
+            row = session.query(MatchRaw.json_body).join(
+                Fixture, Fixture.match_id == MatchRaw.match_id
+            ).filter(Fixture.match_code == match_code).first()
             if not row:
                 raise ValueError("Match not found")
 
