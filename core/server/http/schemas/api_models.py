@@ -37,13 +37,13 @@ class Paginated(BaseModel, Generic[T]):
 # Fixture Models
 # ==============================================================================
 class FixtureResponse(BaseModel):
-    id: int
+    match_code: str
     league_name: str
     kickoff_time: datetime
     round: Optional[str] = None
-    home_id: int
+    home_code: str
     home_team: str
-    away_id: int
+    away_code: str
     away_team: str
     home_score: Optional[int] = None
     away_score: Optional[int] = None

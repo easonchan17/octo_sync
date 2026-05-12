@@ -7,7 +7,7 @@ from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.config.env_manager import get_env_manager
-from core.tasks.sync.fotmob.utils import extract_status, make_match_code
+from core.tasks.sync.fotmob.utils import extract_status, encode_id
 from core.tasks.refetch_strategy import ScheduleStrategy, ScheduleSegment
 from core.services.league import get_league_service
 
@@ -236,13 +236,9 @@ class ParseActiveFixture(PollTask):
                             continue
 
                         for fixture in parsed_fixtures:
-                            fixture["raw_fetch_date"] = match_date
-                            fixture["match_code"] = make_match_code(
-                                fixture["match_id"],
-                                fixture["home_id"],
-                                fixture["away_id"],
-                                self.env_manager.MATCH_CODE_SALT
-                            )
+                            fixture["match_code"] = encode_id(fixture["match_id"], self.env_manager.MATCH_CODE_SALT)
+                            fixture["home_code"] = encode_id(fixture["home_id"], self.env_manager.TEAM_CODE_SALT)
+                            fixture["away_code"] = encode_id(fixture["away_id"], self.env_manager.TEAM_CODE_SALT)
 
                         self.active_fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
 

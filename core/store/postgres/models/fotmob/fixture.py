@@ -54,8 +54,7 @@ class Fixture(Base):
         Index('idx_fixtures_home_id', 'home_id'),
         Index('idx_fixtures_away_id', 'away_id'),
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
-        Index('idx_fixtures_raw_fetch_date', 'raw_fetch_date'),
-        Index('idx_fixtures_league_id_kickoff_time', 'league_id', 'kickoff_time'),
+Index('idx_fixtures_league_id_kickoff_time', 'league_id', 'kickoff_time'),
         Index('idx_fixtures_league_id_season', 'league_id', 'season'),
         {'schema': SiteName.FOTMOB.value}
     )
@@ -72,8 +71,10 @@ class Fixture(Base):
 
     home_team = Column(String(100), nullable=False)
     home_id = Column(Integer, nullable=False)
+    home_code = Column(String(16), nullable=False)
     away_team = Column(String(100), nullable=False)
     away_id = Column(Integer, nullable=False)
+    away_code = Column(String(16), nullable=False)
 
     season = Column(Integer, nullable=True)
 
@@ -81,5 +82,3 @@ class Fixture(Base):
     away_score = Column(Integer, nullable=True)
 
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
-
-    raw_fetch_date = Column(Date, nullable=True)
