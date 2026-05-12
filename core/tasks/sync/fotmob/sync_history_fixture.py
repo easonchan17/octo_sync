@@ -133,6 +133,7 @@ class SyncHistoryFixture(PollTask):
                             self.retry_strategy.suggest_interval(fetch_attempts),
                         )
                         self.logger.error(f"Failed to sync history fixtures for league_id={league_id} league_name={league_name}: {e}")
+                        self.idle_sleep()
 
             except Exception as e:
                 self.logger.error(f"Sync history fixture loop error: {e}", exc_info=True)

@@ -4,7 +4,6 @@ from datetime import datetime, timezone, timedelta
 from core.types.enums import MatchStatus, SiteName
 from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.daos.fotmob import ActiveFixtureDao
-from core.store.postgres.models.fotmob.fixture import Fixture
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.config.env_manager import get_env_manager
@@ -86,7 +85,6 @@ class FixtureParser:
 
         leagues = json_data.get('leagues', [])
         sorted_leagues = sorted(leagues, key=lambda league: league.get('id'), reverse=True)
-        match_id_key = Fixture.match_id.key
         for league in sorted_leagues:
             league_id = league.get('id')
             league_name = league.get('name')
@@ -94,7 +92,7 @@ class FixtureParser:
 
             league_fixtures = self._parse_fixtures(matches, league_id, league_name)
             for fixture in league_fixtures:
-                match_id = fixture[match_id_key]
+                match_id = fixture["match_id"]
                 if match_id in seen:
                     continue
                 seen.add(match_id)
@@ -125,19 +123,19 @@ class FixtureParser:
             match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), CrawlParams.MATCH_LIFESPAN)
 
             fixture = {
-                Fixture.round.key: round,
-                Fixture.page_url.key: page_url,
-                Fixture.match_id.key: match_id,
-                Fixture.league_id.key: league_id,
-                Fixture.league_name.key: league_name,
-                Fixture.kickoff_time.key: kickoff_time,
-                Fixture.home_team.key: home_team,
-                Fixture.home_id.key: home.get('id'),
-                Fixture.away_team.key: away_team,
-                Fixture.away_id.key: away.get('id'),
-                Fixture.home_score.key: home_score,
-                Fixture.away_score.key: away_score,
-                Fixture.match_status.key: match_status
+                "round":        round,
+                "page_url":     page_url,
+                "match_id":     match_id,
+                "league_id":    league_id,
+                "league_name":  league_name,
+                "kickoff_time": kickoff_time,
+                "home_team":    home_team,
+                "home_id":      home.get('id'),
+                "away_team":    away_team,
+                "away_id":      away.get('id'),
+                "home_score":   home_score,
+                "away_score":   away_score,
+                "match_status": match_status
             }
             fixtures.append(fixture)
 
@@ -158,8 +156,8 @@ class LeagueParser:
 
             seen.add(league_id)
             results.append({
-                "league_id": league_id,
-                "league_name": league['name'],
+                "league_id":    league_id,
+                "league_name":  league['name'],
                 "country_code": league['ccode'],
             })
         return results
@@ -182,28 +180,22 @@ class ParseActiveFixture(PollTask):
         )
 
     def get_last_kickoff_time(self, parsed_data: List[Dict[str, Any]]) -> datetime:
-        kickoff_key = Fixture.kickoff_time.key
-
         return max(
-            datetime.fromisoformat(fixture[kickoff_key]).astimezone(timezone.utc)
+            datetime.fromisoformat(fixture["kickoff_time"]).astimezone(timezone.utc)
             for fixture in parsed_data
         )
 
     def get_refetch_interval(self, last_fetch_time: datetime, max_sheduled_time: datetime, fixtures: List[Any]) -> Optional[timedelta]:
         site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
 
-        match_status_key = Fixture.match_status.key
-        kickoff_key = Fixture.kickoff_time.key
-        league_id_key = Fixture.league_id.key
-
         league_ids = {int(league.league_id) for league in site_leagues}
         scheduled_items = [
             ScheduleSegment(
-                time=datetime.fromisoformat(fixture[kickoff_key]).astimezone(timezone.utc),
-                is_active=MatchStatus(fixture[match_status_key]).is_playing
+                time=datetime.fromisoformat(fixture["kickoff_time"]).astimezone(timezone.utc),
+                is_active=MatchStatus(fixture["match_status"]).is_playing
             )
             for fixture in fixtures
-            if fixture[league_id_key] in league_ids
+            if fixture["league_id"] in league_ids
         ]
 
         return self.refetch_strategy.suggest_interval(last_fetch_time, scheduled_items, max_sheduled_time)
@@ -244,14 +236,13 @@ class ParseActiveFixture(PollTask):
                             continue
 
                         for fixture in parsed_fixtures:
-                            fixture[Fixture.raw_fetch_date.key] = match_date
-                            fixture[Fixture.match_code.key] = make_match_code(
-                                fixture[Fixture.match_id.key],
-                                fixture[Fixture.home_id.key],
-                                fixture[Fixture.away_id.key],
+                            fixture["raw_fetch_date"] = match_date
+                            fixture["match_code"] = make_match_code(
+                                fixture["match_id"],
+                                fixture["home_id"],
+                                fixture["away_id"],
                                 self.env_manager.MATCH_CODE_SALT
                             )
-
 
                         self.active_fixture_dao.sync_parsed_data(match_date, parsed_fixtures)
 

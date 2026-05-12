@@ -99,6 +99,7 @@ class SyncUpcomingFixture(PollTask):
                             self.retry_strategy.suggest_interval(fetch_attempts),
                         )
                         self.logger.error(f"Failed to sync upcoming fixtures for league_id={league_id}: {e}")
+                        self.idle_sleep()
             except Exception as e:
                 self.logger.error(f"Sync upcoming fixture loop error: {e}", exc_info=True)
                 self.idle_sleep()

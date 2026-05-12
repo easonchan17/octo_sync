@@ -7,9 +7,9 @@ from core.scheduler.task_executor import TaskExecutor
 from core.scheduler.cron_manager import get_cron_manager
 from core.scheduler.poll_manager import get_poll_manager
 from core.store.postgres.postgresql_manager import PostgreSQLManager
-from core.services.league.league_service import league_service
-from core.browser.interceptor_manager import interceptor_manager
-from core.config.env_manager import env_manager
+from core.services.league.league_service import get_league_service
+from core.browser.interceptor_manager import get_interceptor_manager
+from core.config.env_manager import get_env_manager
 from core.types.enums import SiteName
 
 import warnings
@@ -38,10 +38,10 @@ def signal_handler(signum, frame) -> None:
     logger.info("✅ Cron stopped")
 
 
-    if not env_manager.is_ml:
+    if not get_env_manager().is_ml:
         logger.info("🔧 Stopping interceptor manager...")
-        interceptor_manager.stop(SiteName.FOTMOB.value)
-        interceptor_manager.stop(SiteName.ODDSPORTAL.value)
+        get_interceptor_manager().stop(SiteName.FOTMOB.value)
+        get_interceptor_manager().stop(SiteName.ODDSPORTAL.value)
         logger.info("✅ Interceptor manager stopped")
 
     logger.info("🔧 Stopping task executor...")
@@ -84,21 +84,21 @@ def run_app() -> None:
     PostgreSQLManager.get_instance().startup()
     logger.info("✅ PostgreSQL manager started")
 
-    if not env_manager.is_ml:
+    if not get_env_manager().is_ml:
         browser_config = ConfigManager.get_instance().get_config("browser")
         launch_options = browser_config["launch_options"]
         viewport = browser_config['viewport']
 
         logger.info("🔧 Starting network interceptor...")
-        interceptor_manager.start(
+        get_interceptor_manager().start(
             site_name=SiteName.FOTMOB.value,
             request_interval=20.0,
             launch_options={**launch_options, "headless": True},
             viewport=viewport
         )
-        interceptor_manager.start(
+        get_interceptor_manager().start(
             site_name=SiteName.ODDSPORTAL.value,
-            request_interval=12.0,
+            request_interval=20.0,
             launch_options=launch_options,
             viewport=viewport,
             addons=[os.path.join(BASE_DIR, "core/browser/extensions/oddsportal_tracer")]
@@ -114,7 +114,7 @@ def run_app() -> None:
     logger.info("✅ Cron started")
 
     logger.info("🔧 Loading league service...")
-    league_service.load()
+    get_league_service().load()
     logger.info("✅ League service loaded")
 
     logger.info("🔧 Starting poll manager...")
