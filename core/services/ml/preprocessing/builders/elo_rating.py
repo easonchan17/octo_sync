@@ -27,14 +27,13 @@ class EloRatingFeatureBuilder(BaseFeatureBuilder):
 
         df['home_elo_rating'] = home_elo_rating_series
         df['away_elo_rating'] = away_elo_rating_series
-        df['elo_rating_diff'] = elo_rating_diff_series
         df['home_net_advantage'] = home_net_advantage_series
         df['home_elo_expectancy'] = home_expected_score_series
         df['match_balance'] = match_balance_series
 
         self.logger.info("Built ELO rating features")
 
-        return df[['match_id', 'home_elo_rating', 'away_elo_rating', 'elo_rating_diff', 'home_net_advantage', 'home_elo_expectancy', 'match_balance']]
+        return df[['match_id', 'home_elo_rating', 'away_elo_rating', 'home_net_advantage', 'home_elo_expectancy', 'match_balance']]
 
 
 class EloRatingTrainFeatureBuilder(EloRatingFeatureBuilder):

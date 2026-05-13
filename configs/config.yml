@@ -25,6 +25,8 @@ browser:
   viewport:
     width: 1920
     height: 1080
+  # proxy:
+    # server: "http://127.0.0.1:7890"
 
 http:
   host: "127.0.0.1"

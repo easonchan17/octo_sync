@@ -88,6 +88,7 @@ def run_app() -> None:
         browser_config = ConfigManager.get_instance().get_config("browser")
         launch_options = browser_config["launch_options"]
         viewport = browser_config['viewport']
+        proxy_config = browser_config.get("proxy")
 
         logger.info("🔧 Starting network interceptor...")
         get_interceptor_manager().start(
@@ -96,10 +97,11 @@ def run_app() -> None:
             launch_options={**launch_options, "headless": True},
             viewport=viewport
         )
+
         get_interceptor_manager().start(
             site_name=SiteName.ODDSPORTAL.value,
             request_interval=20.0,
-            launch_options=launch_options,
+            launch_options={**launch_options, **({"proxy": proxy_config} if proxy_config else {})},
             viewport=viewport,
             addons=[os.path.join(BASE_DIR, "core/browser/extensions/oddsportal_tracer")]
         )
