@@ -97,17 +97,21 @@ class EloRatingPredictFeatureBuilder(EloRatingFeatureBuilder):
                 .all()
             )
 
-            if not elo_results:
-                return None
+        base_rating = self.elo_params.base_rating
+        record = {
+            "match_id":        self.match_id,
+            "home_pre_rating": base_rating,
+            "home_game_count": 0,
+            "away_pre_rating": base_rating,
+            "away_game_count": 0,
+        }
+        for team_id, post_rating, game_count in elo_results:
+            if team_id == self.home_id:
+                record.update({"home_pre_rating": float(post_rating), "home_game_count": game_count + 1})
+            elif team_id == self.away_id:
+                record.update({"away_pre_rating": float(post_rating), "away_game_count": game_count + 1})
 
-            record = {"match_id": self.match_id}
-            for team_id, post_rating, game_count in elo_results:
-                if team_id == self.home_id:
-                    record.update({"home_pre_rating": float(post_rating), "home_game_count": game_count + 1})
-                elif team_id == self.away_id:
-                    record.update({"away_pre_rating": float(post_rating), "away_game_count": game_count + 1})
-
-            return pd.DataFrame([record])
+        return pd.DataFrame([record])
 
     def _build(self, df: pd.DataFrame) -> Dict[str, Any]:
         df = super()._build(df)
