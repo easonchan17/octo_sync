@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Optional
+from typing import Any, Optional, Dict
 from sqlalchemy import text
 from core.types.enums import BookmakerID, MatchStatus
 
@@ -192,9 +192,9 @@ class OddsTrainFeatureBuilder(OddsFeatureBuilder):
 
 
 class OddsPredictFeatureBuilder(OddsFeatureBuilder):
-    def __init__(self, match_id: int) -> None:
+    def __init__(self, fixture: Any) -> None:
         super().__init__()
-        self.match_id = match_id
+        self.match_id = fixture.match_id
 
     def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
@@ -240,3 +240,10 @@ class OddsPredictFeatureBuilder(OddsFeatureBuilder):
             })
             records = result.fetchall()
             return pd.DataFrame(records, columns=result.keys()) if records else None
+
+    def _build(self, df: pd.DataFrame) -> Dict[str, Any]:
+        df = super()._build(df)
+
+        row = df.iloc[0].to_dict()
+        row.pop("match_id", None)
+        return row

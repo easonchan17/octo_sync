@@ -41,4 +41,4 @@ class ModelService(BaseService):
         if fixture is None:
             raise ValueError(f"Fixture not found for match_code={match_code}")
 
-        return self.predict_service.predict(fixture.match_id, fixture.home_id, fixture.away_id, version)
+        return self.predict_service.predict(fixture, version)
