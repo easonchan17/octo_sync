@@ -12,6 +12,7 @@ class OddsDao(BaseDao):
     def get_pending_fetch_items(self, betting_type_id: int, scope_id: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
+                Fixture.league_id,
                 Fixture.match_code,
                 Fixture.home_name,
                 Fixture.home_code,
