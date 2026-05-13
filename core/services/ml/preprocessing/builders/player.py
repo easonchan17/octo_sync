@@ -532,8 +532,7 @@ class OutfieldPlayerPredictFeatureBuilder(OutfieldPlayerFeatureBuilder):
 
 class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
     PLAYED_TIME_ADJ = [
-        # "goals_prevented",
-        "keeper_sweeper", "keeper_high_claim",
+        "goals_prevented", "keeper_sweeper", "keeper_high_claim",
     ]
 
     POSSESSION_ADJ = [
@@ -541,16 +540,15 @@ class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
     ]
 
     EMA = [
-        # "goals_prevented_per_90",
-        "keeper_sweeper_per_90_adj", "keeper_high_claim_per_90_adj",
+        "goals_prevented_per_90", "keeper_sweeper_per_90_adj", "keeper_high_claim_per_90_adj",
     ]
 
     EMA_COLS = [f"{col}_ema_5" for col in EMA] + [f"{col}_ema_20" for col in EMA]
 
     FORMULAS = [
-        # ("goals_prevented_ema_5_diff",  "home_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_5"),
-        # ("home_keeper_form_momentum",   "home_goals_prevented_per_90_ema_5 - home_goals_prevented_per_90_ema_20"),
-        # ("away_keeper_form_momentum",   "away_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_20"),
+        ("goals_prevented_ema_5_diff",  "home_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_5"),
+        ("home_keeper_form_momentum",   "home_goals_prevented_per_90_ema_5 - home_goals_prevented_per_90_ema_20"),
+        ("away_keeper_form_momentum",   "away_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_20"),
     ]
 
 
@@ -603,7 +601,7 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
                     "player_id": player_stat.player_id,
                     "position": lineup.position,
                     "minutes": player_stat.minutes_played,
-                    # "goals_prevented": player_stat.goals_prevented,
+                    "goals_prevented": player_stat.goals_prevented,
                     "keeper_sweeper": player_stat.keeper_sweeper,
                     "keeper_high_claim": player_stat.keeper_high_claim,
                 }
@@ -711,7 +709,7 @@ class GoalkeeperLatestFeatureBuilder(GoalkeeperFeatureBuilder):
                     "player_id": player_stat.player_id,
                     "position": lineup.position,
                     "minutes": player_stat.minutes_played,
-                    # "goals_prevented": player_stat.goals_prevented,
+                    "goals_prevented": player_stat.goals_prevented,
                     "keeper_sweeper": player_stat.keeper_sweeper,
                     "keeper_high_claim": player_stat.keeper_high_claim,
                 }
