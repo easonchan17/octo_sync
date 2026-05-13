@@ -1,6 +1,6 @@
 import pandas as pd
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional,Any
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.postgresql_manager import PostgreSQLManager
 
@@ -10,16 +10,16 @@ class BaseFeatureBuilder(ABC):
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
 
     @abstractmethod
-    def _load(self) -> Optional[pd.DataFrame]:
+    def _load(self) -> Optional[Any]:
         ...
 
     @abstractmethod
-    def _build(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _build(self, raw_data: Any) -> Any:
         ...
 
-    def build(self) -> Optional[pd.DataFrame]:
-        df = self._load()
-        if df is None or df.empty:
+    def build(self) -> Optional[Any]:
+        raw_data = self._load()
+        if raw_data is None:
             return None
 
-        return self._build(df)
+        return self._build(raw_data)

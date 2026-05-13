@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Optional
+from typing import Callable, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy import func, select, and_
 from core.types.enums import MatchStatus
@@ -584,3 +584,43 @@ class MatchLatestFeatureBuilder(MatchFeatureBuilder):
 
         state_cols = ema_cols + ["schedule_rest_days", "lagged_xg", "point_sum_5", "points_ema_5_at_home", "points_ema_5_at_away"]
         return team_stats[["team_id", "kickoff_time"] + state_cols]
+
+
+class MatchPredictFeatureBuilder(MatchFeatureBuilder):
+    def __init__(self, fixture: Any, get_team_state: Callable[[int], Optional[Dict]]) -> None:
+        super().__init__()
+        self.match_id     = fixture.match_id
+        self.home_id      = fixture.home_id
+        self.away_id      = fixture.away_id
+        self.kickoff_time = fixture.kickoff_time
+        self.get_team_state = get_team_state
+
+    def _load(self) -> Optional[Any]:
+        home_state = self.get_team_state(self.home_id)
+        away_state = self.get_team_state(self.away_id)
+        if home_state is None or away_state is None:
+            return None
+
+        return home_state, away_state
+
+    def _build(self, team_state: Any) -> Any:
+        home_state, away_state = team_state
+
+        features: Dict[str, Any] = {"match_id": self.match_id}
+
+        for key, value in home_state.items():
+            if key != "kickoff_time":
+                features[f"home_{key}"] = value
+        for key, value in away_state.items():
+            if key != "kickoff_time":
+                features[f"away_{key}"] = value
+
+        features["home_schedule_rest_days"] = (self.kickoff_time - home_state["kickoff_time"]).days
+        features["away_schedule_rest_days"] = (self.kickoff_time - away_state["kickoff_time"]).days
+
+        df = pd.DataFrame([features])
+        FormulaMutator(df).mutate_batch(self.FORMULAS)
+
+        row = df.iloc[0].to_dict()
+        row.pop("match_id", None)
+        return row
