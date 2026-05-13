@@ -143,7 +143,7 @@ class OddsTrainFeatureBuilder(OddsFeatureBuilder):
     def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
             result = session.execute(text("""
-                WITH ah_main_line AS (
+                WITH ah_close_main_line AS (
                     SELECT *,
                            ROW_NUMBER() OVER (
                                PARTITION BY match_code, bookmaker_id
@@ -152,32 +152,46 @@ class OddsTrainFeatureBuilder(OddsFeatureBuilder):
                     FROM oddsportal.odds_ah
                     WHERE betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
                       AND closing_home_odds > 1.0 AND closing_away_odds > 1.0
+                ),
+                ah_open_main_line AS (
+                    SELECT *,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY match_code, bookmaker_id
+                               ORDER BY ABS(1.0 / opening_home_odds - 1.0 / opening_away_odds)
+                           ) AS rn
+                    FROM oddsportal.odds_ah
+                    WHERE betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
+                      AND opening_home_odds > 1.0 AND opening_away_odds > 1.0
                 )
                 SELECT
                     fm.match_id,
                     ox.bookmaker_id,
-                    ox.opening_home_odds  AS home_open_odds,
-                    ox.opening_draw_odds  AS draw_open_odds,
-                    ox.opening_away_odds  AS away_open_odds,
-                    ox.closing_home_odds  AS home_close_odds,
-                    ox.closing_draw_odds  AS draw_close_odds,
-                    ox.closing_away_odds  AS away_close_odds,
-                    ah.opening_handicap   AS ah_line_open,
-                    ah.opening_home_odds  AS ah_home_open_odds,
-                    ah.opening_away_odds  AS ah_away_open_odds,
-                    ah.handicap           AS ah_line_close,
-                    ah.closing_home_odds  AS ah_home_close_odds,
-                    ah.closing_away_odds  AS ah_away_close_odds
+                    ox.opening_home_odds       AS home_open_odds,
+                    ox.opening_draw_odds       AS draw_open_odds,
+                    ox.opening_away_odds       AS away_open_odds,
+                    ox.closing_home_odds       AS home_close_odds,
+                    ox.closing_draw_odds       AS draw_close_odds,
+                    ox.closing_away_odds       AS away_close_odds,
+                    ah_open.handicap           AS ah_line_open,
+                    ah_open.opening_home_odds  AS ah_home_open_odds,
+                    ah_open.opening_away_odds  AS ah_away_open_odds,
+                    ah_close.handicap          AS ah_line_close,
+                    ah_close.closing_home_odds AS ah_home_close_odds,
+                    ah_close.closing_away_odds AS ah_away_close_odds
                 FROM fotmob.fixtures fm
                 JOIN oddsportal.fixtures op
                     ON op.ref_match_id = fm.match_id
                 JOIN oddsportal.odds_1x2 ox
                     ON ox.match_code = op.match_code
                     AND ox.betting_type_id = 1 AND ox.scope_id = 2 AND ox.quote_type = 'back'
-                LEFT JOIN ah_main_line ah
-                    ON ah.match_code = op.match_code
-                    AND ah.bookmaker_id = ox.bookmaker_id
-                    AND ah.rn = 1
+                LEFT JOIN ah_close_main_line ah_close
+                    ON ah_close.match_code = op.match_code
+                    AND ah_close.bookmaker_id = ox.bookmaker_id
+                    AND ah_close.rn = 1
+                LEFT JOIN ah_open_main_line ah_open
+                    ON ah_open.match_code = op.match_code
+                    AND ah_open.bookmaker_id = ox.bookmaker_id
+                    AND ah_open.rn = 1
                 WHERE fm.league_id = :league_id
                   AND fm.season BETWEEN :min_season AND :max_season
                   AND fm.match_status = ANY(:match_statuses)
@@ -199,7 +213,7 @@ class OddsPredictFeatureBuilder(OddsFeatureBuilder):
     def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
             result = session.execute(text("""
-                WITH ah_main_line AS (
+                WITH ah_close_main_line AS (
                     SELECT *,
                            ROW_NUMBER() OVER (
                                PARTITION BY match_code, bookmaker_id
@@ -208,32 +222,46 @@ class OddsPredictFeatureBuilder(OddsFeatureBuilder):
                     FROM oddsportal.odds_ah
                     WHERE betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
                       AND closing_home_odds > 1.0 AND closing_away_odds > 1.0
+                ),
+                ah_open_main_line AS (
+                    SELECT *,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY match_code, bookmaker_id
+                               ORDER BY ABS(1.0 / opening_home_odds - 1.0 / opening_away_odds)
+                           ) AS rn
+                    FROM oddsportal.odds_ah
+                    WHERE betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
+                      AND opening_home_odds > 1.0 AND opening_away_odds > 1.0
                 )
                 SELECT
                     fm.match_id,
                     ox.bookmaker_id,
-                    ox.opening_home_odds  AS home_open_odds,
-                    ox.opening_draw_odds  AS draw_open_odds,
-                    ox.opening_away_odds  AS away_open_odds,
-                    ox.closing_home_odds  AS home_close_odds,
-                    ox.closing_draw_odds  AS draw_close_odds,
-                    ox.closing_away_odds  AS away_close_odds,
-                    ah.opening_handicap   AS ah_line_open,
-                    ah.opening_home_odds  AS ah_home_open_odds,
-                    ah.opening_away_odds  AS ah_away_open_odds,
-                    ah.handicap           AS ah_line_close,
-                    ah.closing_home_odds  AS ah_home_close_odds,
-                    ah.closing_away_odds  AS ah_away_close_odds
+                    ox.opening_home_odds       AS home_open_odds,
+                    ox.opening_draw_odds       AS draw_open_odds,
+                    ox.opening_away_odds       AS away_open_odds,
+                    ox.closing_home_odds       AS home_close_odds,
+                    ox.closing_draw_odds       AS draw_close_odds,
+                    ox.closing_away_odds       AS away_close_odds,
+                    ah_open.handicap           AS ah_line_open,
+                    ah_open.opening_home_odds  AS ah_home_open_odds,
+                    ah_open.opening_away_odds  AS ah_away_open_odds,
+                    ah_close.handicap          AS ah_line_close,
+                    ah_close.closing_home_odds AS ah_home_close_odds,
+                    ah_close.closing_away_odds AS ah_away_close_odds
                 FROM fotmob.fixtures fm
                 JOIN oddsportal.fixtures op
                     ON op.ref_match_id = fm.match_id
                 JOIN oddsportal.odds_1x2 ox
                     ON ox.match_code = op.match_code
                     AND ox.betting_type_id = 1 AND ox.scope_id = 2 AND ox.quote_type = 'back'
-                LEFT JOIN ah_main_line ah
-                    ON ah.match_code = op.match_code
-                    AND ah.bookmaker_id = ox.bookmaker_id
-                    AND ah.rn = 1
+                LEFT JOIN ah_close_main_line ah_close
+                    ON ah_close.match_code = op.match_code
+                    AND ah_close.bookmaker_id = ox.bookmaker_id
+                    AND ah_close.rn = 1
+                LEFT JOIN ah_open_main_line ah_open
+                    ON ah_open.match_code = op.match_code
+                    AND ah_open.bookmaker_id = ox.bookmaker_id
+                    AND ah_open.rn = 1
                 WHERE fm.match_id = :match_id
             """), {
                 "match_id": self.match_id,
