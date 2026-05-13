@@ -21,6 +21,9 @@ class TrainSampleBuilder:
         "home_goals_penalty", "away_goals_penalty",
         "home_formation", "away_formation",
         "home_point", "away_point",
+        "goals_prevented_ema_5_diff", "home_keeper_form_momentum", "away_keeper_form_momentum",
+        "home_goals_prevented_per_90_ema_5", "home_goals_prevented_per_90_ema_20",
+        "away_goals_prevented_per_90_ema_5", "away_goals_prevented_per_90_ema_20",
     ]
 
     def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
