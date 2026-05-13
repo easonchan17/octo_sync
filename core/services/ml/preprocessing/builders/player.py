@@ -2,10 +2,12 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import and_
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 from core.types.enums import MatchStatus, Position, LineupRole
+from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.fotmob.match import MatchPlayerStat, MatchLineup, MatchStat
+from core.store.postgres.postgresql_manager import PostgreSQLManager
 
 from ..transforms import FormulaMutator, DefaultImputer, QuantileImputer
 from .base import BaseFeatureBuilder
@@ -118,6 +120,8 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
         ),
         "rating": "combined_rating_ema_{span}",
     }
+
+    ABILITY_KEYS = [f"{col}_{suffix}" for col in ABILITY_FORMULAS for suffix in ("form", "ability")]
 
     OUTFIELD_AGG = {
         "finish_form_sum":         ("finish_form",        "sum"),
@@ -466,6 +470,65 @@ class OutfieldPlayerLatestFeatureBuilder(OutfieldPlayerFeatureBuilder):
 
         return df[["player_id", "team_id", "kickoff_time", "position"] + ability_cols]
 
+class OutfieldPlayerPredictFeatureBuilder(OutfieldPlayerFeatureBuilder):
+    def __init__(self, fixture: Any, get_player_state: Callable[[int, str], Optional[Dict]]) -> None:
+        super().__init__()
+        self.match_id         = fixture.match_id
+        self.home_id          = fixture.home_id
+        self.away_id          = fixture.away_id
+        self.kickoff_time     = fixture.kickoff_time
+        self.get_player_state = get_player_state
+
+    def _load(self) -> Optional[pd.DataFrame]:
+        with self.db.get_session() as session:
+            lineups = session.query(MatchLineup.member_id, MatchLineup.team_id, MatchLineup.position).filter(
+                MatchLineup.match_id == self.match_id,
+                MatchLineup.role == LineupRole.STARTER.value,
+                MatchLineup.position.notin_(Position.get_goalkeeper()),
+            ).all()
+
+        if not lineups:
+            return None
+
+        records = []
+        for player_id, team_id, position in lineups:
+            player_state = self.get_player_state(player_id, position)
+            assert player_state is not None, f"No state or position default for player_id={player_id}, position={position}"
+
+            record = {"team_id": team_id, "position": position}
+            record["rest_days"] = (
+                (self.kickoff_time - player_state["kickoff_time"]).days
+                if "kickoff_time" in player_state else 4.0
+            )
+            for key in self.ABILITY_KEYS:
+                record[key] = player_state.get(key)
+
+            records.append(record)
+
+        return pd.DataFrame(records)
+
+    def _build(self, df: pd.DataFrame) -> Optional[Dict[str, Any]]:
+        player_counts = df.groupby("team_id").size()
+        if player_counts.get(self.home_id, 0) != 10 or player_counts.get(self.away_id, 0) != 10:
+            return None
+
+        df["weighted_rest_days"] = df["rest_days"] * df["rating_ability"]
+
+        team_stats = df.groupby("team_id").agg(**self.OUTFIELD_AGG).reset_index()
+        team_stats["outfield_rest_days"] = team_stats["weighted_rest_days_sum"] / team_stats["rating_ability_sum"]
+        team_stats = team_stats.drop(columns=["weighted_rest_days_sum", "rating_ability_sum"])
+
+        team_stat_cols = [col for col in team_stats.columns if col != "team_id"]
+        home_row = team_stats[team_stats["team_id"] == self.home_id]
+        away_row = team_stats[team_stats["team_id"] == self.away_id]
+
+        home_features = {f"home_{col}": home_row.iloc[0][col] for col in team_stat_cols}
+        away_features = {f"away_{col}": away_row.iloc[0][col] for col in team_stat_cols}
+
+        match_df = pd.DataFrame([{**home_features, **away_features}])
+        FormulaMutator(match_df).mutate_batch(self.FORMULAS)
+
+        return match_df.iloc[0].to_dict()
 
 class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
     PLAYED_TIME_ADJ = [
@@ -479,6 +542,8 @@ class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
     EMA = [
         "goals_prevented_per_90", "keeper_sweeper_per_90_adj", "keeper_high_claim_per_90_adj",
     ]
+
+    EMA_COLS = [f"{col}_ema_5" for col in EMA] + [f"{col}_ema_20" for col in EMA]
 
     FORMULAS = [
         ("goals_prevented_ema_5_diff",  "home_goals_prevented_per_90_ema_5 - away_goals_prevented_per_90_ema_5"),
@@ -683,3 +748,57 @@ class GoalkeeperLatestFeatureBuilder(GoalkeeperFeatureBuilder):
         QuantileImputer(df).impute(ema_cols_5 + ema_cols_20, quantile=0.5)
 
         return df[["player_id", "team_id", "kickoff_time"] + ema_cols_5 + ema_cols_20 + ["rest_days"]]
+
+class GoalkeeperPredictFeatureBuilder(GoalkeeperFeatureBuilder):
+    def __init__(self, fixture: Any, get_player_state: Callable[[int, str], Optional[Dict]]) -> None:
+        super().__init__()
+        self.match_id         = fixture.match_id
+        self.home_id          = fixture.home_id
+        self.away_id          = fixture.away_id
+        self.kickoff_time     = fixture.kickoff_time
+        self.get_player_state = get_player_state
+
+    def _load(self) -> Optional[pd.DataFrame]:
+        with self.db.get_session() as session:
+            lineups = session.query(MatchLineup.member_id, MatchLineup.team_id, MatchLineup.position).filter(
+                MatchLineup.match_id == self.match_id,
+                MatchLineup.role == LineupRole.STARTER.value,
+                MatchLineup.position.in_(Position.get_goalkeeper()),
+            ).all()
+
+        if not lineups:
+            return None
+
+        records = []
+        for player_id, team_id, position in lineups:
+            gk_state = self.get_player_state(player_id, position)
+            assert gk_state is not None, f"No state or position default for GK player_id={player_id}, position={position}"
+
+            record = {"team_id": team_id}
+            record["gk_rest_days"] = (
+                (self.kickoff_time - gk_state["kickoff_time"]).days
+                if "kickoff_time" in gk_state else 4.0
+            )
+            for col in self.EMA_COLS:
+                record[col] = gk_state.get(col)
+
+            records.append(record)
+
+        return pd.DataFrame(records)
+
+    def _build(self, df: pd.DataFrame) -> Optional[Dict[str, Any]]:
+        gk_counts = df.groupby("team_id").size()
+        if gk_counts.get(self.home_id, 0) != 1 or gk_counts.get(self.away_id, 0) != 1:
+            return None
+
+        team_stat_cols = [col for col in df.columns if col != "team_id"]
+        home_row  = df[df["team_id"] == self.home_id]
+        away_row  = df[df["team_id"] == self.away_id]
+
+        home_features = {f"home_{col}": home_row.iloc[0][col] for col in team_stat_cols}
+        away_features = {f"away_{col}": away_row.iloc[0][col] for col in team_stat_cols}
+
+        match_df = pd.DataFrame([{**home_features, **away_features}])
+        FormulaMutator(match_df).mutate_batch(self.FORMULAS)
+
+        return match_df.iloc[0].to_dict()

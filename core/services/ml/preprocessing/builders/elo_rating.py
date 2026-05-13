@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Optional
+from typing import Any, Optional, Dict
 from sqlalchemy.orm import aliased
 from core.types.enums import MatchStatus
 from core.types.params import EloParams
@@ -80,11 +80,11 @@ class EloRatingTrainFeatureBuilder(EloRatingFeatureBuilder):
 
 
 class EloRatingPredictFeatureBuilder(EloRatingFeatureBuilder):
-    def __init__(self, match_id: int, home_id: int, away_id: int, elo_params: EloParams = EloParams()) -> None:
+    def __init__(self, fixture: Any, elo_params: EloParams = EloParams()) -> None:
         super().__init__()
-        self.match_id = match_id
-        self.home_id = home_id
-        self.away_id = away_id
+        self.match_id = fixture.match_id
+        self.home_id  = fixture.home_id
+        self.away_id  = fixture.away_id
         self.elo_params = elo_params
 
     def _load(self) -> Optional[pd.DataFrame]:
@@ -108,3 +108,10 @@ class EloRatingPredictFeatureBuilder(EloRatingFeatureBuilder):
                     record.update({"away_pre_rating": float(post_rating), "away_game_count": game_count + 1})
 
             return pd.DataFrame([record])
+
+    def _build(self, df: pd.DataFrame) -> Dict[str, Any]:
+        df = super()._build(df)
+
+        row = df.iloc[0].to_dict()
+        row.pop("match_id", None)
+        return row
