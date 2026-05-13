@@ -87,7 +87,7 @@ class BaseSyncOdds(PollTask):
                     self.idle_sleep()
                     continue
 
-                for match_code, home_name, home_code, away_name, away_code, kickoff_time, match_url, fetch_attempts in items:
+                for league_id, match_code, home_name, home_code, away_name, away_code, kickoff_time, match_url, fetch_attempts in items:
                     if self.should_stop():
                         return
 
@@ -127,7 +127,7 @@ class BaseSyncOdds(PollTask):
 
                         fetch_interval = self.refetch_strategy.suggest_interval(kickoff_time, datetime.now(timezone.utc))
                         self.odds_dao.mark_as_fetched(match_code, self.market.betting_type_id, self.market.scope_id, fetch_interval)
-                        self.logger.info(f"Synced odds match_code={match_code} kickoff_time={kickoff_time}")
+                        self.logger.info(f"Synced odds league_id={league_id} match_code={match_code} kickoff_time={kickoff_time}")
 
                     except Exception as e:
                         self.odds_dao.mark_fetch_failed(
