@@ -87,7 +87,6 @@ class OddsAh(Base):
     handicap = Column(Float, nullable=True)
     closing_home_odds = Column(Float, nullable=True)
     closing_away_odds = Column(Float, nullable=True)
-    opening_handicap = Column(Float, nullable=True)
     opening_home_odds = Column(Float, nullable=True)
     opening_away_odds = Column(Float, nullable=True)
     closing_home_volume = Column(Integer, nullable=True)
