@@ -150,46 +150,67 @@ class TrainTracker:
             self.logger.error(f"Failed to save training record: {e}", exc_info=True)
 
 
-    def report(self) -> None:
-        self.logger.info("\n" + "="*50)
-        self.logger.info("MODEL OPTIMIZATION REPORT")
-        self.logger.info("="*50)
-        self.logger.info(f"Dataset  : {self.config.dataset_name}")
-        self.logger.info(f"Best CV Score: {self.train_score: .4f}")
-        self.logger.info(f"Test Set Score : {self.test_score:.4f}")
+    def report(self, model_version: str) -> None:
+        lines = []
+        lines.append("=" * 50)
+        lines.append("MODEL OPTIMIZATION REPORT")
+        lines.append("=" * 50)
+        lines.append(f"Dataset               : {self.config.dataset_name}")
+        lines.append(f"Balanced              : {self.config.balanced}")
+        lines.append(f"Feature Count         : {len(self.feature_names)}")
+        lines.append(f"Eval Set Size         : {self.config.eval_set_size}")
+        lines.append(f"Test Set Size         : {self.config.test_set_size}")
+        lines.append(f"Scoring               : {self.config.scoring}")
+        lines.append(f"N Iter                : {self.config.optimizer_params.get('n_iter')}")
+        lines.append(f"Early Stopping Rounds : {self.config.model_params.get('early_stopping_rounds')}")
+        lines.append(f"Best CV Score         : {self.train_score:.4f}")
+        lines.append(f"Test Set Score        : {self.test_score:.4f}")
         if self.score_gap > 0.05:
-            self.logger.warning(f"Potential Overfitting detected! (Gap: {self.score_gap:.4f})")
+            lines.append(f"WARNING: Potential Overfitting detected! (Gap: {self.score_gap:.4f})")
 
-        self.logger.info("\n" + "-" * 50)
-        self.logger.info("DETAILED CLASSIFICATION REPORT")
-        self.logger.info("-" * 50)
-        self.logger.info(f"\n{self.test_report_df.round(4).to_string()}")
+        lines.append("\n" + "-" * 50)
+        lines.append("DETAILED CLASSIFICATION REPORT")
+        lines.append("-" * 50)
+        lines.append(f"\n{self.test_report_df.round(4).to_string()}")
 
-        self.logger.info("\n" + "-" * 50)
-        self.logger.info("CONFUSION MATRIX (Actual vs Predicted)")
-        self.logger.info("-" * 50)
-        self.logger.info(f"\n{self.test_cm_df.to_string()}")
+        lines.append("\n" + "-" * 50)
+        lines.append("CONFUSION MATRIX (Actual vs Predicted)")
+        lines.append("-" * 50)
+        lines.append(f"\n{self.test_cm_df.to_string()}")
 
-        self.logger.info("\n" + "-" * 50)
-        self.logger.info("FEATURE IMPORTANCE (Gain)")
-        self.logger.info("-" * 50)
+        lines.append("\n" + "-" * 50)
+        lines.append("FEATURE IMPORTANCE (Gain)")
+        lines.append("-" * 50)
         self.feat_imp_df['Cumul(%)'] = self.feat_imp_df['Importance'].cumsum() * 100
-        self.logger.info(f"\n{self.feat_imp_df.to_string(index=False, formatters={'Importance': '{:.4f}'.format, 'Cumul(%)': '{:.1f}%'.format})}")
+        lines.append(f"\n{self.feat_imp_df.to_string(index=False, formatters={'Importance': '{:.4f}'.format, 'Cumul(%)': '{:.1f}%'.format})}")
 
-        self.logger.info("\n" + "-" * 50)
-        self.logger.info("FEATURE IMPORTANCE (SHAP mean |value|)")
-        self.logger.info("-" * 50)
-        self.logger.info(f"\n{self.shap_imp_df.to_string(index=False, formatters={'SHAP': '{:.4f}'.format, 'CumulSHAP(%)': '{:.1f}%'.format})}")
+        lines.append("\n" + "-" * 50)
+        lines.append("FEATURE IMPORTANCE (SHAP mean |value|)")
+        lines.append("-" * 50)
+        lines.append(f"\n{self.shap_imp_df.to_string(index=False, formatters={'SHAP': '{:.4f}'.format, 'CumulSHAP(%)': '{:.1f}%'.format})}")
 
         cutoff = int(len(self.shap_imp_df) * 0.7)
         bottom_30 = self.shap_imp_df.iloc[cutoff:]
-        self.logger.info(f"\n[SHAP Bottom 30% — candidates for removal ({len(bottom_30)} features)]")
-        self.logger.info(f"\n{bottom_30[['Rank', 'Feature', 'SHAP']].to_string(index=False, formatters={'SHAP': '{:.4f}'.format})}")
+        lines.append(f"\n[SHAP Bottom 30% — candidates for removal ({len(bottom_30)} features)]")
+        lines.append(f"\n{bottom_30[['Rank', 'Feature', 'SHAP']].to_string(index=False, formatters={'SHAP': '{:.4f}'.format})}")
 
-        self.logger.info("\n" + "-" * 50)
-        self.logger.info("HIGH CORRELATION PAIRS (|corr| > 0.85)")
-        self.logger.info("-" * 50)
+        lines.append("\n" + "-" * 50)
+        lines.append("HIGH CORRELATION PAIRS (|corr| > 0.85)")
+        lines.append("-" * 50)
         if self.high_corr_pairs.empty:
-            self.logger.info("No high correlation pairs found.")
+            lines.append("No high correlation pairs found.")
         else:
-            self.logger.info(f"\n{self.high_corr_pairs.to_string(index=False, formatters={'Corr': '{:.3f}'.format})}")
+            lines.append(f"\n{self.high_corr_pairs.to_string(index=False, formatters={'Corr': '{:.3f}'.format})}")
+
+        content = "\n".join(lines)
+        for line in lines:
+            if line.startswith("WARNING"):
+                self.logger.warning(line)
+            else:
+                self.logger.info(line)
+
+        report_dir = self.config.report_dir / self.config.model_family
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / f"{model_version}.txt"
+        report_path.write_text(content, encoding="utf-8")
+        self.logger.info(f"Evaluation report saved to: {report_path.resolve()}")
