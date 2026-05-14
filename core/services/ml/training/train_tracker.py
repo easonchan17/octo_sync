@@ -108,7 +108,27 @@ class TrainTracker:
         self.feat_imp_df = feat_imp_df
         self.shap_imp_df = shap_imp_df
         self.high_corr_pairs = high_corr_pairs
+        self.draw_threshold_scan = self._scan_draw_threshold(y_prob_test, y_test, "Draw")
 
+
+    def _scan_draw_threshold(self, y_prob: np.ndarray, y_true: pd.Series, draw_key: str, t_min: float = 0.24, t_max: float = 0.40, steps: int = 17) -> pd.DataFrame:
+        draw_idx = list(self.config.target_names).index(draw_key)
+        home_indices = [i for i in range(y_prob.shape[1]) if i != draw_idx]
+
+        rows = []
+        for t in np.linspace(t_min, t_max, steps):
+            t = round(t, 2)
+            non_draw = np.take(home_indices, np.argmax(y_prob[:, home_indices], axis=1))
+            y_pred = np.where(y_prob[:, draw_idx] >= t, draw_idx, non_draw)
+            report = classification_report(y_true, y_pred, target_names=self.config.target_names, output_dict=True, zero_division=0.0)
+            rows.append({
+                "T_draw":         t,
+                "Draw Precision": round(report[draw_key]["precision"], 4),
+                "Draw Recall":    round(report[draw_key]["recall"],    4),
+                "Draw F1":        round(report[draw_key]["f1-score"],  4),
+                "Macro F1":       round(report["macro avg"]["f1-score"], 4),
+            })
+        return pd.DataFrame(rows)
 
     def save_model(self) -> Tuple[str, str]:
         base_dir = self.config.model_dir / self.config.model_family
@@ -201,6 +221,11 @@ class TrainTracker:
             lines.append("No high correlation pairs found.")
         else:
             lines.append(f"\n{self.high_corr_pairs.to_string(index=False, formatters={'Corr': '{:.3f}'.format})}")
+
+        lines.append("\n" + "-" * 50)
+        lines.append("DRAW THRESHOLD SCAN")
+        lines.append("-" * 50)
+        lines.append(f"\n{self.draw_threshold_scan.to_string(index=False)}")
 
         content = "\n".join(lines)
         for line in lines:
