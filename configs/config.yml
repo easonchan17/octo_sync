@@ -65,7 +65,7 @@ training:
       model:
         name: xgboost
         params:
-          n_estimators: 3000
+          n_estimators: 5000
           early_stopping_rounds: 150
           objective: multi:softprob
           eval_metric: mlogloss
@@ -84,11 +84,11 @@ training:
           verbose: 0
           cv: 5
           search_spaces:
-            max_depth: { type: Integer, low: 3, high: 10 }
-            learning_rate: { type: Real, low: 0.01, high: 0.15, prior: log-uniform }
-            min_child_weight: { type: Integer, low: 1, high: 20 }
-            gamma: { type: Real, low: 0, high: 5.0 }
-            subsample: { type: Real, low: 0.5, high: 0.9 }
-            colsample_bytree: { type: Real, low: 0.5, high: 0.7 }
+            max_depth: { type: Integer, low: 2, high: 8 }
+            learning_rate: { type: Real, low: 0.001, high: 0.05, prior: log-uniform }
+            min_child_weight: { type: Integer, low: 10, high: 60 }
+            gamma: { type: Real, low: 1.0, high: 10.0 }
+            subsample: { type: Real, low: 0.4, high: 0.8 }
+            colsample_bytree: { type: Real, low: 0.3, high: 0.8 }
             reg_alpha: { type: Real, low: 0.1, high: 10, prior: log-uniform }
-            reg_lambda: { type: Real, low: 0.5, high: 10, prior: log-uniform }
+            reg_lambda: { type: Real, low: 2.0, high: 50, prior: log-uniform }
