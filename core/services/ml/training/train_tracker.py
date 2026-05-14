@@ -189,6 +189,12 @@ class TrainTracker:
             lines.append(f"WARNING: Potential Overfitting detected! (Gap: {self.score_gap:.4f})")
 
         lines.append("\n" + "-" * 50)
+        lines.append("BEST PARAMS")
+        lines.append("-" * 50)
+        for k, v in sorted(self.optimizer.best_params_.items()):
+            lines.append(f"  {k:<25}: {v}")
+
+        lines.append("\n" + "-" * 50)
         lines.append("DETAILED CLASSIFICATION REPORT")
         lines.append("-" * 50)
         lines.append(f"\n{self.test_report_df.round(4).to_string()}")
