@@ -134,6 +134,6 @@ class WinballTrainer(BaseTrainer):
             model_path, model_version = self.tracker.save_model()
             self.tracker.save_metadata(model_path, model_version)
 
-            self.tracker.report()
+            self.tracker.report(model_version)
         except Exception as e:
             self.logger.error(f"Error training model: {e}", exc_info=True)
