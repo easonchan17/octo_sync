@@ -35,6 +35,8 @@ class SyncHistoryFixture(PollTask):
             .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(hours=1))
         )
 
+        self.progress_period = timedelta(days=7)
+
     def build_season_slug(self, season: int, max_season: int) -> Optional[str]:
         if season == max_season:
             return None
@@ -72,6 +74,7 @@ class SyncHistoryFixture(PollTask):
             try:
                 items = self.get_pending_fetch_items()
                 if not items:
+                    self.history_fixture_dao.delete_expired_progress()
                     self.idle_sleep()
                     continue
 
@@ -116,7 +119,10 @@ class SyncHistoryFixture(PollTask):
                         })
 
                         self.history_fixture_dao.mark_as_fetched(league_id, season, page, fetch_interval=None)
-                        self.history_fixture_dao.update_progress(league_id, season, page, total, total_page, page_size)
+                        self.history_fixture_dao.update_progress(
+                            league_id, season, page, total, total_page, page_size,
+                            self.progress_period if page == total_page and season == max_season else None
+                        )
                         self.logger.info(f"Synced fixtures league_id={league_id} league_name={league_name} season={season} page={page}/{total_page}")
 
                     except Exception as e:

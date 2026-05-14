@@ -212,7 +212,7 @@ class Interceptor(Thread):
                 try:
                     await hook_chain.setup(ctx)
                     page_context.request._impl_obj._timeout_settings.set_default_timeout(timeout * 1000)
-                    response = await page_context.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
+                    response = await page_context.goto(url, wait_until='commit', timeout=timeout * 1000)
 
                     if response is None:
                         self.logger.warning(f"No response: {url}")
