@@ -53,6 +53,8 @@ class BaseTrainConfig(ABC):
         result = config_dict.copy()
 
         for key, payload_value in payload_dict.items():
+            if payload_value is None:
+                continue
             if key in config_dict and isinstance(payload_value, dict) and isinstance(config_dict[key], dict):
                 result[key] = self.deep_merge(payload_value, config_dict[key])
             else:
@@ -137,10 +139,7 @@ class WinballTrainConfig(BaseTrainConfig):
 
     @cached_property
     def balanced(self) -> bool:
-        return self.get_param(
-            payload_key='objective.balanced',
-            config_key='training.tasks.winball.objective.balanced'
-        )
+        return self.get_param(payload_key='objective.balanced')
 
     @cached_property
     def scoring(self) -> str:
