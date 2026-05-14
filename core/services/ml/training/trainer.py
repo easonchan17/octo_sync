@@ -50,7 +50,7 @@ class BaseTrainer(ABC):
 
         target_col = self.config.target_col
         y = df[target_col].copy()
-        X = df.drop(columns=[target_col], axis=1)
+        X = df.drop(columns=[target_col])
         self.logger.info(X.head())
 
         split_idx = int(len(X) * (1 - self.config.test_set_size))
