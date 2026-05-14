@@ -46,6 +46,7 @@ database:
 
 artifact:
   model: artifacts/models
+  report: artifacts/reports
   dataset:
     training: artifacts/dataset/training
     prediction: artifacts/dataset/prediction
