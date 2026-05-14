@@ -15,7 +15,7 @@ plugins/
 tests/
 artifacts/
 
-scripts/
+scripts/checks
 
 README.md
 CLAUDE.md

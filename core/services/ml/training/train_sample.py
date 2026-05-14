@@ -24,6 +24,17 @@ class TrainSampleBuilder:
         "goals_prevented_ema_5_diff", "home_keeper_form_momentum", "away_keeper_form_momentum",
         "home_goals_prevented_per_90_ema_5", "home_goals_prevented_per_90_ema_20",
         "away_goals_prevented_per_90_ema_5", "away_goals_prevented_per_90_ema_20",
+        "sharp_source_level",
+        "home_std_change", "home_elo_expectancy", "market_entropy_close",
+        "sharp_pure_home_log_return", "sharp_pure_away_log_return",
+        "away_attack_vs_home_defense_ability", "away_attack_vs_home_defense_form",
+        "home_attack_vs_away_defense_form", "home_attack_vs_away_defense_ability",
+        "home_attack_form", "away_creativity_form_sum",
+        "clearances_ema_5_diff", "home_clearances_ema_5",
+        "home_goal_minus_xg_ema_5", "away_goal_minus_xg_ema_5", "goal_minus_xg_ema_5_diff",
+        "net_ability", "match_balance",
+        "home_prob_up_ratio", "threat_per_entry_ema_5_diff",
+        "passes_acc_ema_5_diff", "home_passes_ema_5", "away_passes_acc_ema_5",
     ]
 
     def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
