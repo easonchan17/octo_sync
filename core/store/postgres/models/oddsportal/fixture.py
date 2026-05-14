@@ -10,12 +10,14 @@ class HistoryFixtureProgress(Base, PaginationMixin):
         UniqueConstraint('league_id', 'season', name='uq_history_fixture_progress_league_season'),
         Index('idx_history_fixture_progress_created_at', 'created_at'),
         Index('idx_history_fixture_progress_updated_at', 'updated_at'),
+        Index('idx_history_fixture_progress_expired_at', 'expired_at'),
         {'schema': SiteName.ODDSPORTAL.value}
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     league_id = Column(Integer, nullable=False)
     season = Column(Integer, nullable=False)
+    expired_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class HistoryFixtureRaw(Base, CrawlStatusMixin, RawJsonMixin):

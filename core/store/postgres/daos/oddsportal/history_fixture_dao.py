@@ -104,7 +104,7 @@ class HistoryFixtureDao(BaseDao):
             )
             session.execute(insert_stmt)
 
-    def update_progress(self, league_id: int, season: int, page: int, total: int, total_page: int, page_size: int) -> None:
+    def update_progress(self, league_id: int, season: int, page: int, total: int, total_page: int, page_size: int, period: Optional[timedelta] = None) -> None:
         with self.db.get_session() as session:
             insert_stmt = insert(HistoryFixtureProgress).values(
                 league_id=league_id,
@@ -118,10 +118,17 @@ class HistoryFixtureDao(BaseDao):
                 index_elements=[HistoryFixtureProgress.league_id.key, HistoryFixtureProgress.season.key],
                 set_={
                     HistoryFixtureProgress.page.key: insert_stmt.excluded.page,
+                    HistoryFixtureProgress.expired_at.key: func.now() + period if period is not None else None,
                     HistoryFixtureProgress.updated_at.key: func.now(),
-                }
+                },
             )
             session.execute(insert_stmt)
+
+    def delete_expired_progress(self) -> None:
+        with self.db.get_session() as session:
+            session.query(HistoryFixtureProgress).filter(
+                HistoryFixtureProgress.expired_at <= func.now(),
+            ).delete(synchronize_session=False)
 
     def mark_as_parsed(self, league_id: int, season: int, page: int) -> None:
         with self.db.get_session() as session:
