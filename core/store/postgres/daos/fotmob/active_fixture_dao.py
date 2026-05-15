@@ -4,6 +4,7 @@ from sqlalchemy import or_, func, cast
 from sqlalchemy.dialects.postgresql import insert
 from datetime import date, timedelta, datetime
 from core.store.postgres.models.fotmob.fixture import Fixture, ActiveFixtureRaw
+from core.types.enums import MatchStatus
 from ..base_dao import BaseDao
 
 class ActiveFixtureDao(BaseDao):
@@ -209,7 +210,8 @@ class ActiveFixtureDao(BaseDao):
             ).filter(
                 Fixture.kickoff_time >= start_time,
                 Fixture.kickoff_time < end_time,
-                Fixture.league_id.in_(league_ids)
+                Fixture.league_id.in_(league_ids),
+                Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
             ).order_by(
                 Fixture.league_id.asc(),
                 Fixture.kickoff_time.asc()

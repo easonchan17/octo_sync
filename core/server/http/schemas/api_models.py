@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field, Field
 from typing import List, TypeVar, Generic, Optional, Dict, Any
+from core.types.enums import MatchStatus
 from datetime import datetime
 from enum import IntEnum
 
@@ -7,17 +8,9 @@ T = TypeVar('T')
 
 
 class FixtureStatus(IntEnum):
-    FINISHED = 0
+    UPCOMING = 0
     LIVE = 1
-    UPCOMING = 2
-
-    def to_string(self) -> str:
-        mapping = {
-            FixtureStatus.FINISHED: "finished",
-            FixtureStatus.LIVE: "live",
-            FixtureStatus.UPCOMING: "upcoming"
-        }
-        return mapping.get(self, "finished")
+    FINISHED = 2
 
 # ==============================================================================
 # Pagination Models
@@ -47,6 +40,17 @@ class FixtureResponse(BaseModel):
     away_team: str
     home_score: Optional[int] = None
     away_score: Optional[int] = None
+    match_status: int = Field(exclude=True)
+
+    @computed_field
+    @property
+    def status(self) -> int:
+        ms = MatchStatus(self.match_status)
+        if ms.is_playing:
+            return FixtureStatus.LIVE
+        if ms.is_finalized:
+            return FixtureStatus.FINISHED
+        return FixtureStatus.UPCOMING
 
     class Config:
         from_attributes = True
