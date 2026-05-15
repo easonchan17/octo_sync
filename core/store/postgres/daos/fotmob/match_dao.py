@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy import func, and_, or_
@@ -123,13 +124,15 @@ class MatchDao(BaseDao):
                 MatchRaw.updated_at: func.now()
             }, synchronize_session=False)
 
-    def mark_parse_failed(self, match_id: int, error_msg: str) -> None:
+    def mark_parse_failed(self, match_id: int, error_msg: Optional[str] = None) -> None:
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             session.query(MatchRaw).filter(
                 MatchRaw.match_id == match_id
             ).update({
                 MatchRaw.is_parsed: False,
-                MatchRaw.last_parse_error: (error_msg or "")[:2000],
+                MatchRaw.last_parse_error: error_msg[:2000],
                 MatchRaw.parse_attempts: MatchRaw.parse_attempts + 1,
                 MatchRaw.total_parse_count: MatchRaw.total_parse_count + 1,
                 MatchRaw.updated_at: func.now()

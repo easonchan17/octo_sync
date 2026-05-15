@@ -5,6 +5,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+if Path('.').resolve() != Path(__file__).resolve().parents[1]:
+    sys.exit(f"Must be run from project root: {Path(__file__).resolve().parents[1]}")
+
 from core.config.config_manager import ConfigManager
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.postgresql_manager import PostgreSQLManager
