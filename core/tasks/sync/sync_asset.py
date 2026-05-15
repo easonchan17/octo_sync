@@ -34,8 +34,8 @@ class SyncAsset(PollTask):
         )
 
 
-    def make_save_path(self, source_site: str, asset_type: str, entity_type: str, asset_usage: str, file_name: str, file_ext: str) -> str:
-        dir_path = os.path.join(self.base_dir, source_site, asset_type, entity_type, asset_usage)
+    def make_save_path(self, asset_type: str, entity_type: str, asset_usage: str, file_name: str, file_ext: str) -> str:
+        dir_path = os.path.join(self.base_dir, asset_type, entity_type, asset_usage)
         os.makedirs(dir_path, exist_ok=True)
 
         file_name = f'{file_name}.{file_ext}' if file_ext else file_name
@@ -68,7 +68,7 @@ class SyncAsset(PollTask):
                             continue
 
                         save_path = self.make_save_path(
-                            source_site, asset_type, entity_type, asset_usage, file_name, file_ext
+                            asset_type, entity_type, asset_usage, file_name, file_ext
                         )
                         with open(save_path, 'wb') as asset_file:
                             asset_file.write(result_set.first())
