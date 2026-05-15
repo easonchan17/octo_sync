@@ -131,6 +131,13 @@ class WinballTrainConfig(BaseTrainConfig):
         )
 
     @cached_property
+    def calibration_set_size(self) -> float:
+        return self.get_param(
+            payload_key='objective.calibration_set_size',
+            config_key='training.tasks.winball.objective.calibration_set_size'
+        )
+
+    @cached_property
     def test_set_size(self) -> float:
         return self.get_param(
             payload_key='objective.test_set_size',
