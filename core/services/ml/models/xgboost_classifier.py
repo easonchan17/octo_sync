@@ -36,6 +36,8 @@ class XGBoostClassifier(ClassifierMixin, BaseEstimator):
         **fit_params
     ) -> 'XGBoostClassifier':
 
+        tree_hook = fit_params.pop('_tree_hook', None)
+
         if eval_set is None and self.eval_set_size > 0:
             split_idx = int(len(X) * (1 - self.eval_set_size))
             X_train, X_val = X.iloc[:split_idx], X.iloc[split_idx:]
@@ -58,6 +60,9 @@ class XGBoostClassifier(ClassifierMixin, BaseEstimator):
 
         if hasattr(self.model, 'eval_results_'):
             self.eval_results_ = self.model.eval_results_
+
+        if tree_hook is not None and hasattr(self.model, 'best_iteration'):
+            tree_hook.append(self.model.best_iteration)
 
         self.is_fitted_ = True
         return self
