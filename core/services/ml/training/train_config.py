@@ -76,15 +76,15 @@ class BaseTrainConfig(ABC):
 
     @cached_property
     def model_dir(self) -> Path:
-        return Path(self.get_param(config_key='artifact.model'))
+        return Path(self.get_param(config_key='resource.model'))
 
     @cached_property
     def report_dir(self) -> Path:
-        return Path(self.get_param(config_key='artifact.report'))
+        return Path(self.get_param(config_key='resource.report'))
 
     @cached_property
     def dataset_dir(self) -> Path:
-        return Path(self.get_param(config_key='artifact.dataset.training'))
+        return Path(self.get_param(config_key='resource.dataset.training'))
 
 
 class WinballTrainConfig(BaseTrainConfig):

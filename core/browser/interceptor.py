@@ -7,7 +7,7 @@ from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from typing import Tuple, Optional, Any, Dict
 from core.browser.security import RateLimiter
-from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook, TurnstileHook, JsHook
+from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook, TurnstileHook, JsHook, AssetHook
 from core.browser.intercept_strategy import InterceptType, InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
@@ -198,6 +198,8 @@ class Interceptor(Thread):
                     hooks.append(JsHook())
                 if strategy.has_rules(InterceptType.DOM):
                     hooks.append(DomHook())
+                if strategy.has_rules(InterceptType.ASSET):
+                    hooks.append(AssetHook())
                 if strategy.has_rules(InterceptType.WS):
                     hooks.append(WsHook())
                 hook_chain = HookChain(hooks)
@@ -219,6 +221,7 @@ class Interceptor(Thread):
                     elif await self.rate_limiter.is_rate_limited(response):
                         self.rate_limiter.activate_backoff(url, status=response.status)
                     else:
+                        ctx.response = response
                         success = await hook_chain.execute(ctx)
                 finally:
                     await hook_chain.destroy(ctx)

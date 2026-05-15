@@ -36,7 +36,11 @@ class MatchDao(BaseDao):
             return session.query(
                 MatchRaw.match_id,
                 MatchRaw.kickoff_time,
-                MatchRaw.json_body
+                MatchRaw.json_body,
+                Fixture.home_code,
+                Fixture.away_code,
+            ).join(
+                Fixture, Fixture.match_id == MatchRaw.match_id
             ).filter(
                 MatchRaw.is_fetched == True,
                 MatchRaw.is_parsed == False,

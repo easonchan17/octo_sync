@@ -3,5 +3,5 @@ from .base_receiver import BaseReceiver
 
 
 class HtmlReceiver(BaseReceiver):
-    async def process(self, page_context: Any, url: str, timeout: float) -> Optional[Any]:
+    async def process(self, page_context: Any) -> Optional[Any]:
         return await page_context.content()
