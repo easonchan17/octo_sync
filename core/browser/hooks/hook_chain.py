@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import suppress
 from core.browser.hooks.base_hook import BaseHook, HookContext
 
@@ -23,3 +24,4 @@ class HookChain:
 
         with suppress(Exception):
             await ctx.page_context.unroute_all(behavior='ignoreErrors')
+            await asyncio.sleep(0)
