@@ -18,6 +18,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--dataset_name',                  type=str, required=True)
     parser.add_argument('--test_set_size',                 type=float,                        help='e.g. 0.2 (20%% held-out test set)')
     parser.add_argument('--eval_set_size',                 type=float,                        help='e.g. 0.1 (10%% of train for early stopping)')
+    parser.add_argument('--calibration_set_size',          type=float,                        help='e.g. 0.1 (10%% for isotonic calibration)')
     parser.add_argument('--balanced',                      action='store_true',               help='enable sample_weight balancing for imbalanced classes')
     parser.add_argument('--early_stopping_rounds',         type=int,                          help='e.g. 150 (stop if no improvement for N rounds)')
     parser.add_argument('--n_iter',                        type=int,                          help='e.g. 200 (BayesSearchCV iterations)')
@@ -38,6 +39,8 @@ def build_payload(args: argparse.Namespace) -> dict:
         payload["objective"]["test_set_size"] = args.test_set_size
     if args.eval_set_size is not None:
         payload["objective"]["eval_set_size"] = args.eval_set_size
+    if args.calibration_set_size is not None:
+        payload["objective"]["calibration_set_size"] = args.calibration_set_size
     if args.early_stopping_rounds is not None:
         payload["model"]["params"]["early_stopping_rounds"] = args.early_stopping_rounds
     if args.random_state is not None:

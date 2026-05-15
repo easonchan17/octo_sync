@@ -41,23 +41,31 @@ class BaseTrainer(ABC):
             index=y_train.index
         )
 
-    def load_dataset(self) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
+    def load_dataset(self) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, Optional[pd.DataFrame], Optional[pd.Series]]:
         if self.config is None:
             raise ValueError("Config is not set")
 
-        dataset_name = self.config.dataset_name
-        df = load_dataframe(self.config.dataset_dir / dataset_name)
+        df = load_dataframe(self.config.dataset_dir / self.config.dataset_name)
 
-        target_col = self.config.target_col
-        y = df[target_col].copy()
-        X = df.drop(columns=[target_col])
+        y = df[self.config.target_col].copy()
+        X = df.drop(columns=[self.config.target_col])
         self.logger.info(X.head())
 
-        split_idx = int(len(X) * (1 - self.config.test_set_size))
-        X_train, X_test = X.iloc[:split_idx].copy(), X.iloc[split_idx:].copy()
-        y_train, y_test = y.iloc[:split_idx].copy(), y.iloc[split_idx:].copy()
+        test_split  = int(len(X) * (1 - self.config.test_set_size))
+        calib_split = int(len(X) * (1 - self.config.test_set_size - self.config.calibration_set_size))
 
-        return X_train, y_train, X_test, y_test
+        X_train = X.iloc[:calib_split].copy()
+        y_train = y.iloc[:calib_split].copy()
+        X_test  = X.iloc[test_split:].copy()
+        y_test  = y.iloc[test_split:].copy()
+
+        if self.config.calibration_set_size > 0:
+            X_calib = X.iloc[calib_split:test_split].copy()
+            y_calib = y.iloc[calib_split:test_split].copy()
+        else:
+            X_calib, y_calib = None, None
+
+        return X_train, y_train, X_test, y_test, X_calib, y_calib
 
 
 class WinballTrainer(BaseTrainer):
@@ -119,7 +127,7 @@ class WinballTrainer(BaseTrainer):
 
     def train(self) -> None:
         try:
-            X_train, y_train, X_test, y_test = self.load_dataset()
+            X_train, y_train, X_test, y_test, X_calib, y_calib = self.load_dataset()
 
             sample_weight = self.build_sample_weight(y_train) if self.config.balanced else None
             tree_counts: list = []
@@ -133,7 +141,7 @@ class WinballTrainer(BaseTrainer):
                 return
 
             self.tracker.optimizer = optimizer
-            self.tracker.analysis(X_test, y_test)
+            self.tracker.analysis(X_test, y_test, X_calib, y_calib)
 
             model_path, model_version = self.tracker.save_model()
             self.tracker.save_metadata(model_path, model_version)

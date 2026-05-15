@@ -1,8 +1,10 @@
 import shap
+import joblib
 import numpy as np
 import pandas as pd
-from typing import Tuple
+from typing import Optional, Tuple
 from datetime import datetime
+from sklearn.calibration import CalibratedClassifierCV
 from core.logger.logger_manager import LoggerManager
 from core.store.postgres.models import TrainingRecord
 from core.store.postgres.postgresql_manager import PostgreSQLManager
@@ -24,8 +26,10 @@ class TrainTracker:
         self.feat_imp_df = None
         self.shap_imp_df = None
         self.high_corr_pairs = None
+        self.calibrator = None
+        self.calib_draw_threshold_report = None
 
-    def analysis(self, X_test: pd.DataFrame, y_test: pd.Series) -> None:
+    def analysis(self, X_test: pd.DataFrame, y_test: pd.Series, X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None) -> None:
         if self.optimizer is None:
             raise ValueError("Optimizer is not set")
 
@@ -108,10 +112,19 @@ class TrainTracker:
         self.feat_imp_df = feat_imp_df
         self.shap_imp_df = shap_imp_df
         self.high_corr_pairs = high_corr_pairs
-        self.draw_threshold_scan = self._scan_draw_threshold(y_prob_test, y_test, "Draw")
+        self.draw_threshold_report = self._build_draw_threshold_report(y_prob_test, y_test, "Draw")
+
+        if X_calib is not None and y_calib is not None:
+            # sigmoid: non-parametric isotonic overfits on small calib sets (<1000 samples);
+            # switch to isotonic when calib set exceeds ~1000 samples (e.g. 5-league merged dataset)
+            calibrator = CalibratedClassifierCV(best_estimator, cv='prefit', method='sigmoid')
+            calibrator.fit(X_calib, y_calib)
+            y_prob_calib = calibrator.predict_proba(X_test)
+            self.calibrator = calibrator
+            self.calib_draw_threshold_report = self._build_draw_threshold_report(y_prob_calib, y_test, "Draw")
 
 
-    def _scan_draw_threshold(self, y_prob: np.ndarray, y_true: pd.Series, draw_key: str, t_min: float = 0.24, t_max: float = 0.40, steps: int = 17) -> pd.DataFrame:
+    def _build_draw_threshold_report(self, y_prob: np.ndarray, y_true: pd.Series, draw_key: str, t_min: float = 0.24, t_max: float = 0.40, steps: int = 17) -> pd.DataFrame:
         draw_idx = list(self.config.target_names).index(draw_key)
         home_indices = [i for i in range(y_prob.shape[1]) if i != draw_idx]
 
@@ -142,9 +155,13 @@ class TrainTracker:
 
         booster = self.optimizer.best_estimator_.model.get_booster()
         booster.save_model(str(model_path))
-
         model_path = str(model_path)
         self.logger.info(f"Model artifact saved to: {model_path}")
+
+        if self.calibrator is not None:
+            calib_path = base_dir / f"{model_version}_calibrator.pkl"
+            joblib.dump(self.calibrator, str(calib_path))
+            self.logger.info(f"Calibrator saved to: {calib_path.resolve()}")
 
         return model_path, model_version
 
@@ -179,6 +196,7 @@ class TrainTracker:
         lines.append(f"Balanced              : {self.config.balanced}")
         lines.append(f"Feature Count         : {len(self.feature_names)}")
         lines.append(f"Eval Set Size         : {self.config.eval_set_size}")
+        lines.append(f"Calibration Set Size  : {self.config.calibration_set_size}")
         lines.append(f"Test Set Size         : {self.config.test_set_size}")
         lines.append(f"Scoring               : {self.config.scoring}")
         lines.append(f"N Iter                : {self.config.optimizer_params.get('n_iter')}")
@@ -231,7 +249,13 @@ class TrainTracker:
         lines.append("\n" + "-" * 50)
         lines.append("DRAW THRESHOLD SCAN")
         lines.append("-" * 50)
-        lines.append(f"\n{self.draw_threshold_scan.to_string(index=False)}")
+        lines.append(f"\n{self.draw_threshold_report.to_string(index=False)}")
+
+        if self.calib_draw_threshold_report is not None:
+            lines.append("\n" + "-" * 50)
+            lines.append("DRAW THRESHOLD SCAN (Calibrated)")
+            lines.append("-" * 50)
+            lines.append(f"\n{self.calib_draw_threshold_report.to_string(index=False)}")
 
         content = "\n".join(lines)
         for line in lines:
