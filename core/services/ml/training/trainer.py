@@ -100,7 +100,7 @@ class WinballTrainer(BaseTrainer):
 
         return built_params
 
-    def on_bayes_step(self, res: BayesSearchCV) -> bool:
+    def on_bayes_step(self, res: BayesSearchCV, tree_counts: list) -> bool:
         if self.should_stop():
             return True
 
@@ -111,6 +111,9 @@ class WinballTrainer(BaseTrainer):
         iteration = len(res.x_iters)
         self.logger.info(f'[Iteration {iteration} finished]')
         self.logger.info(f'    Current CV Score: {current_score:.4f}')
+        if tree_counts:
+            self.logger.info(f'    Avg Trees      : {sum(tree_counts) / len(tree_counts):.0f} (across {len(tree_counts)} folds)')
+            tree_counts.clear()
         self.logger.info(f'    Params: {current_params_dict}')
         return False
 
@@ -119,10 +122,11 @@ class WinballTrainer(BaseTrainer):
             X_train, y_train, X_test, y_test = self.load_dataset()
 
             sample_weight = self.build_sample_weight(y_train) if self.config.balanced else None
-            callback = [lambda res: self.on_bayes_step(res)]
+            tree_counts: list = []
+            callback = [lambda res: self.on_bayes_step(res, tree_counts)]
 
             optimizer = self.create_optimizer()
-            optimizer.fit(X_train, y_train, callback=callback, sample_weight=sample_weight)
+            optimizer.fit(X_train, y_train, callback=callback, sample_weight=sample_weight, _tree_hook=tree_counts)
 
             if self.should_stop():
                 self.logger.warning("Training stopped gracefully by user request")
