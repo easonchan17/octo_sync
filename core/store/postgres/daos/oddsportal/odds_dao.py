@@ -143,7 +143,7 @@ class OddsDao(BaseDao):
                 OddsRaw.scope_id == scope_id,
             ).update({
                 OddsRaw.is_parsed.key: False,
-                OddsRaw.last_parse_error.key: (error_msg or '')[:2000],
+                OddsRaw.last_parse_error.key: error_msg[:2000],
                 OddsRaw.parse_attempts.key: OddsRaw.parse_attempts + 1,
                 OddsRaw.total_parse_count.key: OddsRaw.total_parse_count + 1,
                 OddsRaw.updated_at.key: func.now(),

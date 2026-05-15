@@ -119,7 +119,7 @@ class SeasonDao(BaseDao):
                 SeasonRaw.league_id == league_id
             ).update({
                 SeasonRaw.is_parsed.key: False,
-                SeasonRaw.last_parse_error.key: (error_msg or '')[:2000],
+                SeasonRaw.last_parse_error.key: error_msg[:2000],
                 SeasonRaw.parse_attempts.key: SeasonRaw.parse_attempts + 1,
                 SeasonRaw.total_parse_count.key: SeasonRaw.total_parse_count + 1,
                 SeasonRaw.updated_at.key: func.now(),

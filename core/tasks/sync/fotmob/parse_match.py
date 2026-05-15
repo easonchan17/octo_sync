@@ -898,12 +898,8 @@ class ParseMatch(PollTask):
                         if team_assets:
                             self.asset_dao.insert_assets(team_assets)
                     except Exception as e:
-                        self.logger.error(
-                            f"Parse failed match_id={match_id} kickoff_time={kickoff_time}\n"
-                            f"{json.dumps(parsed_data, indent=2, default=str)}"
-                        )
-                        full_stack_trace = traceback.format_exc()
-                        self.match_dao.mark_parse_failed(match_id, full_stack_trace)
+                        self.logger.error(f"Parse failed match_id={match_id} kickoff_time={kickoff_time}")
+                        self.match_dao.mark_parse_failed(match_id)
                         self.logger.error(f"Failed to parse match data for match {match_id}: {e}", exc_info=True)
 
             except Exception as e:
