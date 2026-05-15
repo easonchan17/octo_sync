@@ -18,7 +18,7 @@ class FixtureController(BaseController):
         match_date: str = Query(..., alias="date", description="Match date (YYYYMMDD) in UTC"),
     ) -> List[GroupedFixturesResponse]:
         try:
-            start_time = begin_time_of_date(match_date, "%Y%m%d")
+            start_time = begin_time_of_date(match_date, "%Y%m%d", "Asia/Shanghai")
             grouped_fixtures = self.fixture_service.get_grouped_fixtures(
                 start_time=start_time,
                 end_time=start_time + timedelta(days=1)
