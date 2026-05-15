@@ -14,11 +14,7 @@ class DomHook(BaseHook):
                 timeout=ctx.strategy.timeout * 1000
             )
 
-        parsed_data = await dom_rule.receiver.process(
-            page_context=ctx.page_context,
-            url=ctx.target_url,
-            timeout=ctx.strategy.timeout
-        )
+        parsed_data = await dom_rule.receiver.process(page_context=ctx.page_context)
 
         if parsed_data is not None:
             ctx.result_set.set(dom_rule.receiver.instance_id, parsed_data)

@@ -1,4 +1,5 @@
 import re
+from inspect import isclass
 from enum import StrEnum
 from collections import defaultdict
 from typing import Dict, List, Optional, Any, Type
@@ -9,6 +10,7 @@ class InterceptType(StrEnum):
     DOM = "dom"
     WS = "ws"
     JS = "js"
+    ASSET = "asset"
 
 class InterceptRule:
     def __init__(
@@ -22,12 +24,12 @@ class InterceptRule:
         on_trace: Optional[Any] = None,
     ) -> None:
         self.type = InterceptType(type)
-        if not self.is_dom() and not self.is_js() and pattern is None:
-            raise ValueError("pattern is required for non-dom intercept rules")
+        if pattern is None and (self.is_http() or self.is_ws()):
+            raise ValueError("pattern is required for http/ws intercept rules")
 
         self.pattern = pattern
-        self.receiver = receiver() if receiver else None
-        self.sender = sender() if sender else None
+        self.receiver = receiver() if isclass(receiver) else receiver
+        self.sender = sender() if isclass(sender) else sender
         self.hook_script = hook_script
         self.wait_selector = wait_selector
         self.on_trace = on_trace

@@ -11,6 +11,7 @@ class HookContext:
     strategy: InterceptStrategy
     result_set: InterceptResultSet
     query_params: Optional[dict[str, Any]] = field(default=None)
+    response: Optional[Any] = field(default=None)
 
 class BaseHook:
     def __init__(self) -> None:
