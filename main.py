@@ -23,6 +23,9 @@ if sys.version_info < (3, 11):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+if os.path.abspath('.') != BASE_DIR:
+    sys.exit(f"Must be run from project root: {BASE_DIR}")
+
 logger = LoggerManager.get_instance().get_logger(__name__)
 shutdown_event = Event()
 

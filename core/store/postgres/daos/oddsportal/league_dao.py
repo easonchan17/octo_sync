@@ -105,7 +105,7 @@ class LeagueDao(BaseDao):
                 LeagueRaw.sport == sport
             ).update({
                 LeagueRaw.is_parsed.key: False,
-                LeagueRaw.last_parse_error.key: (error_msg or '')[:2000],
+                LeagueRaw.last_parse_error.key: error_msg[:2000],
                 LeagueRaw.parse_attempts.key: LeagueRaw.parse_attempts + 1,
                 LeagueRaw.total_parse_count.key: LeagueRaw.total_parse_count + 1,
                 LeagueRaw.updated_at.key: func.now(),

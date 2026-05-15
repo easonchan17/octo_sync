@@ -24,7 +24,6 @@ class BaseOddsParser:
 
         if bt != market.betting_type_id or sc != market.scope_id:
             self.logger.error(f"bt/sc mismatch: expected {market.betting_type_id}/{market.scope_id}, got {bt}/{sc}")
-            self.logger.info(f"json_body: {json.dumps(json_body, indent=2, ensure_ascii=False)}")
             return False
 
         return True
@@ -338,7 +337,6 @@ class BaseParseOdds(PollTask):
                     except Exception as e:
                         self.odds_dao.mark_parse_failed(match_code, betting_type_id, scope_id)
                         self.logger.error(f"Failed to parse odds match_code={match_code}: {e}", exc_info=True)
-                        self.logger.error(f"json_body: {json.dumps(json_body, ensure_ascii=False, indent=2)}")
 
             except Exception as e:
                 self.logger.error(f"Parse odds loop error: {e}", exc_info=True)

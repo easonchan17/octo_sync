@@ -1,3 +1,4 @@
+import traceback
 from sqlalchemy.types import Date
 from typing import List, Dict, Any, Optional
 from sqlalchemy import or_, func, cast
@@ -120,13 +121,15 @@ class ActiveFixtureDao(BaseDao):
                 ActiveFixtureRaw.next_fetch_at: func.now() + fetch_interval if fetch_interval is not None else None
             }, synchronize_session=False)
 
-    def mark_parse_failed(self, match_date: date, error_msg: str) -> None:
+    def mark_parse_failed(self, match_date: date, error_msg: Optional[str] = None) -> None:
+        if error_msg is None:
+            error_msg = traceback.format_exc()
         with self.db.get_session() as session:
             session.query(ActiveFixtureRaw).filter(
                 ActiveFixtureRaw.match_date == match_date
             ).update({
                 ActiveFixtureRaw.is_parsed: False,
-                ActiveFixtureRaw.last_parse_error: (error_msg or "")[:2000],
+                ActiveFixtureRaw.last_parse_error: error_msg[:2000],
                 ActiveFixtureRaw.parse_attempts: ActiveFixtureRaw.parse_attempts + 1,
                 ActiveFixtureRaw.total_parse_count: ActiveFixtureRaw.total_parse_count + 1,
                 ActiveFixtureRaw.updated_at: func.now()

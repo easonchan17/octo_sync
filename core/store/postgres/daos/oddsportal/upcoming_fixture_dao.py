@@ -107,7 +107,7 @@ class UpcomingFixtureDao(BaseDao):
                 UpcomingFixtureRaw.league_id == league_id
             ).update({
                 UpcomingFixtureRaw.is_parsed.key: False,
-                UpcomingFixtureRaw.last_parse_error.key: (error_msg or '')[:2000],
+                UpcomingFixtureRaw.last_parse_error.key: error_msg[:2000],
                 UpcomingFixtureRaw.parse_attempts.key: UpcomingFixtureRaw.parse_attempts + 1,
                 UpcomingFixtureRaw.total_parse_count.key: UpcomingFixtureRaw.total_parse_count + 1,
                 UpcomingFixtureRaw.updated_at.key: func.now(),

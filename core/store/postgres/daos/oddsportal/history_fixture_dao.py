@@ -155,7 +155,7 @@ class HistoryFixtureDao(BaseDao):
                 HistoryFixtureRaw.page == page,
             ).update({
                 HistoryFixtureRaw.is_parsed.key: False,
-                HistoryFixtureRaw.last_parse_error.key: (error_msg or '')[:2000],
+                HistoryFixtureRaw.last_parse_error.key: error_msg[:2000],
                 HistoryFixtureRaw.parse_attempts.key: HistoryFixtureRaw.parse_attempts + 1,
                 HistoryFixtureRaw.total_parse_count.key: HistoryFixtureRaw.total_parse_count + 1,
                 HistoryFixtureRaw.updated_at.key: func.now(),
