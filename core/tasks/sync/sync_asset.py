@@ -79,6 +79,7 @@ class SyncAsset(PollTask):
                         retry_interval = self.retry_strategy.suggest_interval(fetch_attempts)
                         self.asset_dao.mark_fetch_failed(source_url, retry_interval)
                         self.logger.error(f"Failed to download asset, url={source_url}: {e}")
+                        self.idle_sleep()
 
             except Exception as e:
                 self.logger.error(f"SyncAsset error: {e}", exc_info=True)
