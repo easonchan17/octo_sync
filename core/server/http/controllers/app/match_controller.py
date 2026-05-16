@@ -3,19 +3,19 @@ from fastapi import HTTPException
 from core.services.match_service import MatchService
 from core.services.model_service import ModelService
 from core.server.http.controllers.base_controller import BaseController
-from core.server.http.schemas.api_models import PredictionResponse
+from core.server.http.schemas.api_models import MatchDetailResponse, PredictionResponse
 
 class MatchController(BaseController):
     def __init__(self) -> None:
         super().__init__()
         self.match_service = MatchService()
         self.model_service = ModelService()
-        self.router.get("/v1/matches/{match_code}")(self.get_detail)
+        self.router.get("/v1/matches/{match_code}", response_model=MatchDetailResponse)(self.get_detail)
         self.router.get("/v1/matches/{match_code}/prediction", response_model=PredictionResponse)(self.predict)
 
-    def get_detail(self, match_code: str) -> Dict[str, Any]:
+    def get_detail(self, match_code: str) -> MatchDetailResponse:
         try:
-            return self.match_service.get_detail(match_code)
+            return MatchDetailResponse.model_validate(self.match_service.get_match_detail(match_code))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
