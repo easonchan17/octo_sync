@@ -20,7 +20,6 @@ class AssetDao(BaseDao):
             return (
                 session.query(
                     Asset.source_url,
-                    Asset.source_site,
                     Asset.asset_type,
                     Asset.entity_type,
                     Asset.asset_usage,

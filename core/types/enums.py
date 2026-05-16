@@ -48,10 +48,7 @@ class UpsertStrategy(str, Enum):
 
 class SiteName(str, Enum):
     SYSTEM = 'system'
-    FBREF = 'fbref'
     FOTMOB = 'fotmob'
-    PINNACLE = 'pinnacle'
-    FOOTBALL_DATA = 'football_data'
     ODDSPORTAL = 'oddsportal'
 
 class LeagueID(IntEnum):

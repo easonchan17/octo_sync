@@ -6,17 +6,18 @@ from core.utils.thread import Thread
 from concurrent.futures import Future
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
-from typing import Tuple, Optional, Any, Dict
+from typing import Tuple, Optional, Any, Dict, List
 from core.browser.security import RateLimiter
 from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook, TurnstileHook, JsHook, AssetHook
 from core.browser.intercept_strategy import InterceptType, InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
 class Interceptor(Thread):
-    def __init__(self, request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 90, addons: Optional[list] = None) -> None:
+    def __init__(self, sites: List[str], request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 90, addons: Optional[list] = None) -> None:
         super().__init__()
         self.page_pool = None
 
+        self.sites = set(sites)
         self.task_queue: Optional[janus.Queue] = None
         self.sub_queues: Dict[str, asyncio.Queue] = {}
         self.sub_workers: Dict[str, asyncio.Task] = {}
@@ -28,10 +29,14 @@ class Interceptor(Thread):
         self.sys_mem_threshold = sys_mem_threshold
         self.addons = addons or []
 
-    def submit(self, url: str, strategy: InterceptStrategy) -> Optional[Future]:
+    def submit(self, url: str, strategy: InterceptStrategy, site_name: str) -> Optional[Future]:
         parsed = urlparse(url)
         if not parsed.scheme or not parsed.netloc:
             self.logger.error(f"Invalid url: {url}")
+            return None
+
+        if site_name not in self.sites:
+            self.logger.error(f"Unsupported site_name: {site_name}")
             return None
 
         if self.task_queue is None:
@@ -43,7 +48,7 @@ class Interceptor(Thread):
             return None
 
         future = Future()
-        self.task_queue.sync_q.put((future, url, strategy))
+        self.task_queue.sync_q.put((future, url, strategy, site_name))
         return future
 
     def _run(self) -> None:
@@ -72,12 +77,20 @@ class Interceptor(Thread):
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(self._asyncio_exception_handler)
 
+        self.sub_queues = {site: asyncio.Queue() for site in self.sites}
+
         while not self.stop_event.is_set():
             async with AsyncCamoufox(**self.launch_options, addons=self.addons) as browser:
                 context = await browser.new_context(viewport=self.viewport)
                 self.page_pool = PagePool(context, self.page_pool_size)
 
                 recycle_event = asyncio.Event()
+
+                self.sub_workers = {
+                    site: asyncio.create_task(self._run_worker(sub_queue, recycle_event))
+                    for site, sub_queue in self.sub_queues.items()
+                }
+
                 dispatcher = asyncio.create_task(self._dispatch_loop(recycle_event))
                 await self._wait_for_shutdown_signal(recycle_event)
 
@@ -116,19 +129,8 @@ class Interceptor(Thread):
             except asyncio.TimeoutError:
                 continue
 
-            _, url, _ = task_data
-            hostname = urlparse(url).hostname
-
-            if hostname not in self.sub_queues:
-                self.sub_queues[hostname] = asyncio.Queue()
-
-            worker = self.sub_workers.get(hostname)
-            if not worker or worker.done():
-                self.sub_workers[hostname] = asyncio.create_task(
-                    self._run_worker(self.sub_queues[hostname], recycle_event)
-                )
-
-            await self.sub_queues[hostname].put(task_data)
+            _, _, _, site_name = task_data
+            await self.sub_queues[site_name].put(task_data)
             self.task_queue.async_q.task_done()
 
     async def _run_worker(self, sub_queue: asyncio.Queue, recycle_event: asyncio.Event) -> None:
@@ -166,7 +168,7 @@ class Interceptor(Thread):
             except Exception:
                 break
 
-            future, _, _ = task_data
+            future, _, _, _ = task_data
             if not future.done():
                 future.set_exception(RuntimeError("Interceptor or browser stopped"))
 
@@ -179,7 +181,7 @@ class Interceptor(Thread):
                 except Exception:
                     break
 
-                future, _, _ = task_data
+                future, _, _, _ = task_data
                 if not future.done():
                     future.set_exception(RuntimeError("Interceptor or browser stopped"))
 
@@ -221,7 +223,7 @@ class Interceptor(Thread):
                 except (asyncio.CancelledError, Exception):
                     pass
 
-                future, _, _ = task_data
+                future, _, _, _ = task_data
                 if not future.done():
                     future.set_exception(RuntimeError("Interceptor stopped"))
 
@@ -234,7 +236,7 @@ class Interceptor(Thread):
 
     async def _process_task(self, task_data: Tuple) -> None:
         try:
-            future, url, strategy = task_data
+            future, url, strategy, _ = task_data
             result_set = await self._open_page(url, strategy)
             if not future.done():
                 future.set_result(result_set)

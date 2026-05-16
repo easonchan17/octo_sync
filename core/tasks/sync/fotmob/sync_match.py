@@ -89,7 +89,8 @@ class SyncMatch(PollTask):
                         match_detail_url = self.intercept_strategy.url.format(match_uri=match_uri)
                         future = self.interceptor.submit(
                             url=match_detail_url,
-                            strategy=self.intercept_strategy
+                            strategy=self.intercept_strategy,
+                            site_name=self.site_name
                         )
 
                         result_set = future.result()

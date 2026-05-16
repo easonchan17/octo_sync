@@ -53,7 +53,8 @@ class SyncLeague(PollTask):
                 page_url = self.intercept_strategy.url
                 future = self.interceptor.submit(
                     url=page_url,
-                    strategy=self.intercept_strategy
+                    strategy=self.intercept_strategy,
+                    site_name=self.site_name
                 )
 
                 result_set = future.result()
