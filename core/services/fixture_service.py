@@ -11,7 +11,7 @@ class FixtureService(BaseService):
         self.fixture_dao = ActiveFixtureDao()
         self.league_service = get_league_service()
 
-    def get_grouped_fixtures(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
+    def get_fixture_groups(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         leagues = {
             int(league.site_leagues[SiteName.FOTMOB.value].league_id): league
             for league in self.league_service.get_leagues()
@@ -26,19 +26,19 @@ class FixtureService(BaseService):
         if not fixtures:
             return []
 
-        grouped_fixtures = {}
+        fixture_groups = {}
         for fixture in fixtures:
             league_id = fixture.league_id
 
-            if league_id not in grouped_fixtures:
+            if league_id not in fixture_groups:
                 league = leagues[league_id]
-                grouped_fixtures[league_id] = {
+                fixture_groups[league_id] = {
                     "league_id": league.id,
                     "league_name": league.name,
                     "priority": league.priority,
-                    "fixtures": []
+                    "matches": []
                 }
 
-            grouped_fixtures[league_id]["fixtures"].append(fixture)
+            fixture_groups[league_id]["matches"].append(fixture)
 
-        return sorted(grouped_fixtures.values(), key=lambda x: (-x["priority"], x["league_id"]))
+        return sorted(fixture_groups.values(), key=lambda x: (-x["priority"], x["league_id"]))

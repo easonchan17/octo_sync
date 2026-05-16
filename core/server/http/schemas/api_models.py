@@ -7,11 +7,6 @@ from enum import IntEnum
 T = TypeVar('T')
 
 
-class FixtureStatus(IntEnum):
-    UPCOMING = 0
-    LIVE = 1
-    FINISHED = 2
-
 # ==============================================================================
 # Pagination Models
 # ==============================================================================
@@ -25,11 +20,27 @@ class Paginated(BaseModel, Generic[T]):
     pagination: Pagination
     items: List[T]
 
+# ==============================================================================
+# League Models
+# ==============================================================================
+class LeagueResponse(BaseModel):
+    id: int
+    name: str
+    priority: int
+
+    class Config:
+        from_attributes = True
+
 
 # ==============================================================================
-# Fixture Models
+# Fixture and Match Models
 # ==============================================================================
-class FixtureResponse(BaseModel):
+class DisplayMatchStatus(IntEnum):
+    UPCOMING = 0
+    LIVE = 1
+    FINISHED = 2
+
+class MatchResponse(BaseModel):
     match_code: str
     league_name: str
     kickoff_time: datetime
@@ -44,23 +55,36 @@ class FixtureResponse(BaseModel):
 
     @computed_field
     @property
+    def home_logo(self) -> str:
+        return f"/assets/image/team/logo/{self.home_code}.png"
+
+    @computed_field
+    @property
+    def away_logo(self) -> str:
+        return f"/assets/image/team/logo/{self.away_code}.png"
+
+    @computed_field
+    @property
     def status(self) -> int:
         ms = MatchStatus(self.match_status)
         if ms.is_playing:
-            return FixtureStatus.LIVE
+            return DisplayMatchStatus.LIVE
         if ms.is_finalized:
-            return FixtureStatus.FINISHED
-        return FixtureStatus.UPCOMING
+            return DisplayMatchStatus.FINISHED
+        return DisplayMatchStatus.UPCOMING
 
     class Config:
         from_attributes = True
 
+class MatchDetailResponse(MatchResponse):
+    detail: Dict[str, Any] = Field(validation_alias='json_body')
 
-class GroupedFixturesResponse(BaseModel):
+
+class FixtureResponse(BaseModel):
     league_id: int
     league_name: str
     priority: int
-    fixtures: List[FixtureResponse]
+    matches: List[MatchResponse]
 
 
 # ==============================================================================
@@ -111,15 +135,3 @@ class PredictionResponse(BaseModel):
     model_version: str
     probabilities: Dict[str, float]
     prediction: int
-
-
-# ==============================================================================
-# League Models
-# ==============================================================================
-class LeagueResponse(BaseModel):
-    id: int
-    name: str
-    priority: int
-
-    class Config:
-        from_attributes = True

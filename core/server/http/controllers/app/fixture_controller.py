@@ -4,26 +4,25 @@ from fastapi import HTTPException, Query
 from core.utils.datetime_utils import begin_time_of_date
 from core.services.fixture_service import FixtureService
 from core.server.http.controllers.base_controller import BaseController
-from core.server.http.schemas.api_models import GroupedFixturesResponse
-from core.types.enums import LeaguePriority
+from core.server.http.schemas.api_models import FixtureResponse
 
 class FixtureController(BaseController):
     def __init__(self) -> None:
         super().__init__()
         self.fixture_service = FixtureService()
-        self.router.get("/v1/fixtures", response_model=List[GroupedFixturesResponse])(self.get_fixtures)
+        self.router.get("/v1/fixtures", response_model=List[FixtureResponse])(self.get_fixtures)
 
     def get_fixtures(
         self,
         match_date: str = Query(..., alias="date", description="Match date (YYYYMMDD) in UTC"),
-    ) -> List[GroupedFixturesResponse]:
+    ) -> List[FixtureResponse]:
         try:
             start_time = begin_time_of_date(match_date, "%Y%m%d", "Asia/Shanghai")
-            grouped_fixtures = self.fixture_service.get_grouped_fixtures(
+            fixture_groups = self.fixture_service.get_fixture_groups(
                 start_time=start_time,
                 end_time=start_time + timedelta(days=1)
             )
-            return [GroupedFixturesResponse.model_validate(group) for group in grouped_fixtures]
+            return [FixtureResponse.model_validate(fixture_group) for fixture_group in fixture_groups]
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
