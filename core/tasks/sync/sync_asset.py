@@ -50,14 +50,15 @@ class SyncAsset(PollTask):
                     self.idle_sleep()
                     continue
 
-                for source_url, source_site, asset_type, entity_type, asset_usage, file_name, file_ext, fetch_attempts in items:
+                for source_url, asset_type, entity_type, asset_usage, file_name, file_ext, fetch_attempts in items:
                     if self.should_stop():
                         return
 
                     try:
                         future = self.interceptor.submit(
                             url=source_url,
-                            strategy=self.intercept_strategy
+                            strategy=self.intercept_strategy,
+                            site_name=self.site_name
                         )
 
                         result_set = future.result()
