@@ -13,7 +13,7 @@ from core.browser.intercept_strategy import InterceptType, InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
 class Interceptor(Thread):
-    def __init__(self, request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 95, addons: Optional[list] = None) -> None:
+    def __init__(self, request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 90, addons: Optional[list] = None) -> None:
         super().__init__()
         self.page_pool = None
 
