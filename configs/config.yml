@@ -12,6 +12,9 @@ task_thread_pool:
   max_workers: 32
 
 browser:
+  request_interval: 20.0
+  addons:
+    - "core/browser/extensions/oddsportal_tracer"
   launch_options:
     headless: true
     geoip: true
@@ -22,11 +25,11 @@ browser:
     firefox_user_prefs:
       browser.tabs.remote.useCrossOriginOpenerPolicy: false
       network.cookie.cookieBehavior: 0
+    # proxy:
+    #   server: "http://127.0.0.1:7890"
   viewport:
     width: 1920
     height: 1080
-  # proxy:
-    # server: "http://127.0.0.1:7890"
 
 http:
   host: "127.0.0.1"
