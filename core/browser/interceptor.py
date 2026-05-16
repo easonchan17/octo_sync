@@ -1,4 +1,5 @@
 import janus, asyncio, psutil, random, time
+from contextlib import suppress
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from urllib.parse import urlparse
 from core.utils.thread import Thread
@@ -15,7 +16,11 @@ class Interceptor(Thread):
     def __init__(self, request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 95, addons: Optional[list] = None) -> None:
         super().__init__()
         self.page_pool = None
+
         self.task_queue: Optional[janus.Queue] = None
+        self.sub_queues: Dict[str, asyncio.Queue] = {}
+        self.sub_workers: Dict[str, asyncio.Task] = {}
+
         self.rate_limiter = RateLimiter(base_interval=request_interval)
         self.launch_options = launch_options
         self.viewport = viewport
@@ -68,34 +73,82 @@ class Interceptor(Thread):
         loop.set_exception_handler(self._asyncio_exception_handler)
 
         while not self.stop_event.is_set():
-            intercepted_pages = 0
-
             async with AsyncCamoufox(**self.launch_options, addons=self.addons) as browser:
                 context = await browser.new_context(viewport=self.viewport)
                 self.page_pool = PagePool(context, self.page_pool_size)
 
-                while not self.stop_event.is_set():
-                    try:
-                        task_data = await asyncio.wait_for(self.task_queue.async_q.get(), timeout=5.0)
-                    except asyncio.TimeoutError:
-                        continue
+                recycle_event = asyncio.Event()
+                dispatcher = asyncio.create_task(self._dispatch_loop(recycle_event))
+                await self._wait_for_shutdown_signal(recycle_event)
 
-                    start_time = time.perf_counter()
+                dispatcher.cancel()
+                with suppress(asyncio.CancelledError):
+                    await dispatcher
 
-                    future, url, strategy = task_data
-                    await self._run_with_stop_check(future, url, strategy)
-                    self.task_queue.async_q.task_done()
-
-                    cost_time = time.perf_counter() - start_time
-                    self.logger.info(f"Task cost time {cost_time:.3f} s")
-
-                    intercepted_pages += 1
-                    if self._should_recycle():
-                        self.logger.warning(f"Restarting browser after {intercepted_pages} tasks")
-                        break
-
-                self.logger.info(f"Page pool cleanup")
+                await asyncio.gather(*self.sub_workers.values(), return_exceptions=True)
+                self.logger.info("Page pool cleanup")
                 self.page_pool = None
+
+    async def _wait_for_shutdown_signal(self, recycle_event: asyncio.Event) -> None:
+        async def wait_stop():
+            while not self.stop_event.is_set():
+                await asyncio.sleep(0.5)
+
+        stop_task = asyncio.create_task(wait_stop())
+        recycle_task = asyncio.create_task(recycle_event.wait())
+
+        try:
+            await asyncio.wait(
+                [stop_task, recycle_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+
+        finally:
+            for task in (stop_task, recycle_task):
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
+
+    async def _dispatch_loop(self, recycle_event: asyncio.Event) -> None:
+        while not self.stop_event.is_set() and not recycle_event.is_set():
+            try:
+                task_data = await asyncio.wait_for(self.task_queue.async_q.get(), timeout=5.0)
+            except asyncio.TimeoutError:
+                continue
+
+            _, url, _ = task_data
+            hostname = urlparse(url).hostname
+
+            if hostname not in self.sub_queues:
+                self.sub_queues[hostname] = asyncio.Queue()
+
+            worker = self.sub_workers.get(hostname)
+            if not worker or worker.done():
+                self.sub_workers[hostname] = asyncio.create_task(
+                    self._run_worker(self.sub_queues[hostname], recycle_event)
+                )
+
+            await self.sub_queues[hostname].put(task_data)
+            self.task_queue.async_q.task_done()
+
+    async def _run_worker(self, sub_queue: asyncio.Queue, recycle_event: asyncio.Event) -> None:
+        while not self.stop_event.is_set() and not recycle_event.is_set():
+            try:
+                task_data = await asyncio.wait_for(sub_queue.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
+
+            start_time = time.perf_counter()
+
+            await self._run_with_stop_check(task_data)
+            sub_queue.task_done()
+
+            cost_time = time.perf_counter() - start_time
+            self.logger.info(f"Task cost time {cost_time:.3f} s")
+
+            if self._should_recycle():
+                recycle_event.set()
+                break
 
     def _should_recycle(self):
         mem = psutil.virtual_memory()
@@ -118,6 +171,19 @@ class Interceptor(Thread):
                 future.set_exception(RuntimeError("Interceptor or browser stopped"))
 
             self.task_queue.async_q.task_done()
+
+        for sub_queue in self.sub_queues.values():
+            while True:
+                try:
+                    task_data = sub_queue.get_nowait()
+                except Exception:
+                    break
+
+                future, _, _ = task_data
+                if not future.done():
+                    future.set_exception(RuntimeError("Interceptor or browser stopped"))
+
+                sub_queue.task_done()
 
     def _asyncio_exception_handler(self, loop: Any, context: dict) -> None:
         exc = context.get("exception")
@@ -144,8 +210,8 @@ class Interceptor(Thread):
             exc_info=exc if exc is not None else False
         )
 
-    async def _run_with_stop_check(self, future: Future, url: str, strategy: InterceptStrategy) -> None:
-        process_task = asyncio.create_task(self._process_task(future, url, strategy))
+    async def _run_with_stop_check(self, task_data: Tuple) -> None:
+        process_task = asyncio.create_task(self._process_task(task_data))
         while not process_task.done():
             if self.stop_event.is_set():
                 process_task.cancel()
@@ -155,6 +221,7 @@ class Interceptor(Thread):
                 except (asyncio.CancelledError, Exception):
                     pass
 
+                future, _, _ = task_data
                 if not future.done():
                     future.set_exception(RuntimeError("Interceptor stopped"))
 
@@ -165,8 +232,9 @@ class Interceptor(Thread):
         if not process_task.cancelled():
             process_task.exception()
 
-    async def _process_task(self, future: Future, url: str, strategy: InterceptStrategy) -> None:
+    async def _process_task(self, task_data: Tuple) -> None:
         try:
+            future, url, strategy = task_data
             result_set = await self._open_page(url, strategy)
             if not future.done():
                 future.set_result(result_set)

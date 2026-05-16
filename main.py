@@ -10,7 +10,6 @@ from core.store.postgres.postgresql_manager import PostgreSQLManager
 from core.services.league.league_service import get_league_service
 from core.browser.interceptor_manager import get_interceptor_manager
 from core.config.env_manager import get_env_manager
-from core.types.enums import SiteName
 
 import warnings
 from urllib3.exceptions import InsecureRequestWarning
@@ -43,8 +42,7 @@ def signal_handler(signum, frame) -> None:
 
     if not get_env_manager().is_ml:
         logger.info("🔧 Stopping interceptor manager...")
-        get_interceptor_manager().stop(SiteName.FOTMOB.value)
-        get_interceptor_manager().stop(SiteName.ODDSPORTAL.value)
+        get_interceptor_manager().stop()
         logger.info("✅ Interceptor manager stopped")
 
     logger.info("🔧 Stopping task executor...")
@@ -91,22 +89,14 @@ def run_app() -> None:
         browser_config = ConfigManager.get_instance().get_config("browser")
         launch_options = browser_config["launch_options"]
         viewport = browser_config['viewport']
-        proxy_config = browser_config.get("proxy")
+        addons = [os.path.join(BASE_DIR, p) for p in browser_config.get("addons", [])]
 
         logger.info("🔧 Starting network interceptor...")
         get_interceptor_manager().start(
-            site_name=SiteName.FOTMOB.value,
-            request_interval=20.0,
-            launch_options={**launch_options, "headless": True},
-            viewport=viewport
-        )
-
-        get_interceptor_manager().start(
-            site_name=SiteName.ODDSPORTAL.value,
-            request_interval=20.0,
-            launch_options={**launch_options, **({"proxy": proxy_config} if proxy_config else {})},
+            request_interval=browser_config.get("request_interval", 20.0),
+            launch_options=launch_options,
             viewport=viewport,
-            addons=[os.path.join(BASE_DIR, "core/browser/extensions/oddsportal_tracer")]
+            addons=addons
         )
         logger.info("✅ Network interceptor started")
 

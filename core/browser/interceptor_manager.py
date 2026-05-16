@@ -10,21 +10,20 @@ class InterceptorManager:
     def __init__(self) -> None:
         self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
         self._lock = threading.Lock()
-        self.interceptors: Dict[str, Interceptor] = {}
+        self._interceptor: Optional[Interceptor] = None
 
-    def get(self, site_name: str) -> Optional[Interceptor]:
+    def get(self, site_name: Optional[str] = None) -> Optional[Interceptor]:
         with self._lock:
-            interceptor = self.interceptors.get(site_name)
-            if not interceptor:
-                self.logger.error(f"No interceptor found for site: {site_name}")
+            if not self._interceptor:
+                self.logger.error("Interceptor is not started")
                 return None
 
-            return interceptor
+            return self._interceptor
 
-    def start(self, site_name: str, request_interval: float, launch_options: Dict, viewport: Dict, addons: Optional[list] = None) -> None:
+    def start(self, request_interval: float, launch_options: Dict, viewport: Dict, addons: Optional[list] = None) -> None:
         with self._lock:
-            if site_name in self.interceptors:
-                self.logger.warning(f"Interceptor for site {site_name} is already running")
+            if self._interceptor:
+                self.logger.warning("Interceptor is already running")
                 return
 
             interceptor = Interceptor(
@@ -34,19 +33,18 @@ class InterceptorManager:
                 addons=addons
             )
             interceptor.start()
-            self.interceptors[site_name] = interceptor
-            self.logger.info(f"Started interceptor for site: {site_name}")
+            self._interceptor = interceptor
+            self.logger.info("Started interceptor")
 
-    def stop(self, site_name: str) -> None:
+    def stop(self) -> None:
         with self._lock:
-            interceptor = self.interceptors.get(site_name)
-            if not interceptor:
-                self.logger.warning(f"No interceptor found for site: {site_name}")
+            if not self._interceptor:
+                self.logger.warning("Interceptor is not running")
                 return
 
-            interceptor.stop()
-            self.interceptors.pop(site_name, None)
-            self.logger.info(f"Stopped interceptor for site: {site_name}")
+            self._interceptor.stop()
+            self._interceptor = None
+            self.logger.info("Stopped interceptor")
 
 
 @cache
