@@ -259,7 +259,7 @@ class Interceptor(Thread):
             else:
                 self.fail_counts[site_name] += 1
                 self.logger.error(f"[{site_name}] Consecutive failures: {self.fail_counts[site_name]}")
-                if not self.stop_event.is_set() and all(v >= self.failure_threshold for v in self.fail_counts.values()):
+                if not self.stop_event.is_set() and any(v >= self.failure_threshold for v in self.fail_counts.values()):
                     self.logger.critical(f"All sites reached failure threshold ({self.failure_threshold}), restarting process...")
                     os.kill(os.getpid(), signal.SIGTERM)
 
