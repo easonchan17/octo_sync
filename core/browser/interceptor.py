@@ -21,6 +21,7 @@ class Interceptor(Thread):
         self.task_queue: Optional[janus.Queue] = None
         self.sub_queues: Dict[str, asyncio.Queue] = {}
         self.sub_workers: Dict[str, asyncio.Task] = {}
+        self.consecutive_failures: Dict[str, int] = {}
 
         self.rate_limiter = RateLimiter(base_interval=request_interval)
         self.launch_options = launch_options
@@ -28,7 +29,6 @@ class Interceptor(Thread):
         self.page_pool_size = page_pool_size
         self.sys_mem_threshold = sys_mem_threshold
         self.addons = addons or []
-        self.consecutive_failures: Dict[str, int] = {}
 
     def submit(self, url: str, strategy: InterceptStrategy, site_name: str) -> Optional[Future]:
         parsed = urlparse(url)
@@ -79,6 +79,7 @@ class Interceptor(Thread):
         loop.set_exception_handler(self._asyncio_exception_handler)
 
         self.sub_queues = {site: asyncio.Queue() for site in self.sites}
+        self.consecutive_failures = {site: 0 for site in self.sites}
 
         while not self.stop_event.is_set():
             async with AsyncCamoufox(**self.launch_options, addons=self.addons) as browser:
@@ -239,10 +240,13 @@ class Interceptor(Thread):
         try:
             future, url, strategy, site_name = task_data
             success, result_set = await self._intercept(url=url, strategy=strategy)
+
             if success:
+                if self.consecutive_failures[site_name] > 0:
+                    self.logger.info(f"[{site_name}] Recovered after {self.consecutive_failures[site_name]} consecutive failures")
                 self.consecutive_failures[site_name] = 0
             else:
-                self.consecutive_failures[site_name] = self.consecutive_failures.get(site_name, 0) + 1
+                self.consecutive_failures[site_name] += 1
                 self.logger.error(f"[{site_name}] Consecutive failures: {self.consecutive_failures[site_name]}")
 
             if not future.done():
