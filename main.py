@@ -91,13 +91,20 @@ def run_app() -> None:
         launch_options = browser_config["launch_options"]
         viewport = browser_config['viewport']
         addons = [os.path.join(BASE_DIR, p) for p in browser_config.get("addons", [])]
+        request_interval = browser_config["request_interval"]
+        page_pool_size = browser_config["page_pool_size"]
+        sys_mem_threshold = browser_config["sys_mem_threshold"]
+        failure_threshold = browser_config["failure_threshold"]
 
         logger.info("🔧 Starting network interceptor...")
         get_interceptor_manager().start(
             sites=[SiteName.FOTMOB.value, SiteName.ODDSPORTAL.value],
-            request_interval=browser_config.get("request_interval", 20.0),
+            request_interval=request_interval,
             launch_options=launch_options,
             viewport=viewport,
+            page_pool_size=page_pool_size,
+            sys_mem_threshold=sys_mem_threshold,
+            failure_threshold=failure_threshold,
             addons=addons
         )
         logger.info("✅ Network interceptor started")
