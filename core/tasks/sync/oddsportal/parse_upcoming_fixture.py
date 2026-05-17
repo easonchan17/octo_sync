@@ -126,8 +126,8 @@ class ParseUpcomingFixture(PollTask):
                             continue
 
                         if not parsed_fixtures:
-                            self.upcoming_fixture_dao.mark_parse_failed(league_id, "Parsed fixtures is empty")
-                            self.logger.error(f"Failed to parse upcoming fixture league_id={league_id}: fixtures is empty")
+                            self.upcoming_fixture_dao.mark_as_parsed(league_id)
+                            self.logger.info(f"No upcoming fixtures for league_id={league_id}, marked as parsed")
                             continue
 
                         self.upcoming_fixture_dao.sync_parsed_data(parsed_fixtures)
