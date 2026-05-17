@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -84,6 +85,8 @@ class WinballPredictor(BasePredictor):
                 **model_params
             )
             self.model_version = record.model_version
+            self.draw_threshold = record.training_params['draw_threshold']
+            self.draw_class = record.training_params['draw_class']
             self.feature_builder = WinballFeatureBuilder(record.feature_names)
 
             self.logger.info(f"Model {self.model_version} loaded successfully from {model_path.absolute()}")
@@ -98,8 +101,14 @@ class WinballPredictor(BasePredictor):
 
         df = self.feature_builder.build(fixture, state_provider)
         proba = self.model.predict_proba(df)[0]
-        prediction = int(self.model.predict(df)[0])
         probabilities = {str(cls): float(prob) for cls, prob in zip(self.model.classes_, proba)}
+
+        draw_idx = list(self.model.classes_).index(self.draw_class)
+        if proba[draw_idx] >= self.draw_threshold:
+            prediction = self.draw_class
+        else:
+            proba[draw_idx] = 0
+            prediction = int(self.model.classes_[np.argmax(proba)])
 
         return {
             "model_version": self.model_version,
