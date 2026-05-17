@@ -9,10 +9,10 @@ logger:
       backup_count: 5
 
 task_thread_pool:
-  max_workers: 32
+  max_workers: 64
 
 browser:
-  request_interval: 20.0
+  request_interval: 30.0
   page_pool_size: 5
   sys_mem_threshold: 90
   failure_threshold: 10
