@@ -41,14 +41,14 @@ def signal_handler(signum, frame) -> None:
     logger.info("✅ Cron stopped")
 
 
-    logger.info("🔧 Stopping task executor...")
-    TaskExecutor.get_instance().stop()
-    logger.info("✅ TaskExecutor stopped")
-
     if not get_env_manager().is_ml:
         logger.info("🔧 Stopping interceptor manager...")
         get_interceptor_manager().stop()
         logger.info("✅ Interceptor manager stopped")
+
+    logger.info("🔧 Stopping task executor...")
+    TaskExecutor.get_instance().stop()
+    logger.info("✅ TaskExecutor stopped")
 
     logger.info("🔧 Cleaning up PostgreSQL manager...")
     PostgreSQLManager.get_instance().cleanup()
