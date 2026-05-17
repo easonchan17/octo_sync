@@ -28,6 +28,7 @@ class Interceptor(Thread):
         self.page_pool_size = page_pool_size
         self.sys_mem_threshold = sys_mem_threshold
         self.addons = addons or []
+        self.consecutive_failures: Dict[str, int] = {}
 
     def submit(self, url: str, strategy: InterceptStrategy, site_name: str) -> Optional[Future]:
         parsed = urlparse(url)
@@ -236,25 +237,24 @@ class Interceptor(Thread):
 
     async def _process_task(self, task_data: Tuple) -> None:
         try:
-            future, url, strategy, _ = task_data
-            result_set = await self._open_page(url, strategy)
+            future, url, strategy, site_name = task_data
+            success, result_set = await self._intercept(url=url, strategy=strategy)
+            if success:
+                self.consecutive_failures[site_name] = 0
+            else:
+                self.consecutive_failures[site_name] = self.consecutive_failures.get(site_name, 0) + 1
+                self.logger.error(f"[{site_name}] Consecutive failures: {self.consecutive_failures[site_name]}")
+
             if not future.done():
-                future.set_result(result_set)
+                future.set_result(result_set if success else None)
         except Exception as e:
             self.logger.error(f"Error processing task: {e}", exc_info=True)
             if not future.done():
                 future.set_exception(e)
 
-    async def _open_page(self, url: str, strategy: InterceptStrategy) -> Optional[InterceptResultSet]:
+    async def _intercept(self, url: str, strategy: InterceptStrategy) -> Tuple[bool, InterceptResultSet]:
         await self.rate_limiter.throttle(url)
 
-        success, result_set = await self._intercept(url=url, strategy=strategy)
-        if not success:
-            return None
-
-        return result_set
-
-    async def _intercept(self, url: str, strategy: InterceptStrategy) -> Tuple[bool, InterceptResultSet]:
         result_set = InterceptResultSet()
         timeout = strategy.timeout
         success = False
