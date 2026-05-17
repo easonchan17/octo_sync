@@ -113,6 +113,9 @@ class TrainTracker:
         self.shap_imp_df = shap_imp_df
         self.high_corr_pairs = high_corr_pairs
         self.draw_threshold_report = self._build_draw_threshold_report(y_prob_test, y_test, "Draw")
+        best_row = self.draw_threshold_report.loc[self.draw_threshold_report['Macro F1'].idxmax()]
+        self.draw_threshold = float(best_row['T_draw'])
+        self.draw_class = list(self.config.target_names).index('Draw')
 
         if X_calib is not None and y_calib is not None:
             # sigmoid: non-parametric isotonic overfits on small calib sets (<1000 samples);
@@ -173,7 +176,11 @@ class TrainTracker:
                 model_path=model_path,
                 dataset_name=self.config.dataset_name,
                 feature_names=self.feature_names,
-                training_params=self.config.training_params,
+                training_params={
+                    **self.config.training_params,
+                    'draw_threshold': self.draw_threshold,
+                    'draw_class': self.draw_class,
+                },
                 best_params=dict(self.optimizer.best_params_),
                 train_score=float(self.train_score),
                 test_score=float(self.test_score)
