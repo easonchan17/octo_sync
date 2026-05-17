@@ -20,7 +20,7 @@ class InterceptorManager:
 
             return self._interceptor
 
-    def start(self, sites: List[str], request_interval: float, launch_options: Dict, viewport: Dict, addons: Optional[list] = None) -> None:
+    def start(self, sites: List[str], request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int, sys_mem_threshold: float, failure_threshold: int, addons: Optional[list]) -> None:
         with self._lock:
             if self._interceptor:
                 self.logger.warning("Interceptor is already running")
@@ -31,6 +31,9 @@ class InterceptorManager:
                 request_interval=request_interval,
                 launch_options=launch_options,
                 viewport=viewport,
+                page_pool_size=page_pool_size,
+                sys_mem_threshold=sys_mem_threshold,
+                failure_threshold=failure_threshold,
                 addons=addons
             )
             interceptor.start()

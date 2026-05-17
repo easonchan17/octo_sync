@@ -1,19 +1,29 @@
-import janus, asyncio, psutil, random, time
+import os, signal, janus, asyncio, psutil, random, time
 from contextlib import suppress
-from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
-from typing import Tuple, Optional, Any, Dict, List
 from core.browser.security import RateLimiter
+from typing import Tuple, Optional, Any, Dict, List
+from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook, TurnstileHook, JsHook, AssetHook
 from core.browser.intercept_strategy import InterceptType, InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
 class Interceptor(Thread):
-    def __init__(self, sites: List[str], request_interval: float, launch_options: Dict, viewport: Dict, page_pool_size: int = 5, sys_mem_threshold: float = 90, addons: Optional[list] = None) -> None:
+    def __init__(
+        self,
+        sites: List[str],
+        request_interval: float,
+        launch_options: Dict,
+        viewport: Dict,
+        page_pool_size: int,
+        sys_mem_threshold: float,
+        failure_threshold: int,
+        addons: Optional[list]
+    ) -> None:
         super().__init__()
         self.page_pool = None
 
@@ -21,13 +31,14 @@ class Interceptor(Thread):
         self.task_queue: Optional[janus.Queue] = None
         self.sub_queues: Dict[str, asyncio.Queue] = {}
         self.sub_workers: Dict[str, asyncio.Task] = {}
-        self.consecutive_failures: Dict[str, int] = {}
+        self.fail_counts: Dict[str, int] = {}
 
         self.rate_limiter = RateLimiter(base_interval=request_interval)
         self.launch_options = launch_options
         self.viewport = viewport
         self.page_pool_size = page_pool_size
         self.sys_mem_threshold = sys_mem_threshold
+        self.failure_threshold = failure_threshold
         self.addons = addons or []
 
     def submit(self, url: str, strategy: InterceptStrategy, site_name: str) -> Optional[Future]:
@@ -79,7 +90,7 @@ class Interceptor(Thread):
         loop.set_exception_handler(self._asyncio_exception_handler)
 
         self.sub_queues = {site: asyncio.Queue() for site in self.sites}
-        self.consecutive_failures = {site: 0 for site in self.sites}
+        self.fail_counts = {site: 0 for site in self.sites}
 
         while not self.stop_event.is_set():
             async with AsyncCamoufox(**self.launch_options, addons=self.addons) as browser:
@@ -242,12 +253,15 @@ class Interceptor(Thread):
             success, result_set = await self._intercept(url=url, strategy=strategy)
 
             if success:
-                if self.consecutive_failures[site_name] > 0:
-                    self.logger.info(f"[{site_name}] Recovered after {self.consecutive_failures[site_name]} consecutive failures")
-                self.consecutive_failures[site_name] = 0
+                if self.fail_counts[site_name] > 0:
+                    self.logger.info(f"[{site_name}] Recovered after {self.fail_counts[site_name]} consecutive failures")
+                self.fail_counts[site_name] = 0
             else:
-                self.consecutive_failures[site_name] += 1
-                self.logger.error(f"[{site_name}] Consecutive failures: {self.consecutive_failures[site_name]}")
+                self.fail_counts[site_name] += 1
+                self.logger.error(f"[{site_name}] Consecutive failures: {self.fail_counts[site_name]}")
+                if all(v >= self.failure_threshold for v in self.fail_counts.values()):
+                    self.logger.critical(f"All sites reached failure threshold ({self.failure_threshold}), restarting process...")
+                    os.kill(os.getpid(), signal.SIGTERM)
 
             if not future.done():
                 future.set_result(result_set if success else None)
