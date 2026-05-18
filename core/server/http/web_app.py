@@ -12,7 +12,6 @@ from core.server.http.controllers.system.model_controller import ModelController
 from core.server.http.controllers.app.fixture_controller import FixtureController
 from core.server.http.controllers.app.league_controller import LeagueController
 from core.server.http.controllers.app.match_controller import MatchController
-from core.server.http.controllers.system.cron_controller import CronController
 
 class WebApp:
     def __init__(self) -> None:
@@ -61,9 +60,6 @@ class WebApp:
 
         league_controller = LeagueController()
         self.app.include_router(league_controller.router, prefix="/api", tags=["leagues"])
-
-        cron_controller = CronController()
-        self.app.include_router(cron_controller.router, prefix="/api", tags=["cron"])
 
     def _setup_docs_protection(self) -> None:
         if not self.env_manager.docs_enabled:
