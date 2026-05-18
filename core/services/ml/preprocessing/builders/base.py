@@ -1,13 +1,13 @@
 import pandas as pd
 from abc import ABC, abstractmethod
 from typing import Optional,Any
-from core.logger.logger_manager import LoggerManager
-from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.logger.logger_manager import get_logger_manager
+from core.store.postgres.postgresql_manager import get_postgresql_manager
 
 class BaseFeatureBuilder(ABC):
     def __init__(self) -> None:
-        self.db = PostgreSQLManager.get_instance()
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.db = get_postgresql_manager()
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     @abstractmethod
     def _load(self) -> Optional[Any]:

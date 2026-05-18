@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.store.postgres.models import TrainingRecord
 from core.scheduler.task_registry import TaskRegistry
 from core.services.ml.models.xgboost_classifier import XGBoostClassifier
@@ -44,7 +44,7 @@ class WinballFeatureBuilder:
 
 class BasePredictor(ABC):
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.model: Optional[Any] = None
         self.model_version: Optional[str] = None
 

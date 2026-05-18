@@ -3,7 +3,7 @@ from functools import cache
 from itertools import count
 from typing import Callable, Optional
 from apscheduler.triggers.cron import CronTrigger
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.config.env_manager import get_env_manager
 from core.scheduler.task_registry import TaskRegistry, TaskType
 from apscheduler.schedulers.base import STATE_PAUSED, STATE_RUNNING
@@ -11,7 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 class CronManager:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.env_manager = get_env_manager()
         self.scheduler = BackgroundScheduler()
         self._id_counter = count(1)

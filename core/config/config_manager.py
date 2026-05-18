@@ -1,13 +1,12 @@
 import yaml
+from functools import cache
 from pathlib import Path
 from typing import Any, Callable, List, Optional
-from core.utils.singleton import Singleton
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
-class ConfigManager(Singleton):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__()
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+class ConfigManager:
+    def __init__(self) -> None:
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def load_config(self, config_file: str) -> None:
         self.config = self._load_config_file(config_file)
@@ -98,3 +97,8 @@ class ConfigManager(Singleton):
         except Exception as e:
             self.logger.error(f"File loading error {file_path}: {e}")
             raise
+
+
+@cache
+def get_config_manager() -> ConfigManager:
+    return ConfigManager()

@@ -5,7 +5,7 @@ from threading import Event
 from skopt import BayesSearchCV
 from typing import Any, Dict, Optional, Tuple
 from core.utils.pandas_utils import load_dataframe
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.services.ml.models.xgboost_classifier import XGBoostClassifier
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.utils.class_weight import compute_sample_weight
@@ -18,7 +18,7 @@ class BaseTrainer(ABC):
     def __init__(self) -> None:
         self.config = None
         self.tracker = None
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.cancel_event = Event()
 
     def cancel(self) -> None:

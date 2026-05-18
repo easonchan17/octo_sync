@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.browser.intercept_strategy import InterceptStrategy
 from core.browser.intercept_result_set import InterceptResultSet
 
@@ -15,7 +15,7 @@ class HookContext:
 
 class BaseHook:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     async def setup(self, ctx: HookContext) -> None:
         pass

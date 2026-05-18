@@ -1,12 +1,12 @@
 import threading, uuid
 from typing import Optional
 from abc import ABC, abstractmethod
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class Thread(ABC):
     def __init__(self, name: str = None) -> None:
         super().__init__()
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.name = name or self.__class__.__name__
         self.stop_event = threading.Event()
         self.lock = threading.Lock()

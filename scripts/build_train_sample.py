@@ -8,13 +8,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 if Path('.').resolve() != Path(__file__).resolve().parents[1]:
     sys.exit(f"Must be run from project root: {Path(__file__).resolve().parents[1]}")
 
-from core.config.config_manager import ConfigManager
-from core.logger.logger_manager import LoggerManager
-from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.config.config_manager import get_config_manager
+from core.logger.logger_manager import get_logger_manager
+from core.store.postgres.postgresql_manager import get_postgresql_manager
 from core.services.league.league_service import get_league_service
 from core.services.ml.training.train_sample import TrainSampleBuilder
 
-logger = LoggerManager.get_instance().get_logger(__name__)
+logger = get_logger_manager().get_logger(__name__)
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Build training samples')
@@ -28,7 +28,7 @@ def parse_arguments() -> argparse.Namespace:
 
 def signal_handler(signum, frame) -> None:
     logger.info(f"Received signal {signum}, shutting down...")
-    PostgreSQLManager.get_instance().cleanup()
+    get_postgresql_manager().cleanup()
     sys.exit(0)
 
 def main() -> None:
@@ -36,19 +36,19 @@ def main() -> None:
     signal.signal(signal.SIGTERM, signal_handler)
 
     args = parse_arguments()
-    ConfigManager.get_instance().load_config(args.config)
+    get_config_manager().load_config(args.config)
 
-    logger_config = ConfigManager.get_instance().get_config("logger")
-    LoggerManager.get_instance().setup(logger_config)
+    logger_config = get_config_manager().get_config("logger")
+    get_logger_manager().setup(logger_config)
 
-    PostgreSQLManager.get_instance().startup()
+    get_postgresql_manager().startup()
 
     get_league_service().load()
 
     try:
         TrainSampleBuilder(args.league_id, args.min_season, args.max_season, args.sample_path, args.sample_format).build()
     finally:
-        PostgreSQLManager.get_instance().cleanup()
+        get_postgresql_manager().cleanup()
 
 if __name__ == "__main__":
     main()

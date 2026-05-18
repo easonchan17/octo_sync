@@ -4,10 +4,10 @@ from sqlalchemy import and_
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 from core.types.enums import MatchStatus, Position, LineupRole
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.fotmob.match import MatchPlayerStat, MatchLineup, MatchStat
-from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.store.postgres.postgresql_manager import get_postgresql_manager
 
 from ..transforms import FormulaMutator, DefaultImputer, QuantileImputer
 from .base import BaseFeatureBuilder

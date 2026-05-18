@@ -1,12 +1,12 @@
 import os, sys, signal, argparse
 from threading import Event, enumerate
-from core.server.http.web_server import WebServer
-from core.config.config_manager import ConfigManager
-from core.logger.logger_manager import LoggerManager
-from core.scheduler.task_executor import TaskExecutor
+from core.server.http.web_server import get_web_server
+from core.config.config_manager import get_config_manager
+from core.logger.logger_manager import get_logger_manager
+from core.scheduler.task_executor import get_task_executor
 from core.scheduler.cron_manager import get_cron_manager
 from core.scheduler.poll_manager import get_poll_manager
-from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.store.postgres.postgresql_manager import get_postgresql_manager
 from core.services.league.league_service import get_league_service
 from core.browser.interceptor_manager import get_interceptor_manager
 from core.config.env_manager import get_env_manager
@@ -26,14 +26,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if os.path.abspath('.') != BASE_DIR:
     sys.exit(f"Must be run from project root: {BASE_DIR}")
 
-logger = LoggerManager.get_instance().get_logger(__name__)
+logger = get_logger_manager().get_logger(__name__)
 shutdown_event = Event()
 
 def signal_handler(signum, frame) -> None:
     logger.info(f"Received signal {signum}, shutting down gracefully...")
 
     logger.info("🔧 Stopping web server...")
-    WebServer.get_instance().stop()
+    get_web_server().stop()
     logger.info("✅ Web server stopped")
 
     logger.info("🔧 Stopping cron...")
@@ -47,11 +47,11 @@ def signal_handler(signum, frame) -> None:
         logger.info("✅ Interceptor manager stopped")
 
     logger.info("🔧 Stopping task executor...")
-    TaskExecutor.get_instance().stop()
+    get_task_executor().stop()
     logger.info("✅ TaskExecutor stopped")
 
     logger.info("🔧 Cleaning up PostgreSQL manager...")
-    PostgreSQLManager.get_instance().cleanup()
+    get_postgresql_manager().cleanup()
     logger.info("✅ PostgreSQL manager cleaned up")
 
     logger.info("🔧 Shutting down gracefully...")
@@ -75,19 +75,19 @@ def run_app() -> None:
     args = parse_arguments()
 
     logger.info(f"🔧 Loading configuration file: {args.config}")
-    ConfigManager.get_instance().load_config(args.config)
+    get_config_manager().load_config(args.config)
 
     logger.info(f"🔧 Initializing logger manager...")
-    logger_config = ConfigManager.get_instance().get_config("logger")
-    LoggerManager.get_instance().setup(logger_config)
+    logger_config = get_config_manager().get_config("logger")
+    get_logger_manager().setup(logger_config)
     logger.info("✅ Logger manager initialized")
 
     logger.info("🔧 Starting PostgreSQL manager...")
-    PostgreSQLManager.get_instance().startup()
+    get_postgresql_manager().startup()
     logger.info("✅ PostgreSQL manager started")
 
     if not get_env_manager().is_ml:
-        browser_config = ConfigManager.get_instance().get_config("browser")
+        browser_config = get_config_manager().get_config("browser")
         launch_options = browser_config["launch_options"]
         viewport = browser_config['viewport']
         addons = [os.path.join(BASE_DIR, p) for p in browser_config.get("addons", [])]
@@ -110,7 +110,7 @@ def run_app() -> None:
         logger.info("✅ Network interceptor started")
 
     logger.info("🔧 Starting task executor...")
-    TaskExecutor.get_instance().start()
+    get_task_executor().start()
     logger.info("✅ TaskExecutor started")
 
     logger.info("🔧 Starting cron...")
@@ -126,7 +126,7 @@ def run_app() -> None:
     logger.info("✅ Poll manager started")
 
     logger.info("🌐 Starting web server...")
-    WebServer.get_instance().start()
+    get_web_server().start()
     logger.info("✅ Web server started")
 
     shutdown_event.wait()
