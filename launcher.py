@@ -1,5 +1,6 @@
-import os, sys, signal, argparse
-from abc import ABC, abstractmethod
+import os, sys, signal, argparse, warnings
+from typing import Any, Callable, List, Optional, Tuple, final
+from urllib3.exceptions import InsecureRequestWarning
 from threading import Event, enumerate as enumerate_threads
 from core.config.config_manager import get_config_manager
 from core.logger.logger_manager import get_logger_manager
@@ -7,36 +8,21 @@ from core.store.postgres.postgresql_manager import get_postgresql_manager
 from core.services.league.league_service import get_league_service
 from core.server.http.web_server import get_web_server
 from core.scheduler.task_executor import get_task_executor
-from core.scheduler.cron_manager import get_cron_manager
 from core.scheduler.poll_manager import get_poll_manager
-from core.browser.interceptor_manager import get_interceptor_manager
-from core.types.enums import SiteName
+from core.browser.interceptor import get_interceptor
+from abc import ABC, abstractmethod
 
-import warnings
-from urllib3.exceptions import InsecureRequestWarning
 warnings.filterwarnings("ignore", category=InsecureRequestWarning)
-
-
-if sys.version_info < (3, 11):
-    sys.exit("Python 3.14 or higher is required")
-
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-if os.path.abspath('.') != BASE_DIR:
-    sys.exit(f"Must be run from project root: {BASE_DIR}")
-
 
 class BaseLauncher(ABC):
     def __init__(self, config: str) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.config = config
         self.shutdown_event = Event()
+        self.services: List[Tuple[str, Callable[[], None], Optional[Callable[[], None]]]] = []
 
-    def run(self) -> None:
-        signal.signal(signal.SIGINT, self._on_shutdown)
-        signal.signal(signal.SIGTERM, self._on_shutdown)
-
+    @final
+    def setup(self) -> None:
         self.logger.info(f"🔧 Loading configuration file: {self.config}")
         get_config_manager().load_config(self.config)
 
@@ -44,15 +30,16 @@ class BaseLauncher(ABC):
         get_logger_manager().setup(get_config_manager().get_config("logger"))
         self.logger.info("✅ Logger manager initialized")
 
-        self.logger.info("🔧 Starting PostgreSQL manager...")
-        get_postgresql_manager().startup()
-        self.logger.info("✅ PostgreSQL manager started")
+        self._register_services()
 
-        self.logger.info("🔧 Loading league service...")
-        get_league_service().load()
-        self.logger.info("✅ League service loaded")
+    def run(self) -> None:
+        signal.signal(signal.SIGINT, self._on_shutdown)
+        signal.signal(signal.SIGTERM, self._on_shutdown)
 
-        self._start_services()
+        for name, start, _ in self.services:
+            self.logger.info(f"🔧 Starting {name}...")
+            start()
+            self.logger.info(f"✅ {name} started")
 
         self.shutdown_event.wait()
         for thread in enumerate_threads():
@@ -62,94 +49,62 @@ class BaseLauncher(ABC):
 
     def _on_shutdown(self, signum, frame) -> None:
         self.logger.info(f"Received signal {signum}, shutting down gracefully...")
-        self._stop_services()
 
-        self.logger.info("🔧 Cleaning up PostgreSQL manager...")
-        get_postgresql_manager().cleanup()
-        self.logger.info("✅ PostgreSQL manager cleaned up")
+        for name, _, stop in reversed(self.services):
+            if stop is None:
+                continue
+
+            self.logger.info(f"🔧 Stopping {name}...")
+            stop()
+            self.logger.info(f"✅ {name} stopped")
 
         self.shutdown_event.set()
 
     @abstractmethod
-    def _start_services(self) -> None: ...
+    def _register_services(self) -> None: ...
 
-    @abstractmethod
-    def _stop_services(self) -> None: ...
-
+    def _add_service(self, name: str, factory: Callable[[], Any], start: str, stop: Optional[str]) -> None:
+        obj = factory()
+        self.services.append((
+            name,
+            getattr(obj, start),
+            getattr(obj, stop) if stop else None,
+        ))
 
 class CrawlerLauncher(BaseLauncher):
-    def _start_services(self) -> None:
-        browser_config = get_config_manager().get_config("browser")
-        launch_options = browser_config["launch_options"]
-        viewport = browser_config['viewport']
-        addons = [os.path.join(BASE_DIR, p) for p in browser_config.get("addons", [])]
-        request_interval = browser_config["request_interval"]
-        page_pool_size = browser_config["page_pool_size"]
-        sys_mem_threshold = browser_config["sys_mem_threshold"]
-        failure_threshold = browser_config["failure_threshold"]
-
-        self.logger.info("🔧 Starting network interceptor...")
-        get_interceptor_manager().start(
-            sites=[SiteName.FOTMOB.value, SiteName.ODDSPORTAL.value],
-            request_interval=request_interval,
-            launch_options=launch_options,
-            viewport=viewport,
-            page_pool_size=page_pool_size,
-            sys_mem_threshold=sys_mem_threshold,
-            failure_threshold=failure_threshold,
-            addons=addons
-        )
-        self.logger.info("✅ Network interceptor started")
-
-        self.logger.info("🔧 Starting task executor...")
-        get_task_executor().start()
-        self.logger.info("✅ TaskExecutor started")
-
-        self.logger.info("🔧 Starting cron...")
-        get_cron_manager().start()
-        self.logger.info("✅ Cron started")
-
-        self.logger.info("🔧 Starting poll manager...")
-        get_poll_manager().start()
-        self.logger.info("✅ Poll manager started")
-
-    def _stop_services(self) -> None:
-        self.logger.info("🔧 Stopping cron...")
-        get_cron_manager().stop()
-        self.logger.info("✅ Cron stopped")
-
-        self.logger.info("🔧 Stopping interceptor manager...")
-        get_interceptor_manager().stop()
-        self.logger.info("✅ Interceptor manager stopped")
-
-        self.logger.info("🔧 Stopping task executor...")
-        get_task_executor().stop()
-        self.logger.info("✅ TaskExecutor stopped")
+    def _register_services(self) -> None:
+        self._add_service("PostgreSQLManager", get_postgresql_manager, start="startup", stop="cleanup")
+        self._add_service("LeagueService",     get_league_service,     start="load",    stop=None)
+        self._add_service("TaskExecutor",      get_task_executor,      start="start",   stop="stop")
+        self._add_service("Interceptor",       get_interceptor,        start="start",   stop="stop")
+        self._add_service("PollManager",       get_poll_manager,       start="start",   stop=None)
 
 
 class ApiLauncher(BaseLauncher):
-    def _start_services(self) -> None:
-        self.logger.info("🌐 Starting web server...")
-        get_web_server().start()
-        self.logger.info("✅ Web server started")
-
-    def _stop_services(self) -> None:
-        self.logger.info("🔧 Stopping web server...")
-        get_web_server().stop()
-        self.logger.info("✅ Web server stopped")
+    def _register_services(self) -> None:
+        self._add_service("PostgreSQLManager", get_postgresql_manager, start="startup", stop="cleanup")
+        self._add_service("LeagueService",     get_league_service,     start="load",    stop=None)
+        self._add_service("WebServer",         get_web_server,         start="start",   stop="stop")
 
 
-class UnifiedLauncher(CrawlerLauncher, ApiLauncher):
-    def _start_services(self) -> None:
-        CrawlerLauncher._start_services(self)
-        ApiLauncher._start_services(self)
-
-    def _stop_services(self) -> None:
-        ApiLauncher._stop_services(self)
-        CrawlerLauncher._stop_services(self)
+class UnifiedLauncher(BaseLauncher):
+    def _register_services(self) -> None:
+        self._add_service("PostgreSQLManager", get_postgresql_manager, start="startup", stop="cleanup")
+        self._add_service("LeagueService",     get_league_service,     start="load",    stop=None)
+        self._add_service("TaskExecutor",      get_task_executor,      start="start",   stop="stop")
+        self._add_service("Interceptor",       get_interceptor,        start="start",   stop="stop")
+        self._add_service("PollManager",       get_poll_manager,       start="start",   stop=None)
+        self._add_service("WebServer",         get_web_server,         start="start",   stop="stop")
 
 
 def main() -> None:
+    if sys.version_info < (3, 11):
+        sys.exit("Python 3.14 or higher is required")
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    if os.path.abspath('.') != base_dir:
+        sys.exit(f"Must be run from project root: {base_dir}")
+
     launchers = {
         'crawler': CrawlerLauncher,
         'api': ApiLauncher,
@@ -169,7 +124,10 @@ def main() -> None:
         help='Configuration file path (default: configs/config.yml)'
     )
     args = parser.parse_args()
-    launchers[args.role](config=args.config).run()
+
+    launcher = launchers[args.role](config=args.config)
+    launcher.setup()
+    launcher.run()
 
 
 if __name__ == "__main__":
