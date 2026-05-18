@@ -116,7 +116,7 @@ monitor_loop() {
 
 start_monitor() {
     if [ "$DAEMON" = "true" ]; then
-        if pgrep -f "$MONITOR_PATTERN" > /dev/null; then
+        if pgrep -f "$MONITOR_PATTERN" | grep -vw $$ > /dev/null; then
             echo "[OCTO] Monitor already running for: $ROLE"
             return 0
         fi
