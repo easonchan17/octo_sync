@@ -7,7 +7,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class EnvType(str, Enum):
     DEV = "dev"
     PROD = "prod"
-    ML = "ml"
 
 class EnvManager(BaseSettings):
     ENV: EnvType = Field(..., description="Run environment")
@@ -32,10 +31,6 @@ class EnvManager(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.ENV == EnvType.DEV
-
-    @property
-    def is_ml(self) -> bool:
-        return self.ENV == EnvType.ML
 
     @property
     def is_prod(self) -> bool:
