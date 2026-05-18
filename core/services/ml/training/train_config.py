@@ -2,8 +2,8 @@ from abc import ABC
 from pathlib import Path
 from functools import cached_property
 from typing import Dict, Any, Optional, List
-from core.logger.logger_manager import LoggerManager
-from core.config.config_manager import ConfigManager
+from core.logger.logger_manager import get_logger_manager
+from core.config.config_manager import get_config_manager
 
 
 class BaseTrainConfig(ABC):
@@ -15,7 +15,7 @@ class BaseTrainConfig(ABC):
     PATCH_VERSION: int = 0
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.payload = payload or {}
 
     def _get_payload_value(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
@@ -44,7 +44,7 @@ class BaseTrainConfig(ABC):
                 return value
 
         if config_key is not None:
-            config_manager = ConfigManager.get_instance()
+            config_manager = get_config_manager()
             return config_manager.get_config(config_key, default=default)
 
         return default

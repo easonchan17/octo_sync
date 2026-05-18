@@ -2,13 +2,13 @@ import uuid
 from threading import Event
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Callable
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class BaseTask(ABC):
     def __init__(self, name: Optional[str] = None) -> None:
         self.id = str(uuid.uuid4())
         self.name = name or self.__class__.__name__
-        self.logger = LoggerManager.get_instance().get_logger(self.name)
+        self.logger = get_logger_manager().get_logger(self.name)
         self.cancel_event = Event()
 
     def cancel(self) -> None:

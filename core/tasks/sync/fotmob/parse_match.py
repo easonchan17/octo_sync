@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 from pathlib import PurePosixPath
 from core.types.enums import SiteName, Position, LineupRole
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.scheduler.task_registry import TaskRegistry
 from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.tasks.poll_task import PollTask
@@ -377,7 +377,7 @@ class FormationResolver:
         return player.get('verticalLayout', {}).get('width', 0)
 
     def __init__(self):
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def resolve(self, formation: str, players: List[Dict[str, Any]]) -> None:
         if not formation or not players:
@@ -608,7 +608,7 @@ class MatchParser:
     }
 
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.formation_resolver = FormationResolver()
 
     def parse(self, json_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

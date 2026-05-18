@@ -3,7 +3,7 @@ from functools import cache
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from core.types.enums import Position
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.models import TrainingRecord
 from core.services.ml.inference.predictor import BasePredictor
@@ -16,7 +16,7 @@ from core.services.ml.preprocessing.builders.player import (
 
 class FormCache:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self._team_stats:        Dict[int, Dict] = {}
         self._player_stats:      Dict[int, Dict] = {}
         self._position_defaults: Dict[str, Dict] = {}
@@ -106,7 +106,7 @@ class PredictorManager:
 
 class PredictService:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self._form_cache = FormCache()
         self._predictor_manager = PredictorManager()
 

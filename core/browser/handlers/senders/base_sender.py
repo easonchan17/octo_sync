@@ -1,11 +1,11 @@
 import json
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict, Any
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class BaseSender(ABC):
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def transform_post_data(
         self,

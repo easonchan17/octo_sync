@@ -1,12 +1,12 @@
 import asyncio
 import itertools
 from typing import Optional, Any
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from playwright.async_api import Page, BrowserContext
 
 class PagePool:
     def __init__(self, context: BrowserContext, capacity: int) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self._context = context
         self._capacity = capacity
         self._semaphore = asyncio.BoundedSemaphore(capacity)

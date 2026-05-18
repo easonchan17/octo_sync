@@ -6,12 +6,12 @@ from core.types.enums import OddsMarket, OddsMarkets, SiteName
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.daos.oddsportal import OddsDao
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.utils.datetime_utils import from_timestamp
 
 class BaseOddsParser:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def _is_expected_market(self, json_body: Dict[str, Any], market: OddsMarket) -> bool:
         d = json_body.get("d", {})

@@ -1,55 +1,24 @@
 import os
+from functools import cache
 from typing import Generator
 from sqlalchemy import text
 from typing import List, Any, Optional
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from core.utils.singleton import Singleton
-from core.config.config_manager import ConfigManager
-from core.logger.logger_manager import LoggerManager
+from core.config.config_manager import get_config_manager
+from core.logger.logger_manager import get_logger_manager
 
-class PostgreSQLManager(Singleton):
-    def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+class PostgreSQLManager:
+    def __init__(self, config: dict) -> None:
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
+        self.config = config
         self.engine = None
         self.session_maker = None
 
-    def _get_database_config(self) -> dict:
-        db_host = os.getenv('DB_HOST')
-        db_port = os.getenv('DB_PORT')
-        db_name = os.getenv('DB_NAME')
-        db_user = os.getenv('DB_USER')
-        db_password = os.getenv('DB_PASSWORD')
-        pool_size = os.getenv('DB_POOL_SIZE')
-        max_overflow = os.getenv('DB_MAX_OVERFLOW')
-        pool_timeout = os.getenv('DB_POOL_TIMEOUT')
-        pool_recycle = os.getenv('DB_POOL_RECYCLE')
-
-        if all([db_host, db_port, db_name, db_user, db_password, pool_size, max_overflow, pool_timeout, pool_recycle]):
-            self.logger.info("Using database configuration from environment variables")
-            return {
-                'db_host': db_host,
-                'db_port': int(db_port),
-                'db_name': db_name,
-                'db_user': db_user,
-                'db_password': db_password,
-                'pool_config': {
-                    'pool_size': int(pool_size),
-                    'max_overflow': int(max_overflow),
-                    'pool_timeout': int(pool_timeout),
-                    'pool_recycle': int(pool_recycle)
-                }
-            }
-
-        self.logger.info("Using database configuration from config file")
-        config = ConfigManager.get_instance().get_config("database")
-        return config
-
     def startup(self) -> None:
-        config = self._get_database_config()
-        db_url = f"postgresql://{config['db_user']}:{config['db_password']}@{config['db_host']}:{config['db_port']}/{config['db_name']}"
-        pool_config = config['pool_config']
+        db_url = f"postgresql://{self.config['db_user']}:{self.config['db_password']}@{self.config['db_host']}:{self.config['db_port']}/{self.config['db_name']}"
+        pool_config = self.config['pool_config']
 
         self.engine = create_engine(db_url, **pool_config)
         self.session_maker = sessionmaker(bind=self.engine)
@@ -97,3 +66,35 @@ class PostgreSQLManager(Singleton):
             raise
         finally:
             session.close()
+
+
+@cache
+def get_postgresql_manager() -> PostgreSQLManager:
+    db_host = os.getenv('DB_HOST')
+    db_port = os.getenv('DB_PORT')
+    db_name = os.getenv('DB_NAME')
+    db_user = os.getenv('DB_USER')
+    db_password = os.getenv('DB_PASSWORD')
+    pool_size = os.getenv('DB_POOL_SIZE')
+    max_overflow = os.getenv('DB_MAX_OVERFLOW')
+    pool_timeout = os.getenv('DB_POOL_TIMEOUT')
+    pool_recycle = os.getenv('DB_POOL_RECYCLE')
+
+    if all([db_host, db_port, db_name, db_user, db_password, pool_size, max_overflow, pool_timeout, pool_recycle]):
+        config = {
+            'db_host': db_host,
+            'db_port': int(db_port),
+            'db_name': db_name,
+            'db_user': db_user,
+            'db_password': db_password,
+            'pool_config': {
+                'pool_size': int(pool_size),
+                'max_overflow': int(max_overflow),
+                'pool_timeout': int(pool_timeout),
+                'pool_recycle': int(pool_recycle)
+            }
+        }
+    else:
+        config = get_config_manager().get_config("database")
+
+    return PostgreSQLManager(config=config)

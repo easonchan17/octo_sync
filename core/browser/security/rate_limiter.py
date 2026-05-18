@@ -4,7 +4,7 @@ import asyncio
 from contextlib import suppress
 from urllib.parse import urlparse
 from typing import Optional, Any
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class RateLimiter:
     PREVIEW_LENGTH = 2000
@@ -29,7 +29,7 @@ class RateLimiter:
     MAX_PENALTY_FACTOR = 15
 
     def __init__(self, base_interval: float = 60.0) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.last_request: dict[str, float] = {}
         self.backoff_until: dict[str, float] = {}
         self.host_penalties: dict[str, int] = {}
