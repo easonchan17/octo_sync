@@ -4,7 +4,7 @@ import random
 import asyncio
 from typing import Any, Dict, Union, Tuple
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class TurnstileSolver:
     SPIRAL_BIAS_X, SPIRAL_BIAS_Y = 15, 15
@@ -85,7 +85,7 @@ class TurnstileSolver:
     """
 
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def _get_spiral_offset(self, attempt: int) -> Tuple[float, float]:
         if attempt == 0: return (0, 0)

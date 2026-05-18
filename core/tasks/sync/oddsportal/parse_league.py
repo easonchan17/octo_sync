@@ -3,13 +3,13 @@ from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.daos.oddsportal import LeagueDao
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.services.league import get_league_service
 from core.types.enums import SiteName
 
 class LeagueParser:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def parse(self, json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         if not json_data:

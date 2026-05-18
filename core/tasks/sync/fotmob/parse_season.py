@@ -4,7 +4,7 @@ from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.daos.fotmob import SeasonDao
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.types.enums import SiteName
 
 
@@ -12,7 +12,7 @@ class SeasonParser:
     SEASON_PATTERN = re.compile(r'^(\d{4})/')
 
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def parse(self, json_data: Dict[str, Any]) -> Optional[Tuple[int, int]]:
         if not json_data:

@@ -1,8 +1,8 @@
 import re
 from functools import cache
 from typing import Optional
-from core.logger.logger_manager import LoggerManager
-from core.scheduler.task_executor import TaskExecutor
+from core.logger.logger_manager import get_logger_manager
+from core.scheduler.task_executor import get_task_executor
 from core.scheduler.task_registry import TaskRegistry, TaskType
 
 import core.tasks.sync.fotmob      # noqa: F401
@@ -11,7 +11,7 @@ import core.tasks.sync.sync_asset  # noqa: F401
 
 class PollManager:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.started = False
 
     def start(self, site_name: Optional[str] = None) -> None:
@@ -26,7 +26,7 @@ class PollManager:
                 continue
 
             task = TaskRegistry.get_target(name)({})
-            TaskExecutor.get_instance().submit(task)
+            get_task_executor().submit(task)
             self.logger.info(f"Started poll task: {name}")
 
 @cache

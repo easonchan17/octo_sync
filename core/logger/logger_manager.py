@@ -2,8 +2,8 @@ import os
 import logging
 import logging.config
 import logging.handlers
+from functools import cache
 from typing import Any
-from core.utils.singleton import Singleton
 
 class UvicornLogFilter(logging.Filter):
     def filter(self, record) -> bool:
@@ -11,9 +11,8 @@ class UvicornLogFilter(logging.Filter):
             record.name = "uvicorn.server"
         return True
 
-class LoggerManager(Singleton):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__()
+class LoggerManager:
+    def __init__(self) -> None:
         self.logger = self.get_logger(self.__class__.__name__)
         self._set_root_config({
             'level': 'INFO',
@@ -144,3 +143,8 @@ class LoggerManager(Singleton):
                     "encoding": "utf-8"
                 }
         return handler_configs
+
+
+@cache
+def get_logger_manager() -> LoggerManager:
+    return LoggerManager()

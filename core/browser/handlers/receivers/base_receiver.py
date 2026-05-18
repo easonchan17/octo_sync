@@ -1,7 +1,7 @@
 import json
 from typing import Any, Optional
 from abc import ABC, abstractmethod
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class BaseReceiver(ABC):
     CONTENT_TYPE = 'application/json'
@@ -15,7 +15,7 @@ class BaseReceiver(ABC):
     _instance_counter = 0
 
     def __init__(self):
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
         BaseReceiver._instance_counter += 1
         self._instance_id = BaseReceiver._instance_counter

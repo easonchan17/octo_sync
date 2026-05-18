@@ -1,22 +1,22 @@
+from functools import cache
 from queue import Queue, Empty
 from core.utils.thread import Thread
-from core.utils.singleton import Singleton
-from core.config.config_manager import ConfigManager
+from core.config.config_manager import get_config_manager
 from concurrent.futures import ThreadPoolExecutor
 from .base_task import BaseTask
 
-class TaskExecutor(Thread, Singleton):
-    def __init__(self) -> None:
+class TaskExecutor(Thread):
+    def __init__(self, max_workers: int) -> None:
         super().__init__()
         self.task_queue = Queue()
+        self.max_workers = max_workers
 
     def submit(self, task: BaseTask) -> str:
         self.task_queue.put(task)
         return task.id
 
     def _run(self) -> None:
-        max_workers = ConfigManager.get_instance().get_config("task_thread_pool.max_workers", 10)
-        thread_pool = ThreadPoolExecutor(max_workers=max_workers)
+        thread_pool = ThreadPoolExecutor(max_workers=self.max_workers)
 
         tasks = []
         while not self.stop_event.is_set():
@@ -39,3 +39,9 @@ class TaskExecutor(Thread, Singleton):
             task.cancel()
 
         thread_pool.shutdown(wait=True, cancel_futures=True)
+
+
+@cache
+def get_task_executor() -> TaskExecutor:
+    max_workers = get_config_manager().get_config("task_thread_pool.max_workers")
+    return TaskExecutor(max_workers=max_workers)

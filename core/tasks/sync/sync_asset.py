@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 from core.types.enums import SiteName
 from core.tasks.poll_task import PollTask
-from core.config.config_manager import ConfigManager
+from core.config.config_manager import get_config_manager
 from core.store.postgres.daos.common import AssetDao
 from core.scheduler.task_registry import TaskRegistry
 from core.tasks.refetch_strategy import AttemptStrategy
@@ -19,9 +19,9 @@ class SyncAsset(PollTask):
         ]
     }
 
-    def __init__(self, site_name: str) -> None:
+    def __init__(self, site_name: str, base_dir: str) -> None:
         super().__init__(site_name=site_name)
-        self.base_dir = ConfigManager.get_instance().get_config('resource.asset')
+        self.base_dir = base_dir
         self.asset_dao = AssetDao()
 
         self.intercept_strategy = InterceptStrategy.from_rules(self.INTERCEPT_STRATEGY)
@@ -88,5 +88,8 @@ class SyncAsset(PollTask):
 
 
 TaskRegistry.poll('sync.fotmob.asset')(
-    lambda _: SyncAsset(site_name=SiteName.FOTMOB.value)
+    lambda _: SyncAsset(
+        site_name=SiteName.FOTMOB.value,
+        base_dir=get_config_manager().get_config('resource.asset'),
+    )
 )

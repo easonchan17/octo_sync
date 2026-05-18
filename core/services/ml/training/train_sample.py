@@ -3,8 +3,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from core.types.enums import SiteName
-from core.logger.logger_manager import LoggerManager
-from core.config.config_manager import ConfigManager
+from core.logger.logger_manager import get_logger_manager
+from core.config.config_manager import get_config_manager
 from core.services.league import get_league_service
 from core.utils.pandas_utils import save_dataframe
 from core.services.ml.preprocessing.builders.match import MatchTrainFeatureBuilder
@@ -47,8 +47,8 @@ class TrainSampleBuilder:
     ]
 
     def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
-        self.config_manager = ConfigManager.get_instance()
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
+        self.config_manager = get_config_manager()
         self.league_id = league_id
         self.min_season = min_season
         self.max_season = max_season

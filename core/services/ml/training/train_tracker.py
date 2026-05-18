@@ -5,16 +5,16 @@ import pandas as pd
 from typing import Optional, Tuple
 from datetime import datetime
 from sklearn.calibration import CalibratedClassifierCV
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.store.postgres.models import TrainingRecord
-from core.store.postgres.postgresql_manager import PostgreSQLManager
+from core.store.postgres.postgresql_manager import get_postgresql_manager
 from sklearn.metrics import classification_report, confusion_matrix, log_loss
 from .train_config import BaseTrainConfig
 
 class TrainTracker:
     def __init__(self, config: BaseTrainConfig) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
-        self.db = PostgreSQLManager.get_instance()
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
+        self.db = get_postgresql_manager()
         self.config = config
         self.optimizer = None
         self.train_score = None

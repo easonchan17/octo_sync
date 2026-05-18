@@ -2,13 +2,13 @@ import threading
 from functools import cache
 from typing import Optional, Dict, List
 from concurrent.futures import Future
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.browser.interceptor import Interceptor
 from core.browser.intercept_strategy import InterceptStrategy
 
 class InterceptorManager:
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self._lock = threading.Lock()
         self._interceptor: Optional[Interceptor] = None
 

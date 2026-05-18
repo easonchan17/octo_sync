@@ -3,11 +3,11 @@ import os
 import httpx
 from pathlib import Path
 from typing import Optional
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class FileDownloader:
     def __init__(self, timeout: float = 60.0, proxy: Optional[str] = None):
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
         self.client = httpx.Client(
             proxy=proxy,

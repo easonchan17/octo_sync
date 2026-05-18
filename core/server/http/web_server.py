@@ -1,14 +1,14 @@
 import uvicorn
+from functools import cache
 from core.server.http.web_app import WebApp
 from core.utils.thread import Thread
-from core.utils.singleton import Singleton
-from core.config.config_manager import ConfigManager
+from core.config.config_manager import get_config_manager
 
-class WebServer(Thread, Singleton): #TODO remove singleton, support multiple instances 8080 8000
-    def __init__(self) -> None:
+class WebServer(Thread):
+    def __init__(self, host: str, port: int) -> None:
         super().__init__()
-        self.host = None
-        self.port = None
+        self.host = host
+        self.port = port
         self.server = None
 
     def stop(self) -> None:
@@ -18,10 +18,6 @@ class WebServer(Thread, Singleton): #TODO remove singleton, support multiple ins
 
     def _run(self) -> None:
         try:
-            config = ConfigManager.get_instance().get_config("http")
-            self.host = config["host"]
-            self.port = config["port"]
-
             config = uvicorn.Config(
                 WebApp().get_app(),
                 host=self.host,
@@ -38,3 +34,9 @@ class WebServer(Thread, Singleton): #TODO remove singleton, support multiple ins
             self.logger.error(f"Error in web server: {e}")
         finally:
             self.logger.debug("web server stopped")
+
+
+@cache
+def get_web_server() -> WebServer:
+    config = get_config_manager().get_config("http")
+    return WebServer(host=config["host"], port=config["port"])

@@ -7,7 +7,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.responses import JSONResponse
 from core.config.env_manager import get_env_manager
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.server.http.controllers.system.model_controller import ModelController
 from core.server.http.controllers.app.fixture_controller import FixtureController
 from core.server.http.controllers.app.league_controller import LeagueController
@@ -24,7 +24,7 @@ class WebApp:
             redoc_url=None,
             openapi_url=None
         )
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.env_manager = get_env_manager()
         self._setup_middleware()
         self._setup_routes()

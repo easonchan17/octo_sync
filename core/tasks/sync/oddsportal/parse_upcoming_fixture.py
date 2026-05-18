@@ -7,7 +7,7 @@ from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.daos.oddsportal import UpcomingFixtureDao
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 from core.types.enums import SiteName
 
 class UpcomingFixtureParser:
@@ -16,7 +16,7 @@ class UpcomingFixtureParser:
     MATCHUP_H2H_URL_PATTERN = re.compile(r'/h2h/\S+-(\w+)/\S+-(\w+)/#(\w+)/')
 
     def __init__(self) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
     def _parse_codes(self, match_url: str, home_name: str, away_name: str):
         match = self.MATCHUP_H2H_URL_PATTERN.search(match_url)

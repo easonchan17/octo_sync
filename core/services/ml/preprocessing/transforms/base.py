@@ -1,10 +1,10 @@
 import pandas as pd
 from abc import ABC
-from core.logger.logger_manager import LoggerManager
+from core.logger.logger_manager import get_logger_manager
 
 class BaseTransform(ABC):
     def __init__(self, df: pd.DataFrame) -> None:
-        self.logger = LoggerManager.get_instance().get_logger(self.__class__.__name__)
+        self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.df = df
 
     def _require_col(self, col: str) -> None:
