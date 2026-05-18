@@ -3,7 +3,7 @@ from threading import Event
 from typing import Tuple, Optional
 from datetime import datetime, timezone
 from core.scheduler.base_task import BaseTask
-from core.browser.interceptor_manager import get_interceptor_manager
+from core.browser.interceptor import get_interceptor
 from core.types.params import CrawlParams
 
 class TaggedLogger(logging.LoggerAdapter):
@@ -16,10 +16,11 @@ class PollTask(BaseTask):
     def __init__(self, site_name: Optional[str] = None) -> None:
         super().__init__()
         self.site_name = site_name
-        self.interceptor = get_interceptor_manager().get(site_name) if site_name else None
+        self._idle_wake_event = Event()
+
         if site_name:
             self.logger = TaggedLogger(self.logger, {'tag': site_name})
-        self._idle_wake_event = Event()
+            self.interceptor = get_interceptor()
 
     def get_idle_timeout_seconds(self) -> float:
         return self.POLL_IDLE_SECONDS

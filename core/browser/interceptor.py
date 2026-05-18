@@ -1,11 +1,14 @@
 import os, signal, janus, asyncio, psutil, random, time
 from contextlib import suppress
+from functools import cache
 from urllib.parse import urlparse
 from core.utils.thread import Thread
 from concurrent.futures import Future
 from core.browser.page_pool import PagePool
 from camoufox.async_api import AsyncCamoufox
 from core.browser.security import RateLimiter
+from core.config.config_manager import get_config_manager
+from core.types.enums import SiteName
 from typing import Tuple, Optional, Any, Dict, List
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from core.browser.hooks import HookChain, HookContext, HttpHook, WsHook, DomHook, TurnstileHook, JsHook, AssetHook
@@ -327,3 +330,18 @@ class Interceptor(Thread):
             await asyncio.sleep(random.uniform(1, 3))
 
         return success, result_set
+
+
+@cache
+def get_interceptor() -> Interceptor:
+    config = get_config_manager().get_config("browser")
+    return Interceptor(
+        sites=[SiteName.FOTMOB.value, SiteName.ODDSPORTAL.value],
+        request_interval=config["request_interval"],
+        launch_options=config["launch_options"],
+        viewport=config["viewport"],
+        page_pool_size=config["page_pool_size"],
+        sys_mem_threshold=config["sys_mem_threshold"],
+        failure_threshold=config["failure_threshold"],
+        addons=[os.path.abspath(p) for p in config.get("addons", [])],
+    )
