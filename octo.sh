@@ -66,7 +66,7 @@ esac
 
 PROCESS_PATTERN="python launcher.py $ROLE"
 MONITOR_PATTERN="octo.sh $ROLE monitor start"
-PROCESS_FILE="octo-${ROLE}.log"
+PROCESS_LOG="octo-${ROLE}.log"
 MONITOR_LOG="monitor-${ROLE}.log"
 
 cd "$PROJECT_DIR" || exit 1
@@ -88,8 +88,8 @@ start_process() {
     fi
 
     if [ "$DAEMON" = "true" ]; then
-        nohup "${cmd[@]}" > "$PROCESS_FILE" 2>&1 &
-        echo "[OCTO] Started daemon: $PROCESS_PATTERN (PID: $!) -> $PROCESS_FILE"
+        nohup "${cmd[@]}" > "$PROCESS_LOG" 2>&1 &
+        echo "[OCTO] Started daemon: $PROCESS_PATTERN (PID: $!) -> $PROCESS_LOG"
     else
         "${cmd[@]}"
     fi
