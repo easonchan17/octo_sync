@@ -48,7 +48,7 @@ class BaseTrainer(ABC):
         df = load_dataframe(self.config.dataset_dir / self.config.dataset_name)
 
         y = df[self.config.target_col].copy()
-        X = df.drop(columns=[self.config.target_col])
+        X = df.drop(columns=[self.config.target_col, *self.config.exclude_cols])
         self.logger.info(X.head())
 
         test_split  = int(len(X) * (1 - self.config.test_set_size))
