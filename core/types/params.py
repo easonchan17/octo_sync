@@ -4,7 +4,7 @@ class CrawlParams:
     EARLIEST_SEASON = 2019
 
     PARSE_BATCH_SIZE = 300
-    FETCH_BATCH_SIZE = 2000
+    FETCH_BATCH_SIZE = 30
     PARSE_MAX_RETRIES = 3
 
     FIXTURE_LOOKBACK = timedelta(hours=24)
