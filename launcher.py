@@ -1,5 +1,5 @@
 import os, sys, signal, argparse, warnings
-from typing import Any, Callable, List, Optional, Tuple, final
+from typing import Callable, List, Optional, Tuple, final
 from urllib3.exceptions import InsecureRequestWarning
 from threading import Event, enumerate as enumerate_threads
 from core.config.config_manager import get_config_manager
@@ -63,38 +63,58 @@ class BaseLauncher(ABC):
     @abstractmethod
     def _register_services(self) -> None: ...
 
-    def _add_service(self, name: str, factory: Callable[[], Any], start: str, stop: Optional[str]) -> None:
-        obj = factory()
-        self.services.append((
-            name,
-            getattr(obj, start),
-            getattr(obj, stop) if stop else None,
-        ))
+    def _add_service(self, name: str, start: Callable[[], None], stop: Optional[Callable[[], None]]) -> None:
+        self.services.append((name, start, stop))
+
+
+FORM_CACHE_PATTERN = r"^build\.fotmob\.form_cache$"
+
 
 class CrawlerLauncher(BaseLauncher):
     def _register_services(self) -> None:
-        self._add_service("PostgreSQLManager", get_postgresql_manager, start="startup", stop="cleanup")
-        self._add_service("LeagueService",     get_league_service,     start="load",    stop=None)
-        self._add_service("TaskExecutor",      get_task_executor,      start="start",   stop="stop")
-        self._add_service("Interceptor",       get_interceptor,        start="start",   stop="stop")
-        self._add_service("PollManager",       get_poll_manager,       start="start",   stop=None)
+        postgresql_manager = get_postgresql_manager()
+        league_service     = get_league_service()
+        task_executor      = get_task_executor()
+        interceptor        = get_interceptor()
+        poll_manager       = get_poll_manager()
+
+        self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
+        self._add_service("LeagueService",     league_service.load,        None)
+        self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
+        self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
+        self._add_service("PollManager",       lambda: poll_manager.start(exclude=FORM_CACHE_PATTERN), None)
 
 
 class ApiLauncher(BaseLauncher):
     def _register_services(self) -> None:
-        self._add_service("PostgreSQLManager", get_postgresql_manager, start="startup", stop="cleanup")
-        self._add_service("LeagueService",     get_league_service,     start="load",    stop=None)
-        self._add_service("WebServer",         get_web_server,         start="start",   stop="stop")
+        postgresql_manager = get_postgresql_manager()
+        league_service     = get_league_service()
+        task_executor      = get_task_executor()
+        poll_manager       = get_poll_manager()
+        web_server         = get_web_server()
+
+        self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
+        self._add_service("LeagueService",     league_service.load,        None)
+        self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
+        self._add_service("PollManager",       lambda: poll_manager.start(include=FORM_CACHE_PATTERN), None)
+        self._add_service("WebServer",         web_server.start,           web_server.stop)
 
 
 class UnifiedLauncher(BaseLauncher):
     def _register_services(self) -> None:
-        self._add_service("PostgreSQLManager", get_postgresql_manager, start="startup", stop="cleanup")
-        self._add_service("LeagueService",     get_league_service,     start="load",    stop=None)
-        self._add_service("TaskExecutor",      get_task_executor,      start="start",   stop="stop")
-        self._add_service("Interceptor",       get_interceptor,        start="start",   stop="stop")
-        self._add_service("PollManager",       get_poll_manager,       start="start",   stop=None)
-        self._add_service("WebServer",         get_web_server,         start="start",   stop="stop")
+        postgresql_manager = get_postgresql_manager()
+        league_service     = get_league_service()
+        task_executor      = get_task_executor()
+        interceptor        = get_interceptor()
+        poll_manager       = get_poll_manager()
+        web_server         = get_web_server()
+
+        self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
+        self._add_service("LeagueService",     league_service.load,        None)
+        self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
+        self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
+        self._add_service("PollManager",       poll_manager.start,         None)
+        self._add_service("WebServer",         web_server.start,           web_server.stop)
 
 
 def main() -> None:
