@@ -13,6 +13,7 @@ class PollManager:
     def __init__(self) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.started = False
+        self.tasks = []
 
     def start(self, include: Optional[str] = None, exclude: Optional[str] = None) -> None:
         if self.started:
@@ -29,7 +30,14 @@ class PollManager:
 
             task = TaskRegistry.get_target(name)({})
             get_task_executor().submit(task)
+            self.tasks.append(task)
             self.logger.info(f"Started poll task: {name}")
+
+    def stop(self) -> None:
+        for task in self.tasks:
+            task.cancel()
+        self.tasks = []
+        self.started = False
 
 @cache
 def get_poll_manager() -> PollManager:
