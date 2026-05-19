@@ -28,6 +28,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--cv',                            type=int,                          help='e.g. 5 (TimeSeriesSplit folds), use 2 for quick debug')
     parser.add_argument('--random_state',                  type=int,                          help='e.g. 42 (random seed for reproducibility)')
     parser.add_argument('--scoring',                       type=str, choices=['accuracy', 'neg_log_loss'], help='CV scoring metric')
+    parser.add_argument('--exclude_cols',                  nargs='*',                                     help='feature columns to exclude from training')
     return parser.parse_args()
 
 def build_payload(args: argparse.Namespace) -> dict:
@@ -55,6 +56,8 @@ def build_payload(args: argparse.Namespace) -> dict:
         payload["optimizer"]["params"]["cv"] = args.cv
     if args.scoring is not None:
         payload["optimizer"]["params"]["scoring"] = args.scoring
+    if args.exclude_cols is not None:
+        payload["objective"]["exclude_cols"] = args.exclude_cols
 
     return payload
 
