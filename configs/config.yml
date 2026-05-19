@@ -69,6 +69,25 @@ training:
         eval_set_size: 0.1
         calibration_set_size: 0
         test_set_size: 0.2
+        exclude_cols:
+          - "away_rating_ability_mean"
+          - "away_total_luck"
+          - "home_total_luck"
+          - "home_creativity_ability_sum"
+          - "away_defense_ability_sum"
+          - "away_attack_form"
+          - "home_threat_per_entry_ema_5"
+          - "away_threat_per_entry_ema_5"
+          - "away_disruption_ema_5"
+          - "home_attack_ability"
+          - "sharp_vs_market_home_open_diff"
+          - "creativity_form_sum_diff"
+          - "away_creativity_ability_sum"
+          - "home_defense_form_sum"
+          - "home_rating_ability_mean"
+          - "away_defense_form"
+          - "home_defense_ability_sum"
+          # - "creativity_ability_sum_diff"
 
       model:
         name: xgboost

@@ -145,6 +145,14 @@ class WinballTrainConfig(BaseTrainConfig):
         )
 
     @cached_property
+    def exclude_cols(self) -> List[str]:
+        return self.get_param(
+            payload_key='objective.exclude_cols',
+            config_key='training.tasks.winball.objective.exclude_cols',
+            default=[]
+        )
+
+    @cached_property
     def balanced(self) -> bool:
         return self.get_param(payload_key='objective.balanced')
 
