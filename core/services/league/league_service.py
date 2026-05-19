@@ -224,12 +224,7 @@ class LeagueService(BaseService):
 
         ref_league_id = self._cache.get(site_name, str(league_id))
         if ref_league_id is not None:
-            if country_code is None and country_name is None:
-                return self.get(ref_league_id)
-
-            site_league = self.get(ref_league_id).site_leagues.get(site_name) # TODO
-            if site_league.country_code == country_code and site_league.country_name == country_name:
-                return self.get(ref_league_id)
+            return self.get(ref_league_id)
 
         with self.db.get_session() as session:
             orphan = self._orphan_loader.add(
