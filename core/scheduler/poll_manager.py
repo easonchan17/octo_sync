@@ -14,7 +14,7 @@ class PollManager:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.started = False
 
-    def start(self, site_name: Optional[str] = None) -> None:
+    def start(self, include: Optional[str] = None, exclude: Optional[str] = None) -> None:
         if self.started:
             return
 
@@ -22,7 +22,9 @@ class PollManager:
 
         for entry in TaskRegistry.get_entries(TaskType.POLL):
             name = entry["name"]
-            if site_name and not re.search(site_name, name):
+            if include and not re.search(include, name):
+                continue
+            if exclude and re.search(exclude, name):
                 continue
 
             task = TaskRegistry.get_target(name)({})
