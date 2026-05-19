@@ -48,8 +48,10 @@ class BaseLauncher(ABC):
         os._exit(0)
 
     def _on_shutdown(self, signum, frame) -> None:
-        self.logger.info(f"Received signal {signum}, shutting down gracefully...")
+        if self.shutdown_event.is_set():
+            return
 
+        self.logger.info(f"Received signal {signum}, shutting down gracefully...")
         for name, _, stop in reversed(self.services):
             if stop is None:
                 continue
@@ -82,7 +84,7 @@ class CrawlerLauncher(BaseLauncher):
         self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
         self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
-        self._add_service("PollManager",       lambda: poll_manager.start(exclude=FORM_CACHE_PATTERN), None)
+        self._add_service("PollManager",       lambda: poll_manager.start(exclude=FORM_CACHE_PATTERN), poll_manager.stop)
 
 
 class ApiLauncher(BaseLauncher):
@@ -96,7 +98,7 @@ class ApiLauncher(BaseLauncher):
         self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
         self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
-        self._add_service("PollManager",       lambda: poll_manager.start(include=FORM_CACHE_PATTERN), None)
+        self._add_service("PollManager",       lambda: poll_manager.start(include=FORM_CACHE_PATTERN), poll_manager.stop)
         self._add_service("WebServer",         web_server.start,           web_server.stop)
 
 
@@ -113,7 +115,7 @@ class UnifiedLauncher(BaseLauncher):
         self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
         self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
-        self._add_service("PollManager",       poll_manager.start,         None)
+        self._add_service("PollManager",       poll_manager.start,         poll_manager.stop)
         self._add_service("WebServer",         web_server.start,           web_server.stop)
 
 
