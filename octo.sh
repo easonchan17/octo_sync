@@ -2,7 +2,7 @@
 #
 # octo.sh - lifecycle controller for octo_sync
 #
-# Usage: ./octo.sh [api|crawler|unified|sample] [monitor] [start|stop] [-d]
+# Usage: ./octo.sh [api|crawler|unified] [monitor] [start|stop] [-d]
 #   monitor   target the watchdog (default: target launcher process)
 #   -d        background mode for 'start' (default: foreground)
 #
@@ -13,13 +13,9 @@
 #   ./octo.sh api monitor start         watchdog (foreground)
 #   ./octo.sh api monitor start -d      watchdog (background daemon)
 #   ./octo.sh api monitor stop          watchdog stop
-#   ./octo.sh sample start              build train sample (foreground)
-#   ./octo.sh sample start -d           build train sample (background)
-#   ./octo.sh sample stop               stop running sample build
 #
 # Env: OCTO_PROJECT_DIR, OCTO_PYTHON_BIN, OCTO_ENABLE_XVFB, OCTO_CHECK_INTERVAL
-#      OCTO_SAMPLE_LEAGUE_ID, OCTO_SAMPLE_MIN_SEASON, OCTO_SAMPLE_MAX_SEASON, OCTO_SAMPLE_FORMAT
-# Log: octo-<role>.log, monitor-<role>.log
+# Log: output/logs/octo-<role>.log, output/logs/monitor-<role>.log
 #
 
 ENABLE_XVFB="${OCTO_ENABLE_XVFB:-0}"
@@ -27,15 +23,9 @@ CHECK_INTERVAL="${OCTO_CHECK_INTERVAL:-10}"
 PROJECT_DIR="${OCTO_PROJECT_DIR:-./}"
 PYTHON_BIN="${OCTO_PYTHON_BIN:-.venv/bin/python}"
 
-SAMPLE_LEAGUE_ID="${OCTO_SAMPLE_LEAGUE_ID:-101}"
-SAMPLE_MIN_SEASON="${OCTO_SAMPLE_MIN_SEASON:-2019}"
-SAMPLE_MAX_SEASON="${OCTO_SAMPLE_MAX_SEASON:-2025}"
-SAMPLE_FORMAT="${OCTO_SAMPLE_FORMAT:-csv}"
-
-
 USAGE="Usage: $0 <role> [monitor] <start|stop> [-d]
-  role:    api | crawler | unified | sample
-  monitor: optional, target the watchdog instead of the process (not available for sample)
+  role:    api | crawler | unified
+  monitor: optional, target the watchdog instead of the process
   action:  start | stop
   -d:      background mode for 'start' (default: foreground)"
 
@@ -57,7 +47,7 @@ else
 fi
 
 case "$ROLE" in
-    api|crawler|unified|sample) ;;
+    api|crawler|unified) ;;
     *) echo "Invalid role: $ROLE"; echo "$USAGE"; exit 1 ;;
 esac
 
@@ -73,14 +63,11 @@ case "$FLAG" in
     *) echo "Unknown flag: $FLAG"; echo "$USAGE"; exit 1 ;;
 esac
 
-if [ "$ROLE" = "sample" ]; then
-    PROCESS_PATTERN="python scripts/build_sample.py"
-else
-    PROCESS_PATTERN="python launcher.py $ROLE"
-fi
+PROCESS_PATTERN="python launcher.py $ROLE"
 MONITOR_PATTERN="octo.sh $ROLE monitor start"
-PROCESS_LOG="octo-${ROLE}.log"
-MONITOR_LOG="monitor-${ROLE}.log"
+LOG_DIR="output/logs"
+PROCESS_LOG="${LOG_DIR}/octo-${ROLE}.log"
+MONITOR_LOG="${LOG_DIR}/monitor-${ROLE}.log"
 
 cd "$PROJECT_DIR" || exit 1
 
@@ -91,15 +78,7 @@ start_process() {
     fi
 
     local cmd=()
-    if [ "$ROLE" = "sample" ]; then
-        cmd=(
-            "$PYTHON_BIN" scripts/build_sample.py
-            --league_id "$SAMPLE_LEAGUE_ID"
-            --min_season "$SAMPLE_MIN_SEASON"
-            --max_season "$SAMPLE_MAX_SEASON"
-            --sample_format "$SAMPLE_FORMAT"
-        )
-    elif [ "$ROLE" = "crawler" ] || [ "$ROLE" = "unified" ]; then
+    if [ "$ROLE" = "crawler" ] || [ "$ROLE" = "unified" ]; then
         pkill -f "camoufox-bin" 2>/dev/null
         local prefix=()
         [ "$ENABLE_XVFB" = "1" ] && prefix=(xvfb-run -a --server-args="-screen 0 1920x1080x24")
@@ -109,6 +88,7 @@ start_process() {
     fi
 
     if [ "$DAEMON" = "true" ]; then
+        mkdir -p "$LOG_DIR"
         nohup "${cmd[@]}" > "$PROCESS_LOG" 2>&1 &
         echo "[OCTO] Started daemon: $PROCESS_PATTERN (PID: $!) -> $PROCESS_LOG"
     else
@@ -141,6 +121,7 @@ start_monitor() {
             echo "[OCTO] Monitor already running for: $ROLE"
             return 0
         fi
+        mkdir -p "$LOG_DIR"
         nohup "$0" "$ROLE" monitor start > "$MONITOR_LOG" 2>&1 &
         echo "[OCTO] Started monitor daemon for: $ROLE (PID: $!) -> $MONITOR_LOG"
     else
@@ -155,10 +136,6 @@ stop_monitor() {
         echo "[OCTO] No monitor running for: $ROLE"
     fi
 }
-
-if [ "$TARGET" = "monitor" ] && [ "$ROLE" = "sample" ]; then
-    echo "Monitor is not available for role: sample"; exit 1
-fi
 
 if [ "$TARGET" = "process" ]; then
     case "$ACTION" in
