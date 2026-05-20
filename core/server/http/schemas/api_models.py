@@ -28,6 +28,11 @@ class LeagueResponse(BaseModel):
     name: str
     priority: int
 
+    @computed_field
+    @property
+    def logo(self) -> str:
+        return f"/assets/image/league/logo/{self.id}.png"
+
     class Config:
         from_attributes = True
 
@@ -42,7 +47,6 @@ class DisplayMatchStatus(IntEnum):
 
 class MatchResponse(BaseModel):
     match_code: str
-    league_name: str
     kickoff_time: datetime
     round: Optional[str] = None
     home_code: str
@@ -77,7 +81,14 @@ class MatchResponse(BaseModel):
         from_attributes = True
 
 class MatchDetailResponse(MatchResponse):
+    league_id: int
+    league_name: str
     detail: Dict[str, Any] = Field(validation_alias='json_body')
+
+    @computed_field
+    @property
+    def league_logo(self) -> str:
+        return f"/assets/image/league/logo/{self.league_id}.png"
 
 
 class FixtureResponse(BaseModel):
@@ -85,6 +96,11 @@ class FixtureResponse(BaseModel):
     league_name: str
     priority: int
     matches: List[MatchResponse]
+
+    @computed_field
+    @property
+    def league_logo(self) -> str:
+        return f"/assets/image/league/logo/{self.league_id}.png"
 
 
 # ==============================================================================

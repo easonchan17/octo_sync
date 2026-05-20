@@ -1,7 +1,5 @@
 import traceback, re, json
 from datetime import datetime, timezone
-from urllib.parse import urlparse
-from pathlib import PurePosixPath
 from core.types.enums import SiteName, Position, LineupRole
 from core.logger.logger_manager import get_logger_manager
 from core.scheduler.task_registry import TaskRegistry
@@ -11,7 +9,6 @@ from core.types.params import CrawlParams
 from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat, ShotStat
 from core.tasks.sync.fotmob.utils import extract_status
 from core.store.postgres.daos.fotmob import MatchDao
-from core.store.postgres.daos.common import AssetDao
 
 _VALUE_WITH_PERCENT_PATTERN = re.compile(r'^(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)')
 
@@ -824,30 +821,6 @@ class MatchParser:
         self.logger.debug(f"Parsed {len(player_records)} player stats for match {match_id}")
         return player_records, shot_records, home_goals_penalty, away_goals_penalty
 
-class TeamLogoParser:
-    def parse(self, json_data: Dict[str, Any], home_code: str, away_code: str) -> List[Dict[str, Any]]:
-        event_jsonld = json_data.get('seo', {}).get('eventJSONLD', {})
-        home_team = event_jsonld.get('homeTeam') or {}
-        away_team = event_jsonld.get('awayTeam') or {}
-
-        records = []
-        for team, file_name in ((home_team, home_code), (away_team, away_code)):
-            logo_url = team.get('logo')
-            if not logo_url or not file_name:
-                continue
-
-            records.append({
-                'source_url': logo_url,
-                'source_site': SiteName.FOTMOB.value,
-                'asset_type': 'image',
-                'entity_type': 'team',
-                'asset_usage': 'logo',
-                'file_name': file_name,
-                'file_ext': PurePosixPath(urlparse(logo_url).path).suffix.lstrip('.'),
-                'next_fetch_at': datetime.now(timezone.utc),
-            })
-
-        return records
 
 @TaskRegistry.poll('parse.fotmob.match')
 class ParseMatch(PollTask):
@@ -855,9 +828,7 @@ class ParseMatch(PollTask):
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.match_dao = MatchDao()
-        self.asset_dao = AssetDao()
         self.parser = MatchParser()
-        self.logo_parser = TeamLogoParser()
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
@@ -871,7 +842,7 @@ class ParseMatch(PollTask):
                     self.idle_sleep()
                     continue
 
-                for match_id, kickoff_time, json_body, home_code, away_code in items:
+                for match_id, kickoff_time, json_body in items:
                     if self.should_stop():
                         return
 
@@ -894,9 +865,6 @@ class ParseMatch(PollTask):
                         self.match_dao.mark_as_parsed(match_id, kickoff_time, match_status)
                         self.logger.info(f"Parsed match: kickoff_time={kickoff_time} match_id={match_id}")
 
-                        team_assets = self.logo_parser.parse(json_body, home_code, away_code)
-                        if team_assets:
-                            self.asset_dao.insert_assets(team_assets)
                     except Exception as e:
                         self.logger.error(f"Parse failed match_id={match_id} kickoff_time={kickoff_time}")
                         self.match_dao.mark_parse_failed(match_id)

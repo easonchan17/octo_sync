@@ -1,6 +1,20 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, Index
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, Index, UniqueConstraint
 from ..base_model import Base
 
+class AssetScanProgress(Base):
+    __tablename__ = 'asset_scan_progress'
+    __table_args__ = (
+        UniqueConstraint('site_name', 'asset_type', 'entity_type', 'asset_usage', name='uq_site_asset_scan_progress'),
+        Index('idx_asset_scan_progress_created_at', 'created_at'),
+        Index('idx_asset_scan_progress_updated_at', 'updated_at'),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    site_name = Column(String(16), nullable=False)
+    asset_type = Column(String(16), nullable=False)
+    entity_type = Column(String(16), nullable=False)
+    asset_usage = Column(String(16), nullable=False)
+    last_scanned_id = Column(Integer, nullable=False, default=0)
 
 class Asset(Base):
     __tablename__ = 'assets'
