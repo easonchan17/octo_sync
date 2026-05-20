@@ -55,7 +55,7 @@ class SyncSeason(PollTask):
         if not site_leagues:
             return []
 
-        league_ids = [int(site_league.league_id) for site_league in site_leagues]
+        league_ids = [site_league.league_id for site_league in site_leagues]
         return self.season_dao.get_pending_fetch_items(league_ids)
 
     def execute(self, *args, **kwargs) -> None:

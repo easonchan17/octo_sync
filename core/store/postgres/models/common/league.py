@@ -39,7 +39,7 @@ class SiteLeague(Base):
     country_code = Column(String(3), nullable=True)
     country_name = Column(String(100), nullable=True)
 
-    league_id = Column(String(100), nullable=False, info={'repr': True})
+    league_id = Column(Integer, nullable=False, info={'repr': True})
     league_name = Column(String(200), nullable=False)
 
     extra_data = Column(JSONB(none_as_null=True), nullable=True)

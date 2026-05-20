@@ -1,5 +1,6 @@
 from sqlalchemy.sql import text
 from sqlalchemy import Column, Integer, String, Index
+from sqlalchemy.dialects.postgresql import JSONB
 from core.types.enums import SiteName
 from ..base_model import Base, CrawlStatusMixin, RawJsonMixin
 
@@ -58,3 +59,4 @@ class League(Base):
     country_code = Column(String(8), nullable=False)
     min_season = Column(Integer, nullable=True)
     max_season = Column(Integer, nullable=True)
+    valid_seasons = Column(JSONB(none_as_null=True), nullable=True)

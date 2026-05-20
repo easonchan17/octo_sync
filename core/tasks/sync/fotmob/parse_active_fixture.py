@@ -188,7 +188,7 @@ class ParseActiveFixture(PollTask):
     def get_refetch_interval(self, last_fetch_time: datetime, max_sheduled_time: datetime, fixtures: List[Any]) -> Optional[timedelta]:
         site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
 
-        league_ids = {int(league.league_id) for league in site_leagues}
+        league_ids = {league.league_id for league in site_leagues}
         scheduled_items = [
             ScheduleSegment(
                 time=datetime.fromisoformat(fixture["kickoff_time"]).astimezone(timezone.utc),

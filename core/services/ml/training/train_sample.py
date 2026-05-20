@@ -48,7 +48,7 @@ class TrainSampleBuilder:
         self.league_service = get_league_service()
 
         canonical_league = self.league_service.get_canonical_league(SiteName.SYSTEM.value, self.league_id)
-        fotmob_league_id = int(canonical_league.site_leagues.get(SiteName.FOTMOB.value).league_id)
+        fotmob_league_id = canonical_league.site_leagues.get(SiteName.FOTMOB.value).league_id
         self.match_builder = MatchTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
         self.elo_rating_builder = EloRatingTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
         self.outfield_builder = OutfieldPlayerTrainFeatureBuilder(fotmob_league_id, min_season, max_season)

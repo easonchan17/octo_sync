@@ -53,8 +53,8 @@ class MapFixture(PollTask):
                 oddsportal_site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
                 fotmob_site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
 
-                oddsportal_league_map = {int(league.league_id): league.ref_league_id for league in oddsportal_site_leagues}
-                fotmob_league_map = {int(league.league_id): league.ref_league_id for league in fotmob_site_leagues}
+                oddsportal_league_map = {league.league_id: league.ref_league_id for league in oddsportal_site_leagues}
+                fotmob_league_map = {league.league_id: league.ref_league_id for league in fotmob_site_leagues}
 
                 oddsportal_fixtures = self.oddsportal_dao.get_pending_mapping_items(
                     list(oddsportal_league_map.keys()),
