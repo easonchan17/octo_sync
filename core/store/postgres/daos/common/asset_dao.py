@@ -19,6 +19,7 @@ class AssetDao(BaseDao):
                 FotmobFixture.away_code,
             ).filter(
                 FotmobFixture.id > last_id,
+                FotmobFixture.season > 0,
             ).order_by(FotmobFixture.id.asc()).all()
 
     def get_pending_fetch_leagues(self, site_name: str, last_id: int) -> List[Any]:
