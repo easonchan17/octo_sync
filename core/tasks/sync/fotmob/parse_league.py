@@ -80,7 +80,7 @@ class ParseLeague(PollTask):
                         for league in parsed_leagues:
                             self.league_service.resolve(
                                 SiteName.FOTMOB.value,
-                                str(league["league_id"]),
+                                league["league_id"],
                                 league["league_name"],
                                 country_name=league["country_name"],
                                 country_code=league["country_code"]

@@ -5,7 +5,7 @@ from core.types.enums import LeaguePriority
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload, Session
 from core.services.base_service import BaseService
-from typing import Dict, List, Optional, Any, Union, Set
+from typing import Dict, List, Optional, Any, Set
 from core.store.postgres.models import CanonicalLeague, SiteLeague, Status
 from core.store.cache.memory_cache import MemoryCache
 from core.types.enums import SiteName
@@ -87,7 +87,7 @@ class OfficialLoader:
 class OrphanLoader:
     def _build(self, league: SiteLeague) -> CanonicalLeagueData:
         high_bits = SiteConfig.get_index(league.site_name) << 32
-        low_bits = zlib.crc32(league.league_id.encode('utf-8')) & 0xFFFFFFFF
+        low_bits = zlib.crc32(str(league.league_id).encode('utf-8')) & 0xFFFFFFFF
         id = high_bits | low_bits
 
         return CanonicalLeagueData(
@@ -123,7 +123,7 @@ class OrphanLoader:
         self,
         session: Session,
         site_name: str,
-        league_id: str, league_name: str,
+        league_id: int, league_name: str,
         country_code: Optional[str] = None,
         country_name: Optional[str] = None
     ) -> CanonicalLeagueData:
@@ -160,7 +160,7 @@ class LeagueCache:
     def __init__(self) -> None:
         self._cache = MemoryCache()
 
-    def get(self, site_name: str, league_id: Union[str, int]) -> Optional[Any]:
+    def get(self, site_name: str, league_id: int) -> Optional[Any]:
         return self._cache.get_item(
             SiteConfig.get_scope(site_name), str(league_id)
         )
@@ -172,7 +172,7 @@ class LeagueCache:
         for site_league in system_league.site_leagues.values():
             self._cache.set_item(
                 SiteConfig.get_scope(site_league.site_name),
-                site_league.league_id,
+                str(site_league.league_id),
                 system_league.id
             )
 
@@ -205,7 +205,7 @@ class LeagueService(BaseService):
 
             self._cache = new_cache
 
-    def get_canonical_league(self, site_name: str, league_id: Union[str, int]) -> Optional[CanonicalLeagueData]:
+    def get_canonical_league(self, site_name: str, league_id: int) -> Optional[CanonicalLeagueData]:
         if self._cache is None:
             return None
 
@@ -219,7 +219,7 @@ class LeagueService(BaseService):
     def resolve(
         self,
         site_name: str,
-        league_id: str,
+        league_id: int,
         league_name: str,
         country_code: Optional[str] = None,
         country_name: Optional[str] = None

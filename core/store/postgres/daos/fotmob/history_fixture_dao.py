@@ -17,6 +17,7 @@ class HistoryFixtureDao(BaseDao):
                 League.league_name,
                 League.page_url,
                 League.max_season,
+                League.valid_seasons,
                 func.coalesce(HistoryFixtureRaw.season, season).label('season'),
                 func.coalesce(HistoryFixtureRaw.fetch_attempts, 0).label('fetch_attempts')
             ).outerjoin(
@@ -29,6 +30,7 @@ class HistoryFixtureDao(BaseDao):
                 League.league_id.in_(league_ids),
                 League.min_season <= season,
                 League.max_season >= season,
+                League.valid_seasons.op('@>')(func.jsonb_build_array(season)),
                 or_(
                     HistoryFixtureRaw.league_id.is_(None),
                     HistoryFixtureRaw.next_fetch_at <= func.now(),

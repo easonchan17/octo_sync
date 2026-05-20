@@ -13,7 +13,7 @@ class FixtureService(BaseService):
 
     def get_fixture_groups(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         leagues = {
-            int(league.site_leagues[SiteName.FOTMOB.value].league_id): league
+            league.site_leagues[SiteName.FOTMOB.value].league_id: league
             for league in self.league_service.get_leagues()
             if SiteName.FOTMOB.value in league.site_leagues
         }
