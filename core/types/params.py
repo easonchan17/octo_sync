@@ -8,11 +8,11 @@ class CrawlParams:
     PARSE_MAX_RETRIES = 3
 
     FIXTURE_LOOKBACK = timedelta(hours=24)
-    FIXTURE_LOOKAHEAD = timedelta(days=2)
+    FIXTURE_LOOKAHEAD = timedelta(days=7)
 
-    MATCH_LOOKAHEAD = timedelta(days=2)
     MATCH_LIFESPAN = timedelta(hours=4)
-    MATCH_SETTLEMENT = timedelta(days=2)
+    MATCH_SETTLEMENT = timedelta(hours=48)
+    MATCH_LOOKAHEAD = timedelta(days=7)
 
 class EloParams:
     def __init__(
