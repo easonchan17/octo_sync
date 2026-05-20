@@ -38,8 +38,6 @@ class MatchDao(BaseDao):
                 MatchRaw.match_id,
                 MatchRaw.kickoff_time,
                 MatchRaw.json_body,
-                Fixture.home_code,
-                Fixture.away_code,
             ).join(
                 Fixture, Fixture.match_id == MatchRaw.match_id
             ).filter(
@@ -285,7 +283,7 @@ class MatchDao(BaseDao):
         with self.db.get_session() as session:
             row = session.query(
                 Fixture.match_code,
-                Fixture.league_name,
+                Fixture.league_id,
                 Fixture.kickoff_time,
                 Fixture.round,
                 Fixture.home_team,
