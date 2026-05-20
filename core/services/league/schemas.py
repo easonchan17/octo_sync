@@ -5,7 +5,7 @@ from core.types.enums import LeaguePriority
 @dataclass(frozen=True)
 class SiteLeagueData:
     site_name: str
-    league_id: str
+    league_id: int
     league_name: str
     country_code: Optional[str] = None
     country_name: Optional[str] = None

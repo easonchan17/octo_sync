@@ -46,10 +46,12 @@ class SyncHistoryFixture(PollTask):
     def build_league_slug(self, page_url: str) -> str:
         return page_url.split("/")[-1]
 
-    def build_season_slug(self, season: int, max_season: int) -> Optional[str]:
+    def build_season_slug(self, season: int, max_season: int, valid_seasons: List[int]) -> Optional[str]:
         if season == max_season:
             return None
-        return f"{season}-{season + 1}"
+        if season + 1 in valid_seasons:
+            return f"{season}-{season + 1}"
+        return str(season)
 
     def build_fixture_uri(self, league_id: int, league_slug: str, season_slug: Optional[str]) -> str:
         uri = f"/leagues/{league_id}/fixtures/{league_slug}?"
@@ -66,7 +68,7 @@ class SyncHistoryFixture(PollTask):
         if not site_leagues:
             return []
 
-        league_ids = [int(site_league.league_id) for site_league in site_leagues]
+        league_ids = [site_league.league_id for site_league in site_leagues]
         from_season, end_season = self.get_fetch_season_range()
 
         items = []
@@ -83,13 +85,13 @@ class SyncHistoryFixture(PollTask):
                     self.idle_sleep()
                     continue
 
-                for league_id, league_name, league_uri, max_season, season, fetch_attempts in items:
+                for league_id, league_name, league_uri, max_season, valid_seasons, season, fetch_attempts in items:
                     if self.should_stop():
                         return
 
                     try:
                         league_slug = self.build_league_slug(league_uri)
-                        season_slug = self.build_season_slug(season, max_season)
+                        season_slug = self.build_season_slug(season, max_season, valid_seasons or [])
                         page_url = self.intercept_strategy.url.format(
                             fixture_uri=self.build_fixture_uri(league_id, league_slug, season_slug)
                         )

@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
@@ -9,12 +9,12 @@ from core.types.enums import SiteName
 
 
 class SeasonParser:
-    SEASON_PATTERN = re.compile(r'^(\d{4})/')
+    SEASON_PATTERN = re.compile(r'^(\d{4})')
 
     def __init__(self) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
 
-    def parse(self, json_data: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+    def parse(self, json_data: Dict[str, Any]) -> Optional[Tuple[int, int, List[int]]]:
         if not json_data:
             self.logger.error("json data is empty")
             return None
@@ -24,12 +24,12 @@ class SeasonParser:
             self.logger.error("allAvailableSeasons is empty")
             return None
 
-        seasons = [int(m.group(1)) for season in available_seasons if (m := self.SEASON_PATTERN.match(season))]
+        seasons = sorted({int(m.group(1)) for season in available_seasons if (m := self.SEASON_PATTERN.match(season))})
         if not seasons:
             self.logger.error("no valid seasons found")
             return None
 
-        return min(seasons), max(seasons)
+        return seasons[0], seasons[-1], seasons
 
 
 @TaskRegistry.poll('parse.fotmob.season')
@@ -62,8 +62,8 @@ class ParseSeason(PollTask):
                             self.logger.error(f"Failed to parse season league_id={league_id} league_name={league_name}: no seasons found")
                             continue
 
-                        min_season, max_season = season_range
-                        self.season_dao.sync_parsed_data(league_id, min_season, max_season)
+                        min_season, max_season, valid_seasons = season_range
+                        self.season_dao.sync_parsed_data(league_id, min_season, max_season, valid_seasons)
                         self.season_dao.mark_as_parsed(league_id)
                         self.logger.info(f"Parsed season league_id={league_id} min={min_season} max={max_season}")
 

@@ -125,12 +125,13 @@ class SeasonDao(BaseDao):
             )
             session.execute(insert_stmt)
 
-    def sync_parsed_data(self, league_id: int, min_season: int, max_season: int) -> None:
+    def sync_parsed_data(self, league_id: int, min_season: int, max_season: int, valid_seasons: List[int]) -> None:
         with self.db.get_session() as session:
             session.query(League).filter(
                 League.league_id == league_id
             ).update({
                 League.min_season.key: min_season,
                 League.max_season.key: max_season,
+                League.valid_seasons.key: valid_seasons,
                 League.updated_at.key: func.now(),
             }, synchronize_session=False)

@@ -47,7 +47,7 @@ class SyncUpcomingFixture(PollTask):
         if not site_leagues:
             return []
 
-        league_ids = [int(league.league_id) for league in site_leagues]
+        league_ids = [league.league_id for league in site_leagues]
         return self.upcoming_fixture_dao.get_pending_fetch_items(league_ids)
 
     def execute(self, *args, **kwargs) -> None:

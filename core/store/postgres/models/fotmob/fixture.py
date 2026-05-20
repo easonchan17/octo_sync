@@ -54,7 +54,7 @@ class Fixture(Base):
         Index('idx_fixtures_home_id', 'home_id'),
         Index('idx_fixtures_away_id', 'away_id'),
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
-Index('idx_fixtures_league_id_kickoff_time', 'league_id', 'kickoff_time'),
+        Index('idx_fixtures_league_id_kickoff_time', 'league_id', 'kickoff_time'),
         Index('idx_fixtures_league_id_season', 'league_id', 'season'),
         {'schema': SiteName.FOTMOB.value}
     )
