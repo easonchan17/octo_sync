@@ -205,11 +205,16 @@ class LeagueService(BaseService):
 
             self._cache = new_cache
 
-    def get(self, id: int) -> Optional[CanonicalLeagueData]:
+    def get_canonical_league(self, site_name: str, league_id: Union[str, int]) -> Optional[CanonicalLeagueData]:
         if self._cache is None:
             return None
 
-        return self._cache.get(SiteName.SYSTEM.value, str(id))
+        if site_name != SiteName.SYSTEM.value:
+            league_id = self._cache.get(site_name, str(league_id))
+            if league_id is None:
+                return None
+
+        return self._cache.get(SiteName.SYSTEM.value, str(league_id))
 
     def resolve(
         self,
@@ -222,9 +227,9 @@ class LeagueService(BaseService):
         if self._cache is None:
             return None
 
-        ref_league_id = self._cache.get(site_name, str(league_id))
-        if ref_league_id is not None:
-            return self.get(ref_league_id)
+        canonical_league = self.get_canonical_league(site_name, league_id)
+        if canonical_league is not None:
+            return canonical_league
 
         with self.db.get_session() as session:
             orphan = self._orphan_loader.add(
