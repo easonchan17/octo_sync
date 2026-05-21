@@ -70,7 +70,6 @@ class BaseLauncher(ABC):
 
 
 FORM_CACHE_PATTERN = r"^build\.fotmob\.form_cache$"
-a = r"^parse\.oddsportal\.league$"
 
 
 class CrawlerLauncher(BaseLauncher):
@@ -85,7 +84,7 @@ class CrawlerLauncher(BaseLauncher):
         self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
         self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
-        self._add_service("PollManager",       lambda: poll_manager.start(include=a), poll_manager.stop)
+        self._add_service("PollManager",       lambda: poll_manager.start(exclude=FORM_CACHE_PATTERN), poll_manager.stop)
 
 
 class ApiLauncher(BaseLauncher):
