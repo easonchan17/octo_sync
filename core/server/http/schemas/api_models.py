@@ -6,6 +6,9 @@ from enum import IntEnum
 
 T = TypeVar('T')
 
+TEAM_LOGO_URL = "/media/image/team/logo/{team_code}.png"
+LEAGUE_LOGO_URL = "/media/image/league/logo/{league_id}.png"
+
 
 # ==============================================================================
 # Pagination Models
@@ -31,7 +34,7 @@ class LeagueResponse(BaseModel):
     @computed_field
     @property
     def logo(self) -> str:
-        return f"/assets/image/league/logo/{self.id}.png"
+        return LEAGUE_LOGO_URL.format(league_id=self.id)
 
     class Config:
         from_attributes = True
@@ -60,12 +63,12 @@ class MatchResponse(BaseModel):
     @computed_field
     @property
     def home_logo(self) -> str:
-        return f"/assets/image/team/logo/{self.home_code}.png"
+        return TEAM_LOGO_URL.format(team_code=self.home_code)
 
     @computed_field
     @property
     def away_logo(self) -> str:
-        return f"/assets/image/team/logo/{self.away_code}.png"
+        return TEAM_LOGO_URL.format(team_code=self.away_code)
 
     @computed_field
     @property
@@ -88,7 +91,7 @@ class MatchDetailResponse(MatchResponse):
     @computed_field
     @property
     def league_logo(self) -> str:
-        return f"/assets/image/league/logo/{self.league_id}.png"
+        return LEAGUE_LOGO_URL.format(league_id=self.league_id)
 
 
 class FixtureResponse(BaseModel):
@@ -100,7 +103,7 @@ class FixtureResponse(BaseModel):
     @computed_field
     @property
     def league_logo(self) -> str:
-        return f"/assets/image/league/logo/{self.league_id}.png"
+        return LEAGUE_LOGO_URL.format(league_id=self.league_id)
 
 
 # ==============================================================================
