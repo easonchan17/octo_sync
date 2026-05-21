@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Optional, Tuple, Dict, Any
 from core.services.base_service import BaseService
 from core.store.postgres.daos.common import TrainingRecordDao
 from core.store.postgres.daos.fotmob import ActiveFixtureDao
@@ -36,7 +36,7 @@ class ModelService(BaseService):
         items = [{**record.to_dict(), "is_loaded": record.model_version in loaded_versions} for record in records]
         return total, items
 
-    def predict(self, match_code: str, version: Optional[str] = None) -> Dict[str, Any]:
+    def predict(self, match_code: str, version: Optional[str]) -> Dict[str, Any]:
         fixture = self.fixture_dao.get_by_match_code(match_code)
         if fixture is None:
             raise ValueError(f"Fixture not found for match_code={match_code}")

@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from fastapi import HTTPException
 from core.services.match_service import MatchService
 from core.services.model_service import ModelService
@@ -22,9 +22,9 @@ class MatchController(BaseController):
             self.logger.error(f"Failed to get match detail {match_code}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to get match detail: {str(e)}")
 
-    def predict(self, match_code: str) -> PredictionResponse:
+    def predict(self, match_code: str, model: Optional[str] = None) -> PredictionResponse:
         try:
-            result = self.model_service.predict(match_code)
+            result = self.model_service.predict(match_code, model)
             return PredictionResponse(**result, match_code=match_code)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
