@@ -1,9 +1,22 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from core.store.postgres.models import TrainingRecord, Status
 from ..base_dao import BaseDao
 
 
 class TrainingRecordDao(BaseDao):
+    def get_default(self) -> Optional[TrainingRecord]:
+        with self.db.get_session() as session:
+            record = session.query(TrainingRecord).filter(
+                TrainingRecord.status == Status.ACTIVE.value
+            ).order_by(
+                TrainingRecord.is_recommended.desc(),
+                TrainingRecord.created_at.desc()
+            ).first()
+
+            if record:
+                session.expunge(record)
+            return record
+
     def get_by_version(self, version: str) -> TrainingRecord:
         with self.db.get_session() as session:
             record = session.query(TrainingRecord).filter(

@@ -6,6 +6,7 @@ from core.types.enums import Position
 from core.logger.logger_manager import get_logger_manager
 from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.models import TrainingRecord
+from core.store.postgres.daos.common import TrainingRecordDao
 from core.services.ml.inference.predictor import BasePredictor
 from core.services.ml.preprocessing.builders.match import MatchLatestFeatureBuilder
 from core.services.ml.preprocessing.builders.player import (
@@ -67,14 +68,16 @@ class PredictorManager:
     def __init__(self) -> None:
         self._predictors: Dict[str, BasePredictor] = {}
         self._lock = Lock()
+        self._training_record_dao = TrainingRecordDao()
 
-    def get(self, version: Optional[str] = None) -> Optional[BasePredictor]:
+    def get(self, version: Optional[str]) -> Optional[BasePredictor]:
         if version is None:
-            versions = self.get_versions()
-            version = versions[0] if versions else None
+            record = self._training_record_dao.get_default()
+            if record is None:
+                raise ValueError("No trained model available")
 
-        if version is None:
-            return None
+            self.load(record.model_type, record.model_version, record)
+            version = record.model_version
 
         return self._predictors.get(version)
 
@@ -110,11 +113,10 @@ class PredictService:
         self._form_cache = FormCache()
         self._predictor_manager = PredictorManager()
 
-    def predict(self, fixture: Any, version: Optional[str] = None) -> Dict[str, Any]:
+    def predict(self, fixture: Any, version: Optional[str]) -> Dict[str, Any]:
         predictor = self._predictor_manager.get(version)
         if predictor is None:
-            raise ValueError(f"Model {version} is not loaded. Call load() first.")
-
+            raise ValueError(f"Model {version} is not loaded")
         return predictor.predict(fixture, self._form_cache)
 
     def build_form_cache(self, min_kickoff_time: datetime) -> int:
