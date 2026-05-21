@@ -28,7 +28,7 @@ VALUES
     ('oddsportal', 92615, 'Serie A', 103, 1, NOW(), NOW()),
     ('oddsportal', 93299, 'Bundesliga', 104, 1, NOW(), NOW()),
     ('oddsportal', 92251, 'Ligue 1', 105, 1, NOW(), NOW()),
-    ('oddsportal', 77311, 'World Cup 2026', 301, 1, NOW(), NOW()),
+    ('oddsportal', 77311, 'World Cup', 301, 1, NOW(), NOW()),
     ('fotmob', 42, 'Champions League', 401, 1, NOW(), NOW()),
     ('oddsportal', 87559, 'Champions League', 401, 1, NOW(), NOW())
 ON CONFLICT (site_name, league_id) DO UPDATE SET

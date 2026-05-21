@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict, Optional, List
 from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask
@@ -33,10 +34,12 @@ class LeagueParser:
                     continue
 
                 seen.add(league_id)
+                page_url = re.sub(r'-\d{4}/$', '/', tournament.get("url") or "")
+                league_name = re.sub(r'\s+\d{4}$', '', tournament.get("name") or "")
                 results.append({
                     "league_id": league_id,
-                    "league_name": tournament.get("name"),
-                    "page_url": tournament.get("url"),
+                    "league_name": league_name,
+                    "page_url": page_url,
                     "country_name": country_name,
                     "country_code": country_code,
                 })
