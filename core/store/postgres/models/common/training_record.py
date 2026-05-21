@@ -1,5 +1,5 @@
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, String, DateTime, Index, Float, Text
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, Index, Float, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from ..base_model import Base, Status
 
@@ -28,3 +28,4 @@ class TrainingRecord(Base):
     best_params = Column(JSONB(none_as_null=True), nullable=False)
     train_score = Column(Float, nullable=False)
     test_score = Column(Float, nullable=False)
+    is_recommended = Column(Boolean, nullable=False, default=False)
