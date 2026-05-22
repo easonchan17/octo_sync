@@ -177,7 +177,7 @@ class LeagueLogoScanner(BaseAssetScanner):
 @TaskRegistry.poll('scan.asset')
 class ScanAsset(PollTask):
     FOTMOB_TEAM_LOGO_URL = 'https://images.fotmob.com/image_resources/logo/teamlogo/{}.png'
-    FOTMOB_PLAYER_LOGO_URL = 'https://images.fotmob.com/image_resources/playerimages/{}.png"'
+    FOTMOB_PLAYER_LOGO_URL = 'https://images.fotmob.com/image_resources/playerimages/{}.png'
     FOTMOB_LEAGUE_LOGO_URL = 'https://images.fotmob.com/image_resources/logo/leaguelogo/{}.png'
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
