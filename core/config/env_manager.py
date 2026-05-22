@@ -14,6 +14,7 @@ class EnvManager(BaseSettings):
     DOCS_PASSWORD: Optional[str] = Field(default=None, description="HTTP Basic password for docs; set with DOCS_USERNAME to enable docs")
     MATCH_CODE_SALT: str = Field(..., description="Salt for match code generation")
     TEAM_CODE_SALT: str = Field(..., description="Salt for team code generation")
+    PLAYER_CODE_SALT: str = Field(..., description="Salt for player code generation")
 
     model_config = SettingsConfigDict(
         env_file=".env",

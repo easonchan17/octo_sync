@@ -302,6 +302,7 @@ class MatchLineup(Base):
 
     member_id = Column(Integer, nullable=False)
     member_name = Column(String(128), nullable=False)
+    player_code = Column(String(16), nullable=True)
     opta_id = Column(String(64), nullable=True)
     age = Column(Integer, nullable=True)
 
