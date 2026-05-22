@@ -18,7 +18,7 @@ class TrainingRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     model_version = Column(String(256), nullable=False, unique=True)
-    model_family = Column(String(256), nullable=True)
+    model_family = Column(String(256), nullable=False)
     model_type = Column(String(256), nullable=False)
     model_path = Column(Text, nullable=False)
 
