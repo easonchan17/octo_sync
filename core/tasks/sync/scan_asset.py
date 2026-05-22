@@ -141,8 +141,10 @@ class PlayerLogoScanner(BaseAssetScanner):
 
 
 class FotmobPlayerLogoScanner(PlayerLogoScanner):
+    BATCH_SIZE = 2000
+
     def get_pending_fetch_players(self, last_id: int) -> List[Any]:
-        return self.asset_dao.get_fotmob_pending_fetch_players(last_id)
+        return self.asset_dao.get_fotmob_pending_fetch_players(last_id, self.BATCH_SIZE)
 
 class LeagueLogoScanner(BaseAssetScanner):
     def __init__(self, site_name: str, url_template: str) -> None:
