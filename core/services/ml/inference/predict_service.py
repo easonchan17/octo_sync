@@ -76,7 +76,7 @@ class PredictorManager:
             if record is None:
                 raise ValueError("No trained model available")
 
-            self.load(record.model_type, record.model_version, record)
+            self.load(record.model_family, record.model_version, record)
             version = record.model_version
 
         return self._predictors.get(version)
