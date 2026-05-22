@@ -5,22 +5,37 @@ from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.common.asset import Asset, AssetScanProgress
 from core.store.postgres.models.common.league import SiteLeague
-from core.store.postgres.models.fotmob.fixture import Fixture as FotmobFixture
+from core.store.postgres.models.fotmob.fixture import Fixture
+from core.store.postgres.models.fotmob.match import MatchLineup
 from ..base_dao import BaseDao
 
 class AssetDao(BaseDao):
     def get_fotmob_pending_fetch_teams(self, last_id: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
-                FotmobFixture.id,
-                FotmobFixture.home_id,
-                FotmobFixture.home_code,
-                FotmobFixture.away_id,
-                FotmobFixture.away_code,
+                Fixture.id,
+                Fixture.home_id,
+                Fixture.home_code,
+                Fixture.away_id,
+                Fixture.away_code,
             ).filter(
-                FotmobFixture.id > last_id,
-                FotmobFixture.season > 0,
-            ).order_by(FotmobFixture.id.asc()).all()
+                Fixture.id > last_id,
+                Fixture.season > 0,
+            ).order_by(Fixture.id.asc()).all()
+
+    def get_fotmob_pending_fetch_players(self, last_id: int) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                MatchLineup.id,
+                MatchLineup.member_id,
+                MatchLineup.player_code,
+            ).join(
+                Fixture, Fixture.match_id == MatchLineup.match_id
+            ).filter(
+                MatchLineup.id > last_id,
+                MatchLineup.player_code.isnot(None),
+                Fixture.season > 0,
+            ).order_by(MatchLineup.id.asc()).limit(2000).all()
 
     def get_pending_fetch_leagues(self, site_name: str, last_id: int) -> List[Any]:
         with self.db.get_session() as session:

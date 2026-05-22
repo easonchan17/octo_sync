@@ -20,6 +20,7 @@ class AssetUsage(str, Enum):
 class EntityType(str, Enum):
     TEAM = 'team'
     LEAGUE = 'league'
+    PLAYER = 'player'
 
 
 class BaseAssetScanner(ABC):
@@ -101,6 +102,47 @@ class FotmobTeamLogoScanner(TeamLogoScanner):
     def get_pending_fetch_teams(self, last_id: int) -> List[Any]:
         return self.asset_dao.get_fotmob_pending_fetch_teams(last_id)
 
+class PlayerLogoScanner(BaseAssetScanner):
+    def __init__(self, site_name: str, url_template: str) -> None:
+        super().__init__(site_name, AssetType.IMAGE, EntityType.PLAYER, AssetUsage.LOGO, url_template)
+
+    @abstractmethod
+    def get_pending_fetch_players(self, last_id: int) -> List[Any]:
+        ...
+
+    def scan_items(self) -> Optional[Tuple[List[Dict], int]]:
+        last_id = self.asset_dao.get_scan_progress(
+            self.site_name, self.asset_type, self.entity_type, self.asset_usage
+        )
+        items = self.get_pending_fetch_players(last_id)
+        if not items:
+            return None
+
+        players: Dict[int, str] = {}
+        for item in items:
+            if item.member_id not in players:
+                players[item.member_id] = item.player_code
+
+        now = datetime.now(timezone.utc)
+        assets = [
+            {
+                'source_url': self.url_template.format(member_id),
+                'source_site': self.site_name,
+                'asset_type': self.asset_type,
+                'entity_type': self.entity_type,
+                'asset_usage': self.asset_usage,
+                'file_name': player_code,
+                'file_ext': self.file_ext,
+                'next_fetch_at': now,
+            }
+            for member_id, player_code in players.items()
+        ]
+        return assets, items[-1].id
+
+
+class FotmobPlayerLogoScanner(PlayerLogoScanner):
+    def get_pending_fetch_players(self, last_id: int) -> List[Any]:
+        return self.asset_dao.get_fotmob_pending_fetch_players(last_id)
 
 class LeagueLogoScanner(BaseAssetScanner):
     def __init__(self, site_name: str, url_template: str) -> None:
@@ -133,12 +175,14 @@ class LeagueLogoScanner(BaseAssetScanner):
 @TaskRegistry.poll('scan.asset')
 class ScanAsset(PollTask):
     FOTMOB_TEAM_LOGO_URL = 'https://images.fotmob.com/image_resources/logo/teamlogo/{}.png'
+    FOTMOB_PLAYER_LOGO_URL = 'https://images.fotmob.com/image_resources/playerimages/{}.png"'
     FOTMOB_LEAGUE_LOGO_URL = 'https://images.fotmob.com/image_resources/logo/leaguelogo/{}.png'
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.scanners = [
             FotmobTeamLogoScanner(site_name=SiteName.FOTMOB.value, url_template=self.FOTMOB_TEAM_LOGO_URL),
+            FotmobPlayerLogoScanner(site_name=SiteName.FOTMOB.value, url_template=self.FOTMOB_PLAYER_LOGO_URL),
             LeagueLogoScanner(site_name=SiteName.FOTMOB.value, url_template=self.FOTMOB_LEAGUE_LOGO_URL),
         ]
 

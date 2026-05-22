@@ -7,7 +7,8 @@ from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat, ShotStat
-from core.tasks.sync.fotmob.utils import extract_status
+from core.tasks.sync.fotmob.utils import extract_status, encode_id
+from core.config.env_manager import get_env_manager
 from core.store.postgres.daos.fotmob import MatchDao
 
 _VALUE_WITH_PERCENT_PATTERN = re.compile(r'^(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)')
@@ -607,6 +608,7 @@ class MatchParser:
     def __init__(self) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.formation_resolver = FormationResolver()
+        self.env_manager = get_env_manager()
 
     def parse(self, json_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if not json_data:
@@ -707,6 +709,7 @@ class MatchParser:
                     member_id = record.get("member_id")
                     if member_id and member_id not in seen:
                         seen.add(member_id)
+                        record["player_code"] = encode_id(member_id, self.env_manager.PLAYER_CODE_SALT)
                         records.append(record)
 
             return formation, records
