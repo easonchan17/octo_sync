@@ -23,7 +23,7 @@ class AssetDao(BaseDao):
                 Fixture.season > 0,
             ).order_by(Fixture.id.asc()).all()
 
-    def get_fotmob_pending_fetch_players(self, last_id: int) -> List[Any]:
+    def get_fotmob_pending_fetch_players(self, last_id: int, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 MatchLineup.id,
@@ -35,7 +35,7 @@ class AssetDao(BaseDao):
                 MatchLineup.id > last_id,
                 MatchLineup.player_code.isnot(None),
                 Fixture.season > 0,
-            ).order_by(MatchLineup.id.asc()).limit(2000).all()
+            ).order_by(MatchLineup.id.asc()).limit(limit).all()
 
     def get_pending_fetch_leagues(self, site_name: str, last_id: int) -> List[Any]:
         with self.db.get_session() as session:
