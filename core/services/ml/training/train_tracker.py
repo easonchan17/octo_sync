@@ -172,6 +172,7 @@ class TrainTracker:
         try:
             record = TrainingRecord(
                 model_version=model_version,
+                model_family=self.config.model_family,
                 model_type=self.config.model_type,
                 model_path=model_path,
                 dataset_name=self.config.dataset_name,
