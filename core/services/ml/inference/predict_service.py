@@ -116,7 +116,8 @@ class PredictService:
     def predict(self, fixture: Any, version: Optional[str]) -> Dict[str, Any]:
         predictor = self._predictor_manager.get(version)
         if predictor is None:
-            raise ValueError(f"Model {version} is not loaded")
+            raise ValueError(f"Invalid model {version}")
+
         return predictor.predict(fixture, self._form_cache)
 
     def build_form_cache(self, min_kickoff_time: datetime) -> int:
