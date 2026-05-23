@@ -14,6 +14,7 @@ class MapFixture(PollTask):
     MAPPING_QUERY_LIMIT = 100
     SIMILARITY_THRESHOLD = 60
     KICKOFF_TOLERANCE = timedelta(minutes=30)
+    KICKOFF_LOOKAHEAD = timedelta(days=2)
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.ODDSPORTAL.value)
@@ -58,6 +59,7 @@ class MapFixture(PollTask):
 
                 oddsportal_fixtures = self.oddsportal_dao.get_pending_mapping_items(
                     list(oddsportal_league_map.keys()),
+                    datetime.now(timezone.utc) + self.KICKOFF_LOOKAHEAD,
                     self.MAPPING_QUERY_LIMIT
                 )
                 if not oddsportal_fixtures:
