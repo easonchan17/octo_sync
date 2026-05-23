@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import delete, func, or_, and_, update
 from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
@@ -5,7 +6,7 @@ from core.store.postgres.models.oddsportal.fixture import Fixture, FixtureMappin
 from ..base_dao import BaseDao
 
 class FixtureMappingDao(BaseDao):
-    def get_pending_mapping_items(self, league_ids: List[int], limit: int) -> List[Any]:
+    def get_pending_mapping_items(self, league_ids: List[int], max_kickoff_time: datetime, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.id,
@@ -20,6 +21,7 @@ class FixtureMappingDao(BaseDao):
             ).filter(
                 Fixture.ref_match_id.is_(None),
                 Fixture.league_id.in_(league_ids),
+                Fixture.kickoff_time <= max_kickoff_time,
                 or_(
                     FixtureMappingLog.match_code.is_(None),
                     FixtureMappingLog.next_attempt_at <= func.now()
