@@ -238,6 +238,12 @@ class Odds1x2BookmakerResponse(BaseModel):
     close_home: Optional[float] = None
     close_draw: Optional[float] = None
     close_away: Optional[float] = None
+    home_movement: Optional[str] = None
+    draw_movement: Optional[str] = None
+    away_movement: Optional[str] = None
+    home_change_time: Optional[datetime] = None
+    draw_change_time: Optional[datetime] = None
+    away_change_time: Optional[datetime] = None
 
 
 class Odds1x2DetailResponse(BaseModel):
@@ -258,6 +264,10 @@ class OddsAhBookmakerResponse(BaseModel):
     close_line: Optional[float] = None
     close_home: Optional[float] = None
     close_away: Optional[float] = None
+    home_movement: Optional[str] = None
+    away_movement: Optional[str] = None
+    home_change_time: Optional[datetime] = None
+    away_change_time: Optional[datetime] = None
 
 
 class OddsAhDetailResponse(BaseModel):
