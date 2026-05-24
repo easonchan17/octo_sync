@@ -493,6 +493,12 @@ class MatchParser:
         "isFromInsideBox": [("is_inside_box", lambda x: x)],
         "expectedGoals": [("xg", lambda x: x)],
         "expectedGoalsOnTarget": [("xgot", lambda x: x)],
+        "onGoalShot": [
+            ("on_goal_shot_x", lambda v: v.get("x") if isinstance(v, dict) else None),
+            ("on_goal_shot_y", lambda v: v.get("y") if isinstance(v, dict) else None),
+        ],
+        "goalCrossedY": [("goal_y", lambda x: x)],
+        "goalCrossedZ": [("goal_z", lambda x: x)],
     }
 
     SHOT_STATS_COUNTER = {
@@ -635,9 +641,10 @@ class MatchParser:
 
         result = {"match_id": match_id}
 
+        lineup_type, home_formation, away_formation = None, None, None
         raw_lineup = content.get('lineup')
         if raw_lineup is not None:
-            result["lineup"] = self._parse_lineup(match_id, raw_lineup)
+            result["lineup"], lineup_type, home_formation, away_formation = self._parse_lineup(match_id, raw_lineup)
 
         home_goals_penalty, away_goals_penalty = 0, 0
         raw_player_stats = content.get('playerStats')
@@ -652,6 +659,9 @@ class MatchParser:
             result["match_stats"] = self._parse_match_stats(match_id, stat_groups)
             result["match_stats"]["home_goals_penalty"] = home_goals_penalty
             result["match_stats"]["away_goals_penalty"] = away_goals_penalty
+            result["match_stats"]["lineup_type"] = lineup_type
+            result["match_stats"]["home_formation"] = home_formation
+            result["match_stats"]["away_formation"] = away_formation
 
         status = json_data.get('header', {}).get('status')
         match_status, kickoff_time, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
@@ -672,10 +682,10 @@ class MatchParser:
         record["team_name"] = team_name
         return record
 
-    def _parse_lineup(self, match_id: int, raw_lineup: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        def parse_team_lineup(team_data: Optional[Dict[str, Any]]) -> Tuple[Optional[str], Optional[List[Dict[str, Any]]]]:
+    def _parse_lineup(self, match_id: int, raw_lineup: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], Optional[str], Optional[str], Optional[str]]:
+        def parse_team_lineup(team_data: Optional[Dict[str, Any]]) -> Tuple[Optional[str], List[Dict[str, Any]]]:
             if not team_data:
-                return None, None
+                return None, []
 
             team_id = team_data.get("id")
             team_name = team_data.get("name")
@@ -717,13 +727,7 @@ class MatchParser:
         lineup_type = raw_lineup.get("lineupType")
         home_formation, home_lineup = parse_team_lineup(raw_lineup.get("homeTeam"))
         away_formation, away_lineup = parse_team_lineup(raw_lineup.get("awayTeam"))
-        return {
-            "lineup_type": lineup_type,
-            "home_formation": home_formation,
-            "home_lineup": home_lineup,
-            "away_formation": away_formation,
-            "away_lineup": away_lineup
-        }
+        return home_lineup + away_lineup, lineup_type, home_formation, away_formation
 
     def _create_match_stats_record(self, match_id: int) -> Dict[str, Any]:
         keys = MatchStat.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
@@ -808,6 +812,10 @@ class MatchParser:
                     raw_val = shot.get(source_key)
                     for target_key, extractor in targets:
                         shot_record[target_key] = extractor(raw_val)
+                shot_record["player_name"] = player_name
+                shot_record["player_code"] = encode_id(player_id, self.env_manager.PLAYER_CODE_SALT)
+                shot_record["team_code"] = encode_id(team_id, self.env_manager.TEAM_CODE_SALT)
+                shot_record["keeper_code"] = encode_id(shot_record["keeper_id"], self.env_manager.PLAYER_CODE_SALT) if shot_record.get("keeper_id") else None
                 shot_records.append(shot_record)
 
                 for target_key, counter in self.SHOT_STATS_COUNTER.items():
