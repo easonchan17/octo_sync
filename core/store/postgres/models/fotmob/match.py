@@ -273,10 +273,10 @@ class ShotStat(Base):
     goal_z = Column(Float, nullable=True)
 
     team_id = Column(Integer, nullable=True)
-    team_code = Column(String(16), nullable=True)
+    team_code = Column(String(16), nullable=False)
     player_id = Column(Integer, nullable=True)
-    player_code = Column(String(16), nullable=True)
-    player_name = Column(String(128), nullable=True)
+    player_code = Column(String(16), nullable=False)
+    player_name = Column(String(128), nullable=False)
     keeper_id = Column(Integer, nullable=True)
     keeper_code =  Column(String(16), nullable=True)
 
@@ -307,6 +307,7 @@ class MatchLineup(Base):
 
     team_id = Column(Integer, nullable=False)
     team_name = Column(String(100), nullable=True)
+    team_code = Column(String(16), nullable=True)
 
     member_id = Column(Integer, nullable=False)
     member_name = Column(String(128), nullable=False)

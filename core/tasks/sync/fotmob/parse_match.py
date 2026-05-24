@@ -673,80 +673,21 @@ class MatchParser:
         self,
         match_id: int,
         team_id: int,
+        team_code: str,
         team_name: str
     ) -> Dict[str, Any]:
         keys = MatchLineup.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
         record = {key: None for key in keys}
         record["match_id"] = match_id
         record["team_id"] = team_id
+        record["team_code"] = team_code
         record["team_name"] = team_name
         return record
-
-    def _parse_lineup(self, match_id: int, raw_lineup: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], Optional[str], Optional[str], Optional[str]]:
-        def parse_team_lineup(team_data: Optional[Dict[str, Any]]) -> Tuple[Optional[str], List[Dict[str, Any]]]:
-            if not team_data:
-                return None, []
-
-            team_id = team_data.get("id")
-            team_name = team_data.get("name")
-            formation = team_data.get("formation")
-            starters = team_data.get("starters", [])
-            subs = team_data.get("subs", [])
-            unavailables = team_data.get("unavailable", [])
-
-            self.formation_resolver.resolve(formation, starters)
-
-            groups = [
-                (LineupRole.STARTER, starters),
-                (LineupRole.SUB, subs),
-                (LineupRole.UNAVAILABLE, unavailables),
-            ]
-            records = []
-            seen = set()
-            for lineup_role, members in groups:
-                for member in members:
-                    record = self._create_lineup_record(match_id, team_id, team_name)
-                    for key, val in member.items():
-                        targets = self.LINEUP_MAPPING.get(key)
-                        if not targets:
-                            continue
-
-                        for target_key, extractor in targets:
-                            record[target_key] = extractor(val)
-
-                    record["role"] = lineup_role.value
-
-                    member_id = record.get("member_id")
-                    if member_id and member_id not in seen:
-                        seen.add(member_id)
-                        record["player_code"] = encode_id(member_id, self.env_manager.PLAYER_CODE_SALT)
-                        records.append(record)
-
-            return formation, records
-
-        lineup_type = raw_lineup.get("lineupType")
-        home_formation, home_lineup = parse_team_lineup(raw_lineup.get("homeTeam"))
-        away_formation, away_lineup = parse_team_lineup(raw_lineup.get("awayTeam"))
-        return home_lineup + away_lineup, lineup_type, home_formation, away_formation
 
     def _create_match_stats_record(self, match_id: int) -> Dict[str, Any]:
         keys = MatchStat.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
         record = {key: None for key in keys}
         record["match_id"] = match_id
-        return record
-
-    def _parse_match_stats(self, match_id: int, stat_groups: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        record = self._create_match_stats_record(match_id)
-        for stat_group in stat_groups:
-            stats = stat_group.get("stats", [])
-            for stat in stats:
-                targets = self.MATCH_STATS_EXTRACTOR.get(stat.get("key"))
-                if not targets:
-                    continue
-                raw_vals = stat.get("stats", [None, None])
-                for target_keys, extractor in targets:
-                    target_vals = extractor(raw_vals)
-                    record.update(zip(target_keys, target_vals))
         return record
 
     def _create_player_stats_record(
@@ -776,6 +717,68 @@ class MatchParser:
         keys = ShotStat.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
         record = {key: None for key in keys}
         record["match_id"] = match_id
+        return record
+
+    def _parse_lineup(self, match_id: int, raw_lineup: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], Optional[str], Optional[str], Optional[str]]:
+        def parse_team_lineup(team_data: Optional[Dict[str, Any]]) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+            if not team_data:
+                return None, []
+
+            team_id = team_data.get("id")
+            team_name = team_data.get("name")
+            team_code = encode_id(team_id, self.env_manager.TEAM_CODE_SALT)
+            formation = team_data.get("formation")
+            starters = team_data.get("starters", [])
+            subs = team_data.get("subs", [])
+            unavailables = team_data.get("unavailable", [])
+
+            self.formation_resolver.resolve(formation, starters)
+
+            groups = [
+                (LineupRole.STARTER, starters),
+                (LineupRole.SUB, subs),
+                (LineupRole.UNAVAILABLE, unavailables),
+            ]
+            records = []
+            seen = set()
+            for lineup_role, members in groups:
+                for member in members:
+                    record = self._create_lineup_record(match_id, team_id, team_code, team_name)
+                    for key, val in member.items():
+                        targets = self.LINEUP_MAPPING.get(key)
+                        if not targets:
+                            continue
+
+                        for target_key, extractor in targets:
+                            record[target_key] = extractor(val)
+
+                    record["role"] = lineup_role.value
+
+                    member_id = record.get("member_id")
+                    if member_id and member_id not in seen:
+                        seen.add(member_id)
+                        record["player_code"] = encode_id(member_id, self.env_manager.PLAYER_CODE_SALT)
+                        records.append(record)
+
+            return formation, records
+
+        lineup_type = raw_lineup.get("lineupType")
+        home_formation, home_lineup = parse_team_lineup(raw_lineup.get("homeTeam"))
+        away_formation, away_lineup = parse_team_lineup(raw_lineup.get("awayTeam"))
+        return home_lineup + away_lineup, lineup_type, home_formation, away_formation
+
+    def _parse_match_stats(self, match_id: int, stat_groups: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        record = self._create_match_stats_record(match_id)
+        for stat_group in stat_groups:
+            stats = stat_group.get("stats", [])
+            for stat in stats:
+                targets = self.MATCH_STATS_EXTRACTOR.get(stat.get("key"))
+                if not targets:
+                    continue
+                raw_vals = stat.get("stats", [None, None])
+                for target_keys, extractor in targets:
+                    target_vals = extractor(raw_vals)
+                    record.update(zip(target_keys, target_vals))
         return record
 
     def _parse_player_stats(self, match_id: int, home_id: int, away_id: int, player_datas: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], int, int]:
@@ -831,7 +834,6 @@ class MatchParser:
 
         self.logger.debug(f"Parsed {len(player_records)} player stats for match {match_id}")
         return player_records, shot_records, home_goals_penalty, away_goals_penalty
-
 
 @TaskRegistry.poll('parse.fotmob.match')
 class ParseMatch(PollTask):
