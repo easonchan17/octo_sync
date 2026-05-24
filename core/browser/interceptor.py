@@ -77,6 +77,7 @@ class Interceptor(Thread):
         except Exception as e:
             self.logger.error(f"Error in Interceptor thread: {e}")
         finally:
+            loop.run_until_complete(asyncio.sleep(0.1))
             loop.close()
 
     async def _async_run(self) -> None:
@@ -210,6 +211,9 @@ class Interceptor(Thread):
             exc_name = type(exc).__name__
             if "TargetClosedError" in exc_name or "ConnectionClosed" in exc_name:
                 return
+
+        if "Task was destroyed but it is pending" in context.get("message", ""):
+            return
 
         task_info = ""
         task_or_future = context.get("task") or context.get("future")
