@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple, Dict, Any
 from core.services.base_service import BaseService
 from core.store.postgres.daos.common import TrainingRecordDao
@@ -5,6 +6,8 @@ from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.services.ml.inference.predict_service import get_predict_service
 
 class ModelService(BaseService):
+    PREDICTION_WINDOW = timedelta(hours=48)
+
     def __init__(self):
         super().__init__()
         self.predict_service = get_predict_service()
@@ -40,5 +43,12 @@ class ModelService(BaseService):
         fixture = self.fixture_dao.get_by_match_code(match_code)
         if fixture is None:
             raise ValueError(f"Fixture not found for match_code={match_code}")
+
+        now = datetime.now(timezone.utc)
+        if fixture.kickoff_time <= now:
+            raise ValueError(f"Match {match_code} has already started")
+
+        if fixture.kickoff_time > now + self.PREDICTION_WINDOW:
+            raise ValueError(f"Match {match_code} is more than {int(self.PREDICTION_WINDOW.total_seconds() // 3600)} hours away")
 
         return self.predict_service.predict(fixture, version)
