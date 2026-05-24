@@ -120,13 +120,13 @@ class PlayerLogoScanner(BaseAssetScanner):
 
         players: Dict[int, str] = {}
         for item in items:
-            if item.member_id not in players:
-                players[item.member_id] = item.player_code
+            if item.player_id not in players:
+                players[item.player_id] = item.player_code
 
         now = datetime.now(timezone.utc)
         assets = [
             {
-                'source_url': self.url_template.format(member_id),
+                'source_url': self.url_template.format(player_id),
                 'source_site': self.site_name,
                 'asset_type': self.asset_type,
                 'entity_type': self.entity_type,
@@ -135,7 +135,7 @@ class PlayerLogoScanner(BaseAssetScanner):
                 'file_ext': self.file_ext,
                 'next_fetch_at': now,
             }
-            for member_id, player_code in players.items()
+            for player_id, player_code in players.items()
         ]
         return assets, items[-1].id
 

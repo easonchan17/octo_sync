@@ -235,8 +235,8 @@ class MatchDao(BaseDao):
             rows = session.query(
                 MatchLineup.team_id,
                 MatchLineup.team_name,
-                MatchLineup.member_id,
-                MatchLineup.member_name,
+                MatchLineup.player_id,
+                MatchLineup.player_name,
                 MatchLineup.player_code,
                 MatchLineup.shirt_number,
                 MatchLineup.position,

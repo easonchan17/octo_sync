@@ -596,9 +596,9 @@ class MatchParser:
     }
 
     LINEUP_MAPPING = {
-        "id": [("member_id", lambda x: x)],
+        "id": [("player_id", lambda x: x)],
         "age": [("age", lambda x: x)],
-        "name": [("member_name", lambda x: x)],
+        "name": [("player_name", lambda x: x)],
         "countryName": [("country_name", lambda x: x)],
         "countryCode": [("country_code", lambda x: x)],
         "marketValue": [("market_value", lambda x: x or 0)],
@@ -754,10 +754,10 @@ class MatchParser:
 
                     record["role"] = lineup_role.value
 
-                    member_id = record.get("member_id")
-                    if member_id and member_id not in seen:
-                        seen.add(member_id)
-                        record["player_code"] = encode_id(member_id, self.env_manager.PLAYER_CODE_SALT)
+                    player_id = record.get("player_id")
+                    if player_id and player_id not in seen:
+                        seen.add(player_id)
+                        record["player_code"] = encode_id(player_id, self.env_manager.PLAYER_CODE_SALT)
                         records.append(record)
 
             return formation, records

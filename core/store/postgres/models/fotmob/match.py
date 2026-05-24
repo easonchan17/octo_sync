@@ -262,6 +262,14 @@ class ShotStat(Base):
     match_id = Column(Integer, nullable=False)
     event_id = Column(BigInteger, nullable=False)
 
+    team_id = Column(Integer, nullable=False)
+    team_code = Column(String(16), nullable=False)
+    player_id = Column(Integer, nullable=False)
+    player_code = Column(String(16), nullable=False)
+    player_name = Column(String(128), nullable=False)
+    keeper_id = Column(Integer, nullable=True)
+    keeper_code =  Column(String(16), nullable=True)
+
     period = Column(String(16), nullable=True)
     min = Column(Integer, nullable=True)
     min_added = Column(Integer, nullable=True)
@@ -271,14 +279,6 @@ class ShotStat(Base):
     on_goal_shot_y = Column(Float, nullable=True)
     goal_y = Column(Float, nullable=True)
     goal_z = Column(Float, nullable=True)
-
-    team_id = Column(Integer, nullable=True)
-    team_code = Column(String(16), nullable=False)
-    player_id = Column(Integer, nullable=True)
-    player_code = Column(String(16), nullable=False)
-    player_name = Column(String(128), nullable=False)
-    keeper_id = Column(Integer, nullable=True)
-    keeper_code =  Column(String(16), nullable=True)
 
     shot_type = Column(String(32), nullable=True)
     event_type = Column(String(32), nullable=True)
@@ -298,7 +298,7 @@ class MatchLineup(Base):
     __table_args__ = (
         Index('idx_match_lineups_created_at', 'created_at'),
         Index('idx_match_lineups_updated_at', 'updated_at'),
-        UniqueConstraint('match_id', 'team_id', 'member_id', name='uq_match_lineups_match_team_member_id'),
+        UniqueConstraint('match_id', 'team_id', 'player_id', name='uq_match_lineups_match_team_player_id'),
         {'schema': SiteName.FOTMOB.value}
     )
 
@@ -306,12 +306,13 @@ class MatchLineup(Base):
     match_id = Column(Integer, nullable=False)
 
     team_id = Column(Integer, nullable=False)
-    team_name = Column(String(100), nullable=True)
-    team_code = Column(String(16), nullable=True)
+    team_code = Column(String(16), nullable=False)
+    team_name = Column(String(100), nullable=False)
 
-    member_id = Column(Integer, nullable=False)
-    member_name = Column(String(128), nullable=False)
+    player_id = Column(Integer, nullable=False)
     player_code = Column(String(16), nullable=False)
+    player_name = Column(String(128), nullable=False)
+
     opta_id = Column(String(64), nullable=True)
     age = Column(Integer, nullable=True)
 

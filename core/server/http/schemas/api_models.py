@@ -171,7 +171,7 @@ class WeatherResponse(BaseModel):
 
 
 class PlayerResponse(BaseModel):
-    player_name: str = Field(validation_alias='member_name')
+    player_name: str
     player_code: str
     shirt_number: Optional[int] = None
     position: Optional[str] = None
