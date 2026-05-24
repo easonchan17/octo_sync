@@ -293,7 +293,13 @@ class OddsDao(BaseDao):
                     ROUND(opening_away_odds::numeric, 2) AS open_away,
                     ROUND(closing_home_odds::numeric, 2) AS close_home,
                     ROUND(closing_draw_odds::numeric, 2) AS close_draw,
-                    ROUND(closing_away_odds::numeric, 2) AS close_away
+                    ROUND(closing_away_odds::numeric, 2) AS close_away,
+                    home_movement,
+                    draw_movement,
+                    away_movement,
+                    closing_home_change_time AS home_change_time,
+                    closing_draw_change_time AS draw_change_time,
+                    closing_away_change_time AS away_change_time
                 FROM oddsportal.odds_1x2
                 WHERE match_code = :match_code
                     AND betting_type_id = 1 AND scope_id = 2 AND quote_type = 'back'
@@ -343,6 +349,10 @@ class OddsDao(BaseDao):
                         handicap AS close_line,
                         closing_home_odds,
                         closing_away_odds,
+                        home_movement,
+                        away_movement,
+                        closing_home_change_time,
+                        closing_away_change_time,
                         ROW_NUMBER() OVER (
                             PARTITION BY bookmaker_id
                             ORDER BY ABS(1.0 / closing_home_odds - 1.0 / closing_away_odds)
@@ -376,7 +386,11 @@ class OddsDao(BaseDao):
                     ROUND(o.opening_away_odds::numeric, 2) AS open_away,
                     c.close_line,
                     ROUND(c.closing_home_odds::numeric, 2) AS close_home,
-                    ROUND(c.closing_away_odds::numeric, 2) AS close_away
+                    ROUND(c.closing_away_odds::numeric, 2) AS close_away,
+                    c.home_movement,
+                    c.away_movement,
+                    c.closing_home_change_time AS home_change_time,
+                    c.closing_away_change_time AS away_change_time
                 FROM ah_close_main c
                 LEFT JOIN ah_open_main o ON o.bookmaker_id = c.bookmaker_id AND o.rn = 1
                 WHERE c.rn = 1
@@ -392,6 +406,12 @@ class OddsDao(BaseDao):
                     "close_home": row.close_home,
                     "close_draw": row.close_draw,
                     "close_away": row.close_away,
+                    "home_movement": row.home_movement,
+                    "draw_movement": row.draw_movement,
+                    "away_movement": row.away_movement,
+                    "home_change_time": row.home_change_time,
+                    "draw_change_time": row.draw_change_time,
+                    "away_change_time": row.away_change_time,
                 }
                 for row in one_x_two_sharp_rows
             ]
@@ -405,6 +425,10 @@ class OddsDao(BaseDao):
                     "close_line": row.close_line,
                     "close_home": row.close_home,
                     "close_away": row.close_away,
+                    "home_movement": row.home_movement,
+                    "away_movement": row.away_movement,
+                    "home_change_time": row.home_change_time,
+                    "away_change_time": row.away_change_time,
                 }
                 for row in ah_sharp_rows
             ]
