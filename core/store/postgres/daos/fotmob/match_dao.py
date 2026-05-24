@@ -5,8 +5,9 @@ from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.fotmob.fixture import Fixture
 from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat
+from core.store.postgres.models.common.league import SiteLeague
 from ..base_dao import BaseDao
-from core.types.enums import MatchStatus
+from core.types.enums import MatchStatus, SiteName
 
 class MatchDao(BaseDao):
     def get_pending_fetch_items(self, kickoff_before: datetime, league_ids: List[int], limit: int) -> List[Any]:
@@ -164,130 +165,30 @@ class MatchDao(BaseDao):
 
         with self.db.get_session() as session:
             if lineup:
-                home_lineup = lineup.get("home_lineup")
-                away_lineup = lineup.get("away_lineup")
-                if home_lineup and away_lineup:
-                    self._sync_lineup(session, match_id, "home", home_lineup)
-                    self._sync_lineup(session, match_id, "away", away_lineup)
-
-                    lineup_type = lineup.get("lineup_type")
-                    home_formation = lineup.get("home_formation")
-                    away_formation = lineup.get("away_formation")
-                    self._sync_match_stats(
-                        session,
-                        match_id, {
-                            "match_id": match_id,
-                            "lineup_type": lineup_type,
-                            "home_formation": home_formation,
-                            "away_formation": away_formation
-                        })
-
+                session.query(MatchLineup).filter(MatchLineup.match_id == match_id).delete(synchronize_session=False)
+                session.execute(insert(MatchLineup).values(lineup))
             if match_stats:
-                self._sync_match_stats(session, match_id, match_stats)
-
+                session.query(MatchStat).filter(MatchStat.match_id == match_id).delete(synchronize_session=False)
+                session.execute(insert(MatchStat).values(match_stats))
             if player_stats:
-                self._sync_player_stats(session, match_id, player_stats)
-
+                session.query(MatchPlayerStat).filter(MatchPlayerStat.match_id == match_id).delete(synchronize_session=False)
+                session.execute(insert(MatchPlayerStat).values(player_stats))
             if shot_stats:
-                self._sync_shot_stats(session, match_id, shot_stats)
-
-    def _sync_lineup(self, session, match_id: int, venue: str, lineup: List[Dict[str, Any]]) -> None:
-        insert_stmt = insert(MatchLineup).values(lineup)
-        assignment, where_clause = self.build_upsert_clauses(
-            MatchLineup,
-            insert_stmt,
-            {
-                MatchLineup.id.key,
-                MatchLineup.created_at.key,
-                MatchLineup.match_id.key,
-                MatchLineup.team_id.key,
-                MatchLineup.member_id.key,
-                MatchLineup.updated_at.key
-            }
-        )
-        insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[MatchLineup.match_id.key, MatchLineup.team_id.key, MatchLineup.member_id.key],
-            set_=assignment,
-            where=where_clause
-        )
-        result = session.execute(insert_stmt)
-        upserted_count = result.rowcount
-        self.logger.debug(f"Sync match {match_id} {venue} lineup completed. upserted: {upserted_count}")
-
-    def _sync_match_stats(self, session, match_id: int, match_stats: Dict[str, Any]) -> None:
-        insert_stmt = insert(MatchStat).values(match_stats)
-        assignment, where_clause = self.build_upsert_clauses(
-            MatchStat,
-            insert_stmt,
-            {
-                MatchStat.id.key,
-                MatchStat.created_at.key,
-                MatchStat.match_id.key,
-                MatchStat.updated_at.key
-            }
-        )
-        insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[MatchStat.match_id.key],
-            set_=assignment,
-            where=where_clause
-        )
-        result = session.execute(insert_stmt)
-        upserted_count = result.rowcount
-        self.logger.debug(f"Sync match {match_id} stats completed. upserted: {upserted_count}")
-
-    def _sync_player_stats(self, session, match_id: int, player_stats: List[Dict[str, Any]]) -> None:
-        insert_stmt = insert(MatchPlayerStat).values(player_stats)
-        assignment, where_clause = self.build_upsert_clauses(
-            MatchPlayerStat,
-            insert_stmt,
-            {
-                MatchPlayerStat.id.key,
-                MatchPlayerStat.created_at.key,
-                MatchPlayerStat.match_id.key,
-                MatchPlayerStat.player_id.key,
-                MatchPlayerStat.updated_at.key
-            }
-        )
-        insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[MatchPlayerStat.match_id.key, MatchPlayerStat.opta_id.key, MatchPlayerStat.player_id.key, MatchPlayerStat.player_name.key],
-            set_=assignment,
-            where=where_clause
-        )
-        result = session.execute(insert_stmt)
-        upserted_count = result.rowcount
-        self.logger.debug(f"Sync match {match_id} player stats completed. upserted: {upserted_count}")
-
-    def _sync_shot_stats(self, session, match_id: int, shot_stats: List[Dict[str, Any]]) -> None:
-        insert_stmt = insert(ShotStat).values(shot_stats)
-        assignment, where_clause = self.build_upsert_clauses(
-            ShotStat,
-            insert_stmt,
-            {
-                ShotStat.id.key,
-                ShotStat.created_at.key,
-                ShotStat.match_id.key,
-                ShotStat.event_id.key,
-                ShotStat.updated_at.key
-            }
-        )
-        insert_stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[ShotStat.match_id.key, ShotStat.event_id.key],
-            set_=assignment,
-            where=where_clause
-        )
-        result = session.execute(insert_stmt)
-        upserted_count = result.rowcount
-        self.logger.debug(f"Sync match {match_id} shot stats completed. upserted: {upserted_count}")
+                session.query(ShotStat).filter(ShotStat.match_id == match_id).delete(synchronize_session=False)
+                session.execute(insert(ShotStat).values(shot_stats))
 
     def get_match_detail(self, match_code: str) -> Dict[str, Any]:
         with self.db.get_session() as session:
             row = session.query(
+                Fixture.match_id,
                 Fixture.match_code,
                 Fixture.league_id,
                 Fixture.kickoff_time,
                 Fixture.round,
+                Fixture.home_id,
                 Fixture.home_team,
                 Fixture.home_code,
+                Fixture.away_id,
                 Fixture.away_team,
                 Fixture.away_code,
                 Fixture.home_score,
@@ -302,3 +203,197 @@ class MatchDao(BaseDao):
                 raise ValueError("Match not found")
 
             return row._asdict()
+
+    def get_match_shot_map(self, match_id: int) -> List[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            rows = session.query(
+                ShotStat.x,
+                ShotStat.y,
+                ShotStat.min,
+                ShotStat.min_added,
+                ShotStat.period,
+                ShotStat.player_name,
+                ShotStat.shot_type,
+                ShotStat.event_type,
+                ShotStat.situation,
+                ShotStat.is_on_target,
+                ShotStat.is_blocked,
+                ShotStat.is_own_goal,
+                ShotStat.xg,
+                ShotStat.xgot,
+                ShotStat.on_goal_shot_x,
+                ShotStat.on_goal_shot_y,
+                ShotStat.goal_y,
+                ShotStat.goal_z,
+                ShotStat.team_code,
+                ShotStat.player_code,
+            ).filter(ShotStat.match_id == match_id).order_by(ShotStat.min.asc()).all()
+            return [row._asdict() for row in rows]
+
+    def get_match_lineup(self, match_id: int, team_id: int) -> List[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            rows = session.query(
+                MatchLineup.team_id,
+                MatchLineup.team_name,
+                MatchLineup.member_id,
+                MatchLineup.member_name,
+                MatchLineup.player_code,
+                MatchLineup.shirt_number,
+                MatchLineup.position,
+                MatchLineup.role,
+                MatchLineup.is_captain,
+                MatchLineup.rating,
+            ).filter(
+                MatchLineup.match_id == match_id,
+                MatchLineup.team_id == team_id,
+            ).all()
+            return [row._asdict() for row in rows]
+
+    def get_match_stats(self, match_id: int) -> Optional[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            row = session.query(
+                MatchStat.lineup_type,
+                MatchStat.home_formation,
+                MatchStat.away_formation,
+                MatchStat.home_possession,
+                MatchStat.away_possession,
+                MatchStat.home_goals_penalty,
+                MatchStat.away_goals_penalty,
+                MatchStat.home_shots,
+                MatchStat.away_shots,
+                MatchStat.home_shots_on_target,
+                MatchStat.away_shots_on_target,
+                MatchStat.home_shots_off_target,
+                MatchStat.away_shots_off_target,
+                MatchStat.home_hit_woodwork,
+                MatchStat.away_hit_woodwork,
+                MatchStat.home_shots_inside_box,
+                MatchStat.away_shots_inside_box,
+                MatchStat.home_shots_outside_box,
+                MatchStat.away_shots_outside_box,
+                MatchStat.home_big_chances,
+                MatchStat.away_big_chances,
+                MatchStat.home_big_chances_missed,
+                MatchStat.away_big_chances_missed,
+                MatchStat.home_xg,
+                MatchStat.away_xg,
+                MatchStat.home_xg_open_play,
+                MatchStat.away_xg_open_play,
+                MatchStat.home_xg_set_play,
+                MatchStat.away_xg_set_play,
+                MatchStat.home_npxg,
+                MatchStat.away_npxg,
+                MatchStat.home_xg_on_target,
+                MatchStat.away_xg_on_target,
+                MatchStat.home_passes,
+                MatchStat.away_passes,
+                MatchStat.home_passes_completed,
+                MatchStat.away_passes_completed,
+                MatchStat.home_own_half_passes,
+                MatchStat.away_own_half_passes,
+                MatchStat.home_opp_half_passes,
+                MatchStat.away_opp_half_passes,
+                MatchStat.home_long_passes,
+                MatchStat.away_long_passes,
+                MatchStat.home_long_passes_completed,
+                MatchStat.away_long_passes_completed,
+                MatchStat.home_crosses,
+                MatchStat.away_crosses,
+                MatchStat.home_crosses_completed,
+                MatchStat.away_crosses_completed,
+                MatchStat.home_throws,
+                MatchStat.away_throws,
+                MatchStat.home_corners,
+                MatchStat.away_corners,
+                MatchStat.home_tackles,
+                MatchStat.away_tackles,
+                MatchStat.home_interceptions,
+                MatchStat.away_interceptions,
+                MatchStat.home_shot_blocks,
+                MatchStat.away_shot_blocks,
+                MatchStat.home_clearances,
+                MatchStat.away_clearances,
+                MatchStat.home_keeper_saves,
+                MatchStat.away_keeper_saves,
+                MatchStat.home_duels_won,
+                MatchStat.away_duels_won,
+                MatchStat.home_ground_duels,
+                MatchStat.away_ground_duels,
+                MatchStat.home_ground_duels_won,
+                MatchStat.away_ground_duels_won,
+                MatchStat.home_aerials,
+                MatchStat.away_aerials,
+                MatchStat.home_aerials_won,
+                MatchStat.away_aerials_won,
+                MatchStat.home_dribbles,
+                MatchStat.away_dribbles,
+                MatchStat.home_dribbles_completed,
+                MatchStat.away_dribbles_completed,
+                MatchStat.home_fouls_committed,
+                MatchStat.away_fouls_committed,
+                MatchStat.home_yellow_cards,
+                MatchStat.away_yellow_cards,
+                MatchStat.home_red_cards,
+                MatchStat.away_red_cards,
+            ).filter(MatchStat.match_id == match_id).first()
+            return row._asdict() if row else None
+
+    def get_team_h2h(self, home_id: int, away_id: int, min_kickoff_time: datetime, max_kickoff_time: datetime) -> List[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            rows = session.query(
+                SiteLeague.ref_league_id,
+                Fixture.match_code,
+                Fixture.kickoff_time,
+                Fixture.league_id,
+                Fixture.league_name,
+                Fixture.home_team,
+                Fixture.home_code,
+                Fixture.home_score,
+                Fixture.away_team,
+                Fixture.away_code,
+                Fixture.away_score,
+                Fixture.match_status,
+            ).join(
+                SiteLeague,
+                and_(
+                    SiteLeague.league_id == Fixture.league_id,
+                    SiteLeague.site_name == SiteName.FOTMOB.value
+                )
+            ).filter(
+                or_(
+                    and_(Fixture.home_id == home_id, Fixture.away_id == away_id),
+                    and_(Fixture.home_id == away_id, Fixture.away_id == home_id),
+                ),
+                Fixture.kickoff_time >= min_kickoff_time,
+                Fixture.kickoff_time < max_kickoff_time,
+                Fixture.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(Fixture.kickoff_time.desc()).all()
+            return [row._asdict() for row in rows]
+
+    def get_team_form(self, team_id: int, max_kickoff_time: datetime, limit: int) -> List[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            rows = session.query(
+                SiteLeague.ref_league_id,
+                Fixture.match_code,
+                Fixture.kickoff_time,
+                Fixture.league_id,
+                Fixture.league_name,
+                Fixture.home_team,
+                Fixture.home_code,
+                Fixture.home_score,
+                Fixture.away_team,
+                Fixture.away_code,
+                Fixture.away_score,
+                Fixture.match_status,
+            ).join(
+                SiteLeague,
+                and_(
+                    SiteLeague.league_id == Fixture.league_id,
+                    SiteLeague.site_name == SiteName.FOTMOB.value
+                )
+            ).filter(
+                or_(Fixture.home_id == team_id, Fixture.away_id == team_id),
+                Fixture.kickoff_time < max_kickoff_time,
+                Fixture.match_status.in_(MatchStatus.natural_finals())
+            ).order_by(Fixture.kickoff_time.desc()).limit(limit).all()
+            return [row._asdict() for row in rows]
