@@ -8,7 +8,7 @@ from core.logger.logger_manager import get_logger_manager
 from core.types.enums import SiteName
 
 class SeasonParser:
-    SEASON_PATTERN = re.compile(r'(?:href|value)="https://www\.oddsportal\.com/football/[^"]*?-(\d{4})(?:-\d{4})?/results/"')
+    SEASON_PATTERN = re.compile(r'(?:href|value)="https://www\.oddsportal\.com/football/[^/]+/[^/]+/results/[^"]*"[^>]*>[^0-9]*(\d{4})')
 
     def __init__(self) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)

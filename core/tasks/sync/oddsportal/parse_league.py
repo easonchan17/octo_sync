@@ -34,7 +34,7 @@ class LeagueParser:
                     continue
 
                 seen.add(league_id)
-                page_url = re.sub(r'-\d{4}/$', '/', tournament.get("url") or "")
+                page_url = tournament.get("url") or ""
                 league_name = re.sub(r'\s+\d{4}$', '', tournament.get("name") or "")
                 results.append({
                     "league_id": league_id,
