@@ -4,6 +4,7 @@ from core.types.enums import SiteName
 from core.services.base_service import BaseService
 from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
+from core.store.postgres.daos.oddsportal import OddsDao
 
 
 class MatchService(BaseService):
@@ -13,6 +14,7 @@ class MatchService(BaseService):
     def __init__(self):
         super().__init__()
         self.match_dao = MatchDao()
+        self.odds_dao = OddsDao()
         self.league_service = get_league_service()
 
     def get_match_detail(self, match_code: str) -> Dict[str, Any]:
@@ -42,5 +44,6 @@ class MatchService(BaseService):
                 "away": self.match_dao.get_team_form(away_id, kickoff_time, self.FORM_LIMIT),
             },
             'h2h':      self.match_dao.get_team_h2h(home_id, away_id, kickoff_time - self.H2H_LOOKBACK, kickoff_time),
+            'odds':     self.odds_dao.get_match_odds_detail(match_id),
         }
         return data
