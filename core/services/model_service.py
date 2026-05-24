@@ -6,7 +6,7 @@ from core.store.postgres.daos.fotmob import ActiveFixtureDao
 from core.services.ml.inference.predict_service import get_predict_service
 
 class ModelService(BaseService):
-    PREDICTION_WINDOW = timedelta(hours=48)
+    PREDICTION_LOOKAHEAD = timedelta(hours=48)
 
     def __init__(self):
         super().__init__()
@@ -48,7 +48,7 @@ class ModelService(BaseService):
         if fixture.kickoff_time <= now:
             raise ValueError(f"Match {match_code} has already started")
 
-        if fixture.kickoff_time > now + self.PREDICTION_WINDOW:
-            raise ValueError(f"Match {match_code} is more than {int(self.PREDICTION_WINDOW.total_seconds() // 3600)} hours away")
+        if fixture.kickoff_time > now + self.PREDICTION_LOOKAHEAD:
+            raise ValueError(f"Match {match_code} is more than {int(self.PREDICTION_LOOKAHEAD.total_seconds() // 3600)} hours away")
 
         return self.predict_service.predict(fixture, version)
