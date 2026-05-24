@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from core.types.enums import SiteName
 from core.tasks.poll_task import PollTask
@@ -40,6 +41,7 @@ class SyncHistoryFixture(PollTask):
     def build_season_slug(self, season: int, max_season: int, valid_seasons: List[int]) -> Optional[str]:
         if season == max_season:
             return None
+
         if season + 1 in valid_seasons:
             return f"-{season}-{season + 1}"
         return f"-{season}"
@@ -48,7 +50,7 @@ class SyncHistoryFixture(PollTask):
         uri = league_uri[:-1]
 
         if season_slug:
-            uri += season_slug
+            uri = re.sub(r'-\d{4}(?:-\d{4})?$', '', uri) + season_slug
 
         uri += "/results/"
 
