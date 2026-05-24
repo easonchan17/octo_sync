@@ -24,6 +24,32 @@ class Paginated(BaseModel, Generic[T]):
     pagination: Pagination
     items: List[T]
 
+# ==============================================================================
+# Cron Models
+# ==============================================================================
+class CronStatus(BaseModel):
+    running: bool
+    state: str
+    job_count: int
+
+
+class CronJobRequest(BaseModel):
+    func: str
+    name: str
+    minute: Optional[int] = None
+    hour: Optional[int] = None
+    day: Optional[int] = None
+    month: Optional[int] = None
+    day_of_week: Optional[int] = None
+    kwargs: Optional[Dict[str, Any]] = None
+
+
+class CronJobResponse(BaseModel):
+    id: str
+    name: str
+    next_run_time: Optional[datetime] = None
+    trigger: str
+
 
 # ==============================================================================
 # League Models
@@ -88,6 +114,12 @@ class BaseMatchResponse(BaseModel):
 
 class MatchResponse(BaseMatchResponse):
     round: Optional[str] = None
+    avg_home_odds: Optional[float] = None
+    avg_draw_odds: Optional[float] = None
+    avg_away_odds: Optional[float] = None
+    ah_main_line: Optional[float] = None
+    avg_ah_home_odds: Optional[float] = None
+    avg_ah_away_odds: Optional[float] = None
 
 
 class FixtureResponse(BaseModel):
@@ -198,6 +230,50 @@ class RecentMatchResponse(BaseMatchResponse):
         return LEAGUE_LOGO_URL.format(league_id=self.ref_league_id) if self.ref_league_id else None
 
 
+class Odds1x2BookmakerResponse(BaseModel):
+    name: str
+    open_home: Optional[float] = None
+    open_draw: Optional[float] = None
+    open_away: Optional[float] = None
+    close_home: Optional[float] = None
+    close_draw: Optional[float] = None
+    close_away: Optional[float] = None
+
+
+class Odds1x2DetailResponse(BaseModel):
+    avg_open_home: Optional[float] = None
+    avg_open_draw: Optional[float] = None
+    avg_open_away: Optional[float] = None
+    avg_close_home: Optional[float] = None
+    avg_close_draw: Optional[float] = None
+    avg_close_away: Optional[float] = None
+    bookmakers: List[Odds1x2BookmakerResponse] = []
+
+
+class OddsAhBookmakerResponse(BaseModel):
+    name: str
+    open_line: Optional[float] = None
+    open_home: Optional[float] = None
+    open_away: Optional[float] = None
+    close_line: Optional[float] = None
+    close_home: Optional[float] = None
+    close_away: Optional[float] = None
+
+
+class OddsAhDetailResponse(BaseModel):
+    main_line: Optional[float] = None
+    avg_open_home: Optional[float] = None
+    avg_open_away: Optional[float] = None
+    avg_close_home: Optional[float] = None
+    avg_close_away: Optional[float] = None
+    bookmakers: List[OddsAhBookmakerResponse] = []
+
+
+class OddsDetailResponse(BaseModel):
+    one_x_two: Optional[Odds1x2DetailResponse] = None
+    ah: Optional[OddsAhDetailResponse] = None
+
+
 class MatchDetail(BaseModel):
     events: Optional[List[EventResponse]] = None
     shot_map: List[ShotResponse] = []
@@ -207,6 +283,7 @@ class MatchDetail(BaseModel):
     lineup: Dict[str, List[PlayerResponse]] = {}
     form: Dict[str, List[RecentMatchResponse]] = {}
     h2h: List[RecentMatchResponse] = []
+    odds: Optional[OddsDetailResponse] = None
 
 
 class MatchDetailResponse(MatchResponse):
@@ -218,34 +295,6 @@ class MatchDetailResponse(MatchResponse):
     @property
     def league_logo(self) -> Optional[str]:
         return LEAGUE_LOGO_URL.format(league_id=self.league_id) if self.league_id else None
-
-
-# ==============================================================================
-# Cron Models
-# ==============================================================================
-class CronStatus(BaseModel):
-    running: bool
-    state: str
-    job_count: int
-
-
-class CronJobRequest(BaseModel):
-    func: str
-    name: str
-    minute: Optional[int] = None
-    hour: Optional[int] = None
-    day: Optional[int] = None
-    month: Optional[int] = None
-    day_of_week: Optional[int] = None
-    kwargs: Optional[Dict[str, Any]] = None
-
-
-class CronJobResponse(BaseModel):
-    id: str
-    name: str
-    next_run_time: Optional[datetime] = None
-    trigger: str
-
 
 # ==============================================================================
 # Inference Models
@@ -262,7 +311,6 @@ class ModelResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 class PredictionResponse(BaseModel):
     match_code: str

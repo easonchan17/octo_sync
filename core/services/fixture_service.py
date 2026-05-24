@@ -3,12 +3,14 @@ from typing import List, Dict, Any
 from core.services.league import get_league_service
 from core.services.base_service import BaseService
 from core.store.postgres.daos.fotmob import ActiveFixtureDao
+from core.store.postgres.daos.oddsportal import OddsDao
 from core.types.enums import SiteName
 
 class FixtureService(BaseService):
     def __init__(self):
         super().__init__()
         self.fixture_dao = ActiveFixtureDao()
+        self.odds_dao = OddsDao()
         self.league_service = get_league_service()
 
     def get_fixture_groups(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
@@ -26,6 +28,9 @@ class FixtureService(BaseService):
         if not fixtures:
             return []
 
+        match_ids = [f.match_id for f in fixtures if f.match_id]
+        odds_summary = self.odds_dao.get_match_odds_summary(match_ids)
+
         fixture_groups = {}
         for fixture in fixtures:
             league_id = fixture.league_id
@@ -39,6 +44,8 @@ class FixtureService(BaseService):
                     "matches": []
                 }
 
-            fixture_groups[league_id]["matches"].append(fixture)
+            fixture_dict = fixture._asdict()
+            fixture_dict.update(odds_summary.get(fixture.match_id, {}))
+            fixture_groups[league_id]["matches"].append(fixture_dict)
 
         return sorted(fixture_groups.values(), key=lambda x: (-x["priority"], x["league_id"]))

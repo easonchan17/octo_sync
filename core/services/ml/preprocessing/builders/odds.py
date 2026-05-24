@@ -1,19 +1,12 @@
 import numpy as np
 import pandas as pd
-from typing import Any, Optional, Dict
 from sqlalchemy import text
-from core.types.enums import BookmakerID, MatchStatus
-
+from typing import Any, Optional, Dict
+from core.types.enums import MatchStatus, SHARP_BOOKMAKER_NAMES
 from ..transforms import FormulaMutator, EntropyMutator, ColumnFilter
 from .base import BaseFeatureBuilder
 
 class OddsFeatureBuilder(BaseFeatureBuilder):
-    SHARP_TIERS = [
-        (BookmakerID.BETFAIR_EXCHANGE, 1),
-        (BookmakerID.BETINASIA,        2),
-        (BookmakerID.ONEXBET,          3),
-    ]
-
     SHARP_COLS = ["home_open_real", "away_open_real", "home_close_real", "away_close_real"]
 
     FORMULAS = [
@@ -102,7 +95,7 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
             np.nan,
         )
 
-        tier_map = {bk.value: tier for bk, tier in self.SHARP_TIERS}
+        tier_map = {bookmaker_id: (i + 1) for i, bookmaker_id in enumerate(SHARP_BOOKMAKER_NAMES)}
         sharp = (
             df[df["bookmaker_id"].isin(tier_map)]
             .assign(sharp_source_level=lambda x: x["bookmaker_id"].map(tier_map))
@@ -115,7 +108,7 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
             df[~df["match_id"].isin(sharp["match_id"])]
             .groupby("match_id")[self.SHARP_COLS]
             .median()
-            .assign(sharp_source_level=4)
+            .assign(sharp_source_level=len(SHARP_BOOKMAKER_NAMES) + 1)
             .reset_index()
         )
         sharp_df = pd.concat([sharp, median], ignore_index=True)

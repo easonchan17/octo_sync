@@ -40,6 +40,12 @@ class BookmakerID(IntEnum):
     SHUFFLE          = 1159
     _BOOKMAKER_1205  = 1205
 
+SHARP_BOOKMAKER_NAMES: Dict[int, str] = {
+    BookmakerID.BETFAIR_EXCHANGE.value: "Betfair",
+    BookmakerID.BETINASIA.value: "Betinasia",
+    BookmakerID.ONEXBET.value: "1xBet",
+}
+
 class UpsertStrategy(str, Enum):
     OVERWRITE = "overwrite"
     IF_ABSENT = "if_absent"
