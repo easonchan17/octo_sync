@@ -27,7 +27,7 @@ class AssetDao(BaseDao):
         with self.db.get_session() as session:
             return session.query(
                 MatchLineup.id,
-                MatchLineup.member_id,
+                MatchLineup.player_id,
                 MatchLineup.player_code,
             ).join(
                 Fixture, Fixture.match_id == MatchLineup.match_id

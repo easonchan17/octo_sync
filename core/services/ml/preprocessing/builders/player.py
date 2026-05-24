@@ -206,7 +206,7 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
                 MatchLineup,
                 and_(
                     MatchLineup.match_id == MatchPlayerStat.match_id,
-                    MatchLineup.member_id == MatchPlayerStat.player_id
+                    MatchLineup.player_id == MatchPlayerStat.player_id
                 )
             ).outerjoin(
                 MatchStat,
@@ -361,7 +361,7 @@ class OutfieldPlayerLatestFeatureBuilder(OutfieldPlayerFeatureBuilder):
                 MatchLineup,
                 and_(
                     MatchLineup.match_id == MatchPlayerStat.match_id,
-                    MatchLineup.member_id == MatchPlayerStat.player_id
+                    MatchLineup.player_id == MatchPlayerStat.player_id
                 )
             ).outerjoin(
                 MatchStat,
@@ -481,7 +481,7 @@ class OutfieldPlayerPredictFeatureBuilder(OutfieldPlayerFeatureBuilder):
 
     def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
-            lineups = session.query(MatchLineup.member_id, MatchLineup.team_id, MatchLineup.position).filter(
+            lineups = session.query(MatchLineup.player_id, MatchLineup.team_id, MatchLineup.position).filter(
                 MatchLineup.match_id == self.match_id,
                 MatchLineup.role == LineupRole.STARTER.value,
                 MatchLineup.position.notin_(Position.get_goalkeeper()),
@@ -573,7 +573,7 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
                 MatchLineup,
                 and_(
                     MatchLineup.match_id == MatchPlayerStat.match_id,
-                    MatchLineup.member_id == MatchPlayerStat.player_id
+                    MatchLineup.player_id == MatchPlayerStat.player_id
                 )
             ).outerjoin(
                 MatchStat,
@@ -682,7 +682,7 @@ class GoalkeeperLatestFeatureBuilder(GoalkeeperFeatureBuilder):
                 MatchLineup,
                 and_(
                     MatchLineup.match_id == MatchPlayerStat.match_id,
-                    MatchLineup.member_id == MatchPlayerStat.player_id
+                    MatchLineup.player_id == MatchPlayerStat.player_id
                 )
             ).outerjoin(
                 MatchStat,
@@ -760,7 +760,7 @@ class GoalkeeperPredictFeatureBuilder(GoalkeeperFeatureBuilder):
 
     def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
-            lineups = session.query(MatchLineup.member_id, MatchLineup.team_id, MatchLineup.position).filter(
+            lineups = session.query(MatchLineup.player_id, MatchLineup.team_id, MatchLineup.position).filter(
                 MatchLineup.match_id == self.match_id,
                 MatchLineup.role == LineupRole.STARTER.value,
                 MatchLineup.position.in_(Position.get_goalkeeper()),
