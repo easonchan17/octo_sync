@@ -1,3 +1,4 @@
+from urllib.parse import urlparse
 from core.types.enums import SiteName
 from typing import Any, Dict, Optional
 from core.scheduler.task_registry import TaskRegistry
@@ -11,7 +12,7 @@ from core.types.enums import OddsMarkets
 
 class BaseSyncOdds(PollTask):
     INTERCEPT_STRATEGY = {
-        "url_template": "https://www.oddsportal.com/football/h2h/{first_team}/{second_team}/#{match_code}:{betting_type};{scope_id}",
+        "url_template": "https://www.oddsportal.com{match_uri}:{betting_type};{scope_id}",
         "debug": False,
         "rules": [
             {
@@ -51,26 +52,16 @@ class BaseSyncOdds(PollTask):
             .add_segment(min_attempts=7, max_attempts=None, interval=timedelta(minutes=15))
         )
 
-    def _build_page_url(
-        self, match_code: str, home_name: str, home_code: str, away_name: str, away_code: str, match_url: str
-    ) -> str:
-        if not home_code or not away_code:
-            return match_url
+    def _build_page_url(self, match_uri: str) -> str:
+        parsed = urlparse(match_uri)
+        path = parsed.path
+        if parsed.fragment:
+            path = f"{path}/#{parsed.fragment}"
 
-        home_name, away_name = home_name.lower(), away_name.lower()
-        slug = lambda name, code: f"{name.replace(' ', '-')}-{code}"
-        home_team = slug(home_name, home_code)
-        away_team = slug(away_name, away_code)
-
-        if home_name <= away_name:
-            first_team, second_team = home_team, away_team
-        else:
-            first_team, second_team = away_team, home_team
+        match_uri = path.rstrip('/')
 
         return self.intercept_strategy.url.format(
-            first_team=first_team,
-            second_team=second_team,
-            match_code=match_code,
+            match_uri=match_uri,
             betting_type=self.market.betting_type_slug,
             scope_id=self.market.scope_id,
         )
@@ -87,14 +78,12 @@ class BaseSyncOdds(PollTask):
                     self.idle_sleep()
                     continue
 
-                for league_id, match_code, home_name, home_code, away_name, away_code, kickoff_time, match_url, fetch_attempts in items:
+                for league_id, match_code, kickoff_time, match_uri, fetch_attempts in items:
                     if self.should_stop():
                         return
 
                     try:
-                        page_url = self._build_page_url(
-                            match_code, home_name, home_code, away_name, away_code, match_url
-                        )
+                        page_url = self._build_page_url(match_uri)
 
                         future = self.interceptor.submit(
                             url=page_url,
