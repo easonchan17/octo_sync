@@ -302,7 +302,7 @@ class BaseParseOdds(PollTask):
         self.odds_dao = OddsDao()
 
     @abstractmethod
-    def _sync_parsed_data(self, records: List[Dict[str, Any]]) -> None:
+    def _sync_parsed_data(self, match_code: str, betting_type_id: int, scope_id: int, records: List[Dict[str, Any]]) -> None:
         raise NotImplementedError
 
     def execute(self, *args, **kwargs) -> None:
@@ -336,7 +336,7 @@ class BaseParseOdds(PollTask):
                             self.logger.error(f"Failed to parse odds match_code={match_code}: odds is empty")
                             continue
 
-                        self._sync_parsed_data(parsed_odds)
+                        self._sync_parsed_data(match_code, betting_type_id, scope_id, parsed_odds)
                         self.odds_dao.mark_as_parsed(match_code, betting_type_id, scope_id)
                         self.logger.info(f"Parsed odds match_code={match_code} betting_type_id={betting_type_id} scope_id={scope_id} count={len(parsed_odds)}")
 
@@ -354,7 +354,7 @@ class ParseFT1x2Odds(BaseParseOdds):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(OddsMarkets.FT_1X2, Odds1x2Parser(), payload)
 
-    def _sync_parsed_data(self, records: List[Dict[str, Any]]) -> None:
+    def _sync_parsed_data(self, _match_code: str, _betting_type_id: int, _scope_id: int, records: List[Dict[str, Any]]) -> None:
         self.odds_dao.sync_parsed_1x2_data(records)
 
 
@@ -363,5 +363,5 @@ class ParseFTAhOdds(BaseParseOdds):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(OddsMarkets.FT_AH, OddsAhParser(), payload)
 
-    def _sync_parsed_data(self, records: List[Dict[str, Any]]) -> None:
-        self.odds_dao.sync_parsed_ah_data(records)
+    def _sync_parsed_data(self, match_code: str, betting_type_id: int, scope_id: int, records: List[Dict[str, Any]]) -> None:
+        self.odds_dao.sync_parsed_ah_data(match_code, betting_type_id, scope_id, records)
