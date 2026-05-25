@@ -25,7 +25,7 @@ class MatchService(BaseService):
         away_id = data['away_id']
         kickoff_time = data['kickoff_time']
 
-        match_content = data['match_json_body'].get('match_content') or {}
+        match_content = data['match_json_body'].get('content') or {}
         standings_tables = (data.get('standings_json_body') or {}).get('table')
 
         canonical_league = self.league_service.get_canonical_league(SiteName.FOTMOB.value, data['league_id'])
