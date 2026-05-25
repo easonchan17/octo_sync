@@ -1,5 +1,5 @@
 import traceback
-from sqlalchemy import func, or_, and_, text
+from sqlalchemy import func, or_, and_, text, delete
 from typing import List, Any, Dict, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import insert
@@ -235,30 +235,16 @@ class OddsDao(BaseDao):
             """), {"match_ids": match_ids})
             return {row.match_id: row._asdict() for row in result.fetchall()}
 
-    def sync_parsed_ah_data(self, records: List[Dict[str, Any]]) -> None:
+    def sync_parsed_ah_data(self, match_code: str, betting_type_id: int, scope_id: int, records: List[Dict[str, Any]]) -> None:
         with self.db.get_session() as session:
-            insert_stmt = insert(OddsAh).values(records)
-            assignment, where_clause = self.build_upsert_clauses(
-                OddsAh,
-                insert_stmt,
-                {
-                    OddsAh.id.key,
-                    OddsAh.match_code.key,
-                    OddsAh.betting_type_id.key,
-                    OddsAh.scope_id.key,
-                    OddsAh.bookmaker_id.key,
-                    OddsAh.quote_type.key,
-                    OddsAh.handicap.key,
-                    OddsAh.created_at.key,
-                    OddsAh.updated_at.key,
-                }
+            session.execute(
+                delete(OddsAh).where(
+                    OddsAh.match_code == match_code,
+                    OddsAh.betting_type_id == betting_type_id,
+                    OddsAh.scope_id == scope_id,
+                )
             )
-            insert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=[OddsAh.match_code.key, OddsAh.betting_type_id.key, OddsAh.scope_id.key, OddsAh.bookmaker_id.key, OddsAh.quote_type.key, OddsAh.handicap.key],
-                set_=assignment,
-                where=where_clause,
-            )
-            session.execute(insert_stmt)
+            session.execute(insert(OddsAh).values(records))
 
     def get_match_odds_detail(self, match_id: int) -> Optional[Dict[str, Any]]:
         sharp_ids = list(SHARP_BOOKMAKER_NAMES.keys())
