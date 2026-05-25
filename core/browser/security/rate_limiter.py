@@ -1,9 +1,6 @@
-import time
-import random
-import asyncio
-from contextlib import suppress
+import time, random, asyncio
+from typing import Any
 from urllib.parse import urlparse
-from typing import Optional, Any
 from core.logger.logger_manager import get_logger_manager
 
 class RateLimiter:
