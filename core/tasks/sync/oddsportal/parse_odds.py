@@ -204,14 +204,20 @@ class OddsAhParser(BaseOddsParser):
                     self.logger.warning(f"Odds data is missing for bookmaker_id={bookmaker_id}")
                     continue
 
-                if float(handicap_value) < 0:
+                if isinstance(closing_bookmaker_odds, dict):
                     closing_bookmaker_odds = list(closing_bookmaker_odds.values())
+                if isinstance(opening_bookmaker_odds, dict):
                     opening_bookmaker_odds = list(opening_bookmaker_odds.values())
-                    closing_bookmaker_change_time = list(closing_bookmaker_change_time.values()) if closing_bookmaker_change_time else None
-                    opening_bookmaker_change_time = list(opening_bookmaker_change_time.values()) if opening_bookmaker_change_time else None
-                    closing_bookmaker_volume = list(closing_bookmaker_volume.values()) if closing_bookmaker_volume else None
-                    opening_bookmaker_volume = list(opening_bookmaker_volume.values()) if opening_bookmaker_volume else None
-                    bookmaker_odds_movement = list(bookmaker_odds_movement.values()) if bookmaker_odds_movement else None
+                if isinstance(closing_bookmaker_change_time, dict):
+                    closing_bookmaker_change_time = list(closing_bookmaker_change_time.values())
+                if isinstance(opening_bookmaker_change_time, dict):
+                    opening_bookmaker_change_time = list(opening_bookmaker_change_time.values())
+                if isinstance(closing_bookmaker_volume, dict):
+                    closing_bookmaker_volume = list(closing_bookmaker_volume.values())
+                if isinstance(opening_bookmaker_volume, dict):
+                    opening_bookmaker_volume = list(opening_bookmaker_volume.values())
+                if isinstance(bookmaker_odds_movement, dict):
+                    bookmaker_odds_movement = list(bookmaker_odds_movement.values())
 
                 if len(closing_bookmaker_odds) != 2 or len(opening_bookmaker_odds) != 2:
                     self.logger.warning(f"Expected 2 odds for home and away, got {len(closing_bookmaker_odds)} closing odds and {len(opening_bookmaker_odds)} opening odds for bookmaker_id={bookmaker_id}")
