@@ -306,6 +306,12 @@ class Interceptor(Thread):
                     result_set=result_set,
                 )
 
+                def on_nav_response(resp):
+                    if resp.status >= 400:
+                        self.logger.error(f"Nav response: {url} status={resp.status}")
+
+                page_context.on("response", on_nav_response)
+
                 try:
                     await hook_chain.setup(ctx)
                     page_context.request._impl_obj._timeout_settings.set_default_timeout(timeout * 1000)
@@ -319,6 +325,7 @@ class Interceptor(Thread):
                         ctx.response = response
                         success = await hook_chain.execute(ctx)
                 finally:
+                    page_context.remove_listener("response", on_nav_response)
                     await hook_chain.destroy(ctx)
 
         except (TimeoutError, PlaywrightTimeoutError) as e:
