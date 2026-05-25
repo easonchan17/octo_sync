@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models.fotmob.fixture import Fixture
+from core.store.postgres.models.fotmob.fixture import Fixture, HistoryFixtureRaw
 from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat
 from core.store.postgres.models.common.league import SiteLeague
 from ..base_dao import BaseDao
@@ -194,9 +194,16 @@ class MatchDao(BaseDao):
                 Fixture.home_score,
                 Fixture.away_score,
                 Fixture.match_status,
-                MatchRaw.json_body,
+                MatchRaw.json_body.label('match_json_body'),
+                HistoryFixtureRaw.json_body.label('standings_json_body'),
             ).join(
                 Fixture, Fixture.match_id == MatchRaw.match_id
+            ).outerjoin(
+                HistoryFixtureRaw,
+                and_(
+                    HistoryFixtureRaw.league_id == Fixture.league_id,
+                    HistoryFixtureRaw.season == Fixture.season,
+                )
             ).filter(Fixture.match_code == match_code).first()
 
             if not row:

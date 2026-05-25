@@ -284,6 +284,35 @@ class OddsDetailResponse(BaseModel):
     ah: Optional[OddsAhDetailResponse] = None
 
 
+class StandingResponse(BaseModel):
+    position: Optional[int] = Field(default=None, validation_alias='idx')
+    team_name: Optional[str] = Field(default=None, validation_alias='name')
+    points: Optional[int] = Field(default=None, validation_alias='pts')
+    played: Optional[int] = None
+    wins: Optional[int] = None
+    draws: Optional[int] = None
+    losses: Optional[int] = None
+    goals: Optional[str] = Field(default=None, validation_alias='scoresStr')
+    goal_diff: Optional[int] = Field(default=None, validation_alias='goalConDiff')
+    qual_color: Optional[str] = Field(default=None, validation_alias='qualColor')
+    deduction: Optional[int] = None
+    xg: Optional[float] = None
+    xg_diff: Optional[float] = Field(default=None, validation_alias='xgDiff')
+    xga: Optional[float] = Field(default=None, validation_alias='xgConceded')
+    xga_diff: Optional[float] = Field(default=None, validation_alias='xgConcededDiff')
+    x_points: Optional[float] = Field(default=None, validation_alias='xPoints')
+    x_points_diff: Optional[float] = Field(default=None, validation_alias='xPointsDiff')
+    x_position: Optional[int] = Field(default=None, validation_alias='xPosition')
+    x_position_diff: Optional[int] = Field(default=None, validation_alias='xPositionDiff')
+
+
+class StandingsResponse(BaseModel):
+    all: Optional[List[StandingResponse]] = None
+    home: Optional[List[StandingResponse]] = None
+    away: Optional[List[StandingResponse]] = None
+    xg: Optional[List[StandingResponse]] = None
+
+
 class MatchDetail(BaseModel):
     events: Optional[List[EventResponse]] = None
     shot_map: List[ShotResponse] = []
@@ -294,6 +323,7 @@ class MatchDetail(BaseModel):
     form: Dict[str, List[RecentMatchResponse]] = {}
     h2h: List[RecentMatchResponse] = []
     odds: Optional[OddsDetailResponse] = None
+    standings: Optional[StandingsResponse] = None
 
 
 class MatchDetailResponse(MatchResponse):
