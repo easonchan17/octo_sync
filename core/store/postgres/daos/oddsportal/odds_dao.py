@@ -15,10 +15,6 @@ class OddsDao(BaseDao):
             return session.query(
                 Fixture.league_id,
                 Fixture.match_code,
-                Fixture.home_name,
-                Fixture.home_code,
-                Fixture.away_name,
-                Fixture.away_code,
                 Fixture.kickoff_time,
                 Fixture.match_url,
                 OddsRaw.fetch_attempts
