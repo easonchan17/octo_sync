@@ -54,14 +54,12 @@ class BaseSyncOdds(PollTask):
 
     def _build_page_url(self, match_uri: str) -> str:
         parsed = urlparse(match_uri)
-        path = parsed.path
+        path = parsed.path.rstrip('/')
         if parsed.fragment:
-            path = f"{path}/#{parsed.fragment}"
-
-        match_uri = path.rstrip('/')
+            path = f"{path}/#{parsed.fragment.rstrip('/')}"
 
         return self.intercept_strategy.url.format(
-            match_uri=match_uri,
+            match_uri=path,
             betting_type=self.market.betting_type_slug,
             scope_id=self.market.scope_id,
         )
