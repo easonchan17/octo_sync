@@ -123,16 +123,16 @@ class FixtureParser:
             match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), CrawlParams.MATCH_LIFESPAN)
 
             fixture = {
-                "round":        round,
-                "page_url":     page_url,
                 "match_id":     match_id,
                 "league_id":    league_id,
                 "league_name":  league_name,
-                "kickoff_time": kickoff_time,
-                "home_team":    home_team,
+                "round":        round,
+                "page_url":     page_url,
                 "home_id":      home.get('id'),
-                "away_team":    away_team,
+                "home_team":    home_team,
                 "away_id":      away.get('id'),
+                "away_team":    away_team,
+                "kickoff_time": kickoff_time,
                 "home_score":   home_score,
                 "away_score":   away_score,
                 "match_status": match_status
