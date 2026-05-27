@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import date, timedelta
+from typing import Optional
 
 class CrawlParams:
     EARLIEST_SEASON = 2019
@@ -7,6 +8,7 @@ class CrawlParams:
     FETCH_BATCH_SIZE = 30
     PARSE_MAX_RETRIES = 3
 
+    FIXTURE_START_DATE: Optional[date] = date(2019, 1, 1)
     FIXTURE_LOOKBACK = timedelta(hours=24)
     FIXTURE_LOOKAHEAD = timedelta(days=7)
 
