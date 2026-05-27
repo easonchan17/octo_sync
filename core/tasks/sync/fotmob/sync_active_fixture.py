@@ -45,7 +45,7 @@ class SyncActiveFixture(PollTask):
 
     def get_pending_fetch_items(self) -> List[Any]:
         now = datetime.now(timezone.utc)
-        start_date = (now - CrawlParams.FIXTURE_LOOKBACK).date()
+        start_date = CrawlParams.FIXTURE_START_DATE or (now - CrawlParams.FIXTURE_LOOKBACK).date()
         end_date = (now + CrawlParams.FIXTURE_LOOKAHEAD).date()
         return self.active_fixture_dao.get_pending_fetch_items(start_date, end_date)
 
