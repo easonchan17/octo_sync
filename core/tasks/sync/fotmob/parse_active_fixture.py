@@ -86,7 +86,7 @@ class FixtureParser:
         leagues = json_data.get('leagues', [])
         sorted_leagues = sorted(leagues, key=lambda league: league.get('id'), reverse=True)
         for league in sorted_leagues:
-            league_id = league.get('id')
+            league_id = league.get('primaryId') or league.get('id')
             league_name = league.get('name')
             matches = league.get('matches', [])
 
