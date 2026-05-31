@@ -5,6 +5,8 @@ from core.services.base_service import BaseService
 from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
 from core.store.postgres.daos.oddsportal import OddsDao
+from core.config.env_manager import get_env_manager
+from core.tasks.sync.fotmob.utils import encode_id
 
 
 class MatchService(BaseService):
@@ -16,6 +18,11 @@ class MatchService(BaseService):
         self.match_dao = MatchDao()
         self.odds_dao = OddsDao()
         self.league_service = get_league_service()
+        self.env_manager = get_env_manager()
+
+    def _enrich_standing_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
+        team_id = entry.get('id')
+        return {**entry, 'team_code': encode_id(team_id, self.env_manager.TEAM_CODE_SALT) if team_id else None}
 
     def get_match_detail(self, match_code: str) -> Dict[str, Any]:
         data = self.match_dao.get_match_detail(match_code)
@@ -49,6 +56,10 @@ class MatchService(BaseService):
             },
             'h2h':       self.match_dao.get_team_h2h(home_id, away_id, kickoff_time - self.H2H_LOOKBACK, kickoff_time),
             'odds':      self.odds_dao.get_match_odds_detail(match_id),
-            'standings': standings_tables[0]['data']['table'] if standings_tables else None,
+            'standings': {
+                key: [self._enrich_standing_entry(entry) for entry in entries]
+                for key, entries in standings_tables[0]['data']['table'].items()
+                if isinstance(entries, list)
+            } if standings_tables else None,
         }
         return data
