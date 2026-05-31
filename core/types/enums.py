@@ -16,6 +16,7 @@ class LineupRole(IntEnum):
     UNAVAILABLE = 0
     STARTER     = 1
     SUB         = 2
+    COACH       = 3
 
 class BookmakerID(IntEnum):
     BET365           = 16
