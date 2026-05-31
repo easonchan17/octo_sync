@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.fotmob.fixture import Fixture, HistoryFixtureRaw
-from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat
+from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat, MatchPrediction
 from core.store.postgres.models.common.league import SiteLeague
 from ..base_dao import BaseDao
 from core.types.enums import MatchStatus, SiteName
@@ -404,3 +404,66 @@ class MatchDao(BaseDao):
                 Fixture.match_status.in_(MatchStatus.natural_finals())
             ).order_by(Fixture.kickoff_time.desc()).limit(limit).all()
             return [row._asdict() for row in rows]
+
+    def get_prediction(self, match_code: str, model_version: str) -> Optional[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                MatchPrediction.model_version,
+                MatchPrediction.home_prob,
+                MatchPrediction.draw_prob,
+                MatchPrediction.away_prob,
+                MatchPrediction.prediction,
+            ).filter(
+                MatchPrediction.match_code == match_code,
+                MatchPrediction.model_version == model_version,
+            ).first()
+
+    def get_pending_predict_items(self, model_version: str, league_ids: List[int], min_kickoff_time: datetime, max_kickoff_time: datetime) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.match_id,
+                Fixture.match_code,
+                Fixture.kickoff_time,
+            ).outerjoin(
+                MatchPrediction,
+                and_(
+                    MatchPrediction.match_id == Fixture.match_id,
+                    MatchPrediction.model_version == model_version
+                )
+            ).filter(
+                Fixture.kickoff_time >= min_kickoff_time,
+                Fixture.kickoff_time <= max_kickoff_time,
+                Fixture.league_id.in_(league_ids),
+                Fixture.match_status == MatchStatus.TIMED.value,
+                or_(
+                    MatchPrediction.match_id.is_(None),
+                    MatchPrediction.next_predict_at <= func.now()
+                )
+            ).order_by(Fixture.kickoff_time.asc()).all()
+
+    def reschedule_prediction(self, match_code: str, model_version: str, interval: Optional[timedelta]) -> None:
+        next_predict_at = func.now() + interval if interval is not None else None
+        with self.db.get_session() as session:
+            session.query(MatchPrediction).filter(
+                MatchPrediction.match_code == match_code,
+                MatchPrediction.model_version == model_version,
+            ).update({
+                MatchPrediction.next_predict_at: next_predict_at,
+                MatchPrediction.updated_at: func.now(),
+            }, synchronize_session=False)
+
+    def sync_predict_data(self, data: Dict[str, Any]) -> None:
+        with self.db.get_session() as session:
+            stmt = insert(MatchPrediction).values(data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[MatchPrediction.match_id, MatchPrediction.model_version],
+                set_={
+                    MatchPrediction.home_prob.key: stmt.excluded.home_prob,
+                    MatchPrediction.draw_prob.key: stmt.excluded.draw_prob,
+                    MatchPrediction.away_prob.key: stmt.excluded.away_prob,
+                    MatchPrediction.prediction.key: stmt.excluded.prediction,
+                    MatchPrediction.predicted_at.key: stmt.excluded.predicted_at,
+                    MatchPrediction.updated_at.key: func.now(),
+                }
+            )
+            session.execute(stmt)
