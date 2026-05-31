@@ -331,6 +331,31 @@ class MatchLineup(Base):
     market_value = Column(BigInteger, nullable=True)
 
 
+class MatchPrediction(Base):
+    __tablename__ = 'match_predictions'
+    __table_args__ = (
+        Index('idx_match_predictions_match_id', 'match_id'),
+        Index('idx_match_predictions_predicted_at', 'predicted_at'),
+        Index('idx_match_predictions_created_at', 'created_at'),
+        Index('idx_match_predictions_updated_at', 'updated_at'),
+        UniqueConstraint('match_code', 'model_version', name='uq_match_predictions_match_model'),
+        {'schema': SiteName.FOTMOB.value}
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    match_id = Column(Integer, nullable=False)
+    match_code = Column(String(16), nullable=False)
+    model_version = Column(String(64), nullable=False)
+    home_prob = Column(Float, nullable=False)
+    draw_prob = Column(Float, nullable=False)
+    away_prob = Column(Float, nullable=False)
+    prediction = Column(SmallInteger, nullable=False)
+    actual_result = Column(SmallInteger, nullable=True)
+    is_correct = Column(Boolean, nullable=True)
+    predicted_at = Column(DateTime(timezone=True), nullable=False)
+    next_predict_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class FormCacheBuildLog(Base):
     __tablename__ = 'form_cache_build_logs'
     __table_args__ = (
