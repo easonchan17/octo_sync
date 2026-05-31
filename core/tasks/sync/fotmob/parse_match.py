@@ -734,10 +734,12 @@ class MatchParser:
 
             self.formation_resolver.resolve(formation, starters)
 
+            coach_data = team_data.get("coach")
             groups = [
                 (LineupRole.STARTER, starters),
                 (LineupRole.SUB, subs),
                 (LineupRole.UNAVAILABLE, unavailables),
+                (LineupRole.COACH, [coach_data] if coach_data else []),
             ]
             records = []
             seen = set()
