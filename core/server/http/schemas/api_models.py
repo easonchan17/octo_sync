@@ -287,6 +287,7 @@ class OddsDetailResponse(BaseModel):
 class StandingResponse(BaseModel):
     position: Optional[int] = Field(default=None, validation_alias='idx')
     team_name: Optional[str] = Field(default=None, validation_alias='name')
+    team_code: Optional[str] = None
     points: Optional[int] = Field(default=None, validation_alias='pts')
     played: Optional[int] = None
     wins: Optional[int] = None
@@ -304,6 +305,11 @@ class StandingResponse(BaseModel):
     x_points_diff: Optional[float] = Field(default=None, validation_alias='xPointsDiff')
     x_position: Optional[int] = Field(default=None, validation_alias='xPosition')
     x_position_diff: Optional[int] = Field(default=None, validation_alias='xPositionDiff')
+
+    @computed_field
+    @property
+    def team_logo(self) -> Optional[str]:
+        return TEAM_LOGO_URL.format(team_code=self.team_code) if self.team_code else None
 
 
 class StandingsResponse(BaseModel):
