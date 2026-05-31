@@ -1,4 +1,4 @@
-import sys, random
+import sys
 from dataclasses import dataclass
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone
@@ -42,12 +42,7 @@ class TimelineStrategy:
         return self
 
     def suggest_interval(self, base_time: datetime, current_time: datetime) -> Optional[timedelta]:
-        interval = self._suggest_interval(base_time, current_time)
-        if interval is None:
-            return None
-
-        multiplier = random.uniform(1.0, 1.2)
-        return interval * multiplier
+        return self._suggest_interval(base_time, current_time)
 
     def _suggest_interval(self, base_time: datetime, current_time: datetime) -> Optional[timedelta]:
         if not self._segments:
@@ -99,12 +94,7 @@ class AttemptStrategy:
         return self
 
     def suggest_interval(self, fails: Optional[int]) -> Optional[timedelta]:
-        interval = self._suggest_interval(fails)
-        if interval is None:
-            return None
-
-        multiplier = random.uniform(1.0, 1.2)
-        return interval * multiplier
+        return self._suggest_interval(fails)
 
     def _suggest_interval(self, fails: Optional[int]) -> Optional[timedelta]:
         attempts = (fails or 0) + 1
@@ -125,13 +115,7 @@ class ScheduleStrategy:
         self._active_interval = active_interval
 
     def suggest_interval(self, last_fetch_time: datetime, scheduled_items: List[ScheduleSegment], max_scheduled_time: datetime) -> Optional[timedelta]:
-        interval = self._suggest_interval(last_fetch_time, scheduled_items, max_scheduled_time)
-
-        if interval is None:
-            return None
-
-        multiplier = random.uniform(1.0, 1.2)
-        return interval * multiplier
+        return self._suggest_interval(last_fetch_time, scheduled_items, max_scheduled_time)
 
     def _suggest_interval(self, last_fetch_time: datetime, scheduled_items: List[ScheduleSegment], max_scheduled_time: datetime) -> Optional[timedelta]:
         current_time = datetime.now(timezone.utc)
