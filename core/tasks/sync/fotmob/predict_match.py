@@ -1,13 +1,13 @@
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta, timezone
 from core.tasks.poll_task import PollTask
+from datetime import datetime, timedelta, timezone
 from core.scheduler.task_registry import TaskRegistry
+from core.tasks.refetch_strategy import TimelineStrategy
 from core.store.postgres.daos.fotmob import MatchDao, ActiveFixtureDao
 from core.store.postgres.daos.common import TrainingRecordDao
 from core.services.ml.inference.predict_service import get_predict_service
 from core.services.model_service import ModelService
 from core.services.league import get_league_service
-from core.tasks.refetch_strategy import TimelineStrategy
 from core.types.enums import SiteName
 
 
