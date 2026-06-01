@@ -418,6 +418,18 @@ class MatchDao(BaseDao):
                 MatchPrediction.model_version == model_version,
             ).first()
 
+    def get_latest_prediction(self, match_code: str) -> Optional[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                MatchPrediction.model_version,
+                MatchPrediction.home_prob,
+                MatchPrediction.draw_prob,
+                MatchPrediction.away_prob,
+                MatchPrediction.prediction,
+            ).filter(
+                MatchPrediction.match_code == match_code,
+            ).order_by(MatchPrediction.predicted_at.desc()).first()
+
     def get_pending_predict_items(self, model_version: str, league_ids: List[int], min_kickoff_time: datetime, max_kickoff_time: datetime) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
