@@ -319,6 +319,12 @@ class StandingsResponse(BaseModel):
     xg: Optional[List[StandingResponse]] = None
 
 
+class MatchPredictionResponse(BaseModel):
+    model_version: str
+    probabilities: Dict[str, float]
+    prediction: int
+
+
 class MatchDetail(BaseModel):
     events: Optional[List[EventResponse]] = None
     shot_map: List[ShotResponse] = []
@@ -329,6 +335,7 @@ class MatchDetail(BaseModel):
     form: Dict[str, List[RecentMatchResponse]] = {}
     h2h: List[RecentMatchResponse] = []
     odds: Optional[OddsDetailResponse] = None
+    prediction: Optional[MatchPredictionResponse] = None
     standings: Optional[StandingsResponse] = None
 
 
