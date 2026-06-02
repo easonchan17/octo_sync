@@ -1,10 +1,11 @@
-uvicorn>=0.34.0
-fastapi>=0.116.1
+uvicorn==0.47.0
+fastapi==0.136.1
 SQLAlchemy==2.0.40
 PyYAML==6.0.2
 playwright==1.53.0
 pydantic==2.11.2
 pydantic-settings==2.12.0
+PyJWT[crypto]==2.13.0
 psycopg2-binary==2.9.10
 chardet==7.4.3
 camoufox[geoip]==0.4.11
@@ -15,7 +16,7 @@ bs4==0.0.2
 scikit-learn==1.7.2
 scikit_optimize==0.10.2
 xgboost==3.1.2
-shap==0.51.0
+shap==0.52.0
 python-dotenv==1.2.1
 janus==2.0.0
 thefuzz==0.22.1
@@ -24,3 +25,7 @@ httpx==0.28.1
 alembic==1.18.1
 mitmproxy==12.2.2
 psutil==7.2.2
+litellm==1.86.2
+langgraph==1.2.2
+langgraph-checkpoint-postgres==3.1.0
+langchain-litellm==0.6.6

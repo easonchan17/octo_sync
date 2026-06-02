@@ -1,28 +1,27 @@
-import os
 from functools import cache
 from typing import Generator
 from sqlalchemy import text
 from typing import List, Any, Optional
 from contextlib import contextmanager
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import Session, sessionmaker
 from core.config.config_manager import get_config_manager
+from core.config.env_manager import get_env_manager
 from core.logger.logger_manager import get_logger_manager
 
 class PostgreSQLManager:
-    def __init__(self, config: dict) -> None:
+    def __init__(self, db_url: str, pool_config: dict) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
-        self.config = config
+        self.db_url = db_url
+        self.pool_config = pool_config
         self.engine = None
         self.session_maker = None
 
     def startup(self) -> None:
-        db_url = f"postgresql://{self.config['db_user']}:{self.config['db_password']}@{self.config['db_host']}:{self.config['db_port']}/{self.config['db_name']}"
-        pool_config = self.config['pool_config']
-
-        self.engine = create_engine(db_url, **pool_config)
+        self.engine = create_engine(self.db_url, **self.pool_config)
         self.session_maker = sessionmaker(bind=self.engine)
-        self.logger.info(f"PostgreSQLManager initialized with pool_size={pool_config['pool_size']}")
+        self.logger.info(f"PostgreSQLManager initialized with pool_size={self.pool_config['pool_size']}")
 
     def cleanup(self) -> None:
         if self.engine is not None:
@@ -45,6 +44,13 @@ class PostgreSQLManager:
                         table_class.__table__.create(conn, checkfirst=True)
                         table_name = table_class.__table__.name if schema_name is None else f"{schema_name}.{table_class.__table__.name}"
                         self.logger.info(f"Table {table_name} created successfully")
+
+    def get_conn_string(self) -> str:
+        return self.db_url
+
+    def get_checkpoint_pool_size(self) -> tuple[int, int]:
+        pool_size = self.pool_config['pool_size']
+        return 2, max(2, pool_size // 4)
 
     @contextmanager
     def get_session(self, schema_name: Optional[str] = None, session: Optional[Session] = None) -> Generator[Session, None, None]:
@@ -70,31 +76,14 @@ class PostgreSQLManager:
 
 @cache
 def get_postgresql_manager() -> PostgreSQLManager:
-    db_host = os.getenv('DB_HOST')
-    db_port = os.getenv('DB_PORT')
-    db_name = os.getenv('DB_NAME')
-    db_user = os.getenv('DB_USER')
-    db_password = os.getenv('DB_PASSWORD')
-    pool_size = os.getenv('DB_POOL_SIZE')
-    max_overflow = os.getenv('DB_MAX_OVERFLOW')
-    pool_timeout = os.getenv('DB_POOL_TIMEOUT')
-    pool_recycle = os.getenv('DB_POOL_RECYCLE')
-
-    if all([db_host, db_port, db_name, db_user, db_password, pool_size, max_overflow, pool_timeout, pool_recycle]):
-        config = {
-            'db_host': db_host,
-            'db_port': int(db_port),
-            'db_name': db_name,
-            'db_user': db_user,
-            'db_password': db_password,
-            'pool_config': {
-                'pool_size': int(pool_size),
-                'max_overflow': int(max_overflow),
-                'pool_timeout': int(pool_timeout),
-                'pool_recycle': int(pool_recycle)
-            }
-        }
-    else:
-        config = get_config_manager().get_config("database")
-
-    return PostgreSQLManager(config=config)
+    env_manager = get_env_manager()
+    pool_config = get_config_manager().get_config("database.pool_config")
+    db_url = URL.create(
+        drivername=env_manager.DB_DRIVER,
+        username=env_manager.DB_USER,
+        password=env_manager.DB_PASSWORD or None,
+        host=env_manager.DB_HOST,
+        port=env_manager.DB_PORT,
+        database=env_manager.DB_NAME,
+    ).render_as_string(hide_password=False)
+    return PostgreSQLManager(db_url=db_url, pool_config=pool_config)

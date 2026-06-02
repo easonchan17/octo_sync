@@ -3,6 +3,8 @@ from .training_record import TrainingRecord
 from .sys_val import SysVal
 from .league import CanonicalLeague, SiteLeague
 from .asset import Asset, AssetScanProgress
+from .chat_conversation import ChatConversation
+from .feedback_issue import FeedbackIssue
 
 __all__ = [
     'Site',
@@ -12,4 +14,6 @@ __all__ = [
     'SiteLeague',
     'Asset',
     'AssetScanProgress',
+    'ChatConversation',
+    'FeedbackIssue',
 ]
