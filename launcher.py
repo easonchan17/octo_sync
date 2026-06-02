@@ -1,4 +1,5 @@
 import os, sys, signal, argparse, warnings
+from dotenv import load_dotenv
 from typing import Callable, List, Optional, Tuple, final
 from urllib3.exceptions import InsecureRequestWarning
 from threading import Event, enumerate as enumerate_threads
@@ -23,12 +24,14 @@ class BaseLauncher(ABC):
 
     @final
     def setup(self) -> None:
-        self.logger.info(f"🔧 Loading configuration file: {self.config}")
+        load_dotenv()
+
+        self.logger.info(f"Loading configuration file: {self.config}")
         get_config_manager().load_config(self.config)
 
-        self.logger.info(f"🔧 Initializing logger manager...")
+        self.logger.info(f"Initializing logger manager...")
         get_logger_manager().setup(get_config_manager().get_config("logger"))
-        self.logger.info("✅ Logger manager initialized")
+        self.logger.info("Logger manager initialized")
 
         self._register_services()
 
@@ -37,9 +40,9 @@ class BaseLauncher(ABC):
         signal.signal(signal.SIGTERM, self._on_shutdown)
 
         for name, start, _ in self.services:
-            self.logger.info(f"🔧 Starting {name}...")
+            self.logger.info(f"Starting {name}...")
             start()
-            self.logger.info(f"✅ {name} started")
+            self.logger.info(f"{name} started")
 
         self.shutdown_event.wait()
         for thread in enumerate_threads():
@@ -56,9 +59,9 @@ class BaseLauncher(ABC):
             if stop is None:
                 continue
 
-            self.logger.info(f"🔧 Stopping {name}...")
+            self.logger.info(f"Stopping {name}...")
             stop()
-            self.logger.info(f"✅ {name} stopped")
+            self.logger.info(f"{name} stopped")
 
         self.shutdown_event.set()
 

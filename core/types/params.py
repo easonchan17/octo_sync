@@ -14,7 +14,7 @@ class CrawlParams:
 
     MATCH_LIFESPAN = timedelta(hours=4)
     MATCH_SETTLEMENT = timedelta(hours=48)
-    MATCH_LOOKAHEAD = timedelta(days=7)
+    MATCH_LOOKAHEAD = timedelta(days=14)
 
 class EloParams:
     def __init__(

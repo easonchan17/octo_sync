@@ -23,3 +23,10 @@ CLAUDE.md
 TODO.md
 docs/
 octopus_data.sql*
+
+configs/jwt_private_key.pem
+
+*.txt
+*.html
+*.json
+train_logs/

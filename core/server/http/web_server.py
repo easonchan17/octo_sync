@@ -2,7 +2,7 @@ import uvicorn
 from functools import cache
 from core.server.http.web_app import WebApp
 from core.utils.thread import Thread
-from core.config.config_manager import get_config_manager
+from core.config.env_manager import get_env_manager
 
 class WebServer(Thread):
     def __init__(self, host: str, port: int) -> None:
@@ -38,5 +38,5 @@ class WebServer(Thread):
 
 @cache
 def get_web_server() -> WebServer:
-    config = get_config_manager().get_config("http")
-    return WebServer(host=config["host"], port=config["port"])
+    env_manager = get_env_manager()
+    return WebServer(host=env_manager.HTTP_HOST, port=env_manager.HTTP_PORT)
