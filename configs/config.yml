@@ -28,22 +28,11 @@ browser:
     firefox_user_prefs:
       browser.tabs.remote.useCrossOriginOpenerPolicy: false
       network.cookie.cookieBehavior: 0
-    # proxy:
-    #   server: "http://127.0.0.1:7890"
   viewport:
     width: 1920
     height: 1080
 
-http:
-  host: "127.0.0.1"
-  port: 8080
-
 database:
-  db_host: "localhost"
-  db_port: 5432
-  db_name: "octopus"
-  db_user: "octopus"
-  db_password: "123456"
   pool_config:
     pool_size: 20
     max_overflow: 30
@@ -87,7 +76,7 @@ training:
           - "home_rating_ability_mean"
           - "away_defense_form"
           - "home_defense_ability_sum"
-          # - "creativity_ability_sum_diff"
+          - "creativity_ability_sum_diff"
 
       model:
         name: xgboost
@@ -119,3 +108,25 @@ training:
             colsample_bytree: { type: Real, low: 0.3, high: 0.8 }
             reg_alpha: { type: Real, low: 0.1, high: 10, prior: log-uniform }
             reg_lambda: { type: Real, low: 2.0, high: 50, prior: log-uniform }
+
+llm:
+  default:
+    provider: anthropic
+    model: claude-sonnet-4-6
+    vision_support: true
+    max_tokens: 1024
+    temperature: 0.3
+
+  chat:
+    provider: gemini
+    model: gemini-2.5-flash
+    vision_support: true
+    temperature: 0.3
+
+auth:
+  jwt:
+    algorithms:
+      - RS256
+    user_id_claim: sub
+    issuer: null
+    audience: null

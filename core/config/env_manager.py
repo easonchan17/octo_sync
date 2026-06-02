@@ -15,6 +15,16 @@ class EnvManager(BaseSettings):
     MATCH_CODE_SALT: str = Field(..., description="Salt for match code generation")
     TEAM_CODE_SALT: str = Field(..., description="Salt for team code generation")
     PLAYER_CODE_SALT: str = Field(..., description="Salt for player code generation")
+    JWT_PUBLIC_KEY_PATH: Optional[str] = Field(default=None, description="Path to the main-site RS256 public key PEM for chat JWT verification")
+    HTTP_HOST: str = Field(..., description="HTTP server bind host")
+    HTTP_PORT: int = Field(..., description="HTTP server bind port")
+    CORS_ALLOW_ORIGINS: Optional[str] = Field(default=None, description="Comma-separated allowed CORS origins for the browser frontend, or * for all")
+    DB_DRIVER: str = Field(..., description="Database driver/scheme, e.g. postgresql")
+    DB_HOST: str = Field(..., description="Database host")
+    DB_PORT: int = Field(..., description="Database port")
+    DB_NAME: str = Field(..., description="Database name")
+    DB_USER: str = Field(..., description="Database user")
+    DB_PASSWORD: Optional[str] = Field(default=None, description="Database password")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -22,6 +32,12 @@ class EnvManager(BaseSettings):
         extra="ignore",
         case_sensitive=False
     )
+
+    @property
+    def cors_allow_origins(self) -> list:
+        if not self.CORS_ALLOW_ORIGINS:
+            return []
+        return [origin.strip().rstrip("/") for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
 
     @property
     def docs_enabled(self) -> bool:

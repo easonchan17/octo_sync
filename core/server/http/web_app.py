@@ -1,7 +1,8 @@
-import secrets
-import time
+import time, secrets
 from typing import Any
+from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -12,10 +13,20 @@ from core.server.http.controllers.system.model_controller import ModelController
 from core.server.http.controllers.app.fixture_controller import FixtureController
 from core.server.http.controllers.app.league_controller import LeagueController
 from core.server.http.controllers.app.match_controller import MatchController
+from core.server.http.controllers.app.chat_conversation_controller import ChatConversationController
+from core.services.chat_conversation_service import get_chat_conversation_service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await get_chat_conversation_service().initialize()
+    yield
+    await get_chat_conversation_service().shutdown()
+
 
 class WebApp:
     def __init__(self) -> None:
-        self.app = FastAPI(
+        self.app = FastAPI(lifespan=lifespan,
             title="Octopus API",
             description="Octopus Sports API",
             version="1.0.0",
@@ -61,6 +72,9 @@ class WebApp:
         league_controller = LeagueController()
         self.app.include_router(league_controller.router, prefix="/api", tags=["leagues"])
 
+        conversation_controller = ChatConversationController()
+        self.app.include_router(conversation_controller.router, prefix="/api", tags=["conversations"])
+
     def _setup_docs_protection(self) -> None:
         if not self.env_manager.docs_enabled:
             return
@@ -91,6 +105,13 @@ class WebApp:
             )
 
     def _setup_middleware(self) -> None:
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=self.env_manager.cors_allow_origins,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
         @self.app.middleware("http")
         async def log_requests(request: Request, call_next) -> Any:
             start_time = time.time()
