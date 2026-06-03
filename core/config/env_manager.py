@@ -12,6 +12,8 @@ class EnvManager(BaseSettings):
     ENV: EnvType = Field(..., description="Run environment")
     DOCS_USERNAME: Optional[str] = Field(default=None, description="HTTP Basic username for /docs and /redoc; set with DOCS_PASSWORD to enable docs")
     DOCS_PASSWORD: Optional[str] = Field(default=None, description="HTTP Basic password for docs; set with DOCS_USERNAME to enable docs")
+    ADMIN_USERNAME: Optional[str] = Field(default=None, description="HTTP Basic username for admin data endpoints; set with ADMIN_PASSWORD to enable them")
+    ADMIN_PASSWORD: Optional[str] = Field(default=None, description="HTTP Basic password for admin data endpoints; set with ADMIN_USERNAME to enable them")
     MATCH_CODE_SALT: str = Field(..., description="Salt for match code generation")
     TEAM_CODE_SALT: str = Field(..., description="Salt for team code generation")
     PLAYER_CODE_SALT: str = Field(..., description="Salt for player code generation")
@@ -43,7 +45,7 @@ class EnvManager(BaseSettings):
     def docs_enabled(self) -> bool:
         username = (self.DOCS_USERNAME or "").strip()
         password = (self.DOCS_PASSWORD or "").strip()
-        return bool(username and password)
+        return self.is_dev and bool(username and password)
 
     @property
     def is_dev(self) -> bool:

@@ -9,7 +9,9 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.responses import JSONResponse
 from core.config.env_manager import get_env_manager
 from core.logger.logger_manager import get_logger_manager
+from core.server.http.auth import require_admin
 from core.server.http.controllers.system.model_controller import ModelController
+from core.server.http.controllers.system.data_controller import DataController
 from core.server.http.controllers.app.fixture_controller import FixtureController
 from core.server.http.controllers.app.league_controller import LeagueController
 from core.server.http.controllers.app.match_controller import MatchController
@@ -60,9 +62,6 @@ class WebApp:
         async def health_check() -> dict[str, str]:
             return {"status": "healthy"}
 
-        model_controller = ModelController()
-        self.app.include_router(model_controller.router, prefix="/api", tags=["models"])
-
         fixture_controller = FixtureController()
         self.app.include_router(fixture_controller.router, prefix="/api", tags=["fixtures"])
 
@@ -74,6 +73,12 @@ class WebApp:
 
         conversation_controller = ChatConversationController()
         self.app.include_router(conversation_controller.router, prefix="/api", tags=["conversations"])
+
+        model_controller = ModelController()
+        self.app.include_router(model_controller.router, prefix="/admin", dependencies=[Depends(require_admin)], tags=["models"])
+
+        data_controller = DataController()
+        self.app.include_router(data_controller.router, prefix="/admin", dependencies=[Depends(require_admin)], tags=["data"])
 
     def _setup_docs_protection(self) -> None:
         if not self.env_manager.docs_enabled:

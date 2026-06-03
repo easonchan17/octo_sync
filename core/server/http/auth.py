@@ -1,9 +1,10 @@
 import jwt
+import secrets
 from pathlib import Path
 from typing import Optional, List
 from functools import cache
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials
 from core.config.config_manager import get_config_manager
 from core.config.env_manager import get_env_manager
 
@@ -57,3 +58,25 @@ def require_user_id(credentials: HTTPAuthorizationCredentials = Depends(_bearer)
         return get_jwt_authenticator().resolve_user_id(credentials.credentials)
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token")
+
+
+_admin_basic = HTTPBasic()
+
+
+def require_admin(credentials: HTTPBasicCredentials = Depends(_admin_basic)) -> str:
+    env_manager = get_env_manager()
+    username    = env_manager.ADMIN_USERNAME
+    password    = env_manager.ADMIN_PASSWORD
+    if not (username and password):
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="admin access not configured")
+
+    valid_username = secrets.compare_digest(credentials.username, username)
+    valid_password = secrets.compare_digest(credentials.password, password)
+    if not (valid_username and valid_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid admin credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    return credentials.username

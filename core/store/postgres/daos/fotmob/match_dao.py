@@ -1,13 +1,13 @@
 import traceback
+from sqlalchemy import func, and_, or_
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from sqlalchemy import func, and_, or_
 from sqlalchemy.dialects.postgresql import insert
-from core.store.postgres.models.fotmob.fixture import Fixture, HistoryFixtureRaw
+from core.store.postgres.models.fotmob.fixture import Fixture, HistoryFixtureRaw, ActiveFixtureRaw
 from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat, MatchPrediction
 from core.store.postgres.models.common.league import SiteLeague
-from ..base_dao import BaseDao
 from core.types.enums import MatchStatus, SiteName
+from ..base_dao import BaseDao
 
 class MatchDao(BaseDao):
     def get_pending_fetch_items(self, kickoff_before: datetime, league_ids: List[int], limit: int) -> List[Any]:
