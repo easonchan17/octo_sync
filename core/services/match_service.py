@@ -45,6 +45,7 @@ class MatchService(BaseService):
 
         match_content = data['match_json_body'].get('content') or {}
         standings_tables = (data.get('standings_json_body') or {}).get('table')
+        standings_table = standings_tables[0].get('data', {}).get('table') if standings_tables else None
 
         canonical_league = self.league_service.get_canonical_league(SiteName.FOTMOB.value, data['league_id'])
 
@@ -70,8 +71,8 @@ class MatchService(BaseService):
             'prediction': self.get_latest_prediction(match_code),
             'standings': {
                 key: [self.enrich_standing_entry(entry) for entry in entries]
-                for key, entries in standings_tables[0]['data']['table'].items()
+                for key, entries in standings_table.items()
                 if isinstance(entries, list)
-            } if standings_tables else None,
+            } if isinstance(standings_table, dict) else None,
         }
         return data
