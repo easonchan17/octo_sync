@@ -118,9 +118,9 @@ llm:
     temperature: 0.3
 
   chat:
-    provider: gemini
-    model: gemini-2.5-flash
-    vision_support: true
+    provider: deepseek
+    model: deepseek-chat
+    vision_support: false
     temperature: 0.3
 
 auth:
