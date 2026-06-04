@@ -45,7 +45,17 @@ class MatchService(BaseService):
 
         match_content = data['match_json_body'].get('content') or {}
         standings_tables = (data.get('standings_json_body') or {}).get('table')
-        standings_table = standings_tables[0].get('data', {}).get('table') if standings_tables else None
+        group_name       = data.get('group_name')
+        if standings_tables:
+            if group_name:
+                standings_tables = standings_tables[0].get('data', {}).get('tables')
+                group_label = f"Grp. {group_name}"
+                matched = next((t for t in standings_tables if t.get('leagueName') == group_label), None)
+                standings_table = matched.get('table') if matched else None
+            else:
+                standings_table = standings_tables[0].get('data', {}).get('table')
+        else:
+            standings_table = None
 
         canonical_league = self.league_service.get_canonical_league(SiteName.FOTMOB.value, data['league_id'])
 
