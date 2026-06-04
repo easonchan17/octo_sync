@@ -29,7 +29,9 @@ class MapFixture(PollTask):
         self.retry_strategy = (
             AttemptStrategy()
             .add_segment(min_attempts=1, max_attempts=4, interval=timedelta(minutes=5))
-            .add_segment(min_attempts=4, max_attempts=None, interval=timedelta(hours=1))
+            .add_segment(min_attempts=4, max_attempts=10, interval=timedelta(hours=1))
+            .add_segment(min_attempts=10, max_attempts=20, interval=timedelta(hours=4))
+            .add_segment(min_attempts=20, max_attempts=21, interval=timedelta(days=1))
         )
 
     def _get_refetch_time(self, attempts: int, current_time: datetime) -> Optional[datetime]:
