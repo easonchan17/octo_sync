@@ -7,7 +7,6 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool, text
-from sqlalchemy.engine import URL
 from alembic.script import ScriptDirectory
 from alembic import context
 from alembic.config import Config
@@ -22,15 +21,7 @@ from core.config.env_manager import get_env_manager
 
 def apply_db_url(config: Config) -> None:
     env_manager = get_env_manager()
-    url = URL.create(
-        drivername=env_manager.DB_DRIVER,
-        username=env_manager.DB_USER,
-        password=env_manager.DB_PASSWORD or None,
-        host=env_manager.DB_HOST,
-        port=env_manager.DB_PORT,
-        database=env_manager.DB_NAME,
-    )
-    config.set_main_option("sqlalchemy.url", url.render_as_string(hide_password=False))
+    config.set_main_option("sqlalchemy.url", env_manager.DB_URL)
 
 def prepare_migration_sql_path(config: Config) -> Optional[Path]:
     script = ScriptDirectory.from_config(config)

@@ -2,26 +2,27 @@ import json
 from fastapi import WebSocket, WebSocketDisconnect, Depends
 from core.services.chat_conversation_service import get_chat_conversation_service
 from core.server.http.controllers.base_controller import BaseController
-from core.server.http.auth import get_jwt_authenticator, require_user_id
+from core.server.http.auth import verify_token
+from core.services.auth.auth_service import get_auth_service
 from core.chat.graph.tools import ToolNames
-
 
 class ChatConversationController(BaseController):
     def __init__(self) -> None:
         super().__init__()
         self.conversation_service = get_chat_conversation_service()
+        self.auth_service         = get_auth_service()
 
         self.router.post("/v1/conversations")(self.create_conversation)
         self.router.websocket("/v1/conversations/{conversation_id}")(self.chat)
 
-    def create_conversation(self, user_id: str = Depends(require_user_id)) -> dict:
+    def create_conversation(self, user_id: str = Depends(verify_token)) -> dict:
         conversation_id = self.conversation_service.create_conversation(user_id)
         return {"conversation_id": conversation_id}
 
     async def chat(self, websocket: WebSocket, conversation_id: str) -> None:
         token = websocket.query_params.get("token", "")
         try:
-            user_id = get_jwt_authenticator().resolve_user_id(token)
+            user_id = await self.auth_service.get_user_id(token)
         except Exception:
             await websocket.close(code=4401)
             return

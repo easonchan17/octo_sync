@@ -5,6 +5,7 @@ from .league import CanonicalLeague, SiteLeague
 from .asset import Asset, AssetScanProgress
 from .chat_conversation import ChatConversation
 from .feedback_issue import FeedbackIssue
+from .user import User
 
 __all__ = [
     'Site',
@@ -16,4 +17,5 @@ __all__ = [
     'AssetScanProgress',
     'ChatConversation',
     'FeedbackIssue',
+    'User',
 ]

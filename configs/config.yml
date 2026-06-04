@@ -124,9 +124,12 @@ llm:
     temperature: 0.3
 
 auth:
+  token_expire_days: 7
   jwt:
-    algorithms:
-      - RS256
-    user_id_claim: sub
-    issuer: null
-    audience: null
+    algorithm: HS256
+  otp:
+    code_ttl: 600
+    cooldown_ttl: 60
+    ip_daily_limit: 5
+    email_daily_limit: 3
+    max_wrong_attempts: 3
