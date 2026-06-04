@@ -326,6 +326,31 @@ class MatchPredictionResponse(BaseModel):
     prediction: int
 
 
+class KnockoutMatchupResponse(BaseModel):
+    home_short_name: str          = Field(validation_alias='homeTeamShortName')
+    away_short_name: str          = Field(validation_alias='awayTeamShortName')
+    home_score: Optional[int]     = Field(default=None, validation_alias='homeScore')
+    away_score: Optional[int]     = Field(default=None, validation_alias='awayScore')
+    home_code: Optional[str]      = Field(default=None, exclude=True)
+    away_code: Optional[str]      = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def home_logo(self) -> Optional[str]:
+        return TEAM_LOGO_URL.format(team_code=self.home_code) if self.home_code else None
+
+    @computed_field
+    @property
+    def away_logo(self) -> Optional[str]:
+        return TEAM_LOGO_URL.format(team_code=self.away_code) if self.away_code else None
+
+
+class KnockoutRoundResponse(BaseModel):
+    stage: str
+    started: bool
+    matchups: List[KnockoutMatchupResponse]
+
+
 class MatchDetail(BaseModel):
     events: Optional[List[EventResponse]] = None
     shot_map: List[ShotResponse] = []
@@ -338,6 +363,7 @@ class MatchDetail(BaseModel):
     odds: Optional[OddsDetailResponse] = None
     prediction: Optional[MatchPredictionResponse] = None
     standings: Optional[StandingsResponse] = None
+    knockout: Optional[List[KnockoutRoundResponse]] = None
 
 
 class MatchDetailResponse(MatchResponse):

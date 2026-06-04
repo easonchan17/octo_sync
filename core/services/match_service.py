@@ -20,6 +20,45 @@ class MatchService(BaseService):
         self.league_service = get_league_service()
         self.env_manager = get_env_manager()
 
+    def resolve_standings(self, standings_json: dict, group_name: str) -> Optional[Dict[str, Any]]:
+        standings_tables = standings_json.get('table')
+        if not standings_tables:
+            return None
+
+        if group_name:
+            tables      = standings_tables[0].get('data', {}).get('tables') or []
+            group_label = f"Grp. {group_name}"
+            matched     = next((t for t in tables if t.get('leagueName') == group_label), None)
+            standings_table = matched.get('table') if matched else None
+        else:
+            standings_table = standings_tables[0].get('data', {}).get('table')
+
+        if not isinstance(standings_table, dict):
+            return None
+
+        return {
+            key: [self.enrich_standing_entry(entry) for entry in entries]
+            for key, entries in standings_table.items()
+            if isinstance(entries, list)
+        }
+
+    def enrich_knockout_rounds(self, rounds: list) -> list:
+        salt = self.env_manager.TEAM_CODE_SALT
+        return [
+            {
+                **round_data,
+                'matchups': [
+                    {
+                        **matchup,
+                        'home_code': encode_id(matchup['homeTeamId'], salt),
+                        'away_code': encode_id(matchup['awayTeamId'], salt),
+                    }
+                    for matchup in round_data.get('matchups', [])
+                ],
+            }
+            for round_data in rounds
+        ]
+
     def enrich_standing_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
         team_id = entry.get('id')
         return {**entry, 'team_code': encode_id(team_id, self.env_manager.TEAM_CODE_SALT) if team_id else None}
@@ -44,18 +83,13 @@ class MatchService(BaseService):
         kickoff_time = data['kickoff_time']
 
         match_content = data['match_json_body'].get('content') or {}
-        standings_tables = (data.get('standings_json_body') or {}).get('table')
-        group_name       = data.get('group_name')
-        if standings_tables:
-            if group_name:
-                standings_tables = standings_tables[0].get('data', {}).get('tables')
-                group_label = f"Grp. {group_name}"
-                matched = next((t for t in standings_tables if t.get('leagueName') == group_label), None)
-                standings_table = matched.get('table') if matched else None
-            else:
-                standings_table = standings_tables[0].get('data', {}).get('table')
-        else:
-            standings_table = None
+
+        standings_json= data.get('standings_json_body') or {}
+
+        knockout_rounds = standings_json.get('playoff', {}).get('draw', {}).get('knockout', {}).get('rounds')
+        knockout     = self.enrich_knockout_rounds(knockout_rounds) if knockout_rounds else None
+
+        standings    = None if knockout else self.resolve_standings(standings_json, data.get('group_name'))
 
         canonical_league = self.league_service.get_canonical_league(SiteName.FOTMOB.value, data['league_id'])
 
@@ -79,10 +113,7 @@ class MatchService(BaseService):
             'h2h':       self.match_dao.get_team_h2h(home_id, away_id, kickoff_time - self.H2H_LOOKBACK, kickoff_time),
             'odds':      self.odds_dao.get_match_odds_detail(match_id),
             'prediction': self.get_latest_prediction(match_code),
-            'standings': {
-                key: [self.enrich_standing_entry(entry) for entry in entries]
-                for key, entries in standings_table.items()
-                if isinstance(entries, list)
-            } if isinstance(standings_table, dict) else None,
+            'knockout':  knockout,
+            'standings': standings,
         }
         return data
