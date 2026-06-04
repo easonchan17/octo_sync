@@ -86,7 +86,7 @@ class MatchService(BaseService):
 
         standings_json= data.get('standings_json_body') or {}
 
-        knockout_rounds = standings_json.get('playoff', {}).get('draw', {}).get('knockout', {}).get('rounds')
+        knockout_rounds = (standings_json.get('playoff') or {}).get('draw', {}).get('knockout', {}).get('rounds')
         knockout     = self.enrich_knockout_rounds(knockout_rounds) if knockout_rounds else None
 
         standings    = None if knockout else self.resolve_standings(standings_json, data.get('group_name'))
