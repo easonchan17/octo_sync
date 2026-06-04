@@ -4,7 +4,6 @@ from sqlalchemy import text
 from typing import List, Any, Optional
 from contextlib import contextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
 from sqlalchemy.orm import Session, sessionmaker
 from core.config.config_manager import get_config_manager
 from core.config.env_manager import get_env_manager
@@ -78,12 +77,4 @@ class PostgreSQLManager:
 def get_postgresql_manager() -> PostgreSQLManager:
     env_manager = get_env_manager()
     pool_config = get_config_manager().get_config("database.pool_config")
-    db_url = URL.create(
-        drivername=env_manager.DB_DRIVER,
-        username=env_manager.DB_USER,
-        password=env_manager.DB_PASSWORD or None,
-        host=env_manager.DB_HOST,
-        port=env_manager.DB_PORT,
-        database=env_manager.DB_NAME,
-    ).render_as_string(hide_password=False)
-    return PostgreSQLManager(db_url=db_url, pool_config=pool_config)
+    return PostgreSQLManager(db_url=env_manager.DB_URL, pool_config=pool_config)

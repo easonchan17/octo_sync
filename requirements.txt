@@ -22,6 +22,7 @@ janus==2.0.0
 thefuzz==0.22.1
 apscheduler==3.11.2
 httpx==0.28.1
+redis==8.0.0
 alembic==1.18.1
 mitmproxy==12.2.2
 psutil==7.2.2
