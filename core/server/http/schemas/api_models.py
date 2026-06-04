@@ -114,6 +114,7 @@ class BaseMatchResponse(BaseModel):
 
 class MatchResponse(BaseMatchResponse):
     round: Optional[str] = None
+    group_name: Optional[str] = None
     avg_home_odds: Optional[float] = None
     avg_draw_odds: Optional[float] = None
     avg_away_odds: Optional[float] = None
