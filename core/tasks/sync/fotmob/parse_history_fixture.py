@@ -47,6 +47,7 @@ class HistoryFixtureParser:
                 "league_name": league_name,
                 "season": season,
                 "round": match.get("round"),
+                "group_name": match.get("group"),
                 "page_url": match.get("pageUrl"),
                 "home_id": int(match["home"]["id"]),
                 "home_team": match["home"]["name"],
