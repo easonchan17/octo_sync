@@ -83,7 +83,7 @@ class AssetDao(BaseDao):
         if error_msg is None:
             error_msg = traceback.format_exc()
 
-        next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else func.now()
+        next_fetch_at = func.now() + fetch_interval if fetch_interval is not None else None
 
         with self.db.get_session() as session:
             session.query(Asset).filter(Asset.source_url == source_url).update(
