@@ -370,3 +370,16 @@ class PredictionResponse(BaseModel):
     model_version: str
     probabilities: Dict[str, float]
     prediction: int
+
+
+# ==============================================================================
+# Auth Models
+# ==============================================================================
+class SendCodeRequest(BaseModel):
+    email: str
+    turnstileToken: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    code: str
