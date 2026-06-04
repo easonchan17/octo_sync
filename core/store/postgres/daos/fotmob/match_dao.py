@@ -185,6 +185,7 @@ class MatchDao(BaseDao):
                 Fixture.league_id,
                 Fixture.kickoff_time,
                 Fixture.round,
+                Fixture.group_name,
                 Fixture.home_id,
                 Fixture.home_team,
                 Fixture.home_code,

@@ -109,6 +109,7 @@ class FixtureParser:
         fixtures = []
         for match in matches:
             round = match.get('round')
+            group = match.get('group')
             page_url = match.get('pageUrl')
             match_id = match.get('id')
 
@@ -127,6 +128,7 @@ class FixtureParser:
                 "league_id":    league_id,
                 "league_name":  league_name,
                 "round":        round,
+                "group_name":   group,
                 "page_url":     page_url,
                 "home_id":      home.get('id'),
                 "home_team":    home_team,
