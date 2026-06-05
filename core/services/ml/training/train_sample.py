@@ -37,30 +37,33 @@ class TrainSampleBuilder:
         "passes_acc_ema_5_diff", "home_passes_ema_5", "away_passes_acc_ema_5",
     ]
 
-    def __init__(self, league_id: int, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
+    def __init__(self, league_ids: list, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.config_manager = get_config_manager()
-        self.league_id = league_id
+        self.league_ids = league_ids
         self.min_season = min_season
         self.max_season = max_season
         self.output_path = output_path
         self.output_format = output_format
         self.league_service = get_league_service()
 
-        canonical_league = self.league_service.get_canonical_league(SiteName.SYSTEM.value, self.league_id)
-        fotmob_league_id = canonical_league.site_leagues.get(SiteName.FOTMOB.value).league_id
-        self.match_builder = MatchTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.elo_rating_builder = EloRatingTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.outfield_builder = OutfieldPlayerTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.gk_builder = GoalkeeperTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
-        self.odds_builder = OddsTrainFeatureBuilder(fotmob_league_id, min_season, max_season)
+        fotmob_league_ids = [
+            self.league_service.get_canonical_league(SiteName.SYSTEM.value, league_id)
+                .site_leagues.get(SiteName.FOTMOB.value).league_id
+            for league_id in league_ids
+        ]
+        self.match_builder      = MatchTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
+        self.elo_rating_builder = EloRatingTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
+        self.outfield_builder   = OutfieldPlayerTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
+        self.gk_builder         = GoalkeeperTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
+        self.odds_builder       = OddsTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
 
     def build_output_path(self, tag: str) -> Path:
         output_dir = Path(self.output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{tag}_{self.league_id}_{self.min_season}_{self.max_season}_{timestamp}.{self.output_format}"
+        filename = f"{tag}_unified_{self.min_season}_{self.max_season}_{timestamp}.{self.output_format}"
 
         return output_dir / filename
 
@@ -117,7 +120,7 @@ class TrainSampleBuilder:
             train_sample_df = train_sample_df.dropna(subset=["home_shots_ema_5", "away_shots_ema_5"])
             output_file = self.build_output_path("train_sample")
             save_dataframe(train_sample_df, output_file)
-            self.logger.info(f"Train sample saved to: {str(output_file.resolve())}")
+            self.logger.info(f"Train sample saved to: {str(output_file.resolve())} | samples={len(train_sample_df)} features={train_sample_df.shape[1] - 1}")
 
             return train_sample_df
         except Exception as e:

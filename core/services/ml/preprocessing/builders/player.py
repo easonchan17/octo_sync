@@ -186,9 +186,9 @@ class OutfieldPlayerFeatureBuilder(BaseFeatureBuilder):
 
 
 class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
-    def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
+    def __init__(self, league_ids: list, min_season: int, max_season: int) -> None:
         super().__init__()
-        self.league_id = league_id
+        self.league_ids = league_ids
         self.min_season = min_season
         self.max_season = max_season
 
@@ -200,25 +200,25 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
                 MatchLineup,
                 MatchStat,
             ).join(
-                MatchPlayerStat,
-                MatchPlayerStat.match_id == Fixture.match_id
-            ).join(
                 MatchLineup,
+                MatchLineup.match_id == Fixture.match_id
+            ).outerjoin(
+                MatchPlayerStat,
                 and_(
-                    MatchLineup.match_id == MatchPlayerStat.match_id,
-                    MatchLineup.player_id == MatchPlayerStat.player_id
+                    MatchPlayerStat.match_id == MatchLineup.match_id,
+                    MatchPlayerStat.player_id == MatchLineup.player_id
                 )
             ).outerjoin(
                 MatchStat,
                 MatchStat.match_id == Fixture.match_id
             ).filter(
-                Fixture.league_id == self.league_id,
+                Fixture.league_id.in_(self.league_ids),
                 Fixture.season >= self.min_season,
                 Fixture.season <= self.max_season,
                 Fixture.match_status.in_(MatchStatus.natural_finals()),
                 MatchLineup.role == LineupRole.STARTER.value,
                 MatchLineup.position.notin_(Position.get_goalkeeper()),
-            ).order_by(Fixture.kickoff_time, MatchPlayerStat.player_id).all()
+            ).order_by(Fixture.kickoff_time, MatchLineup.player_id).all()
 
             records = []
             for fixture, player_stat, lineup, match_stat in results:
@@ -230,38 +230,38 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
                     "away_id": fixture.away_id,
                     "home_possession": match_stat.home_possession if match_stat else 50,
                     "away_possession": match_stat.away_possession if match_stat else 50,
-                    "team_id": player_stat.team_id,
-                    "player_id": player_stat.player_id,
-                    "player_name": player_stat.player_name,
+                    "team_id": lineup.team_id,
+                    "player_id": lineup.player_id,
+                    "player_name": lineup.player_name,
                     "role": lineup.role,
                     "position": lineup.position,
-                    "minutes": player_stat.minutes_played,
-                    "non_penalty_goals": (player_stat.goals or 0) - (player_stat.goals_penalty or 0),
-                    "npxg": player_stat.npxg,
-                    "xg": player_stat.xg,
-                    "xgot": player_stat.xgot,
-                    "xa": player_stat.xa,
-                    "shots": player_stat.shots,
-                    "shots_on_target": player_stat.shots_on_target,
-                    "passes": player_stat.passes,
-                    "passes_completed": player_stat.passes_completed,
-                    "long_passes": player_stat.long_passes,
-                    "long_passes_completed": player_stat.long_passes_completed,
-                    "passes_into_final_third": player_stat.passes_into_final_third,
-                    "chances_created": player_stat.chances_created,
-                    "assists": player_stat.assists,
-                    "dispossessed": player_stat.dispossessed,
-                    "tackles": player_stat.tackles,
-                    "blocks": player_stat.blocks,
-                    "clearances": player_stat.clearances,
-                    "interceptions": player_stat.interceptions,
-                    "recoveries": player_stat.recoveries,
-                    "aerials": player_stat.aerials,
-                    "aerials_won": player_stat.aerials_won,
-                    "fouls_committed": player_stat.fouls_committed,
-                    "fouls_suffered": player_stat.fouls_suffered,
-                    "dribbled_past": player_stat.dribbled_past,
-                    "fotmob_rating": player_stat.rating,
+                    "minutes": player_stat.minutes_played if player_stat else None,
+                    "non_penalty_goals": ((player_stat.goals or 0) - (player_stat.goals_penalty or 0)) if player_stat else None,
+                    "npxg": player_stat.npxg if player_stat else None,
+                    "xg": player_stat.xg if player_stat else None,
+                    "xgot": player_stat.xgot if player_stat else None,
+                    "xa": player_stat.xa if player_stat else None,
+                    "shots": player_stat.shots if player_stat else None,
+                    "shots_on_target": player_stat.shots_on_target if player_stat else None,
+                    "passes": player_stat.passes if player_stat else None,
+                    "passes_completed": player_stat.passes_completed if player_stat else None,
+                    "long_passes": player_stat.long_passes if player_stat else None,
+                    "long_passes_completed": player_stat.long_passes_completed if player_stat else None,
+                    "passes_into_final_third": player_stat.passes_into_final_third if player_stat else None,
+                    "chances_created": player_stat.chances_created if player_stat else None,
+                    "assists": player_stat.assists if player_stat else None,
+                    "dispossessed": player_stat.dispossessed if player_stat else None,
+                    "tackles": player_stat.tackles if player_stat else None,
+                    "blocks": player_stat.blocks if player_stat else None,
+                    "clearances": player_stat.clearances if player_stat else None,
+                    "interceptions": player_stat.interceptions if player_stat else None,
+                    "recoveries": player_stat.recoveries if player_stat else None,
+                    "aerials": player_stat.aerials if player_stat else None,
+                    "aerials_won": player_stat.aerials_won if player_stat else None,
+                    "fouls_committed": player_stat.fouls_committed if player_stat else None,
+                    "fouls_suffered": player_stat.fouls_suffered if player_stat else None,
+                    "dribbled_past": player_stat.dribbled_past if player_stat else None,
+                    "fotmob_rating": player_stat.rating if player_stat else None,
                     "upstream_rating": lineup.rating,
                 }
                 records.append(record)
@@ -553,9 +553,9 @@ class GoalkeeperFeatureBuilder(BaseFeatureBuilder):
 
 
 class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
-    def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
+    def __init__(self, league_ids: list, min_season: int, max_season: int) -> None:
         super().__init__()
-        self.league_id = league_id
+        self.league_ids = league_ids
         self.min_season = min_season
         self.max_season = max_season
 
@@ -567,25 +567,25 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
                 MatchLineup,
                 MatchStat,
             ).join(
-                MatchPlayerStat,
-                MatchPlayerStat.match_id == Fixture.match_id
-            ).join(
                 MatchLineup,
+                MatchLineup.match_id == Fixture.match_id
+            ).outerjoin(
+                MatchPlayerStat,
                 and_(
-                    MatchLineup.match_id == MatchPlayerStat.match_id,
-                    MatchLineup.player_id == MatchPlayerStat.player_id
+                    MatchPlayerStat.match_id == MatchLineup.match_id,
+                    MatchPlayerStat.player_id == MatchLineup.player_id
                 )
             ).outerjoin(
                 MatchStat,
                 MatchStat.match_id == Fixture.match_id
             ).filter(
-                Fixture.league_id == self.league_id,
+                Fixture.league_id.in_(self.league_ids),
                 Fixture.season >= self.min_season,
                 Fixture.season <= self.max_season,
                 Fixture.match_status.in_(MatchStatus.natural_finals()),
                 MatchLineup.role == LineupRole.STARTER.value,
                 MatchLineup.position.in_(Position.get_goalkeeper()),
-            ).order_by(Fixture.kickoff_time, MatchPlayerStat.player_id).all()
+            ).order_by(Fixture.kickoff_time, MatchLineup.player_id).all()
 
             records = []
             for fixture, player_stat, lineup, match_stat in results:
@@ -597,13 +597,13 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
                     "away_id": fixture.away_id,
                     "home_possession": match_stat.home_possession if match_stat else 50,
                     "away_possession": match_stat.away_possession if match_stat else 50,
-                    "team_id": player_stat.team_id,
-                    "player_id": player_stat.player_id,
+                    "team_id": lineup.team_id,
+                    "player_id": lineup.player_id,
                     "position": lineup.position,
-                    "minutes": player_stat.minutes_played,
-                    "goals_prevented": player_stat.goals_prevented,
-                    "keeper_sweeper": player_stat.keeper_sweeper,
-                    "keeper_high_claim": player_stat.keeper_high_claim,
+                    "minutes": player_stat.minutes_played if player_stat else None,
+                    "goals_prevented": player_stat.goals_prevented if player_stat else None,
+                    "keeper_sweeper": player_stat.keeper_sweeper if player_stat else None,
+                    "keeper_high_claim": player_stat.keeper_high_claim if player_stat else None,
                 }
                 records.append(record)
 
