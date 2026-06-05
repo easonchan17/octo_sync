@@ -56,6 +56,7 @@ class Fixture(Base):
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
         Index('idx_fixtures_league_id_kickoff_time', 'league_id', 'kickoff_time'),
         Index('idx_fixtures_league_id_season', 'league_id', 'season'),
+        Index('idx_fixtures_sub_league_id', 'sub_league_id'),
         {'schema': SiteName.FOTMOB.value}
     )
 
@@ -64,6 +65,7 @@ class Fixture(Base):
     match_id = Column(Integer, nullable=False, unique=True)
     league_name = Column(String(200), nullable=False)
     league_id = Column(Integer, nullable=False)
+    sub_league_id = Column(Integer, nullable=True)
 
     kickoff_time = Column(DateTime(timezone=True), nullable=False)
     round = Column(String(128), nullable=True)
