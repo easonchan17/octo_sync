@@ -66,13 +66,14 @@ VALUES
     ('fotmob', 10609, 'Asian Cup Qualification Playoff',       611,  1, NOW(), NOW()),
     ('fotmob', 10717, 'UEFA Nations League A Qualification',   1002, 1, NOW(), NOW()),
     ('fotmob', 10718, 'UEFA Nations League B Qualification',   1004, 1, NOW(), NOW()),
+    ('oddsportal', 87559, 'Champions League', 100, 1, NOW(), NOW()),
     ('oddsportal', 91201, 'Premier League', 101, 1, NOW(), NOW()),
     ('oddsportal', 93113, 'LaLiga', 102, 1, NOW(), NOW()),
     ('oddsportal', 92615, 'Serie A', 103, 1, NOW(), NOW()),
     ('oddsportal', 93299, 'Bundesliga', 104, 1, NOW(), NOW()),
     ('oddsportal', 92251, 'Ligue 1', 105, 1, NOW(), NOW()),
     ('oddsportal', 77311, 'World Cup', 301, 1, NOW(), NOW()),
-    ('oddsportal', 87559, 'Champions League', 100, 1, NOW(), NOW())
+    ('oddsportal', 83711, 'Asian Cup', 601, 1, NOW(), NOW())
 ON CONFLICT (site_name, league_id) DO UPDATE SET
     league_name = EXCLUDED.league_name,
     ref_league_id = EXCLUDED.ref_league_id,
