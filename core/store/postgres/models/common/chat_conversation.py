@@ -13,3 +13,4 @@ class ChatConversation(Base):
     id              = Column(BigInteger, primary_key=True, autoincrement=True)
     conversation_id = Column(String(64), nullable=False, unique=True)
     user_id         = Column(String(64), nullable=False)
+    title           = Column(String(100), nullable=True)

@@ -7,7 +7,6 @@ from core.services.auth.auth_service import get_auth_service
 
 _bearer = HTTPBearer(auto_error=True)
 
-
 class LoginController(BaseController):
     def __init__(self) -> None:
         super().__init__()
@@ -31,7 +30,7 @@ class LoginController(BaseController):
             token = await self.auth_service.login(body.email, body.code)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        return {"token": token}
+        return {"email": body.email, "token": token}
 
     async def logout(self, credentials: HTTPAuthorizationCredentials = Depends(_bearer)) -> dict:
         try:
