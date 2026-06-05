@@ -133,9 +133,6 @@ class MatchResolver(BaseService):
         return self.TEAM_ALIASES.get(clean_name, clean_name)
 
     def _calc_similarity(self, source: MatchItem, target: MatchItem) -> int:
-        if source.league_id != target.league_id:
-            return 0
-
         src_home = self._normalize_name(source.home_team)
         src_away = self._normalize_name(source.away_team)
         tgt_home = self._normalize_name(target.home_team)
