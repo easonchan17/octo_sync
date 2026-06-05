@@ -22,21 +22,21 @@ class AuthService:
 
     async def login(self, email: str, code: str) -> str:
         await self.otp_service.verify_code(email, code)
-        self.user_dao.upsert_by_email(email)
+        uid = self.user_dao.get_or_create(email)
         payload = {
-            "email": email,
-            "jti":   sec.token_hex(16),
-            "iat":   datetime.now(timezone.utc),
-            "exp":   datetime.now(timezone.utc) + timedelta(days=self.token_expire_days),
+            "sub": uid,
+            "jti": sec.token_hex(16),
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(days=self.token_expire_days),
         }
         return jwt.encode(payload, self.env_manager.JWT_SECRET, algorithm=self.algorithm)
 
     async def get_user_id(self, token: str) -> str:
         payload = await self._decode_token(token)
-        email   = payload.get("email")
-        if not email:
-            raise ValueError("missing email claim")
-        return email
+        uid     = payload.get("sub")
+        if not uid:
+            raise ValueError("missing sub claim")
+        return uid
 
     async def _decode_token(self, token: str) -> dict:
         payload = jwt.decode(token, self.env_manager.JWT_SECRET, algorithms=[self.algorithm])

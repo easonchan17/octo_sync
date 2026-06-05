@@ -1,7 +1,6 @@
-import uuid
 import litellm
 from functools import cache
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 from core.services.base_service import BaseService
 from core.chat.graph import ChatGraph
 from core.chat.llm.client import get_chat_llm_client
@@ -13,9 +12,9 @@ class ChatConversationService(BaseService):
     def __init__(self) -> None:
         super().__init__()
         self.conversation_dao   = ChatConversationDao()
+        self.chat_graph         = ChatGraph()
         self.chat_llm_client    = get_chat_llm_client()
         self.token_rate_limiter = get_token_rate_limiter()
-        self.chat_graph         = ChatGraph()
         self.graph              = None
 
     async def initialize(self) -> None:
@@ -33,16 +32,72 @@ class ChatConversationService(BaseService):
         await self.chat_graph.aclose()
         self.logger.info("ConversationService shut down")
 
-    def create_conversation(self, user_id: str) -> str:
-        conversation_id = str(uuid.uuid4())
-        self.conversation_dao.create(conversation_id, user_id)
-        return conversation_id
+    def create_conversation(self, conversation_id: str, user_id: str, title: Optional[str]) -> None:
+        self.conversation_dao.create(conversation_id, user_id, title)
 
-    def get_conversation_owner(self, conversation_id: str) -> Optional[str]:
+    def get_conversations(self, user_id: str, page: int, page_size: int) -> Tuple[int, List[Any]]:
+        offset = (page - 1) * page_size
+        return self.conversation_dao.get_by_user(user_id, offset, page_size)
+
+    def get_user_id(self, conversation_id: str) -> Optional[str]:
         return self.conversation_dao.get_user_id(conversation_id)
 
-    def build_user_content(self, text: str, image_b64: Optional[str] = None) -> list:
+    def update_title(self, conversation_id: str, title: str) -> None:
+        self.conversation_dao.update_title(conversation_id, title)
+
+    async def generate_title(self, conversation_id: str) -> Optional[str]:
+        def extract_text(content) -> str:
+            if isinstance(content, str):
+                return content
+            return next((part["text"] for part in content if isinstance(part, dict) and part.get("type") == "text"), "")
+
+        try:
+            config = {"configurable": {"thread_id": conversation_id}}
+            state  = await self.graph.aget_state(config)
+            messages       = state.values.get("messages", []) if state else []
+            human_messages = [msg for msg in messages if msg.type == "human"]
+            ai_messages    = [msg for msg in messages if msg.type == "ai"]
+            if len(human_messages) != 1 or len(ai_messages) != 1:
+                return None
+
+            user_text = extract_text(human_messages[0].content)[:300]
+            ai_text   = extract_text(ai_messages[0].content)[:200]
+
+            prompt = (
+                "你是一个专用于为聊天会话生成标题的助手。\n"
+                "请根据以下对话内容，提炼出一个极其简练的会话标题。\n\n"
+                "【严格约束】\n"
+                "1. 忽略「你好」「在吗」等无意义的寒暄，直接提炼核心意图。\n"
+                "2. 语言与用户输入的语言保持一致。\n"
+                "3. 长度严格控制：中文不超过15个字，英文不超过10个单词。\n"
+                "4. 格式极其严格：只返回标题纯文本，绝对不要带有标题等前缀，绝对不要包含任何引号、句号或标点符号。\n\n"
+                "【对话内容】\n"
+                f"用户：{user_text}\n"
+                f"助手：{ai_text}\n\n"
+                "标题："
+            )
+            response = await litellm.acompletion(
+                model=self.chat_llm_client.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=30,
+                temperature=0.3,
+            )
+            content = response.choices[0].message.content
+            return content.strip() if content else None
+        except Exception as e:
+            self.logger.error(f"Failed to generate title for conversation={conversation_id}: {e}")
+            return None
+
+    def build_content(self, text: str, image_b64: Optional[str] = None) -> list:
         return self.chat_llm_client.build_content(text, image_b64)
+
+    async def get_messages(self, conversation_id: str) -> List[Any]:
+        config = {"configurable": {"thread_id": conversation_id}}
+        state = await self.graph.aget_state(config)
+        if not state:
+            return []
+
+        return state.values.get("messages", [])
 
     async def stream(self, conversation_id: str, user_id: str, user_content: list) -> AsyncIterator[Dict[str, Any]]:
         user_tokens  = litellm.token_counter(
@@ -50,12 +105,14 @@ class ChatConversationService(BaseService):
             messages=[{"role": "user", "content": user_content}],
         )
         reserved_tokens  = user_tokens * 5
+
         reserved_keys = await self.token_rate_limiter.reserve(
             user_id,
             reserved_tokens,
             self.chat_llm_client.max_tokens_per_hour,
             self.chat_llm_client.max_tokens_per_day,
         )
+
         total_actual = 0
         try:
             async for event in self.graph.astream_events(

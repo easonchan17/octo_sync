@@ -400,6 +400,27 @@ class PredictionResponse(BaseModel):
 
 
 # ==============================================================================
+# Chat Models
+# ==============================================================================
+class CreateConversationResponse(BaseModel):
+    conversation_id: str
+
+
+class ConversationSummaryResponse(BaseModel):
+    conversation_id: str
+    title: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ConversationMessageResponse(BaseModel):
+    role: str
+    content: Any
+
+
+# ==============================================================================
 # Auth Models
 # ==============================================================================
 class SendCodeRequest(BaseModel):
