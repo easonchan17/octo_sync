@@ -146,28 +146,6 @@ class FixtureParser:
 
         return fixtures
 
-class LeagueParser:
-    def parse(self, json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
-        if not json_data:
-            return None
-
-        seen = set()
-        results = []
-        leagues = json_data.get('leagues', [])
-        for league in leagues:
-            league_id = league['id']
-            if league_id in seen:
-                continue
-
-            seen.add(league_id)
-            results.append({
-                "league_id":    league_id,
-                "league_name":  league['name'],
-                "country_code": league['ccode'],
-            })
-        return results
-
-
 @TaskRegistry.poll("parse.fotmob.active_fixture")
 class ParseActiveFixture(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
@@ -176,7 +154,6 @@ class ParseActiveFixture(PollTask):
         self.env_manager = get_env_manager()
         self.active_fixture_dao = ActiveFixtureDao()
         self.league_service = get_league_service()
-        self.league_parser = LeagueParser()
         self.fixture_parser = FixtureParser()
 
         self.refetch_strategy = ScheduleStrategy(
@@ -222,19 +199,6 @@ class ParseActiveFixture(PollTask):
                         return
 
                     try:
-                        parsed_leagues = self.league_parser.parse(json_body)
-                        if parsed_leagues is None:
-                            self.active_fixture_dao.mark_parse_failed(match_date, "League data is None")
-                            continue
-
-                        for league in parsed_leagues:
-                            self.league_service.resolve(
-                                SiteName.FOTMOB.value,
-                                league['league_id'],
-                                league['league_name'],
-                                country_code=league['country_code']
-                            )
-
                         parsed_fixtures = self.fixture_parser.parse(json_body)
                         if parsed_fixtures is None:
                             self.active_fixture_dao.mark_parse_failed(match_date, "Fixture data is None")
