@@ -127,9 +127,9 @@ class OddsFeatureBuilder(BaseFeatureBuilder):
 
 
 class OddsTrainFeatureBuilder(OddsFeatureBuilder):
-    def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
+    def __init__(self, league_ids: list, min_season: int, max_season: int) -> None:
         super().__init__()
-        self.league_id = league_id
+        self.league_ids = league_ids
         self.min_season = min_season
         self.max_season = max_season
 
@@ -185,11 +185,11 @@ class OddsTrainFeatureBuilder(OddsFeatureBuilder):
                     ON ah_open.match_code = op.match_code
                     AND ah_open.bookmaker_id = ox.bookmaker_id
                     AND ah_open.rn = 1
-                WHERE fm.league_id = :league_id
+                WHERE fm.league_id = ANY(:league_ids)
                   AND fm.season BETWEEN :min_season AND :max_season
                   AND fm.match_status = ANY(:match_statuses)
             """), {
-                "league_id":      self.league_id,
+                "league_ids":     self.league_ids,
                 "min_season":     self.min_season,
                 "max_season":     self.max_season,
                 "match_statuses": MatchStatus.natural_finals(),

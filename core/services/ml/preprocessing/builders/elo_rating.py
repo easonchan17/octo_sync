@@ -37,9 +37,9 @@ class EloRatingFeatureBuilder(BaseFeatureBuilder):
 
 
 class EloRatingTrainFeatureBuilder(EloRatingFeatureBuilder):
-    def __init__(self, league_id: int, min_season: int, max_season: int, elo_params: EloParams = EloParams()) -> None:
+    def __init__(self, league_ids: list, min_season: int, max_season: int, elo_params: EloParams = EloParams()) -> None:
         super().__init__()
-        self.league_id = league_id
+        self.league_ids = league_ids
         self.min_season = min_season
         self.max_season = max_season
         self.elo_params = elo_params
@@ -54,7 +54,7 @@ class EloRatingTrainFeatureBuilder(EloRatingFeatureBuilder):
             ).outerjoin(
                 AwayElo, (AwayElo.match_id == Fixture.match_id) & (AwayElo.team_id == Fixture.away_id)
             ).filter(
-                Fixture.league_id == self.league_id,
+                Fixture.league_id.in_(self.league_ids),
                 Fixture.season >= self.min_season,
                 Fixture.season <= self.max_season,
                 Fixture.match_status.in_(MatchStatus.natural_finals())
