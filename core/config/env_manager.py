@@ -5,8 +5,9 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class EnvType(str, Enum):
-    DEV = "dev"
+    DEV  = "dev"
     PROD = "prod"
+    ML   = "ml"
 
 class EnvManager(BaseSettings):
     ENV: EnvType = Field(..., description="Run environment")
