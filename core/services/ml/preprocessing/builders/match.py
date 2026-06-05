@@ -140,9 +140,9 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
 
 
 class MatchTrainFeatureBuilder(MatchFeatureBuilder):
-    def __init__(self, league_id: int, min_season: int, max_season: int) -> None:
+    def __init__(self, league_ids: list, min_season: int, max_season: int) -> None:
         super().__init__()
-        self.league_id = league_id
+        self.league_ids = league_ids
         self.min_season = min_season
         self.max_season = max_season
 
@@ -174,7 +174,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
             ).outerjoin(
                 MatchStat, Fixture.match_id == MatchStat.match_id
             ).filter(
-                Fixture.league_id == self.league_id,
+                Fixture.league_id.in_(self.league_ids),
                 Fixture.season >= self.min_season,
                 Fixture.season <= self.max_season,
                 Fixture.match_status.in_(MatchStatus.natural_finals())

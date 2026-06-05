@@ -19,7 +19,7 @@ logger = get_logger_manager().get_logger(__name__)
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Build training samples')
     parser.add_argument('--config', '-c', type=str, default='configs/config.yml')
-    parser.add_argument('--league_id', type=int, required=True)
+    parser.add_argument('--league_ids', type=int, nargs='+', required=True)
     parser.add_argument('--min_season', type=int, required=True)
     parser.add_argument('--max_season', type=int, required=True)
     parser.add_argument('--sample_format', type=str, default='csv', choices=['csv', 'parquet'])
@@ -46,7 +46,7 @@ def main() -> None:
     get_league_service().load()
 
     try:
-        TrainSampleBuilder(args.league_id, args.min_season, args.max_season, args.sample_path, args.sample_format).build()
+        TrainSampleBuilder(args.league_ids, args.min_season, args.max_season, args.sample_path, args.sample_format).build()
     finally:
         get_postgresql_manager().cleanup()
 
