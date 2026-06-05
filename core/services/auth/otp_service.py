@@ -88,11 +88,12 @@ class CodeStore:
 
 
 class OtpService:
-    def __init__(self, code_store: CodeStore) -> None:
-        self.logger       = get_logger_manager().get_logger(self.__class__.__name__)
-        self.env_manager  = get_env_manager()
-        self.email_router = get_email_router()
-        self.code_store   = code_store
+    def __init__(self, code_store: CodeStore, email_whitelist: set) -> None:
+        self.logger          = get_logger_manager().get_logger(self.__class__.__name__)
+        self.env_manager     = get_env_manager()
+        self.email_router    = get_email_router()
+        self.code_store      = code_store
+        self.email_whitelist = email_whitelist
 
     async def send_code(self, email: str, turnstile_token: str, user_ip: str) -> None:
         if await self.code_store.is_cooldown_locked(email):
@@ -100,10 +101,11 @@ class OtpService:
 
         await self._verify_turnstile(turnstile_token)
 
-        if await self.code_store.is_ip_limit_exceeded(user_ip):
-            raise ValueError("该网络今日发送次数已达上限，请明天再试")
-        if await self.code_store.is_email_limit_exceeded(email):
-            raise ValueError("该邮箱今日发送次数已达上限，请明天再试")
+        if email not in self.email_whitelist:
+            if await self.code_store.is_ip_limit_exceeded(user_ip):
+                raise ValueError("该网络今日发送次数已达上限，请明天再试")
+            if await self.code_store.is_email_limit_exceeded(email):
+                raise ValueError("该邮箱今日发送次数已达上限，请明天再试")
 
         code = f"{secrets.randbelow(1000000):06d}"
         await self.code_store.save_code(email, code, user_ip)
@@ -155,5 +157,6 @@ def get_otp_service() -> OtpService:
             ip_daily_limit     = config["ip_daily_limit"],
             email_daily_limit  = config["email_daily_limit"],
             max_wrong_attempts = config["max_wrong_attempts"],
-        )
+        ),
+        email_whitelist = set(config.get("email_whitelist", [])),
     )

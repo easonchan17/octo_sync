@@ -136,3 +136,5 @@ auth:
     ip_daily_limit: 5
     email_daily_limit: 3
     max_wrong_attempts: 3
+    email_whitelist:
+      - developer@example.com

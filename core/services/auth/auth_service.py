@@ -44,7 +44,7 @@ class AuthService:
             raise ValueError("token revoked")
         return payload
 
-    async def _revoke_token(self, token: str) -> None:
+    async def logout(self, token: str) -> None:
         payload = await self._decode_token(token)
         ttl     = max(payload["exp"] - int(datetime.now(timezone.utc).timestamp()), 1)
         await self.redis_manager.get_client().set(f"jwt:blacklist:{payload['jti']}", "1", ex=ttl)
