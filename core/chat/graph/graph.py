@@ -6,7 +6,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from core.chat.llm.prompts import SYSTEM_PROMPT
 from core.chat.llm import get_chat_llm_client
-from langchain_core.messages import SystemMessage, ToolMessage
+from langchain_core.messages import SystemMessage, ToolMessage, trim_messages
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from core.chat.graph.tools import TOOLS, execute_tool
 
@@ -18,11 +18,21 @@ class ChatState(TypedDict):
 
 class ChatGraph:
     def __init__(self) -> None:
-        self.llm  = get_chat_llm_client().build_llm().bind_tools(TOOLS)
+        chat_llm_client         = get_chat_llm_client()
+        self.llm                = chat_llm_client.build_llm().bind_tools(TOOLS)
+        self.max_context_tokens = chat_llm_client.max_context_tokens
         self.pool: Optional[AsyncConnectionPool] = None
 
     async def agent(self, state: ChatState) -> dict:
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+        trimmed  = trim_messages(
+            state["messages"],
+            max_tokens=self.max_context_tokens,
+            token_counter=self.llm,
+            strategy="last",
+            start_on="human",
+            allow_partial=False,
+        )
+        messages = [SystemMessage(content=SYSTEM_PROMPT)] + trimmed
         response = await self.llm.ainvoke(messages)
         return {"messages": [response]}
 

@@ -1,10 +1,12 @@
 import json
+from datetime import datetime, timezone
 from fastapi import WebSocket, WebSocketDisconnect, Depends
 from core.services.chat_conversation_service import get_chat_conversation_service
 from core.server.http.controllers.base_controller import BaseController
 from core.server.http.auth import verify_token
 from core.services.auth.auth_service import get_auth_service
 from core.chat.graph.tools import ToolNames
+from core.chat.llm.token_rate_limiter import HourlyRateLimitExceeded, DailyRateLimitExceeded
 
 class ChatConversationController(BaseController):
     def __init__(self) -> None:
@@ -47,11 +49,19 @@ class ChatConversationController(BaseController):
                         msg.get("image_b64")
                     )
 
-                    async for event in self.conversation_service.stream(conversation_id, user_content):
+                    async for event in self.conversation_service.stream(conversation_id, user_id, user_content):
                         await self._dispatch_event(websocket, event)
 
                 except WebSocketDisconnect:
                     raise
+                except HourlyRateLimitExceeded:
+                    now          = datetime.now(timezone.utc)
+                    minutes_left = 60 - now.minute
+                    await websocket.send_text(json.dumps({"type": "error", "code": "rate_limit", "message": f"每小时用量已达上限，请 {minutes_left} 分钟后再试"}))
+                except DailyRateLimitExceeded:
+                    now        = datetime.now(timezone.utc)
+                    hours_left = 24 - now.hour
+                    await websocket.send_text(json.dumps({"type": "error", "code": "rate_limit", "message": f"今日用量已达上限，请 {hours_left} 小时后再试"}))
                 except Exception as e:
                     self.logger.error(f"WebSocket message error conversation={conversation_id}: {e}", exc_info=True)
                     await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
