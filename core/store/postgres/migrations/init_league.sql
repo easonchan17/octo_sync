@@ -1,5 +1,6 @@
 INSERT INTO public.canonical_leagues (id, name, priority, status, created_at, updated_at)
 VALUES
+    (100, 'Champions League', 500, 1, NOW(), NOW()),
     (101, 'Premier League', 500, 1, NOW(), NOW()),
     (102, 'LaLiga', 500, 1, NOW(), NOW()),
     (103, 'Serie A', 500, 1, NOW(), NOW()),
@@ -13,7 +14,20 @@ VALUES
     (315, 'World Cup Qualification CAF', 500, 1, NOW(), NOW()),
     (316, 'World Cup Qualification OFC', 500, 1, NOW(), NOW()),
     (317, 'World Cup Qualification Inter-confederation', 500, 1, NOW(), NOW()),
-    (401, 'Champions League', 500, 1, NOW(), NOW())
+    (401, 'EURO', 500, 1, NOW(), NOW()),
+    (411, 'EURO Qualification', 500, 1, NOW(), NOW()),
+    (501, 'Copa America', 500, 1, NOW(), NOW()),
+    (601, 'Asian Cup', 500, 1, NOW(), NOW()),
+    (611, 'Asian Cup Qualification Playoff', 500, 1, NOW(), NOW()),
+    (701, 'Africa Cup of Nations', 500, 1, NOW(), NOW()),
+    (711, 'Africa Cup of Nations Qualification', 500, 1, NOW(), NOW()),
+    (801, 'CONCACAF Gold Cup', 500, 1, NOW(), NOW()),
+    (802, 'CONCACAF Nations League', 500, 1, NOW(), NOW()),
+    (901, 'Finalissima', 500, 1, NOW(), NOW()),
+    (1001, 'UEFA Nations League A', 500, 1, NOW(), NOW()),
+    (1002, 'UEFA Nations League A Qualification', 500, 1, NOW(), NOW()),
+    (1003, 'UEFA Nations League B', 500, 1, NOW(), NOW()),
+    (1004, 'UEFA Nations League B Qualification', 500, 1, NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     priority = EXCLUDED.priority,
@@ -24,7 +38,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- Find the record in canonical_leagues via ref_league_id to get the league priority
 INSERT INTO public.site_leagues (site_name, league_id, league_name, ref_league_id, status, created_at, updated_at)
 VALUES
-    ('fotmob', 42, 'Champions League', 401, 1, NOW(), NOW()),
+    ('fotmob', 42, 'Champions League', 100, 1, NOW(), NOW()),
     ('fotmob', 47, 'Premier League', 101, 1, NOW(), NOW()),
     ('fotmob', 53, 'Ligue 1', 105, 1, NOW(), NOW()),
     ('fotmob', 54, 'Bundesliga', 104, 1, NOW(), NOW()),
@@ -38,13 +52,27 @@ VALUES
     ('fotmob', 10199, 'World Cup Qualification CONMEBOL', 312, 1, NOW(), NOW()),
     ('fotmob', 10200, 'World Cup Qualification OFC', 316, 1, NOW(), NOW()),
     ('fotmob', 10201, 'World Cup Qualification Inter-confederation', 317, 1, NOW(), NOW()),
+    ('fotmob', 44,    'Copa America',                          501,  1, NOW(), NOW()),
+    ('fotmob', 50,    'EURO',                                  401,  1, NOW(), NOW()),
+    ('fotmob', 289,   'Africa Cup of Nations',                 701,  1, NOW(), NOW()),
+    ('fotmob', 290,   'Asian Cup',                             601,  1, NOW(), NOW()),
+    ('fotmob', 298,   'CONCACAF Gold Cup',                     801,  1, NOW(), NOW()),
+    ('fotmob', 9806,  'UEFA Nations League A',                 1001, 1, NOW(), NOW()),
+    ('fotmob', 9807,  'UEFA Nations League B',                 1003, 1, NOW(), NOW()),
+    ('fotmob', 9821,  'CONCACAF Nations League',               802,  1, NOW(), NOW()),
+    ('fotmob', 10304, 'Finalissima',                           901,  1, NOW(), NOW()),
+    ('fotmob', 10607, 'EURO Qualification',                    411,  1, NOW(), NOW()),
+    ('fotmob', 10608, 'Africa Cup of Nations Qualification',   711,  1, NOW(), NOW()),
+    ('fotmob', 10609, 'Asian Cup Qualification Playoff',       611,  1, NOW(), NOW()),
+    ('fotmob', 10717, 'UEFA Nations League A Qualification',   1002, 1, NOW(), NOW()),
+    ('fotmob', 10718, 'UEFA Nations League B Qualification',   1004, 1, NOW(), NOW()),
     ('oddsportal', 91201, 'Premier League', 101, 1, NOW(), NOW()),
     ('oddsportal', 93113, 'LaLiga', 102, 1, NOW(), NOW()),
     ('oddsportal', 92615, 'Serie A', 103, 1, NOW(), NOW()),
     ('oddsportal', 93299, 'Bundesliga', 104, 1, NOW(), NOW()),
     ('oddsportal', 92251, 'Ligue 1', 105, 1, NOW(), NOW()),
     ('oddsportal', 77311, 'World Cup', 301, 1, NOW(), NOW()),
-    ('oddsportal', 87559, 'Champions League', 401, 1, NOW(), NOW())
+    ('oddsportal', 87559, 'Champions League', 100, 1, NOW(), NOW())
 ON CONFLICT (site_name, league_id) DO UPDATE SET
     league_name = EXCLUDED.league_name,
     ref_league_id = EXCLUDED.ref_league_id,
