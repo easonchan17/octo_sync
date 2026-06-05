@@ -86,11 +86,12 @@ class FixtureParser:
         leagues = json_data.get('leagues', [])
         sorted_leagues = sorted(leagues, key=lambda league: league.get('id'), reverse=True)
         for league in sorted_leagues:
-            league_id = league.get('primaryId') or league.get('id')
+            sub_league_id = league.get('id')
+            league_id = league.get('primaryId') or sub_league_id
             league_name = league.get('name')
             matches = league.get('matches', [])
 
-            league_fixtures = self._parse_fixtures(matches, league_id, league_name)
+            league_fixtures = self._parse_fixtures(matches, league_id, league_name, sub_league_id)
             for fixture in league_fixtures:
                 match_id = fixture["match_id"]
                 if match_id in seen:
@@ -103,8 +104,9 @@ class FixtureParser:
     def _parse_fixtures(
         self,
         matches: List[Dict[str, Any]],
-        league_id: Optional[int],
-        league_name: Optional[str]
+        league_id: int,
+        league_name: str,
+        sub_league_id: int
     ) -> List[Dict[str, Any]]:
         fixtures = []
         for match in matches:
@@ -126,6 +128,7 @@ class FixtureParser:
             fixture = {
                 "match_id":     match_id,
                 "league_id":    league_id,
+                "sub_league_id": sub_league_id,
                 "league_name":  league_name,
                 "round":        round,
                 "group_name":   group,
