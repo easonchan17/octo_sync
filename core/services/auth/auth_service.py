@@ -37,7 +37,7 @@ class AuthService:
 
     async def get_user_id(self, token: str) -> str:
         payload = await self._decode_token(token)
-        uid     = payload.get("sub")
+        uid = payload.get("sub")
         if not uid:
             raise ValueError("missing sub claim")
         return uid
