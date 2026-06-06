@@ -63,7 +63,7 @@ class ChatConversationService(BaseService):
         state          = await self.graph.aget_state(config)
         messages       = state.values.get("messages", []) if state else []
         human_messages = [msg for msg in messages if msg.type == "human"]
-        ai_messages    = [msg for msg in messages if msg.type == "ai"]
+        ai_messages    = [msg for msg in messages if msg.type == "ai" and not getattr(msg, "tool_calls", None)]
         if len(human_messages) != 1 or len(ai_messages) != 1:
             return None
 
