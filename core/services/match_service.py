@@ -90,7 +90,7 @@ class MatchService(BaseService):
         knockout_rounds = ((((standings_json.get('playoff') or {}).get('draw') or {}).get('knockout') or {})).get('rounds')
         knockout     = self.enrich_knockout_rounds(knockout_rounds) if knockout_rounds else None
 
-        standings    = None if knockout else self.resolve_standings(standings_json, data.get('group_name'))
+        standings    = self.resolve_standings(standings_json, data.get('group_name'))
 
         canonical_league = self.league_service.get_canonical_league(SiteName.FOTMOB.value, data['league_id'])
 
