@@ -103,8 +103,8 @@ class ChatConversationController(BaseController):
                 if message["type"] == "message" and message["data"] != conn_id:
                     await websocket.close(code=4008)
                     return
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(f"_listen_kick exited unexpectedly: {e}")
 
     async def _handle_messages(
         self,
