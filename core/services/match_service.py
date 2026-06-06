@@ -50,8 +50,9 @@ class MatchService(BaseService):
                 'matchups': [
                     {
                         **matchup,
-                        'home_code': encode_id(matchup['homeTeamId'], salt),
-                        'away_code': encode_id(matchup['awayTeamId'], salt),
+                        'home_code':   encode_id(matchup['homeTeamId'], salt),
+                        'away_code':   encode_id(matchup['awayTeamId'], salt),
+                        'winner_code': encode_id(matchup['winner'], salt) if matchup.get('winner') else None,
                     }
                     for matchup in round_data.get('matchups', [])
                 ],
