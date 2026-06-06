@@ -11,7 +11,13 @@ class RedisManager:
         self._client: aioredis.Redis | None = None
 
     async def startup(self) -> None:
-        self._client = aioredis.from_url(self.url, decode_responses=True)
+        self._client = aioredis.from_url(
+            self.url,
+            decode_responses=True,
+            health_check_interval=10,
+            socket_timeout=None,
+            socket_connect_timeout=5,
+        )
         await self._client.ping()
         self.logger.info("RedisManager initialized")
 
