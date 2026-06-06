@@ -331,8 +331,8 @@ class KnockoutMatchupResponse(BaseModel):
     away_short_name: str          = Field(validation_alias='awayTeamShortName')
     home_score: Optional[int]     = Field(default=None, validation_alias='homeScore')
     away_score: Optional[int]     = Field(default=None, validation_alias='awayScore')
-    home_code:   Optional[str]    = Field(default=None, exclude=True)
-    away_code:   Optional[str]    = Field(default=None, exclude=True)
+    home_code:   Optional[str]    = Field(default=None)
+    away_code:   Optional[str]    = Field(default=None)
     winner_code: Optional[str]    = Field(default=None)
 
     @computed_field
