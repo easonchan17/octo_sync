@@ -58,7 +58,7 @@ class SyncAsset(PollTask):
                         future = self.interceptor.submit(
                             url=source_url,
                             strategy=self.intercept_strategy,
-                            site_name=self.site_name
+                            site_name=SiteName.FOTMOB_IMAGE.value
                         )
 
                         result_set = future.result()
