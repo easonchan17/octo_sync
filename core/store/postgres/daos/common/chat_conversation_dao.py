@@ -1,16 +1,17 @@
-from typing import List, Any, Optional, Tuple
-from sqlalchemy import func, update
+from datetime import datetime
+from typing import List, Any, Optional
+from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.common.chat_conversation import ChatConversation
 from ..base_dao import BaseDao
 
 
 class ChatConversationDao(BaseDao):
-    def create(self, conversation_id: str, user_id: str, title: Optional[str]) -> None:
+    def create(self, conversation_id: str, user_id: str) -> None:
         with self.db.get_session() as session:
             session.execute(
                 insert(ChatConversation)
-                .values(conversation_id=conversation_id, user_id=user_id, title=title)
+                .values(conversation_id=conversation_id, user_id=user_id)
                 .on_conflict_do_nothing(index_elements=[ChatConversation.conversation_id])
             )
 
@@ -29,15 +30,22 @@ class ChatConversationDao(BaseDao):
                 .values(title=title)
             )
 
-    def get_by_user(self, user_id: str, offset: int, limit: int) -> Tuple[int, List[Any]]:
+    def get_pending_by_user(self, user_id: str) -> Optional[str]:
         with self.db.get_session() as session:
-            rows = session.query(
+            row = session.query(ChatConversation.conversation_id).filter(
+                ChatConversation.user_id == user_id,
+                ChatConversation.title == None,
+            ).first()
+            return row.conversation_id if row else None
+
+    def get_by_user(self, user_id: str, cutoff: datetime) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
                 ChatConversation.conversation_id,
                 ChatConversation.title,
                 ChatConversation.created_at,
-                func.count().over().label("total"),
             ).filter(
-                ChatConversation.user_id == user_id
-            ).order_by(ChatConversation.created_at.desc()).offset(offset).limit(limit).all()
-            total = rows[0].total if rows else 0
-            return total, rows
+                ChatConversation.user_id == user_id,
+                ChatConversation.title != None,
+                ChatConversation.created_at >= cutoff,
+            ).order_by(ChatConversation.created_at.desc()).all()
