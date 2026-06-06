@@ -1,7 +1,9 @@
 import json
+import base64
 import uuid_utils
 import asyncio
-from datetime import datetime, timezone
+from collections import deque
+from datetime import datetime, timedelta, timezone
 from typing import List
 from fastapi import WebSocket, WebSocketDisconnect, Depends, HTTPException
 from core.services.chat_conversation_service import get_chat_conversation_service
@@ -17,6 +19,10 @@ from core.server.http.schemas.api_models import (
 )
 
 class ChatConversationController(BaseController):
+    MAX_MESSAGE_SIZE     = 512 * 1024
+    MAX_MESSAGES_PER_MIN = 10
+    AUTH_TIMEOUT_SECONDS = 10
+
     def __init__(self) -> None:
         super().__init__()
         self.conversation_service = get_chat_conversation_service()
@@ -49,18 +55,27 @@ class ChatConversationController(BaseController):
         return [ConversationMessageResponse(role=msg.type, content=msg.content) for msg in messages]
 
     async def connect(self, websocket: WebSocket) -> None:
-        try:
-            user_id = await self.auth_service.get_user_id(
-                websocket.query_params.get("token", "")
-            )
-        except Exception:
-            await websocket.close(code=4401)
+        if not self.auth_service.is_origin_allowed(websocket.headers.get("origin", "")):
+            await websocket.close(code=4403)
             return
 
         await websocket.accept()
 
+        try:
+            raw = await asyncio.wait_for(websocket.receive_text(), timeout=self.AUTH_TIMEOUT_SECONDS)
+            msg = json.loads(raw)
+            if msg.get("type") != "chat:auth":
+                await websocket.close(code=4401)
+                return
+            user_id = await self.auth_service.get_user_id(msg.get("token", ""))
+        except WebSocketDisconnect:
+            return
+        except Exception:
+            await websocket.close(code=4401)
+            return
+
         conn_id = f"con_{uuid_utils.uuid7()}"
-        redis   = self.redis_manager.get_client()
+        redis = self.redis_manager.get_client()
         async with redis.pubsub() as pubsub:
             await pubsub.subscribe(f"ws:kick:{user_id}")
             await redis.publish(f"ws:kick:{user_id}", conn_id)
@@ -105,18 +120,32 @@ class ChatConversationController(BaseController):
             except Exception as e:
                 self.logger.error(f"Failed to update title conversation={cid}: {e}", exc_info=True)
 
-        validated_conversations: set = set()
-        titled_conversations:    set = set()
+        validated_conversations: set   = set()
+        titled_conversations:    set   = set()
+        recent_message_times:    deque = deque()
         try:
             while True:
                 raw = await websocket.receive_text()
                 try:
+                    if len(raw) > self.MAX_MESSAGE_SIZE:
+                        await self._send_message(websocket, "chat", "error", code="message_too_large")
+                        continue
+
                     msg = json.loads(raw)
                     if msg.get("type") != "chat:message":
                         continue
 
-                    conversation_id = msg.get("conversation_id", "")
+                    now = datetime.now(timezone.utc)
+                    cutoff = now - timedelta(minutes=1)
+                    while recent_message_times and recent_message_times[0] < cutoff:
+                        recent_message_times.popleft()
 
+                    if len(recent_message_times) >= self.MAX_MESSAGES_PER_MIN:
+                        await self._send_message(websocket, "chat", "error", code="rate_limit", message="消息发送过于频繁，请稍后再试")
+                        continue
+                    recent_message_times.append(now)
+
+                    conversation_id = msg.get("conversation_id", "")
                     if not conversation_id:
                         conversation_id = self.conversation_service.get_or_create_conversation(user_id)
                         await self._send_message(websocket, "chat", "conversation_created", conversation_id=conversation_id)
@@ -133,6 +162,13 @@ class ChatConversationController(BaseController):
                     image_b64    = msg.get("image_b64")
                     if not content_text and not image_b64:
                         continue
+
+                    if image_b64:
+                        try:
+                            base64.b64decode(image_b64, validate=True)
+                        except Exception:
+                            await self._send_message(websocket, "chat", "error", code="invalid_image")
+                            continue
 
                     user_content = self.conversation_service.build_content(content_text, image_b64)
                     async for event in self.conversation_service.stream(conversation_id, user_id, user_content):
@@ -154,7 +190,7 @@ class ChatConversationController(BaseController):
                     await self._send_message(websocket, "chat", "error", code="rate_limit", conversation_id=conversation_id, message=f"今日用量已达上限，请 {hours_left} 小时后再试")
                 except Exception as e:
                     self.logger.error(f"WebSocket message error: {e}", exc_info=True)
-                    await self._send_message(websocket, "chat", "error", message=str(e))
+                    await self._send_message(websocket, "chat", "error", message="Internal server error")
 
         except WebSocketDisconnect:
             pass
