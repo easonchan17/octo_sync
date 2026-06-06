@@ -11,7 +11,7 @@ class MatchController(BaseController):
         self.match_service = MatchService()
         self.model_service = ModelService()
         self.router.get("/v1/matches/{match_code}", response_model=MatchDetailResponse)(self.get_detail)
-        self.router.get("/v1/matches/{match_code}/prediction", response_model=PredictionResponse)(self.predict)
+        # self.router.get("/v1/matches/{match_code}/prediction", response_model=PredictionResponse)(self.predict)
 
     def get_detail(self, match_code: str) -> MatchDetailResponse:
         try:
