@@ -11,7 +11,7 @@ from core.services.auth.otp_service import get_otp_service
 
 
 class AuthService:
-    def __init__(self, algorithm: str, token_expire_days: int) -> None:
+    def __init__(self, algorithm: str, token_expire_days: int, allowed_origins: list) -> None:
         self.logger            = get_logger_manager().get_logger(self.__class__.__name__)
         self.env_manager       = get_env_manager()
         self.redis_manager     = get_redis_manager()
@@ -19,6 +19,10 @@ class AuthService:
         self.user_dao          = UserDao()
         self.algorithm         = algorithm
         self.token_expire_days = token_expire_days
+        self.allowed_origins   = set(allowed_origins)
+
+    def is_origin_allowed(self, origin: str) -> bool:
+        return not self.allowed_origins or origin in self.allowed_origins
 
     async def login(self, email: str, code: str) -> str:
         await self.otp_service.verify_code(email, code)
@@ -56,4 +60,5 @@ def get_auth_service() -> AuthService:
     return AuthService(
         algorithm         = config["jwt"]["algorithm"],
         token_expire_days = config["token_expire_days"],
+        allowed_origins   = config.get("allowed_origins", []),
     )

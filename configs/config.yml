@@ -127,6 +127,7 @@ llm:
     max_tokens_per_day: 100000
 
 auth:
+  allowed_origins: []
   token_expire_days: 7
   jwt:
     algorithm: HS256
