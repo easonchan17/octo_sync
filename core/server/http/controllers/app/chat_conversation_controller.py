@@ -12,7 +12,6 @@ from core.store.redis.redis_manager import get_redis_manager
 from core.chat.graph.tools import ToolNames
 from core.chat.llm.token_rate_limiter import HourlyRateLimitExceeded, DailyRateLimitExceeded
 from core.server.http.schemas.api_models import (
-    CreateConversationResponse,
     ConversationSummaryResponse,
     ConversationMessageResponse,
 )
@@ -24,10 +23,9 @@ class ChatConversationController(BaseController):
         self.auth_service         = get_auth_service()
         self.redis_manager        = get_redis_manager()
 
-        self.router.post("/v1/conversations", response_model=CreateConversationResponse)(self.create_conversation)
         self.router.get("/v1/conversations", response_model=List[ConversationSummaryResponse])(self.get_conversations)
         self.router.get("/v1/conversations/{conversation_id}", response_model=List[ConversationMessageResponse])(self.get_conversation)
-        self.router.websocket("/v1/conversations/{conversation_id}")(self.chat)
+        self.router.websocket("/v1/ws")(self.connect)
 
     def get_conversations(
         self,
@@ -50,21 +48,13 @@ class ChatConversationController(BaseController):
         messages = await self.conversation_service.get_messages(conversation_id)
         return [ConversationMessageResponse(role=msg.type, content=msg.content) for msg in messages]
 
-    def create_conversation(self, user_id: str = Depends(verify_token)) -> CreateConversationResponse:
-        conversation_id = self.conversation_service.get_or_create_conversation(user_id)
-        return CreateConversationResponse(conversation_id=conversation_id)
-
-    async def chat(self, websocket: WebSocket, conversation_id: str) -> None:
+    async def connect(self, websocket: WebSocket) -> None:
         try:
             user_id = await self.auth_service.get_user_id(
                 websocket.query_params.get("token", "")
             )
         except Exception:
             await websocket.close(code=4401)
-            return
-
-        if self.conversation_service.get_user_id(conversation_id) != user_id:
-            await websocket.close(code=4403)
             return
 
         await websocket.accept()
@@ -76,7 +66,7 @@ class ChatConversationController(BaseController):
             await redis.publish(f"ws:kick:{user_id}", conn_id)
 
             listen_task   = asyncio.create_task(self._listen_kick(websocket, pubsub, conn_id))
-            messages_task = asyncio.create_task(self._handle_messages(websocket, conversation_id, user_id))
+            messages_task = asyncio.create_task(self._handle_messages(websocket, user_id))
 
             try:
                 await asyncio.wait(
@@ -104,26 +94,40 @@ class ChatConversationController(BaseController):
     async def _handle_messages(
         self,
         websocket: WebSocket,
-        conversation_id: str,
         user_id: str,
     ) -> None:
-        async def try_update_title() -> None:
+        async def try_update_title(cid: str) -> None:
             try:
-                title = await self.conversation_service.generate_title(conversation_id)
+                title = await self.conversation_service.generate_title(cid)
                 if title:
-                    self.conversation_service.update_title(conversation_id, title)
-                    await websocket.send_text(json.dumps({"type": "title_updated", "conversation_id": conversation_id, "title": title}))
+                    self.conversation_service.update_title(cid, title)
+                    await self._send_message(websocket, "chat", "title_updated", conversation_id=cid, title=title)
             except Exception as e:
-                self.logger.error(f"Failed to update title conversation={conversation_id}: {e}", exc_info=True)
+                self.logger.error(f"Failed to update title conversation={cid}: {e}", exc_info=True)
 
-        title_pending = True
+        validated_conversations: set = set()
+        titled_conversations:    set = set()
         try:
             while True:
                 raw = await websocket.receive_text()
                 try:
                     msg = json.loads(raw)
-                    if msg.get("type") != "message":
+                    if msg.get("type") != "chat:message":
                         continue
+
+                    conversation_id = msg.get("conversation_id", "")
+
+                    if not conversation_id:
+                        conversation_id = self.conversation_service.get_or_create_conversation(user_id)
+                        await self._send_message(websocket, "chat", "conversation_created", conversation_id=conversation_id)
+                        validated_conversations.add(conversation_id)
+
+                    if conversation_id not in validated_conversations:
+                        owner = self.conversation_service.get_user_id(conversation_id)
+                        if owner != user_id:
+                            await self._send_message(websocket, "chat", "error", code="forbidden", conversation_id=conversation_id)
+                            continue
+                        validated_conversations.add(conversation_id)
 
                     content_text = msg.get("content", "").strip()
                     image_b64    = msg.get("image_b64")
@@ -134,23 +138,23 @@ class ChatConversationController(BaseController):
                     async for event in self.conversation_service.stream(conversation_id, user_id, user_content):
                         await self._dispatch_event(websocket, event)
 
-                    if title_pending:
-                        title_pending = False
-                        asyncio.create_task(try_update_title())
+                    if conversation_id not in titled_conversations:
+                        titled_conversations.add(conversation_id)
+                        asyncio.create_task(try_update_title(conversation_id))
 
                 except WebSocketDisconnect:
                     raise
                 except HourlyRateLimitExceeded:
                     now          = datetime.now(timezone.utc)
                     minutes_left = 60 - now.minute
-                    await websocket.send_text(json.dumps({"type": "error", "code": "rate_limit", "message": f"每小时用量已达上限，请 {minutes_left} 分钟后再试"}))
+                    await self._send_message(websocket, "chat", "error", code="rate_limit", conversation_id=conversation_id, message=f"每小时用量已达上限，请 {minutes_left} 分钟后再试")
                 except DailyRateLimitExceeded:
                     now        = datetime.now(timezone.utc)
                     hours_left = 24 - now.hour
-                    await websocket.send_text(json.dumps({"type": "error", "code": "rate_limit", "message": f"今日用量已达上限，请 {hours_left} 小时后再试"}))
+                    await self._send_message(websocket, "chat", "error", code="rate_limit", conversation_id=conversation_id, message=f"今日用量已达上限，请 {hours_left} 小时后再试")
                 except Exception as e:
-                    self.logger.error(f"WebSocket message error conversation={conversation_id}: {e}", exc_info=True)
-                    await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+                    self.logger.error(f"WebSocket message error: {e}", exc_info=True)
+                    await self._send_message(websocket, "chat", "error", message=str(e))
 
         except WebSocketDisconnect:
             pass
@@ -163,7 +167,7 @@ class ChatConversationController(BaseController):
             chunk = event.get("data", {}).get("chunk")
             token = getattr(chunk, "content", "") or "" if chunk else ""
             if token:
-                await websocket.send_text(json.dumps({"type": "token", "content": token}))
+                await self._send_message(websocket, "chat", "token", content=token)
 
         elif kind == "on_chain_end" and name == "tool_executor":
             messages = event.get("data", {}).get("output", {}).get("messages", [])
@@ -171,11 +175,13 @@ class ChatConversationController(BaseController):
                 if getattr(message, "name", None) != ToolNames.SUBMIT_ISSUE:
                     continue
                 result = json.loads(message.content)
-                await websocket.send_text(json.dumps({
-                    "type":    "issue_submitted",
-                    "ok":      result.get("ok", False),
-                    "message": result.get("message") or result.get("error", "")
-                }))
+                await self._send_message(websocket, "chat", "issue_submitted",
+                    ok=result.get("ok", False),
+                    message=result.get("message") or result.get("error", ""),
+                )
 
         elif kind == "on_chain_end" and name == "LangGraph":
-            await websocket.send_text(json.dumps({"type": "done"}))
+            await self._send_message(websocket, "chat", "done")
+
+    async def _send_message(self, websocket: WebSocket, model: str, action: str, **data) -> None:
+        await websocket.send_text(json.dumps({"type": f"{model}:{action}", **data}))
