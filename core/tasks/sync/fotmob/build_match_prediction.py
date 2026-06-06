@@ -11,9 +11,8 @@ from core.services.league import get_league_service
 from core.types.enums import SiteName
 
 
-@TaskRegistry.poll('predict.fotmob.match')
-class PredictMatch(PollTask):
-
+@TaskRegistry.poll('build.fotmob.prediction')
+class BuildMatchPrediction(PollTask):
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.match_dao = MatchDao()

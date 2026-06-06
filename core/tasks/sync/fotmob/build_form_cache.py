@@ -5,7 +5,6 @@ from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.daos.fotmob.form_cache_dao import FormCacheDao
 from core.services.ml.inference.predict_service import get_predict_service
 
-
 @TaskRegistry.poll('build.fotmob.form_cache')
 class BuildFormCache(PollTask):
     POLL_IDLE_SECONDS = 300

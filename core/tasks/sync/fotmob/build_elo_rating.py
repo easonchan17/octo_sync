@@ -83,14 +83,6 @@ class EloRatingCalculator:
     def _get_rating(self, team_id: int) -> float:
         return self.ratings.get(team_id, self.base_rating)
 
-    def _get_smoothed_rating(self, team_id: int, raw_rating: float) -> float:
-        game_count = self.game_counts.get(team_id, 0)
-        if game_count >= self.min_game_for_stability:
-            return raw_rating
-
-        trust_factor = game_count / self.min_game_for_stability
-        return raw_rating * trust_factor + self.base_rating * (1 - trust_factor)
-
     def _calc_expected_score(self, home_rating: float, away_rating: float) -> float:
         dr = home_rating + self.home_advantage - away_rating
         if dr > 800:
