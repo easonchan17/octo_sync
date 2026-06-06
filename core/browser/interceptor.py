@@ -342,7 +342,7 @@ class Interceptor(Thread):
 def get_interceptor() -> Interceptor:
     config = get_config_manager().get_config("browser")
     return Interceptor(
-        sites=[SiteName.FOTMOB.value, SiteName.ODDSPORTAL.value],
+        sites=[SiteName.FOTMOB.value, SiteName.FOTMOB_IMAGE.value, SiteName.ODDSPORTAL.value],
         request_interval=config["request_interval"],
         launch_options=config["launch_options"],
         viewport=config["viewport"],

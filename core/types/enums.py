@@ -54,9 +54,10 @@ class UpsertStrategy(str, Enum):
     KEEP_MAX = "keep_max"
 
 class SiteName(str, Enum):
-    SYSTEM = 'system'
-    FOTMOB = 'fotmob'
-    ODDSPORTAL = 'oddsportal'
+    SYSTEM       = 'system'
+    FOTMOB       = 'fotmob'
+    ODDSPORTAL   = 'oddsportal'
+    FOTMOB_IMAGE = 'fotmob_image'
 
 class LeagueID(IntEnum):
     UNKNOWN = 0
