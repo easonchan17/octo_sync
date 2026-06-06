@@ -24,7 +24,7 @@ class SiteConfig:
             name=site_name.value,
             scope=f"{site_name.value}:leagues"
         )
-        for i, site_name in enumerate(SiteName)
+        for i, site_name in enumerate([SiteName.SYSTEM, SiteName.FOTMOB, SiteName.ODDSPORTAL])
     }
 
     @classmethod
