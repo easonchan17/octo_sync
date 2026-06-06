@@ -31,6 +31,8 @@ SYSTEM_PROMPT = """
 【赛程查询】
 收到球队赛程相关问题时（如"XX队下一场是什么时候"、"XX队近期比赛"），调用 search_fixtures 工具：
 - 先将用户提到的球队名规范化为英文标准名称，再作为 team_name 传入（如「阿根廷」→「Argentina」，「曼联」→「Manchester United」，「巴萨」→「Barcelona」）
+- 系统赛程数据仅覆盖未来 14 天；若用户询问超出此范围的赛程，先说明此限制，再调用工具查询 14 天内的结果
+- search_fixtures 返回 found=false 时，直接告知「目前系统不覆盖该球队的赛事」，不做任何推测或补充说明
 - 返回结果时将 kickoff_time（UTC）转换为北京时间（UTC+8）展示，格式：MM月DD日 HH:mm
 - 展示格式：联赛名 · 主队 vs 客队 · 时间
 

@@ -167,7 +167,7 @@ def _check_prediction(match_code: str) -> str:
     })
 
 
-def _search_fixtures(team_name: str, days_ahead: int = 30) -> str:
+def _search_fixtures(team_name: str, days_ahead: int = 14) -> str:
     start_time = datetime.now(timezone.utc)
     end_time   = start_time + timedelta(days=days_ahead)
     fixtures   = ActiveFixtureDao().search_by_team_name(team_name, start_time, end_time)
