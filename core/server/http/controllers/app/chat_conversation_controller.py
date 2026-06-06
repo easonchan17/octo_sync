@@ -146,9 +146,12 @@ class ChatConversationController(BaseController):
                     recent_message_times.append(now)
 
                     conversation_id = msg.get("conversation_id", "")
+                    self.logger.info(f"Received conversation_id={repr(conversation_id)!r} from user={user_id}")
                     if not conversation_id:
                         conversation_id = self.conversation_service.get_or_create_conversation(user_id)
+                        self.logger.info(f"Created/reused conversation_id={conversation_id} for user={user_id}")
                         await self._send_message(websocket, "chat", "conversation_created", conversation_id=conversation_id)
+                        self.logger.info(f"Sent conversation_created event: conversation_id={conversation_id}")
                         validated_conversations.add(conversation_id)
 
                     if conversation_id not in validated_conversations:

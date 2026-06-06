@@ -4,6 +4,7 @@ from sqlalchemy import text
 from typing import List, Any, Optional
 from contextlib import contextmanager
 from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 from core.config.config_manager import get_config_manager
 from core.config.env_manager import get_env_manager
@@ -65,9 +66,12 @@ class PostgreSQLManager:
         try:
             yield session
             session.commit()
-        except Exception as e:
+        except SQLAlchemyError as e:
             session.rollback()
             self.logger.error(f"Database session error: {e}")
+            raise
+        except Exception:
+            session.rollback()
             raise
         finally:
             session.close()
