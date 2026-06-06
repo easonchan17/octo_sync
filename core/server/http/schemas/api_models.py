@@ -348,7 +348,6 @@ class KnockoutMatchupResponse(BaseModel):
 
 class KnockoutRoundResponse(BaseModel):
     stage: str
-    started: bool
     matchups: List[KnockoutMatchupResponse]
 
 
