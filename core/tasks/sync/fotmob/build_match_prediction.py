@@ -24,7 +24,9 @@ class BuildMatchPrediction(PollTask):
         self.retry_interval = timedelta(minutes=5)
         self.rebuild_strategy = (
             TimelineStrategy(min_interval=timedelta(minutes=30))
-            .add_segment(start_offset=timedelta(hours=-2), end_offset=timedelta(hours=0), interval=timedelta(minutes=30))
+            .add_segment(start_offset=timedelta(hours=-48), end_offset=timedelta(hours=-6),  interval=timedelta(hours=4))
+            .add_segment(start_offset=timedelta(hours=-6),  end_offset=timedelta(hours=-2),  interval=timedelta(hours=1))
+            .add_segment(start_offset=timedelta(hours=-2),  end_offset=timedelta(hours=0),   interval=timedelta(minutes=30))
         )
 
     def get_pending_predict_items(self, model_version: str) -> List[Any]:

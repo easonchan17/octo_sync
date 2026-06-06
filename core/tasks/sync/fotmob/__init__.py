@@ -10,7 +10,7 @@ from .parse_season import ParseSeason
 from .parse_history_fixture import ParseHistoryFixture
 from .build_elo_rating import BuildEloRating
 from .build_form_cache import BuildFormCache
-from .predict_match import BuildMatchPrediction
+from .build_match_prediction import BuildMatchPrediction
 
 __all__ = [
     'SyncActiveFixture',
