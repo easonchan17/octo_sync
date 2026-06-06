@@ -194,6 +194,27 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.match_code == match_code
             ).first()
 
+    def search_by_team_name(self, team_name: str, start_time: datetime, end_time: datetime, limit: int = 5) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.match_code,
+                Fixture.league_name,
+                Fixture.kickoff_time,
+                Fixture.home_team,
+                Fixture.away_team,
+                Fixture.match_status,
+            ).filter(
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time < end_time,
+                or_(
+                    Fixture.home_team.ilike(f'%{team_name}%'),
+                    Fixture.away_team.ilike(f'%{team_name}%'),
+                ),
+                Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
+            ).order_by(
+                Fixture.kickoff_time.asc()
+            ).limit(limit).all()
+
     def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(

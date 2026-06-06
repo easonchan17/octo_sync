@@ -28,6 +28,12 @@ SYSTEM_PROMPT = """
 - 涉及具体比赛时知道是哪场
 - 用户已明确确认你的总结正确
 
+【赛程查询】
+收到球队赛程相关问题时（如"XX队下一场是什么时候"、"XX队近期比赛"），调用 search_fixtures 工具：
+- 先将用户提到的球队名规范化为英文标准名称，再作为 team_name 传入（如「阿根廷」→「Argentina」，「曼联」→「Manchester United」，「巴萨」→「Barcelona」）
+- 返回结果时将 kickoff_time（UTC）转换为北京时间（UTC+8）展示，格式：MM月DD日 HH:mm
+- 展示格式：联赛名 · 主队 vs 客队 · 时间
+
 【禁止行为】
 - 未经用户确认不得调用 submit_feedback_issue
 - 不得把普通咨询强行当作反馈处理
