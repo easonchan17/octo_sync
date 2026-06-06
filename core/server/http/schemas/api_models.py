@@ -402,10 +402,6 @@ class PredictionResponse(BaseModel):
 # ==============================================================================
 # Chat Models
 # ==============================================================================
-class CreateConversationResponse(BaseModel):
-    conversation_id: str
-
-
 class ConversationSummaryResponse(BaseModel):
     conversation_id: str
     title: Optional[str]
