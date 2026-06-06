@@ -2,6 +2,7 @@ import json
 from enum import Enum
 from pydantic import BaseModel, ValidationError
 from typing import Any, Dict, Literal, Optional
+from datetime import datetime, timedelta, timezone
 from core.store.postgres.daos.fotmob import ActiveFixtureDao, MatchDao
 from core.store.postgres.daos.common import FeedbackIssueDao, ChatConversationDao, TrainingRecordDao
 
@@ -11,6 +12,7 @@ class ToolNames(str, Enum):
     CHECK_SYNC       = "check_sync_status"
     CHECK_PREDICTION = "check_prediction"
     SEARCH_SIMILAR   = "search_similar_issues"
+    SEARCH_FIXTURES  = "search_fixtures"
 
 
 class FeedbackIssueModel(BaseModel):
@@ -67,6 +69,21 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": ToolNames.SEARCH_FIXTURES,
+            "description": "查询指定球队的近期赛程，team_name 必须为英文标准名称",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team_name":  {"type": "string", "description": "英文球队名，如 Argentina、Barcelona、Manchester United"},
+                    "days_ahead": {"type": "integer", "description": "查询未来天数，默认 30"}
+                },
+                "required": ["team_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": ToolNames.SUBMIT_ISSUE,
             "description": "用户明确确认后提交问题工单，绝不在用户确认前调用",
             "parameters": {
@@ -93,6 +110,8 @@ def execute_tool(name: str, args: Dict[str, Any], conversation_id: str) -> str:
             return _check_prediction(**args)
         if name == ToolNames.SEARCH_SIMILAR:
             return _search_similar_issues(**args)
+        if name == ToolNames.SEARCH_FIXTURES:
+            return _search_fixtures(**args)
         if name == ToolNames.SUBMIT_ISSUE:
             return _submit_issue(conversation_id, args)
     except Exception as e:
@@ -145,6 +164,28 @@ def _check_prediction(match_code: str) -> str:
         "draw_prob":     prediction.draw_prob,
         "away_prob":     prediction.away_prob,
         "prediction":    prediction.prediction,
+    })
+
+
+def _search_fixtures(team_name: str, days_ahead: int = 30) -> str:
+    start_time = datetime.now(timezone.utc)
+    end_time   = start_time + timedelta(days=days_ahead)
+    fixtures   = ActiveFixtureDao().search_by_team_name(team_name, start_time, end_time)
+    if not fixtures:
+        return json.dumps({"found": False, "message": f"未找到 {team_name} 的近期赛程"})
+
+    return json.dumps({
+        "found":    True,
+        "fixtures": [
+            {
+                "match_code":   fixture.match_code,
+                "league_name":  fixture.league_name,
+                "kickoff_time": str(fixture.kickoff_time),
+                "home_team":    fixture.home_team,
+                "away_team":    fixture.away_team,
+            }
+            for fixture in fixtures
+        ]
     })
 
 
