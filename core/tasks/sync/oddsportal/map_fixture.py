@@ -12,7 +12,7 @@ from core.tasks.poll_task import PollTask
 @TaskRegistry.poll('map.oddsportal.fixture')
 class MapFixture(PollTask):
     MAPPING_QUERY_LIMIT = 100
-    SIMILARITY_THRESHOLD = 60
+    SIMILARITY_THRESHOLD = 70
     KICKOFF_TOLERANCE = timedelta(minutes=30)
     KICKOFF_LOOKAHEAD = timedelta(days=2)
 
@@ -92,10 +92,9 @@ class MapFixture(PollTask):
                 mapped_items = self.match_resolver.resolve(source_items, target_items)
                 if mapped_items:
                     id_to_code = {fixture.match_code: fixture.id for fixture in oddsportal_fixtures}
-                    self.oddsportal_dao.sync_mapped_data(
-                        list(mapped_items.keys()),
-                        [{"id": id_to_code[match_code], "ref_match_id": ref_match_id} for match_code, ref_match_id in mapped_items.items()]
-                    )
+                    items = [{"id": id_to_code[match_code], "ref_match_id": ref_match_id} for match_code, ref_match_id in mapped_items.items()]
+                    self.logger.info(f"Syncing mapped fixtures: {items}")
+                    self.oddsportal_dao.sync_mapped_data(list(mapped_items.keys()), items)
                     self.logger.info(f"Successfully mapped {len(mapped_items)} fixtures")
 
                 if len(mapped_items) < len(oddsportal_fixtures):

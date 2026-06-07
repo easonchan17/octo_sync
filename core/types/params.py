@@ -10,11 +10,11 @@ class CrawlParams:
 
     FIXTURE_START_DATE: Optional[date] = date(2019, 1, 1)
     FIXTURE_LOOKBACK = timedelta(hours=24)
-    FIXTURE_LOOKAHEAD = timedelta(days=14)
+    FIXTURE_LOOKAHEAD = timedelta(days=45)
 
     MATCH_LIFESPAN = timedelta(hours=4)
     MATCH_SETTLEMENT = timedelta(hours=48)
-    MATCH_LOOKAHEAD = timedelta(days=14)
+    MATCH_LOOKAHEAD = timedelta(days=45)
 
 class EloParams:
     def __init__(
