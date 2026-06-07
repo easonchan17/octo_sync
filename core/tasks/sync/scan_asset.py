@@ -150,11 +150,14 @@ class LeagueLogoScanner(BaseAssetScanner):
     def __init__(self, site_name: str, url_template: str) -> None:
         super().__init__(site_name, AssetType.IMAGE, EntityType.LEAGUE, AssetUsage.LOGO, url_template)
 
+    def get_pending_fetch_leagues(self, last_id: int) -> List[Any]:
+        return self.asset_dao.get_pending_fetch_leagues(self.site_name, last_id)
+
     def scan_items(self) -> Optional[Tuple[List[Dict], int]]:
         last_id = self.asset_dao.get_scan_progress(
             self.site_name, self.asset_type, self.entity_type, self.asset_usage
         )
-        leagues = self.asset_dao.get_pending_fetch_leagues(self.site_name, last_id)
+        leagues = self.get_pending_fetch_leagues(last_id)
         if not leagues:
             return None
 
@@ -174,6 +177,10 @@ class LeagueLogoScanner(BaseAssetScanner):
         ]
         return assets, leagues[-1].id
 
+
+class FotmobLeagueLogoScanner(LeagueLogoScanner):
+    pass
+
 @TaskRegistry.poll('scan.asset')
 class ScanAsset(PollTask):
     FOTMOB_TEAM_LOGO_URL = 'https://images.fotmob.com/image_resources/logo/teamlogo/{}.png'
@@ -185,7 +192,7 @@ class ScanAsset(PollTask):
         self.scanners = [
             FotmobTeamLogoScanner(site_name=SiteName.FOTMOB.value, url_template=self.FOTMOB_TEAM_LOGO_URL),
             FotmobPlayerLogoScanner(site_name=SiteName.FOTMOB.value, url_template=self.FOTMOB_PLAYER_LOGO_URL),
-            LeagueLogoScanner(site_name=SiteName.FOTMOB.value, url_template=self.FOTMOB_LEAGUE_LOGO_URL),
+            FotmobLeagueLogoScanner(site_name=SiteName.FOTMOB.value, url_template=self.FOTMOB_LEAGUE_LOGO_URL),
         ]
 
     def execute(self, *args, **kwargs) -> None:

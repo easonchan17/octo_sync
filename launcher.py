@@ -7,6 +7,7 @@ from core.config.config_manager import get_config_manager
 from core.logger.logger_manager import get_logger_manager
 from core.store.postgres.postgresql_manager import get_postgresql_manager
 from core.services.league.league_service import get_league_service
+from core.services.name_i18n_service import get_name_i18n_service
 from core.server.http.web_server import get_web_server
 from core.scheduler.task_executor import get_task_executor
 from core.scheduler.poll_manager import get_poll_manager
@@ -94,12 +95,14 @@ class ApiLauncher(BaseLauncher):
     def _register_services(self) -> None:
         postgresql_manager = get_postgresql_manager()
         league_service     = get_league_service()
+        name_i18n_service  = get_name_i18n_service()
         task_executor      = get_task_executor()
         poll_manager       = get_poll_manager()
         web_server         = get_web_server()
 
         self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
         self._add_service("LeagueService",     league_service.load,        None)
+        self._add_service("NameI18nService",   name_i18n_service.load,     None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
         self._add_service("PollManager",       lambda: poll_manager.start(include=FORM_CACHE_PATTERN), poll_manager.stop)
         self._add_service("WebServer",         web_server.start,           web_server.stop)
@@ -109,6 +112,7 @@ class UnifiedLauncher(BaseLauncher):
     def _register_services(self) -> None:
         postgresql_manager = get_postgresql_manager()
         league_service     = get_league_service()
+        name_i18n_service  = get_name_i18n_service()
         task_executor      = get_task_executor()
         interceptor        = get_interceptor()
         poll_manager       = get_poll_manager()
@@ -116,6 +120,7 @@ class UnifiedLauncher(BaseLauncher):
 
         self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
         self._add_service("LeagueService",     league_service.load,        None)
+        self._add_service("NameI18nService",   name_i18n_service.load,     None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
         self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
         self._add_service("PollManager",       poll_manager.start,         poll_manager.stop)
