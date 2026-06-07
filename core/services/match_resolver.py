@@ -70,7 +70,7 @@ class MatchResolver(BaseService):
         "clermont": "clermont foot"
     }
 
-    def __init__(self, kickoff_tolerance: timedelta = timedelta(minutes=15), similarity_threshold: int = 60) -> None:
+    def __init__(self, kickoff_tolerance: timedelta, similarity_threshold: int) -> None:
         super().__init__()
         self.kickoff_tolerance = kickoff_tolerance
         self.similarity_threshold = similarity_threshold
@@ -143,6 +143,9 @@ class MatchResolver(BaseService):
 
         home_score = max(fuzz.token_set_ratio(src_home, tgt_home), self._acronym_score(src_home, tgt_home))
         away_score = max(fuzz.token_set_ratio(src_away, tgt_away), self._acronym_score(src_away, tgt_away))
+
+        if home_score < self.similarity_threshold or away_score < self.similarity_threshold:
+            return 0
 
         return (home_score + away_score) // 2
 
