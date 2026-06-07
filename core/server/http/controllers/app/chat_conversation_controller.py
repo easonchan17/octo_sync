@@ -121,7 +121,7 @@ class ChatConversationController(BaseController):
                 self.logger.error(f"Failed to update title conversation={cid}: {e}", exc_info=True)
 
         validated_conversations: set   = set()
-        titled_conversations:    set   = set()
+        needs_title:             bool  = False
         recent_message_times:    deque = deque()
         try:
             while True:
@@ -153,6 +153,7 @@ class ChatConversationController(BaseController):
                         await self._send_message(websocket, "chat", "conversation_created", conversation_id=conversation_id)
                         self.logger.info(f"Sent conversation_created event: conversation_id={conversation_id}")
                         validated_conversations.add(conversation_id)
+                        needs_title = True
 
                     if conversation_id not in validated_conversations:
                         owner = self.conversation_service.get_user_id(conversation_id)
@@ -177,8 +178,8 @@ class ChatConversationController(BaseController):
                     async for event in self.conversation_service.stream(conversation_id, user_id, user_content):
                         await self._dispatch_event(websocket, event)
 
-                    if conversation_id not in titled_conversations:
-                        titled_conversations.add(conversation_id)
+                    if needs_title:
+                        needs_title = False
                         asyncio.create_task(try_update_title(conversation_id))
 
                 except WebSocketDisconnect:
