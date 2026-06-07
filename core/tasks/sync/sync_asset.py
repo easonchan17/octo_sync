@@ -62,10 +62,15 @@ class SyncAsset(PollTask):
                         )
 
                         result_set = future.result()
-                        if result_set is None or result_set.is_empty() or result_set.is_not_modified():
+                        if result_set is None or result_set.is_empty():
                             self.logger.warning(f"No asset data received: url={source_url}")
                             retry_interval = self.retry_strategy.suggest_interval(fetch_attempts)
-                            self.asset_dao.mark_fetch_failed(source_url, retry_interval)
+                            self.asset_dao.mark_fetch_failed(source_url, retry_interval, "No asset data received")
+                            continue
+
+                        if result_set.is_forbidden():
+                            self.logger.warning(f"Asset forbidden (403), skip retry: url={source_url}")
+                            self.asset_dao.mark_fetch_failed(source_url, None, "HTTP 403 Forbidden")
                             continue
 
                         save_path = self.make_save_path(
