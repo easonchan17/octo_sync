@@ -25,10 +25,11 @@ SYSTEM_PROMPT = """你是足球数据国际化助手，负责为球队和联赛�
 工作流程：
 1. 使用 query_translation_status 查询翻译进度，展示摘要后等待用户指示
 2. 用户明确说"开始翻译 team/league"后，再使用 fetch_unmapped_names 获取一批待翻译条目（每批不超过 50 条）
+   - 如需查看已跳过条目，使用 fetch_skipped_names；对其中可翻译的条目，用 save_translations 保存（会覆盖跳过标记）
 3. 将英文名翻译成中文，必须同时展示以下两个分区（即使某分区为空也要显示"（无）"）：
    - 【已翻译】列出 entity_code、英文名、中文译名
    - 【无把握，已跳过】列出 entity_code、英文名
-4. 用户确认后调用 save_translations 保存，否则不保存
+4. 用户确认后同时调用 save_translations 保存译名、调用 mark_skipped 标记跳过条目，否则不保存
 5. 重复直至完成
 
 输出规范：
@@ -37,7 +38,7 @@ SYSTEM_PROMPT = """你是足球数据国际化助手，负责为球队和联赛�
 翻译规范：
 - 优先使用国内主流媒体通用译名（如"曼城"、"英超"、"西甲"）
 - 联赛名称不加"联赛"后缀（"英超"而非"英超联赛"，"西甲"而非"西甲联赛"）
-- 无把握的名称直接跳过，不要包含在 save_translations 的列表中
+- 无把握的名称不要包含在 save_translations 中，但必须通过 mark_skipped 标记，避免下次重复出现
 - 每批处理不超过 50 条，保证翻译质量
 - 未经用户确认，绝不调用 save_translations
 """
@@ -79,6 +80,48 @@ TOOLS = [
                     },
                 },
                 "required": ["entity_type"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_skipped_names",
+            "description": "获取已标记为跳过的条目列表，可用于重新翻译",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity_type": {
+                        "type": "string",
+                        "enum": ["team", "league"],
+                        "description": "实体类型",
+                    },
+                },
+                "required": ["entity_type"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mark_skipped",
+            "description": "将无法翻译的条目标记为跳过，避免下次重复出现，必须在用户确认后调用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "entity_type": {"type": "string"},
+                                "entity_code": {"type": "string"},
+                            },
+                            "required": ["entity_type", "entity_code"],
+                        },
+                    }
+                },
+                "required": ["items"],
             },
         },
     },
@@ -162,6 +205,27 @@ def _execute_tool(dao: NameI18nDao, name: str, args: dict) -> str:
                 "items":       [{"entity_code": row.entity_code, "name": row.name} for row in rows],
             })
 
+        if name == "mark_skipped":
+            records = [
+                {
+                    "entity_type": item["entity_type"],
+                    "entity_code": item["entity_code"],
+                    "locale":      "zh",
+                    "name":        "",
+                }
+                for item in args["items"]
+            ]
+            dao.sync_scanned_data(records)
+            return json.dumps({"ok": True, "skipped": len(records)})
+
+        if name == "fetch_skipped_names":
+            rows = dao.get_skipped_names(args["entity_type"])
+            return json.dumps({
+                "entity_type": args["entity_type"],
+                "count":       len(rows),
+                "items":       [{"entity_code": row.entity_code, "name": row.name} for row in rows],
+            })
+
         if name == "save_translations":
             records = [
                 {
@@ -172,7 +236,7 @@ def _execute_tool(dao: NameI18nDao, name: str, args: dict) -> str:
                 }
                 for t in args["translations"]
             ]
-            dao.sync_scanned_data(records)
+            dao.upsert_zh_names(records)
             return json.dumps({"ok": True, "saved": len(records)})
 
     except Exception as e:
