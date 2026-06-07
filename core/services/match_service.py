@@ -83,7 +83,7 @@ class MatchService(BaseService):
         away_id = data['away_id']
         kickoff_time = data['kickoff_time']
 
-        match_content = data['match_json_body'].get('content') or {}
+        match_content = (data['match_json_body'] or {}).get('content') or {}
 
         standings_json= data.get('standings_json_body') or {}
 
