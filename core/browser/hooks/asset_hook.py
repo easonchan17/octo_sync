@@ -1,5 +1,6 @@
 from core.browser.hooks.base_hook import BaseHook, HookContext
 from core.browser.intercept_strategy import InterceptType
+from core.browser.intercept_result_set import FetchState
 
 
 class AssetHook(BaseHook):
@@ -10,6 +11,10 @@ class AssetHook(BaseHook):
 
         if ctx.response is None:
             return False
+
+        if ctx.response.status == 403:
+            ctx.result_set.set(asset_rule.receiver.instance_id, FetchState.FORBIDDEN)
+            return True
 
         parsed_data = await asset_rule.receiver.process(response=ctx.response)
 
