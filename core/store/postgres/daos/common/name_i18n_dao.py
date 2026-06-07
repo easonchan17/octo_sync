@@ -65,7 +65,8 @@ class NameI18nDao(BaseDao):
             query = session.query(
                 NameI18n.entity_type,
                 func.count(case((NameI18n.locale == 'en', 1))).label('total'),
-                func.count(case((NameI18n.locale == 'zh', 1))).label('translated'),
+                func.count(case(((NameI18n.locale == 'zh') & (NameI18n.name != ''), 1))).label('translated'),
+                func.count(case(((NameI18n.locale == 'zh') & (NameI18n.name == ''), 1))).label('skipped'),
             ).group_by(NameI18n.entity_type)
             if entity_type:
                 query = query.filter(NameI18n.entity_type == entity_type)
@@ -74,7 +75,8 @@ class NameI18nDao(BaseDao):
                 row.entity_type: {
                     'total':      row.total,
                     'translated': row.translated,
-                    'pending':    row.total - row.translated,
+                    'skipped':    row.skipped,
+                    'pending':    row.total - row.translated - row.skipped,
                 }
                 for row in rows
             }
@@ -112,6 +114,40 @@ class NameI18nDao(BaseDao):
                 NameI18n.entity_code == entity_code,
                 NameI18n.locale == 'zh',
             ).first()
+
+    def get_skipped_names(self, entity_type: str) -> List[Any]:
+        with self.db.get_session() as session:
+            en_entry = aliased(NameI18n)
+            zh_entry = aliased(NameI18n)
+            return session.query(
+                en_entry.entity_code,
+                en_entry.name,
+            ).join(
+                zh_entry,
+                (zh_entry.entity_type == en_entry.entity_type) &
+                (zh_entry.entity_code == en_entry.entity_code) &
+                (zh_entry.locale == 'zh'),
+            ).filter(
+                en_entry.entity_type == entity_type,
+                en_entry.locale == 'en',
+                zh_entry.name == '',
+            ).all()
+
+    def upsert_zh_names(self, names: List[Dict]) -> None:
+        with self.db.get_session() as session:
+            insert_stmt = insert(NameI18n).values(names)
+            insert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[
+                    NameI18n.entity_type.key,
+                    NameI18n.entity_code.key,
+                    NameI18n.locale.key,
+                ],
+                set_={
+                    NameI18n.name.key:       insert_stmt.excluded.name,
+                    NameI18n.updated_at.key: func.now(),
+                }
+            )
+            session.execute(insert_stmt)
 
     def sync_scanned_data(self, names: List[Dict]) -> None:
         with self.db.get_session() as session:
