@@ -20,10 +20,10 @@ class ChatLLMClient:
         if missing_keys:
             raise RuntimeError(f"Missing LLM API key(s) for model '{self.model}': {missing_keys}")
 
-    def build_llm(self) -> ChatLiteLLM:
+    def build_llm(self, max_tokens: Optional[int] = None) -> ChatLiteLLM:
         return ChatLiteLLM(
             model=self.model,
-            max_tokens=self.max_tokens,
+            max_tokens=max_tokens or self.max_tokens,
             temperature=self.temperature,
             streaming=True,
         )
