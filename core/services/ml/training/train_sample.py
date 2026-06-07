@@ -120,7 +120,7 @@ class TrainSampleBuilder:
             train_sample_df = train_sample_df.dropna(subset=["home_shots_ema_5", "away_shots_ema_5"])
             output_file = self.build_output_path("train_sample")
             save_dataframe(train_sample_df, output_file)
-            self.logger.info(f"Train sample saved to: {str(output_file.resolve())} | samples={len(train_sample_df)} features={train_sample_df.shape[1] - 1}")
+            self.logger.info(f"Train sample saved to: {str(output_file.resolve())} | samples={len(train_sample_df)} features={train_sample_df.shape[1] - 1} leagues={self.league_ids}")
 
             return train_sample_df
         except Exception as e:
