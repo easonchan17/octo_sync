@@ -60,7 +60,7 @@ class HttpHook(BaseHook):
                 if not response.ok:
                     if response.status == 304:
                         ctx.result_set.set(http_rule.receiver.instance_id, FetchState.NOT_MODIFIED)
-                        self._latch.mark_completed(http_rule.pattern)
+                    self._latch.mark_completed(http_rule.pattern)
                     return
 
                 try:
