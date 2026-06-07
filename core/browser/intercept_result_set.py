@@ -3,6 +3,7 @@ from typing import Dict, List, Any, Optional
 
 class FetchState(Enum):
     NOT_MODIFIED = auto()
+    FORBIDDEN = auto()
 
 class InterceptResultSet:
     def __init__(self) -> None:
@@ -16,6 +17,9 @@ class InterceptResultSet:
 
     def is_not_modified(self) -> bool:
         return any(value is FetchState.NOT_MODIFIED for value in self._data.values())
+
+    def is_forbidden(self) -> bool:
+        return any(value is FetchState.FORBIDDEN for value in self._data.values())
 
     def set(self, key: int, value: Any) -> None:
         if key is None or value is None:

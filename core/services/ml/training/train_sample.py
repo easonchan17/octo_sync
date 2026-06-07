@@ -77,10 +77,12 @@ class TrainSampleBuilder:
             elo_df = self.elo_rating_builder.build()
             if elo_df is not None and not elo_df.empty:
                 match_stats_df = match_stats_df.merge(elo_df, on='match_id', how='left')
+            del elo_df
 
             odds_df = self.odds_builder.build()
             if odds_df is not None and not odds_df.empty:
                 match_stats_df = match_stats_df.merge(odds_df, on='match_id', how='left')
+            del odds_df
 
             output_file = self.build_output_path("match_stats")
             save_dataframe(match_stats_df, output_file)
@@ -98,6 +100,7 @@ class TrainSampleBuilder:
 
             player_stats_df = outfield_stats_df.merge(gk_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
             dropped = len(outfield_stats_df) - len(player_stats_df)
+            del outfield_stats_df, gk_stats_df
             if dropped > 0:
                 self.logger.warning(f"Player stats merge dropped {dropped} matches")
             output_file = self.build_output_path("player_stats")
@@ -106,6 +109,7 @@ class TrainSampleBuilder:
 
             merged_df = match_stats_df.merge(player_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
             dropped = len(match_stats_df) - len(merged_df)
+            del match_stats_df, player_stats_df
             if dropped > 0:
                 self.logger.warning(f"Match+player merge dropped {dropped} matches")
             if merged_df is None or merged_df.empty:
