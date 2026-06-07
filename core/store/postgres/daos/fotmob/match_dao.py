@@ -197,8 +197,8 @@ class MatchDao(BaseDao):
                 Fixture.match_status,
                 MatchRaw.json_body.label('match_json_body'),
                 HistoryFixtureRaw.json_body.label('standings_json_body'),
-            ).join(
-                Fixture, Fixture.match_id == MatchRaw.match_id
+            ).outerjoin(
+                MatchRaw, MatchRaw.match_id == Fixture.match_id
             ).outerjoin(
                 HistoryFixtureRaw,
                 and_(
