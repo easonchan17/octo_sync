@@ -317,6 +317,9 @@ class Interceptor(Thread):
                         self.rate_limiter.activate_backoff(url, status=response.status)
                     elif response.status >= 400:
                         self.logger.warning(f"Page error: {url} status={response.status}")
+                        if response.status == 403:
+                            ctx.response = response
+                            success = await hook_chain.execute(ctx)
                     else:
                         ctx.response = response
                         success = await hook_chain.execute(ctx)
