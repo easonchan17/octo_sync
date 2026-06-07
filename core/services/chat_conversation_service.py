@@ -64,7 +64,7 @@ class ChatConversationService(BaseService):
         messages       = state.values.get("messages", []) if state else []
         human_messages = [msg for msg in messages if msg.type == "human"]
         ai_messages    = [msg for msg in messages if msg.type == "ai" and not getattr(msg, "tool_calls", None)]
-        if len(human_messages) != 1 or len(ai_messages) != 1:
+        if not human_messages or not ai_messages:
             return None
 
         user_text = extract_text(human_messages[0].content)
