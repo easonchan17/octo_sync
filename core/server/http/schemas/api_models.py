@@ -11,6 +11,16 @@ TEAM_LOGO_URL = "/media/image/team/logo/{team_code}.png"
 LEAGUE_LOGO_URL = "/media/image/league/logo/{league_id}.png"
 PLAYER_LOGO_URL = "/media/image/player/logo/{player_code}.png"
 
+KNOCKOUT_STAGE_ZH = {
+    "1/16":    "1/16决赛",
+    "1/8":     "1/8决赛",
+    "1/4":     "1/4决赛",
+    "1/2":     "半决赛",
+    "bronze":  "季军赛",
+    "final":   "决赛",
+    "playoff": "附加赛",
+}
+
 
 # ==============================================================================
 # Pagination Models
@@ -140,6 +150,15 @@ class MatchResponse(BaseMatchResponse):
     ah_main_line: Optional[float] = None
     avg_ah_home_odds: Optional[float] = None
     avg_ah_away_odds: Optional[float] = None
+
+
+    @model_validator(mode='after')
+    def translate_round(self) -> 'MatchResponse':
+        if self.round:
+            zh = KNOCKOUT_STAGE_ZH.get(self.round)
+            if zh:
+                self.round = zh
+        return self
 
 
 class FixtureResponse(BaseModel):
@@ -391,6 +410,13 @@ class KnockoutMatchupResponse(BaseModel):
 class KnockoutRoundResponse(BaseModel):
     stage: str
     matchups: List[KnockoutMatchupResponse]
+
+    @model_validator(mode='after')
+    def translate_stage(self) -> 'KnockoutRoundResponse':
+        zh = KNOCKOUT_STAGE_ZH.get(self.stage)
+        if zh:
+            self.stage = zh
+        return self
 
 
 class MatchDetail(BaseModel):
