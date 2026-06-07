@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sqlalchemy import and_
+from sqlalchemy import and_, func, select
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 from core.types.enums import MatchStatus, Position, LineupRole
@@ -193,80 +193,81 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
         self.max_season = max_season
 
     def _load(self) -> Optional[pd.DataFrame]:
-        with self.db.get_session() as session:
-            results = session.query(
-                Fixture,
-                MatchPlayerStat,
-                MatchLineup,
-                MatchStat,
-            ).join(
-                MatchLineup,
-                MatchLineup.match_id == Fixture.match_id
-            ).outerjoin(
+        stmt = (
+            select(
+                Fixture.match_id,
+                Fixture.season,
+                Fixture.kickoff_time,
+                Fixture.home_id,
+                Fixture.away_id,
+                func.coalesce(MatchStat.home_possession, 50).label("home_possession"),
+                func.coalesce(MatchStat.away_possession, 50).label("away_possession"),
+                MatchLineup.team_id,
+                MatchLineup.player_id,
+                MatchLineup.player_name,
+                MatchLineup.role,
+                MatchLineup.position,
+                MatchLineup.rating.label("upstream_rating"),
+                MatchPlayerStat.minutes_played.label("minutes"),
+                (func.coalesce(MatchPlayerStat.goals, 0) - func.coalesce(MatchPlayerStat.goals_penalty, 0)).label("non_penalty_goals"),
+                MatchPlayerStat.npxg,
+                MatchPlayerStat.xg,
+                MatchPlayerStat.xgot,
+                MatchPlayerStat.xa,
+                MatchPlayerStat.shots,
+                MatchPlayerStat.shots_on_target,
+                MatchPlayerStat.passes,
+                MatchPlayerStat.passes_completed,
+                MatchPlayerStat.long_passes,
+                MatchPlayerStat.long_passes_completed,
+                MatchPlayerStat.passes_into_final_third,
+                MatchPlayerStat.chances_created,
+                MatchPlayerStat.assists,
+                MatchPlayerStat.dispossessed,
+                MatchPlayerStat.tackles,
+                MatchPlayerStat.blocks,
+                MatchPlayerStat.clearances,
+                MatchPlayerStat.interceptions,
+                MatchPlayerStat.recoveries,
+                MatchPlayerStat.aerials,
+                MatchPlayerStat.aerials_won,
+                MatchPlayerStat.fouls_committed,
+                MatchPlayerStat.fouls_suffered,
+                MatchPlayerStat.dribbled_past,
+                MatchPlayerStat.rating.label("fotmob_rating"),
+            )
+            .join(MatchLineup, MatchLineup.match_id == Fixture.match_id)
+            .outerjoin(
                 MatchPlayerStat,
                 and_(
                     MatchPlayerStat.match_id == MatchLineup.match_id,
-                    MatchPlayerStat.player_id == MatchLineup.player_id
-                )
-            ).outerjoin(
-                MatchStat,
-                MatchStat.match_id == Fixture.match_id
-            ).filter(
+                    MatchPlayerStat.player_id == MatchLineup.player_id,
+                ),
+            )
+            .outerjoin(MatchStat, MatchStat.match_id == Fixture.match_id)
+            .where(
                 Fixture.league_id.in_(self.league_ids),
                 Fixture.season >= self.min_season,
                 Fixture.season <= self.max_season,
                 Fixture.match_status.in_(MatchStatus.natural_finals()),
                 MatchLineup.role == LineupRole.STARTER.value,
                 MatchLineup.position.notin_(Position.get_goalkeeper()),
-            ).order_by(Fixture.kickoff_time, MatchLineup.player_id).all()
+            )
+            .order_by(Fixture.kickoff_time, MatchLineup.player_id)
+        )
 
-            records = []
-            for fixture, player_stat, lineup, match_stat in results:
-                record = {
-                    "match_id": fixture.match_id,
-                    "season": fixture.season,
-                    "kickoff_time": fixture.kickoff_time,
-                    "home_id": fixture.home_id,
-                    "away_id": fixture.away_id,
-                    "home_possession": match_stat.home_possession if match_stat else 50,
-                    "away_possession": match_stat.away_possession if match_stat else 50,
-                    "team_id": lineup.team_id,
-                    "player_id": lineup.player_id,
-                    "player_name": lineup.player_name,
-                    "role": lineup.role,
-                    "position": lineup.position,
-                    "minutes": player_stat.minutes_played if player_stat else None,
-                    "non_penalty_goals": ((player_stat.goals or 0) - (player_stat.goals_penalty or 0)) if player_stat else None,
-                    "npxg": player_stat.npxg if player_stat else None,
-                    "xg": player_stat.xg if player_stat else None,
-                    "xgot": player_stat.xgot if player_stat else None,
-                    "xa": player_stat.xa if player_stat else None,
-                    "shots": player_stat.shots if player_stat else None,
-                    "shots_on_target": player_stat.shots_on_target if player_stat else None,
-                    "passes": player_stat.passes if player_stat else None,
-                    "passes_completed": player_stat.passes_completed if player_stat else None,
-                    "long_passes": player_stat.long_passes if player_stat else None,
-                    "long_passes_completed": player_stat.long_passes_completed if player_stat else None,
-                    "passes_into_final_third": player_stat.passes_into_final_third if player_stat else None,
-                    "chances_created": player_stat.chances_created if player_stat else None,
-                    "assists": player_stat.assists if player_stat else None,
-                    "dispossessed": player_stat.dispossessed if player_stat else None,
-                    "tackles": player_stat.tackles if player_stat else None,
-                    "blocks": player_stat.blocks if player_stat else None,
-                    "clearances": player_stat.clearances if player_stat else None,
-                    "interceptions": player_stat.interceptions if player_stat else None,
-                    "recoveries": player_stat.recoveries if player_stat else None,
-                    "aerials": player_stat.aerials if player_stat else None,
-                    "aerials_won": player_stat.aerials_won if player_stat else None,
-                    "fouls_committed": player_stat.fouls_committed if player_stat else None,
-                    "fouls_suffered": player_stat.fouls_suffered if player_stat else None,
-                    "dribbled_past": player_stat.dribbled_past if player_stat else None,
-                    "fotmob_rating": player_stat.rating if player_stat else None,
-                    "upstream_rating": lineup.rating,
-                }
-                records.append(record)
+        with self.db.get_session() as session:
+            result = session.execute(stmt)
+            rows = result.fetchall()
+            column_names = list(result.keys())
 
-            return pd.DataFrame(records) if records else None
+        if not rows:
+            return None
+
+        df = pd.DataFrame(rows, columns=column_names)
+        float_cols = df.select_dtypes(include="float64").columns.tolist()
+        df[float_cols] = df[float_cols].astype("float32")
+        return df
 
     def _build(self, df: pd.DataFrame) -> pd.DataFrame:
         outfield_counts = df.groupby(["match_id", "team_id"]).size()
@@ -275,18 +276,23 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
             self.logger.error(f"Invalid outfield starters:\n{invalid_teams.reset_index().to_string(index=False)}")
             raise ValueError("Outfield starters count is not 10")
 
+        df.drop(columns=["season", "player_name", "role"], inplace=True)
+
         per90_cols = [f"{col}_per_90" for col in self.PLAYED_TIME_ADJ]
         df[per90_cols] = np.where(
             df["minutes"].values[:, None] >= 30,
             df[self.PLAYED_TIME_ADJ].astype(float).values * 90 / df["minutes"].values[:, None],
             np.nan,
         )
+        df.drop(columns=self.PLAYED_TIME_ADJ + ["minutes"], inplace=True)
 
         opp_possession = np.where(df["team_id"] == df["home_id"], df["away_possession"], df["home_possession"]).clip(1)
         adj_cols = [f"{col}_adj" for col in self.POSSESSION_ADJ]
         df[adj_cols] = df[self.POSSESSION_ADJ].values * 50.0 / opp_possession[:, None]
+        df.drop(columns=self.POSSESSION_ADJ + ["home_possession", "away_possession"], inplace=True)
 
         df["combined_rating"] = df[["fotmob_rating", "upstream_rating"]].mean(axis=1, skipna=True).fillna(6.0)
+        df.drop(columns=["fotmob_rating", "upstream_rating"], inplace=True)
 
         group_by_player = df.groupby("player_id", observed=True, group_keys=False)
 
@@ -305,6 +311,8 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
             .transform(lambda group: group.ewm(span=20, min_periods=3, adjust=False).mean().shift(1))
             .values
         )
+        ema_source_cols = per90_cols + adj_cols + ["combined_rating", "kickoff_time", "player_id"]
+        df.drop(columns=[col for col in ema_source_cols if col in df.columns], inplace=True)
 
         thresholds = self.quantiler.build(df)
         form_features = [
@@ -319,10 +327,14 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
 
         impute_cols = [col for col, _ in form_features + ability_features]
         QuantileImputer(df).impute_by_group(impute_cols, quantile=0.5, group_by="position")
+        df.drop(columns=ema_cols_5 + ema_cols_20 + ["position"], inplace=True)
 
         df["weighted_rest_days"] = df["rest_days"] * df["rating_ability"]
+        df.drop(columns=["rest_days"], inplace=True)
 
+        match_ids_df = df[["match_id", "home_id", "away_id"]].drop_duplicates("match_id")
         team_stats = df.groupby(["match_id", "team_id"]).agg(**self.OUTFIELD_AGG).reset_index()
+        del df
 
         team_stats["outfield_rest_days"] = team_stats["weighted_rest_days_sum"] / team_stats["rating_ability_sum"]
         team_stats = team_stats.drop(columns=["weighted_rest_days_sum", "rating_ability_sum"])
@@ -330,9 +342,10 @@ class OutfieldPlayerTrainFeatureBuilder(OutfieldPlayerFeatureBuilder):
         team_stat_cols = [col for col in team_stats.columns if col not in {"match_id", "team_id"}]
         home_stats = team_stats.rename(columns={**{col: f"home_{col}" for col in team_stat_cols}, "team_id": "home_id"})
         away_stats = team_stats.rename(columns={**{col: f"away_{col}" for col in team_stat_cols}, "team_id": "away_id"})
+        del team_stats
 
         match_df = (
-            df[["match_id", "home_id", "away_id"]].drop_duplicates("match_id")
+            match_ids_df
             .merge(home_stats, on=["match_id", "home_id"], how="inner")
             .merge(away_stats, on=["match_id", "away_id"], how="inner")
         )
@@ -560,54 +573,55 @@ class GoalkeeperTrainFeatureBuilder(GoalkeeperFeatureBuilder):
         self.max_season = max_season
 
     def _load(self) -> Optional[pd.DataFrame]:
-        with self.db.get_session() as session:
-            results = session.query(
-                Fixture,
-                MatchPlayerStat,
-                MatchLineup,
-                MatchStat,
-            ).join(
-                MatchLineup,
-                MatchLineup.match_id == Fixture.match_id
-            ).outerjoin(
+        stmt = (
+            select(
+                Fixture.match_id,
+                Fixture.season,
+                Fixture.kickoff_time,
+                Fixture.home_id,
+                Fixture.away_id,
+                func.coalesce(MatchStat.home_possession, 50).label("home_possession"),
+                func.coalesce(MatchStat.away_possession, 50).label("away_possession"),
+                MatchLineup.team_id,
+                MatchLineup.player_id,
+                MatchLineup.position,
+                MatchPlayerStat.minutes_played.label("minutes"),
+                MatchPlayerStat.goals_prevented,
+                MatchPlayerStat.keeper_sweeper,
+                MatchPlayerStat.keeper_high_claim,
+            )
+            .join(MatchLineup, MatchLineup.match_id == Fixture.match_id)
+            .outerjoin(
                 MatchPlayerStat,
                 and_(
                     MatchPlayerStat.match_id == MatchLineup.match_id,
-                    MatchPlayerStat.player_id == MatchLineup.player_id
-                )
-            ).outerjoin(
-                MatchStat,
-                MatchStat.match_id == Fixture.match_id
-            ).filter(
+                    MatchPlayerStat.player_id == MatchLineup.player_id,
+                ),
+            )
+            .outerjoin(MatchStat, MatchStat.match_id == Fixture.match_id)
+            .where(
                 Fixture.league_id.in_(self.league_ids),
                 Fixture.season >= self.min_season,
                 Fixture.season <= self.max_season,
                 Fixture.match_status.in_(MatchStatus.natural_finals()),
                 MatchLineup.role == LineupRole.STARTER.value,
                 MatchLineup.position.in_(Position.get_goalkeeper()),
-            ).order_by(Fixture.kickoff_time, MatchLineup.player_id).all()
+            )
+            .order_by(Fixture.kickoff_time, MatchLineup.player_id)
+        )
 
-            records = []
-            for fixture, player_stat, lineup, match_stat in results:
-                record = {
-                    "match_id": fixture.match_id,
-                    "season": fixture.season,
-                    "kickoff_time": fixture.kickoff_time,
-                    "home_id": fixture.home_id,
-                    "away_id": fixture.away_id,
-                    "home_possession": match_stat.home_possession if match_stat else 50,
-                    "away_possession": match_stat.away_possession if match_stat else 50,
-                    "team_id": lineup.team_id,
-                    "player_id": lineup.player_id,
-                    "position": lineup.position,
-                    "minutes": player_stat.minutes_played if player_stat else None,
-                    "goals_prevented": player_stat.goals_prevented if player_stat else None,
-                    "keeper_sweeper": player_stat.keeper_sweeper if player_stat else None,
-                    "keeper_high_claim": player_stat.keeper_high_claim if player_stat else None,
-                }
-                records.append(record)
+        with self.db.get_session() as session:
+            result = session.execute(stmt)
+            rows = result.fetchall()
+            column_names = list(result.keys())
 
-            return pd.DataFrame(records) if records else None
+        if not rows:
+            return None
+
+        df = pd.DataFrame(rows, columns=column_names)
+        float_cols = df.select_dtypes(include="float64").columns.tolist()
+        df[float_cols] = df[float_cols].astype("float32")
+        return df
 
     def _build(self, df: pd.DataFrame) -> pd.DataFrame:
         gk_counts = df.groupby(["match_id", "team_id"]).size()
