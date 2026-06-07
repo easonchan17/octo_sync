@@ -1,4 +1,5 @@
-from pydantic import BaseModel, computed_field, Field
+from pydantic import BaseModel, computed_field, Field, model_validator
+from core.services.name_i18n_service import get_name_i18n_service
 from typing import List, TypeVar, Generic, Optional, Dict, Any
 from core.types.enums import MatchStatus
 from datetime import datetime
@@ -59,6 +60,13 @@ class LeagueResponse(BaseModel):
     name: str
     priority: int
 
+    @model_validator(mode='after')
+    def translate_name(self) -> 'LeagueResponse':
+        zh = get_name_i18n_service().get(str(self.id))
+        if zh:
+            self.name = zh
+        return self
+
     @computed_field
     @property
     def logo(self) -> str:
@@ -87,6 +95,17 @@ class BaseMatchResponse(BaseModel):
     home_score: Optional[int] = None
     away_score: Optional[int] = None
     match_status: int = Field(exclude=True)
+
+    @model_validator(mode='after')
+    def translate_team_names(self) -> 'BaseMatchResponse':
+        i18n = get_name_i18n_service()
+        zh_home = i18n.get(self.home_code)
+        zh_away = i18n.get(self.away_code)
+        if zh_home:
+            self.home_team = zh_home
+        if zh_away:
+            self.away_team = zh_away
+        return self
 
     @computed_field
     @property
@@ -128,6 +147,13 @@ class FixtureResponse(BaseModel):
     league_name: str
     priority: int
     matches: List[MatchResponse]
+
+    @model_validator(mode='after')
+    def translate_league_name(self) -> 'FixtureResponse':
+        zh = get_name_i18n_service().get(str(self.league_id))
+        if zh:
+            self.league_name = zh
+        return self
 
     @computed_field
     @property
@@ -225,6 +251,14 @@ class RecentMatchResponse(BaseMatchResponse):
     ref_league_id: Optional[int] = Field(default=None, serialization_alias='league_id')
     league_name: str
 
+    @model_validator(mode='after')
+    def translate_league_name(self) -> 'RecentMatchResponse':
+        if self.ref_league_id:
+            zh = get_name_i18n_service().get(str(self.ref_league_id))
+            if zh:
+                self.league_name = zh
+        return self
+
     @computed_field
     @property
     def league_logo(self) -> Optional[str]:
@@ -307,6 +341,14 @@ class StandingResponse(BaseModel):
     x_position: Optional[int] = Field(default=None, validation_alias='xPosition')
     x_position_diff: Optional[int] = Field(default=None, validation_alias='xPositionDiff')
 
+    @model_validator(mode='after')
+    def translate_team_name(self) -> 'StandingResponse':
+        if self.team_code:
+            zh = get_name_i18n_service().get(self.team_code)
+            if zh:
+                self.team_name = zh
+        return self
+
     @computed_field
     @property
     def team_logo(self) -> Optional[str]:
@@ -370,6 +412,14 @@ class MatchDetailResponse(MatchResponse):
     league_id: Optional[int] = None
     league_name: Optional[str] = None
     detail: MatchDetail
+
+    @model_validator(mode='after')
+    def translate_league_name(self) -> 'MatchDetailResponse':
+        if self.league_id:
+            zh = get_name_i18n_service().get(str(self.league_id))
+            if zh:
+                self.league_name = zh
+        return self
 
     @computed_field
     @property

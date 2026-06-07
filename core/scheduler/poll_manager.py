@@ -7,8 +7,9 @@ from core.scheduler.task_registry import TaskRegistry, TaskType
 
 import core.tasks.sync.fotmob      # noqa: F401
 import core.tasks.sync.oddsportal  # noqa: F401
-import core.tasks.sync.sync_asset  # noqa: F401
-import core.tasks.sync.scan_asset  # noqa: F401
+import core.tasks.sync.sync_asset     # noqa: F401
+import core.tasks.sync.scan_asset     # noqa: F401
+import core.tasks.sync.scan_name_i18n # noqa: F401
 
 class PollManager:
     def __init__(self) -> None:
