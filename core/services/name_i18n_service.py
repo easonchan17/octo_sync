@@ -16,11 +16,11 @@ class NameI18nService(BaseService):
 
     def get(self, entity_code: str) -> Optional[str]:
         if entity_code in self._cache:
-            return self._cache[entity_code]
+            return self._cache[entity_code] or None
         row = self.name_i18n_dao.get_zh_name(entity_code)
         if row:
             self._cache[entity_code] = row.name
-            return row.name
+            return row.name or None
         return None
 
 
