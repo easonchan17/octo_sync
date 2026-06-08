@@ -130,6 +130,17 @@ training:
           - "shots_conversion_ema_5_diff"
           - "home_big_chances_missed_rate_ema_5"
           - "home_point_sum_5"
+          - "away_big_chances_ema_5"
+          - "away_npxg_per_shot_ema_5"
+          - "away_keeper_saves_ema_5"
+          - "away_keeper_performance_ema_5"
+          - "home_tackles_ema_5"
+          - "away_shots_acc_ema_5"
+          - "home_opp_half_pass_rate_ema_5"
+          - "progression_form_sum_diff"
+          - "finish_form_sum_diff"
+          - "away_aerial_ability_max"
+          - "away_keeper_sweeper_per_90_adj_ema_20"
 
       model:
         name: xgboost
@@ -154,7 +165,7 @@ training:
           cv: 5
           search_spaces:
             max_depth: { type: Integer, low: 2, high: 8 }
-            learning_rate: { type: Real, low: 0.001, high: 0.05, prior: log-uniform }
+            learning_rate: { type: Real, low: 0.001, high: 0.1, prior: log-uniform }
             min_child_weight: { type: Integer, low: 8, high: 60 }
             gamma: { type: Real, low: 1.0, high: 10.0 }
             subsample: { type: Real, low: 0.3, high: 0.8 }
