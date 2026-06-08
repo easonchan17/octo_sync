@@ -107,7 +107,7 @@ class BaseMatchResponse(BaseModel):
     match_status: int = Field(exclude=True)
 
     @model_validator(mode='after')
-    def localize_round_group(self) -> 'BaseMatchResponse':
+    def localize_teams(self) -> 'BaseMatchResponse':
         i18n = get_name_i18n_service()
         zh_home = i18n.get(self.home_code)
         zh_away = i18n.get(self.away_code)
@@ -275,7 +275,7 @@ class RecentMatchResponse(BaseMatchResponse):
     league_name: str
 
     @model_validator(mode='after')
-    def localize_round_group(self) -> 'RecentMatchResponse':
+    def localize_league(self) -> 'RecentMatchResponse':
         if self.ref_league_id:
             zh = get_name_i18n_service().get(str(self.ref_league_id))
             if zh:
@@ -444,7 +444,7 @@ class MatchDetailResponse(MatchResponse):
     detail: MatchDetail
 
     @model_validator(mode='after')
-    def localize_round_group(self) -> 'MatchDetailResponse':
+    def localize_league(self) -> 'MatchDetailResponse':
         if self.league_id:
             zh = get_name_i18n_service().get(str(self.league_id))
             if zh:
