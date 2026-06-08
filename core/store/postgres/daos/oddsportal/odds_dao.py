@@ -253,17 +253,21 @@ class OddsDao(BaseDao):
             match_code = match_code_row[0]
 
             one_x_two_avg_row = session.execute(text("""
+                WITH bk_probs AS (
+                    SELECT
+                        (1.0/closing_home_odds) / (1.0/closing_home_odds + 1.0/closing_draw_odds + 1.0/closing_away_odds) AS close_home_prob,
+                        (1.0/closing_draw_odds) / (1.0/closing_home_odds + 1.0/closing_draw_odds + 1.0/closing_away_odds) AS close_draw_prob,
+                        (1.0/closing_away_odds) / (1.0/closing_home_odds + 1.0/closing_draw_odds + 1.0/closing_away_odds) AS close_away_prob
+                    FROM oddsportal.odds_1x2
+                    WHERE match_code = :match_code
+                        AND betting_type_id = 1 AND scope_id = 2 AND quote_type = 'back'
+                        AND closing_home_odds > 1.0 AND closing_draw_odds > 1.0 AND closing_away_odds > 1.0
+                )
                 SELECT
-                    ROUND(AVG(opening_home_odds)::numeric, 2) AS avg_open_home,
-                    ROUND(AVG(opening_draw_odds)::numeric, 2) AS avg_open_draw,
-                    ROUND(AVG(opening_away_odds)::numeric, 2) AS avg_open_away,
-                    ROUND(AVG(closing_home_odds)::numeric, 2) AS avg_close_home,
-                    ROUND(AVG(closing_draw_odds)::numeric, 2) AS avg_close_draw,
-                    ROUND(AVG(closing_away_odds)::numeric, 2) AS avg_close_away
-                FROM oddsportal.odds_1x2
-                WHERE match_code = :match_code
-                    AND betting_type_id = 1 AND scope_id = 2 AND quote_type = 'back'
-                    AND closing_home_odds > 1.0 AND closing_draw_odds > 1.0 AND closing_away_odds > 1.0
+                    ROUND(AVG(close_home_prob)::numeric, 4) AS avg_close_home,
+                    ROUND(AVG(close_draw_prob)::numeric, 4) AS avg_close_draw,
+                    ROUND(AVG(close_away_prob)::numeric, 4) AS avg_close_away
+                FROM bk_probs
             """), {"match_code": match_code}).fetchone()
 
             one_x_two_sharp_rows = session.execute(text("""
@@ -309,18 +313,22 @@ class OddsDao(BaseDao):
                     GROUP BY handicap
                     ORDER BY COUNT(*) DESC
                     LIMIT 1
+                ),
+                ah_probs AS (
+                    SELECT
+                        (1.0/closing_home_odds) / (1.0/closing_home_odds + 1.0/closing_away_odds) AS close_home_prob,
+                        (1.0/closing_away_odds) / (1.0/closing_home_odds + 1.0/closing_away_odds) AS close_away_prob
+                    FROM oddsportal.odds_ah
+                    WHERE match_code = :match_code
+                        AND betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
+                        AND handicap = (SELECT main_line FROM global_main_line)
+                        AND closing_home_odds > 1.0 AND closing_away_odds > 1.0
                 )
                 SELECT
                     (SELECT main_line FROM global_main_line) AS main_line,
-                    ROUND(AVG(ah.opening_home_odds)::numeric, 2) AS avg_open_home,
-                    ROUND(AVG(ah.opening_away_odds)::numeric, 2) AS avg_open_away,
-                    ROUND(AVG(ah.closing_home_odds)::numeric, 2) AS avg_close_home,
-                    ROUND(AVG(ah.closing_away_odds)::numeric, 2) AS avg_close_away
-                FROM oddsportal.odds_ah ah
-                WHERE ah.match_code = :match_code
-                    AND ah.betting_type_id = 5 AND ah.scope_id = 2 AND ah.quote_type = 'back'
-                    AND ah.handicap = (SELECT main_line FROM global_main_line)
-                    AND ah.closing_home_odds > 1.0 AND ah.closing_away_odds > 1.0
+                    ROUND(AVG(close_home_prob)::numeric, 4) AS avg_close_home,
+                    ROUND(AVG(close_away_prob)::numeric, 4) AS avg_close_away
+                FROM ah_probs
             """), {"match_code": match_code}).fetchone()
 
             ah_sharp_rows = session.execute(text("""
