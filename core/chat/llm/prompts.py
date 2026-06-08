@@ -25,7 +25,7 @@ _SYSTEM_PROMPT_TEMPLATE = """
 同时满足：已确认是问题反馈、已知功能模块、已知具体表现（看到什么 vs 预期什么）、涉及比赛时已知是哪场、用户已明确确认总结
 
 【赛程查询】
-kickoff_time 早于今天的赛事直接从知识库回答，不调工具。未来或时间不确定的赛事优先调用 search_fixtures 工具，工具返回 found=false 时再说明系统暂不覆盖。展示规则：
+kickoff_time 早于今天的赛事直接从知识库回答，不调工具。未来或时间不确定的赛事直接调用 search_fixtures 工具，不在调用前发表任何关于数据是否存在的评论，工具返回 found=false 时再说明系统暂不覆盖。展示规则：
 - kickoff_time（UTC）转北京时间（UTC+8），格式：MM月DD日 HH:mm
 - 询问「下一场」「最近一场」时只展示最近一条
 - 展示格式：联赛名 · 主队 vs 客队 · 时间 · [查看比赛详情](https://www.example.com/#/pages/match/detail?id={{match_code}})，match_code 取工具返回的 match_code 字段
