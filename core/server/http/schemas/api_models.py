@@ -1,7 +1,7 @@
 from pydantic import BaseModel, computed_field, Field, field_serializer
 from core.services.name_i18n_service import get_name_i18n_service
 from typing import List, TypeVar, Generic, Optional, Dict, Any
-from core.types.enums import MatchStatus, SHARP_BOOKMAKER_NAMES
+from core.types.enums import MatchStatus, BookmakerID
 from datetime import datetime
 from enum import IntEnum
 
@@ -19,6 +19,11 @@ KNOCKOUT_STAGE_ZH = {
     "bronze":  "季军赛",
     "final":   "决赛",
     "playoff": "附加赛",
+}
+
+BOOKMAKER_DISPLAY_NAMES: Dict[int, str] = {
+    BookmakerID.BETFAIR_EXCHANGE.value: "动态权重",
+    BookmakerID.BETINASIA.value: "基准模型",
 }
 
 
@@ -287,7 +292,7 @@ class OddsItemResponse(BaseModel):
     @computed_field
     @property
     def name(self) -> str:
-        return SHARP_BOOKMAKER_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "均值"
+        return BOOKMAKER_DISPLAY_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "市场期望"
 
 class OddsEuMarketResponse(BaseModel):
     label: str = "常规"
@@ -297,8 +302,8 @@ class OddsEuMarketResponse(BaseModel):
 
 
 class OddsAhMarketResponse(BaseModel):
-    label: str = "让步"
-    columns: List[str] = ["主队", "条件", "客队"]
+    label: str = "让球"
+    columns: List[str] = ["主队", "让", "客队"]
     avg: Optional[OddsItemResponse] = None
     bookmakers: List[OddsItemResponse] = []
 
