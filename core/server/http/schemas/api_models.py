@@ -1,4 +1,4 @@
-from pydantic import BaseModel, computed_field, Field, model_validator
+from pydantic import BaseModel, computed_field, Field, field_serializer
 from core.services.name_i18n_service import get_name_i18n_service
 from typing import List, TypeVar, Generic, Optional, Dict, Any
 from core.types.enums import MatchStatus
@@ -70,12 +70,9 @@ class LeagueResponse(BaseModel):
     name: str
     priority: int
 
-    @model_validator(mode='after')
-    def localize_league(self) -> 'LeagueResponse':
-        zh = get_name_i18n_service().get(str(self.id))
-        if zh:
-            self.name = zh
-        return self
+    @field_serializer('name')
+    def serialize_name(self, value: str) -> str:
+        return get_name_i18n_service().get(str(self.id)) or value
 
     @computed_field
     @property
@@ -106,16 +103,13 @@ class BaseMatchResponse(BaseModel):
     away_score: Optional[int] = None
     match_status: int = Field(exclude=True)
 
-    @model_validator(mode='after')
-    def localize_teams(self) -> 'BaseMatchResponse':
-        i18n = get_name_i18n_service()
-        zh_home = i18n.get(self.home_code)
-        zh_away = i18n.get(self.away_code)
-        if zh_home:
-            self.home_team = zh_home
-        if zh_away:
-            self.away_team = zh_away
-        return self
+    @field_serializer('home_team')
+    def serialize_home_team(self, value: str) -> str:
+        return get_name_i18n_service().get(self.home_code) or value
+
+    @field_serializer('away_team')
+    def serialize_away_team(self, value: str) -> str:
+        return get_name_i18n_service().get(self.away_code) or value
 
     @computed_field
     @property
@@ -151,18 +145,16 @@ class MatchResponse(BaseMatchResponse):
     avg_ah_home_odds: Optional[float] = None
     avg_ah_away_odds: Optional[float] = None
 
+    @field_serializer('round')
+    def serialize_round(self, value: Optional[str]) -> Optional[str]:
+        if not value:
+            return value
+        zh = KNOCKOUT_STAGE_ZH.get(value)
+        return zh if zh else f"第{value}轮"
 
-    @model_validator(mode='after')
-    def localize_round_group(self) -> 'MatchResponse':
-        if self.group_name:
-            self.group_name = f"{self.group_name}组"
-        if self.round:
-            zh = KNOCKOUT_STAGE_ZH.get(self.round)
-            if zh:
-                self.round = zh
-            else:
-                self.round = f"第{self.round}轮"
-        return self
+    @field_serializer('group_name')
+    def serialize_group_name(self, value: Optional[str]) -> Optional[str]:
+        return f"{value}组" if value else value
 
 
 class FixtureResponse(BaseModel):
@@ -171,12 +163,9 @@ class FixtureResponse(BaseModel):
     priority: int
     matches: List[MatchResponse]
 
-    @model_validator(mode='after')
-    def localize_league(self) -> 'FixtureResponse':
-        zh = get_name_i18n_service().get(str(self.league_id))
-        if zh:
-            self.league_name = zh
-        return self
+    @field_serializer('league_name')
+    def serialize_league_name(self, value: str) -> str:
+        return get_name_i18n_service().get(str(self.league_id)) or value
 
     @computed_field
     @property
@@ -274,13 +263,11 @@ class RecentMatchResponse(BaseMatchResponse):
     ref_league_id: Optional[int] = Field(default=None, serialization_alias='league_id')
     league_name: str
 
-    @model_validator(mode='after')
-    def localize_league(self) -> 'RecentMatchResponse':
+    @field_serializer('league_name')
+    def serialize_league_name(self, value: str) -> str:
         if self.ref_league_id:
-            zh = get_name_i18n_service().get(str(self.ref_league_id))
-            if zh:
-                self.league_name = zh
-        return self
+            return get_name_i18n_service().get(str(self.ref_league_id)) or value
+        return value
 
     @computed_field
     @property
@@ -364,13 +351,11 @@ class StandingResponse(BaseModel):
     x_position: Optional[int] = Field(default=None, validation_alias='xPosition')
     x_position_diff: Optional[int] = Field(default=None, validation_alias='xPositionDiff')
 
-    @model_validator(mode='after')
-    def localize_team(self) -> 'StandingResponse':
+    @field_serializer('team_name')
+    def serialize_team_name(self, value: Optional[str]) -> Optional[str]:
         if self.team_code:
-            zh = get_name_i18n_service().get(self.team_code)
-            if zh:
-                self.team_name = zh
-        return self
+            return get_name_i18n_service().get(self.team_code) or value
+        return value
 
     @computed_field
     @property
@@ -415,12 +400,9 @@ class KnockoutRoundResponse(BaseModel):
     stage: str
     matchups: List[KnockoutMatchupResponse]
 
-    @model_validator(mode='after')
-    def localize_stage(self) -> 'KnockoutRoundResponse':
-        zh = KNOCKOUT_STAGE_ZH.get(self.stage)
-        if zh:
-            self.stage = zh
-        return self
+    @field_serializer('stage')
+    def serialize_stage(self, value: str) -> str:
+        return KNOCKOUT_STAGE_ZH.get(value, value)
 
 
 class MatchDetail(BaseModel):
@@ -443,13 +425,11 @@ class MatchDetailResponse(MatchResponse):
     league_name: Optional[str] = None
     detail: MatchDetail
 
-    @model_validator(mode='after')
-    def localize_league(self) -> 'MatchDetailResponse':
+    @field_serializer('league_name')
+    def serialize_league_name(self, value: Optional[str]) -> Optional[str]:
         if self.league_id:
-            zh = get_name_i18n_service().get(str(self.league_id))
-            if zh:
-                self.league_name = zh
-        return self
+            return get_name_i18n_service().get(str(self.league_id)) or value
+        return value
 
     @computed_field
     @property
