@@ -74,14 +74,24 @@ VALUES
     ('oddsportal', 92251, 'Ligue 1', 105, 1, NOW(), NOW()),
     ('oddsportal', 77311,    'World Cup', 301, 1, NOW(), NOW()),
     ('oddsportal', 83711,    'Asian Cup', 601, 1, NOW(), NOW()),
-    ('oddsportal', 10000000, 'EURO',      401, 1, NOW(), NOW())
+    ('oddsportal', 10000000, 'EURO',         401, 1, NOW(), NOW()),
+    ('oddsportal', 10000001, 'Copa America',          501, 1, NOW(), NOW()),
+    ('oddsportal', 10000002, 'Africa Cup of Nations', 701, 1, NOW(), NOW()),
+    ('oddsportal', 10000003, 'CONCACAF Gold Cup',       801, 1, NOW(), NOW()),
+    ('oddsportal', 10000004, 'CONCACAF Nations League', 802, 1, NOW(), NOW()),
+    ('oddsportal', 10000005, 'Finalissima',             901, 1, NOW(), NOW())
 ON CONFLICT (site_name, league_id) DO UPDATE SET
     league_name = EXCLUDED.league_name,
     ref_league_id = EXCLUDED.ref_league_id,
     updated_at = NOW();
 
 
-INSERT INTO oddsportal.leagues (league_id, league_name, page_url, country_name, country_code, created_at, updated_at)
+INSERT INTO oddsportal.leagues (league_id, league_name, page_url, country_name, country_code, status, created_at, updated_at)
 VALUES
-    (10000000, 'EURO', '/football/europe/euro-2024/', 'Europe', '6', NOW(), NOW())
+    (10000000, 'EURO', '/football/europe/euro-2024/', 'Europe', '6', 1, NOW(), NOW()),
+    (10000001, 'Copa America', '/football/south-america/copa-america/', 'South America', '3', 1, NOW(), NOW()),
+    (10000002, 'Africa Cup of Nations', '/football/africa/africa-cup-of-nations/', 'Africa', '1', 1, NOW(), NOW()),
+    (10000003, 'CONCACAF Gold Cup', '/football/north-central-america/gold-cup/', 'North & Central America', '2', 1, NOW(), NOW()),
+    (10000004, 'CONCACAF Nations League', '/football/north-central-america/concacaf-nations-league/', 'North & Central America', '2', 1, NOW(), NOW()),
+    (10000005, 'Finalissima', '/football/world/finalissima/', 'World', '8', 1, NOW(), NOW())
 ON CONFLICT (league_id) DO NOTHING;
