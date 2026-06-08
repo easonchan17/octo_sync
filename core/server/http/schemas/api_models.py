@@ -287,18 +287,18 @@ class OddsItemResponse(BaseModel):
     @computed_field
     @property
     def name(self) -> str:
-        return SHARP_BOOKMAKER_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "均值统计"
+        return SHARP_BOOKMAKER_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "均值"
 
 class OddsEuMarketResponse(BaseModel):
-    label: str = "1x2模型"
+    label: str = "常规"
     columns: List[str] = ["主队", "平局", "客队"]
     avg: Optional[OddsItemResponse] = None
     bookmakers: List[OddsItemResponse] = []
 
 
 class OddsAhMarketResponse(BaseModel):
-    label: str = "让步模型"
-    columns: List[str] = ["主队", "让步基准", "客队"]
+    label: str = "让步"
+    columns: List[str] = ["主队", "条件", "客队"]
     avg: Optional[OddsItemResponse] = None
     bookmakers: List[OddsItemResponse] = []
 
