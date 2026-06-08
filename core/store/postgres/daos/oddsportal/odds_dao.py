@@ -397,12 +397,17 @@ class OddsDao(BaseDao):
                 overround = 1/h + 1/a
                 return [round(1/h/overround, 4), line, round(1/a/overround, 4)]
 
+            def _invert_movement(m):
+                if m == "up":   return "down"
+                if m == "down": return "up"
+                return m
+
             one_x_two_bookmakers = [
                 {
                     "bookmaker_id": row.bookmaker_id,
                     "open": _vig_free_1x2(row.open_home, row.open_draw, row.open_away),
                     "close": _vig_free_1x2(row.close_home, row.close_draw, row.close_away),
-                    "movement": [row.home_movement, row.draw_movement, row.away_movement],
+                    "movement": [_invert_movement(row.home_movement), _invert_movement(row.draw_movement), _invert_movement(row.away_movement)],
                     "change_time": [row.home_change_time, row.draw_change_time, row.away_change_time],
                 }
                 for row in one_x_two_sharp_rows
@@ -413,7 +418,7 @@ class OddsDao(BaseDao):
                     "bookmaker_id": row.bookmaker_id,
                     "open": _vig_free_ah(row.open_home, row.open_line, row.open_away),
                     "close": _vig_free_ah(row.close_home, row.close_line, row.close_away),
-                    "movement": [row.home_movement, None, row.away_movement],
+                    "movement": [_invert_movement(row.home_movement), None, _invert_movement(row.away_movement)],
                     "change_time": [row.home_change_time, None, row.away_change_time],
                 }
                 for row in ah_sharp_rows
