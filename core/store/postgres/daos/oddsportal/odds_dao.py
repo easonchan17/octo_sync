@@ -381,18 +381,10 @@ class OddsDao(BaseDao):
             one_x_two_bookmakers = [
                 {
                     "name": SHARP_BOOKMAKER_NAMES[row.bookmaker_id],
-                    "open_home": row.open_home,
-                    "open_draw": row.open_draw,
-                    "open_away": row.open_away,
-                    "close_home": row.close_home,
-                    "close_draw": row.close_draw,
-                    "close_away": row.close_away,
-                    "home_movement": row.home_movement,
-                    "draw_movement": row.draw_movement,
-                    "away_movement": row.away_movement,
-                    "home_change_time": row.home_change_time,
-                    "draw_change_time": row.draw_change_time,
-                    "away_change_time": row.away_change_time,
+                    "open": [row.open_home, row.open_draw, row.open_away],
+                    "close": [row.close_home, row.close_draw, row.close_away],
+                    "movement": [row.home_movement, row.draw_movement, row.away_movement],
+                    "change_time": [row.home_change_time, row.draw_change_time, row.away_change_time],
                 }
                 for row in one_x_two_sharp_rows
             ]
@@ -400,43 +392,29 @@ class OddsDao(BaseDao):
             ah_bookmakers = [
                 {
                     "name": SHARP_BOOKMAKER_NAMES[row.bookmaker_id],
-                    "open_line": row.open_line,
-                    "open_home": row.open_home,
-                    "open_away": row.open_away,
-                    "close_line": row.close_line,
-                    "close_home": row.close_home,
-                    "close_away": row.close_away,
-                    "home_movement": row.home_movement,
-                    "away_movement": row.away_movement,
-                    "home_change_time": row.home_change_time,
-                    "away_change_time": row.away_change_time,
+                    "open": [row.open_home, row.open_line, row.open_away],
+                    "close": [row.close_home, row.close_line, row.close_away],
+                    "movement": [row.home_movement, None, row.away_movement],
+                    "change_time": [row.home_change_time, None, row.away_change_time],
                 }
                 for row in ah_sharp_rows
             ]
 
-            one_x_two = None
+            eu = None
             if one_x_two_avg_row and one_x_two_avg_row.avg_close_home is not None:
-                one_x_two = {
-                    "avg_open_home": one_x_two_avg_row.avg_open_home,
-                    "avg_open_draw": one_x_two_avg_row.avg_open_draw,
-                    "avg_open_away": one_x_two_avg_row.avg_open_away,
-                    "avg_close_home": one_x_two_avg_row.avg_close_home,
-                    "avg_close_draw": one_x_two_avg_row.avg_close_draw,
-                    "avg_close_away": one_x_two_avg_row.avg_close_away,
+                eu = {
+                    "avg": {"name": "均值", "close": [one_x_two_avg_row.avg_close_home, one_x_two_avg_row.avg_close_draw, one_x_two_avg_row.avg_close_away]},
                     "bookmakers": one_x_two_bookmakers,
                 }
 
             ah = None
             if ah_market_row and ah_market_row.main_line is not None:
                 ah = {
-                    "main_line": ah_market_row.main_line,
-                    "avg_open_home": ah_market_row.avg_open_home,
-                    "avg_open_away": ah_market_row.avg_open_away,
-                    "avg_close_home": ah_market_row.avg_close_home,
-                    "avg_close_away": ah_market_row.avg_close_away,
+                    "avg": {"name": "均值", "close": [ah_market_row.avg_close_home, ah_market_row.main_line, ah_market_row.avg_close_away]},
                     "bookmakers": ah_bookmakers,
                 }
 
-            if one_x_two is None and ah is None:
+            if eu is None and ah is None:
                 return None
-            return {"one_x_two": one_x_two, "ah": ah}
+
+            return {"eu": eu, "ah": ah}
