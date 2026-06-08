@@ -292,7 +292,7 @@ class OddsItemResponse(BaseModel):
     @computed_field
     @property
     def name(self) -> str:
-        return BOOKMAKER_DISPLAY_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "市场期望"
+        return BOOKMAKER_DISPLAY_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "期望"
 
 class OddsEuMarketResponse(BaseModel):
     label: str = "常规"
