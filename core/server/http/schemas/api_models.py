@@ -282,8 +282,8 @@ class RecentMatchResponse(BaseMatchResponse):
 
 class OddsItemResponse(BaseModel):
     bookmaker_id: Optional[int] = Field(default=None, exclude=True)
-    open_label: str = "早期"
-    close_label: str = "最新"
+    open_label: str = "初"
+    close_label: str = "即"
     open: List[Optional[float]] = []
     close: List[Optional[float]] = []
     movement: List[Optional[str]] = []
