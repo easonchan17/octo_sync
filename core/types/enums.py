@@ -42,8 +42,8 @@ class BookmakerID(IntEnum):
     _BOOKMAKER_1205  = 1205
 
 SHARP_BOOKMAKER_NAMES: Dict[int, str] = {
-    BookmakerID.BETFAIR_EXCHANGE.value: "动态权重",
-    BookmakerID.BETINASIA.value: "基准模型",
+    BookmakerID.BETFAIR_EXCHANGE.value: "Betfair",
+    BookmakerID.BETINASIA.value: "Betinasia",
 }
 
 class UpsertStrategy(str, Enum):
