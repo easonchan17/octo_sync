@@ -28,8 +28,8 @@ class FixtureService(BaseService):
         if not fixtures:
             return []
 
-        match_ids = [f.match_id for f in fixtures if f.match_id]
-        odds_summary = self.odds_dao.get_match_odds_summary(match_ids)
+        # match_ids = [f.match_id for f in fixtures if f.match_id]
+        # odds_summary = self.odds_dao.get_match_odds_summary(match_ids)
 
         fixture_groups = {}
         for fixture in fixtures:
@@ -44,8 +44,8 @@ class FixtureService(BaseService):
                     "matches": []
                 }
 
-            fixture_dict = fixture._asdict()
-            fixture_dict.update(odds_summary.get(fixture.match_id, {}))
-            fixture_groups[league_id]["matches"].append(fixture_dict)
+            # fixture_dict = fixture._asdict()
+            # fixture_dict.update(odds_summary.get(fixture.match_id, {}))
+            fixture_groups[league_id]["matches"].append(fixture)
 
         return sorted(fixture_groups.values(), key=lambda x: (-x["priority"], x["league_id"]))
