@@ -275,58 +275,32 @@ class RecentMatchResponse(BaseMatchResponse):
         return LEAGUE_LOGO_URL.format(league_id=self.ref_league_id) if self.ref_league_id else None
 
 
-class Odds1x2BookmakerResponse(BaseModel):
+class OddsItemResponse(BaseModel):
     name: str
-    open_home: Optional[float] = None
-    open_draw: Optional[float] = None
-    open_away: Optional[float] = None
-    close_home: Optional[float] = None
-    close_draw: Optional[float] = None
-    close_away: Optional[float] = None
-    home_movement: Optional[str] = None
-    draw_movement: Optional[str] = None
-    away_movement: Optional[str] = None
-    home_change_time: Optional[datetime] = None
-    draw_change_time: Optional[datetime] = None
-    away_change_time: Optional[datetime] = None
+    open_label: str = "初"
+    close_label: str = "即"
+    open: List[Optional[float]] = []
+    close: List[Optional[float]] = []
+    movement: List[Optional[str]] = []
+    change_time: List[Optional[datetime]] = []
+
+class OddsEuMarketResponse(BaseModel):
+    label: str = "欧指"
+    columns: List[str] = ["主胜", "平局", "客胜"]
+    avg: Optional[OddsItemResponse] = None
+    bookmakers: List[OddsItemResponse] = []
 
 
-class Odds1x2DetailResponse(BaseModel):
-    avg_open_home: Optional[float] = None
-    avg_open_draw: Optional[float] = None
-    avg_open_away: Optional[float] = None
-    avg_close_home: Optional[float] = None
-    avg_close_draw: Optional[float] = None
-    avg_close_away: Optional[float] = None
-    bookmakers: List[Odds1x2BookmakerResponse] = []
-
-
-class OddsAhBookmakerResponse(BaseModel):
-    name: str
-    open_line: Optional[float] = None
-    open_home: Optional[float] = None
-    open_away: Optional[float] = None
-    close_line: Optional[float] = None
-    close_home: Optional[float] = None
-    close_away: Optional[float] = None
-    home_movement: Optional[str] = None
-    away_movement: Optional[str] = None
-    home_change_time: Optional[datetime] = None
-    away_change_time: Optional[datetime] = None
-
-
-class OddsAhDetailResponse(BaseModel):
-    main_line: Optional[float] = None
-    avg_open_home: Optional[float] = None
-    avg_open_away: Optional[float] = None
-    avg_close_home: Optional[float] = None
-    avg_close_away: Optional[float] = None
-    bookmakers: List[OddsAhBookmakerResponse] = []
-
+class OddsAhMarketResponse(BaseModel):
+    label: str = "亚指"
+    columns: List[str] = ["主胜", "让球", "客胜"]
+    avg: Optional[OddsItemResponse] = None
+    bookmakers: List[OddsItemResponse] = []
 
 class OddsDetailResponse(BaseModel):
-    one_x_two: Optional[Odds1x2DetailResponse] = None
-    ah: Optional[OddsAhDetailResponse] = None
+    label: str = "指数"
+    eu: Optional[OddsEuMarketResponse] = None
+    ah: Optional[OddsAhMarketResponse] = None
 
 
 class StandingResponse(BaseModel):
