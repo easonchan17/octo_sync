@@ -79,7 +79,8 @@ VALUES
     ('oddsportal', 10000002, 'Africa Cup of Nations', 701, 1, NOW(), NOW()),
     ('oddsportal', 10000003, 'CONCACAF Gold Cup',       801, 1, NOW(), NOW()),
     ('oddsportal', 10000004, 'CONCACAF Nations League', 802, 1, NOW(), NOW()),
-    ('oddsportal', 10000005, 'Finalissima',             901, 1, NOW(), NOW())
+    ('oddsportal', 10000005, 'Finalissima',             901,  1, NOW(), NOW()),
+    ('oddsportal', 10000006, 'UEFA Nations League',      1001, 1, NOW(), NOW())
 ON CONFLICT (site_name, league_id) DO UPDATE SET
     league_name = EXCLUDED.league_name,
     ref_league_id = EXCLUDED.ref_league_id,
@@ -93,5 +94,6 @@ VALUES
     (10000002, 'Africa Cup of Nations', '/football/africa/africa-cup-of-nations/', 'Africa', '1', 1, NOW(), NOW()),
     (10000003, 'CONCACAF Gold Cup', '/football/north-central-america/gold-cup/', 'North & Central America', '2', 1, NOW(), NOW()),
     (10000004, 'CONCACAF Nations League', '/football/north-central-america/concacaf-nations-league/', 'North & Central America', '2', 1, NOW(), NOW()),
-    (10000005, 'Finalissima', '/football/world/finalissima/', 'World', '8', 1, NOW(), NOW())
+    (10000005, 'Finalissima', '/football/world/finalissima/', 'World', '8', 1, NOW(), NOW()),
+    (10000006, 'UEFA Nations League', '/football/europe/uefa-nations-league/', 'Europe', '6', 1, NOW(), NOW())
 ON CONFLICT (league_id) DO NOTHING;
