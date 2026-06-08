@@ -22,8 +22,8 @@ KNOCKOUT_STAGE_ZH = {
 }
 
 BOOKMAKER_DISPLAY_NAMES: Dict[int, str] = {
-    BookmakerID.BETFAIR_EXCHANGE.value: "动态权重",
-    BookmakerID.BETINASIA.value: "基准模型",
+    BookmakerID.BETFAIR_EXCHANGE.value: "动态概率",
+    BookmakerID.BETINASIA.value: "基准概率",
 }
 
 
