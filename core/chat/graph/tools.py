@@ -40,14 +40,15 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": ToolNames.SEARCH_FIXTURES,
-            "description": "查询指定球队的近期赛程，team_name 必须为英文标准名称",
+            "description": "查询赛程。按球队查询传 team_name；按赛事查询传 league_id（系统赛事ID）。询问首场/开幕战时同时传 first_of_season=true",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "team_name":  {"type": "string", "description": "英文球队名，如 Argentina、Barcelona、Manchester United"},
-                    "days_ahead": {"type": "integer", "description": "查询未来天数，默认 30"}
-                },
-                "required": ["team_name"]
+                    "team_name":       {"type": "string",  "description": "英文球队名，如 Argentina、Barcelona、Manchester United"},
+                    "league_id":       {"type": "integer", "description": "系统赛事ID，如世界杯=301、欧冠=100、欧洲杯=401"},
+                    "first_of_season": {"type": "boolean", "description": "是否查询当前赛季首场，仅 league_id 模式有效，默认 false"},
+                    "days_ahead":      {"type": "integer", "description": "查询未来天数，仅 team_name 模式有效，默认 14"}
+                }
             }
         }
     },
@@ -117,23 +118,37 @@ def _check_prediction(match_code: str) -> str:
     })
 
 
-def _search_fixtures(team_name: str, days_ahead: int = 14) -> str:
-    start_time = datetime.now(timezone.utc)
-    end_time   = start_time + timedelta(days=days_ahead)
-    fixtures   = ActiveFixtureDao().search_by_team_name(team_name, start_time, end_time)
-    if not fixtures:
-        return json.dumps({"found": False, "message": f"未找到 {team_name} 的近期赛程"})
+def _fixture_to_dict(fixture) -> dict:
+    return {
+        "match_code":   fixture.match_code,
+        "league_name":  fixture.league_name,
+        "kickoff_time": str(fixture.kickoff_time),
+        "home_team":    fixture.home_team,
+        "away_team":    fixture.away_team,
+    }
 
-    return json.dumps({
-        "found":    True,
-        "fixtures": [
-            {
-                "match_code":   fixture.match_code,
-                "league_name":  fixture.league_name,
-                "kickoff_time": str(fixture.kickoff_time),
-                "home_team":    fixture.home_team,
-                "away_team":    fixture.away_team,
-            }
-            for fixture in fixtures
-        ]
-    })
+
+def _search_fixtures(team_name: str = None, league_id: int = None, first_of_season: bool = False, days_ahead: int = 14) -> str:
+    dao = ActiveFixtureDao()
+
+    if league_id is not None:
+        if first_of_season:
+            fixture = dao.search_first_of_season_by_ref_league_id(league_id)
+            if not fixture:
+                return json.dumps({"found": False, "message": "未找到该赛事的赛程数据"})
+            return json.dumps({"found": True, "fixtures": [_fixture_to_dict(fixture)]})
+
+        fixtures = dao.search_upcoming_by_ref_league_id(league_id, datetime.now(timezone.utc))
+        if not fixtures:
+            return json.dumps({"found": False, "message": "未找到该赛事的近期赛程"})
+        return json.dumps({"found": True, "fixtures": [_fixture_to_dict(f) for f in fixtures]})
+
+    if team_name is not None:
+        start_time = datetime.now(timezone.utc)
+        end_time   = start_time + timedelta(days=days_ahead)
+        fixtures   = dao.search_by_team_name(team_name, start_time, end_time)
+        if not fixtures:
+            return json.dumps({"found": False, "message": f"未找到 {team_name} 的近期赛程"})
+        return json.dumps({"found": True, "fixtures": [_fixture_to_dict(f) for f in fixtures]})
+
+    return json.dumps({"error": "team_name 或 league_id 必须提供其中之一"})
