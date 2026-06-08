@@ -154,7 +154,6 @@ class MatchResponse(BaseMatchResponse):
 
     @model_validator(mode='after')
     def localize_fields(self) -> 'MatchResponse':
-        super().localize_fields()
         if self.group_name:
             self.group_name = f"{self.group_name}组"
         if self.round:
@@ -277,7 +276,6 @@ class RecentMatchResponse(BaseMatchResponse):
 
     @model_validator(mode='after')
     def localize_fields(self) -> 'RecentMatchResponse':
-        super().localize_fields()
         if self.ref_league_id:
             zh = get_name_i18n_service().get(str(self.ref_league_id))
             if zh:
@@ -447,7 +445,6 @@ class MatchDetailResponse(MatchResponse):
 
     @model_validator(mode='after')
     def localize_fields(self) -> 'MatchDetailResponse':
-        super().localize_fields()
         if self.league_id:
             zh = get_name_i18n_service().get(str(self.league_id))
             if zh:
