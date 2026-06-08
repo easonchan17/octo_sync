@@ -1,6 +1,6 @@
 from datetime import timedelta
 from typing import Dict, Any, Optional
-from core.types.enums import SiteName
+from core.types.enums import SiteName, SHARP_BOOKMAKER_NAMES
 from core.services.base_service import BaseService
 from core.services.league import get_league_service
 from core.store.postgres.daos.fotmob import MatchDao
@@ -112,7 +112,7 @@ class MatchService(BaseService):
                 "away": self.match_dao.get_team_form(away_id, kickoff_time, self.FORM_LIMIT),
             },
             'h2h':       self.match_dao.get_team_h2h(home_id, away_id, kickoff_time - self.H2H_LOOKBACK, kickoff_time),
-            'odds':      self.odds_dao.get_match_odds_detail(match_id),
+            'odds':      self.odds_dao.get_match_odds_detail(match_id, list(SHARP_BOOKMAKER_NAMES.keys())),
             'prediction': self.get_latest_prediction(match_code),
             'knockout':  knockout,
             'standings': standings,
