@@ -71,7 +71,7 @@ class LeagueResponse(BaseModel):
     priority: int
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'LeagueResponse':
+    def localize_league(self) -> 'LeagueResponse':
         zh = get_name_i18n_service().get(str(self.id))
         if zh:
             self.name = zh
@@ -107,7 +107,7 @@ class BaseMatchResponse(BaseModel):
     match_status: int = Field(exclude=True)
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'BaseMatchResponse':
+    def localize_round_group(self) -> 'BaseMatchResponse':
         i18n = get_name_i18n_service()
         zh_home = i18n.get(self.home_code)
         zh_away = i18n.get(self.away_code)
@@ -153,7 +153,7 @@ class MatchResponse(BaseMatchResponse):
 
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'MatchResponse':
+    def localize_round_group(self) -> 'MatchResponse':
         if self.group_name:
             self.group_name = f"{self.group_name}组"
         if self.round:
@@ -172,7 +172,7 @@ class FixtureResponse(BaseModel):
     matches: List[MatchResponse]
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'FixtureResponse':
+    def localize_league(self) -> 'FixtureResponse':
         zh = get_name_i18n_service().get(str(self.league_id))
         if zh:
             self.league_name = zh
@@ -275,7 +275,7 @@ class RecentMatchResponse(BaseMatchResponse):
     league_name: str
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'RecentMatchResponse':
+    def localize_round_group(self) -> 'RecentMatchResponse':
         if self.ref_league_id:
             zh = get_name_i18n_service().get(str(self.ref_league_id))
             if zh:
@@ -365,7 +365,7 @@ class StandingResponse(BaseModel):
     x_position_diff: Optional[int] = Field(default=None, validation_alias='xPositionDiff')
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'StandingResponse':
+    def localize_team(self) -> 'StandingResponse':
         if self.team_code:
             zh = get_name_i18n_service().get(self.team_code)
             if zh:
@@ -416,7 +416,7 @@ class KnockoutRoundResponse(BaseModel):
     matchups: List[KnockoutMatchupResponse]
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'KnockoutRoundResponse':
+    def localize_stage(self) -> 'KnockoutRoundResponse':
         zh = KNOCKOUT_STAGE_ZH.get(self.stage)
         if zh:
             self.stage = zh
@@ -444,7 +444,7 @@ class MatchDetailResponse(MatchResponse):
     detail: MatchDetail
 
     @model_validator(mode='after')
-    def localize_fields(self) -> 'MatchDetailResponse':
+    def localize_round_group(self) -> 'MatchDetailResponse':
         if self.league_id:
             zh = get_name_i18n_service().get(str(self.league_id))
             if zh:
