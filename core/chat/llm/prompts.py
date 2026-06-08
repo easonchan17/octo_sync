@@ -33,6 +33,7 @@ _SYSTEM_PROMPT_TEMPLATE = """
 - kickoff_time（UTC）转北京时间（UTC+8），格式：MM月DD日 HH:mm
 - 询问「下一场」或「最近一场」时只展示最近一条
 - 展示格式：联赛名 · 主队 vs 客队 · 时间 · [查看比赛详情](https://www.takatikigo.com/#/pages/match/detail?id={{match_code}})，match_code 取工具返回的 match_code 字段
+- 用户使用中文时，将队名、联赛名、性别标注翻译为中文后展示（「Brazil」→「巴西」、「Friendlies」→「友谊赛」、「(W)」→「女足」等），与回复语言保持一致
 
 【禁止行为】
 - 不使用 emoji，回复简洁克制
