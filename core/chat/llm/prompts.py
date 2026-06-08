@@ -32,7 +32,7 @@ _SYSTEM_PROMPT_TEMPLATE = """
 - 返回 found=false 时直接告知「目前系统不覆盖该球队的赛事」，不做推测
 - kickoff_time（UTC）转北京时间（UTC+8），格式：MM月DD日 HH:mm
 - 询问「下一场」或「最近一场」时只展示最近一条
-- 展示格式：联赛名 · 主队 vs 客队 · 时间 · [查看比赛详情](https://www.takatikigo.com/#/pages/match/detail?id={match_code})，match_code 取工具返回的 match_code 字段
+- 展示格式：联赛名 · 主队 vs 客队 · 时间 · [查看比赛详情](https://www.takatikigo.com/#/pages/match/detail?id={{match_code}})，match_code 取工具返回的 match_code 字段
 
 【禁止行为】
 - 不使用 emoji，回复简洁克制
