@@ -386,11 +386,23 @@ class OddsDao(BaseDao):
                 ORDER BY c.bookmaker_id
             """), {"match_code": match_code, "bookmaker_ids": bookmaker_ids}).fetchall()
 
+            def _vig_free_1x2(h, d, a):
+                if not (h and d and a and h > 1.0 and d > 1.0 and a > 1.0):
+                    return [None, None, None]
+                overround = 1/h + 1/d + 1/a
+                return [round(1/h/overround, 4), round(1/d/overround, 4), round(1/a/overround, 4)]
+
+            def _vig_free_ah(h, line, a):
+                if not (h and a and h > 1.0 and a > 1.0):
+                    return [None, line, None]
+                overround = 1/h + 1/a
+                return [round(1/h/overround, 4), line, round(1/a/overround, 4)]
+
             one_x_two_bookmakers = [
                 {
                     "name": SHARP_BOOKMAKER_NAMES[row.bookmaker_id],
-                    "open": [row.open_home, row.open_draw, row.open_away],
-                    "close": [row.close_home, row.close_draw, row.close_away],
+                    "open": _vig_free_1x2(row.open_home, row.open_draw, row.open_away),
+                    "close": _vig_free_1x2(row.close_home, row.close_draw, row.close_away),
                     "movement": [row.home_movement, row.draw_movement, row.away_movement],
                     "change_time": [row.home_change_time, row.draw_change_time, row.away_change_time],
                 }
@@ -400,8 +412,8 @@ class OddsDao(BaseDao):
             ah_bookmakers = [
                 {
                     "name": SHARP_BOOKMAKER_NAMES[row.bookmaker_id],
-                    "open": [row.open_home, row.open_line, row.open_away],
-                    "close": [row.close_home, row.close_line, row.close_away],
+                    "open": _vig_free_ah(row.open_home, row.open_line, row.open_away),
+                    "close": _vig_free_ah(row.close_home, row.close_line, row.close_away),
                     "movement": [row.home_movement, None, row.away_movement],
                     "change_time": [row.home_change_time, None, row.away_change_time],
                 }
