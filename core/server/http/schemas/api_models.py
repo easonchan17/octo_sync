@@ -1,7 +1,7 @@
 from pydantic import BaseModel, computed_field, Field, field_serializer
 from core.services.name_i18n_service import get_name_i18n_service
 from typing import List, TypeVar, Generic, Optional, Dict, Any
-from core.types.enums import MatchStatus
+from core.types.enums import MatchStatus, SHARP_BOOKMAKER_NAMES
 from datetime import datetime
 from enum import IntEnum
 
@@ -276,7 +276,7 @@ class RecentMatchResponse(BaseMatchResponse):
 
 
 class OddsItemResponse(BaseModel):
-    name: str
+    bookmaker_id: Optional[int] = Field(default=None, exclude=True)
     open_label: str = "初"
     close_label: str = "即"
     open: List[Optional[float]] = []
@@ -284,21 +284,26 @@ class OddsItemResponse(BaseModel):
     movement: List[Optional[str]] = []
     change_time: List[Optional[datetime]] = []
 
+    @computed_field
+    @property
+    def name(self) -> str:
+        return SHARP_BOOKMAKER_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "均值统计"
+
 class OddsEuMarketResponse(BaseModel):
-    label: str = "欧指"
-    columns: List[str] = ["主胜", "平局", "客胜"]
+    label: str = "1x2模型"
+    columns: List[str] = ["主队", "平局", "客队"]
     avg: Optional[OddsItemResponse] = None
     bookmakers: List[OddsItemResponse] = []
 
 
 class OddsAhMarketResponse(BaseModel):
-    label: str = "亚指"
-    columns: List[str] = ["主胜", "让球", "客胜"]
+    label: str = "让步模型"
+    columns: List[str] = ["主队", "让步基准", "客队"]
     avg: Optional[OddsItemResponse] = None
     bookmakers: List[OddsItemResponse] = []
 
 class OddsDetailResponse(BaseModel):
-    label: str = "指数"
+    label: str = "概率分布"
     eu: Optional[OddsEuMarketResponse] = None
     ah: Optional[OddsAhMarketResponse] = None
 

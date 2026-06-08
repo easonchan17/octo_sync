@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture
 from core.store.postgres.models.oddsportal.odds import OddsRaw, Odds1x2, OddsAh
-from core.types.enums import SHARP_BOOKMAKER_NAMES
 from ..base_dao import BaseDao
 
 
@@ -400,7 +399,7 @@ class OddsDao(BaseDao):
 
             one_x_two_bookmakers = [
                 {
-                    "name": SHARP_BOOKMAKER_NAMES[row.bookmaker_id],
+                    "bookmaker_id": row.bookmaker_id,
                     "open": _vig_free_1x2(row.open_home, row.open_draw, row.open_away),
                     "close": _vig_free_1x2(row.close_home, row.close_draw, row.close_away),
                     "movement": [row.home_movement, row.draw_movement, row.away_movement],
@@ -411,7 +410,7 @@ class OddsDao(BaseDao):
 
             ah_bookmakers = [
                 {
-                    "name": SHARP_BOOKMAKER_NAMES[row.bookmaker_id],
+                    "bookmaker_id": row.bookmaker_id,
                     "open": _vig_free_ah(row.open_home, row.open_line, row.open_away),
                     "close": _vig_free_ah(row.close_home, row.close_line, row.close_away),
                     "movement": [row.home_movement, None, row.away_movement],
@@ -423,14 +422,14 @@ class OddsDao(BaseDao):
             eu = None
             if one_x_two_avg_row and one_x_two_avg_row.avg_close_home is not None:
                 eu = {
-                    "avg": {"name": "均值", "close": [one_x_two_avg_row.avg_close_home, one_x_two_avg_row.avg_close_draw, one_x_two_avg_row.avg_close_away]},
+                    "avg": {"close": [one_x_two_avg_row.avg_close_home, one_x_two_avg_row.avg_close_draw, one_x_two_avg_row.avg_close_away]},
                     "bookmakers": one_x_two_bookmakers,
                 }
 
             ah = None
             if ah_market_row and ah_market_row.main_line is not None:
                 ah = {
-                    "avg": {"name": "均值", "close": [ah_market_row.avg_close_home, ah_market_row.main_line, ah_market_row.avg_close_away]},
+                    "avg": {"close": [ah_market_row.avg_close_home, ah_market_row.main_line, ah_market_row.avg_close_away]},
                     "bookmakers": ah_bookmakers,
                 }
 
