@@ -242,8 +242,7 @@ class OddsDao(BaseDao):
             )
             session.execute(insert(OddsAh).values(records))
 
-    def get_match_odds_detail(self, match_id: int) -> Optional[Dict[str, Any]]:
-        sharp_ids = list(SHARP_BOOKMAKER_NAMES.keys())
+    def get_match_odds_detail(self, match_id: int, bookmaker_ids: List[int]) -> Optional[Dict[str, Any]]:
         with self.db.get_session() as session:
             match_code_row = session.execute(
                 text("SELECT match_code FROM oddsportal.fixtures WHERE ref_match_id = :match_id"),
@@ -285,9 +284,9 @@ class OddsDao(BaseDao):
                 FROM oddsportal.odds_1x2
                 WHERE match_code = :match_code
                     AND betting_type_id = 1 AND scope_id = 2 AND quote_type = 'back'
-                    AND bookmaker_id = ANY(:sharp_ids)
+                    AND bookmaker_id = ANY(:bookmaker_ids)
                 ORDER BY bookmaker_id
-            """), {"match_code": match_code, "sharp_ids": sharp_ids}).fetchall()
+            """), {"match_code": match_code, "bookmaker_ids": bookmaker_ids}).fetchall()
 
             ah_market_row = session.execute(text("""
                 WITH ah_close_main_per_bk AS (
@@ -342,7 +341,7 @@ class OddsDao(BaseDao):
                     FROM oddsportal.odds_ah
                     WHERE match_code = :match_code
                         AND betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
-                        AND bookmaker_id = ANY(:sharp_ids)
+                        AND bookmaker_id = ANY(:bookmaker_ids)
                         AND closing_home_odds > 1.0 AND closing_away_odds > 1.0
                 ),
                 ah_open_main AS (
@@ -358,7 +357,7 @@ class OddsDao(BaseDao):
                     FROM oddsportal.odds_ah
                     WHERE match_code = :match_code
                         AND betting_type_id = 5 AND scope_id = 2 AND quote_type = 'back'
-                        AND bookmaker_id = ANY(:sharp_ids)
+                        AND bookmaker_id = ANY(:bookmaker_ids)
                         AND opening_home_odds > 1.0 AND opening_away_odds > 1.0
                 )
                 SELECT
@@ -377,7 +376,7 @@ class OddsDao(BaseDao):
                 LEFT JOIN ah_open_main o ON o.bookmaker_id = c.bookmaker_id AND o.rn = 1
                 WHERE c.rn = 1
                 ORDER BY c.bookmaker_id
-            """), {"match_code": match_code, "sharp_ids": sharp_ids}).fetchall()
+            """), {"match_code": match_code, "bookmaker_ids": bookmaker_ids}).fetchall()
 
             one_x_two_bookmakers = [
                 {
