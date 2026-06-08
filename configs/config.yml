@@ -77,6 +77,59 @@ training:
           - "away_defense_form"
           - "home_defense_ability_sum"
           - "creativity_ability_sum_diff"
+          - "away_aerial_form_max"
+          - "home_npxga_ema_5"
+          - "ah_line_up_ratio"
+          - "away_gk_rest_days"
+          - "away_keeper_high_claim_per_90_adj_ema_5"
+          - "away_shots_on_target_ema_5"
+          - "home_long_passes_ema_5"
+          - "away_shot_quality_index_ema_5"
+          - "away_rating_form_std"
+          - "away_final_third_entry_rate_ema_5"
+          - "away_points_ema_5_at_home"
+          - "away_schedule_rest_days"
+          - "home_long_passes_acc_ema_5"
+          - "away_prob_open_std"
+          - "away_tackles_ema_5"
+          - "away_rating_form_mean"
+          - "market_vig_open_std"
+          - "defense_form_sum_diff"
+          - "passes_into_final_third_ema_5_diff"
+          - "away_big_chances_missed_rate_ema_5"
+          - "away_venue_dependency"
+          - "home_defense_form_over_ability"
+          - "away_shots_conversion_ema_5"
+          - "defense_ability_sum_diff"
+          - "crosses_acc_ema_5_diff"
+          - "crosses_ema_5_diff"
+          - "home_progression_ability_sum"
+          - "home_rating_form_std"
+          - "home_keeper_high_claim_per_90_adj_ema_20"
+          - "aerial_ability_max_diff"
+          - "home_crosses_acc_ema_5"
+          - "home_venue_dependency"
+          - "home_prob_close_std"
+          - "home_shots_conversion_ema_5"
+          - "home_defense_form"
+          - "away_rating_form_min"
+          - "home_passes_into_final_third_ema_5"
+          - "home_keeper_saves_ema_5"
+          - "away_point_sum_5"
+          - "away_rating_ability_max"
+          - "point_sum_5_diff"
+          - "home_npxg_per_shot_ema_5"
+          - "away_finish_ability_sum"
+          - "home_attack_form_over_ability"
+          - "away_rating_form_max"
+          - "big_chances_missed_rate_ema_5_diff"
+          - "home_progression_form_sum"
+          - "home_shots_acc_ema_5"
+          - "away_interceptions_ema_5"
+          - "npxg_per_shot_ema_5_diff"
+          - "shots_conversion_ema_5_diff"
+          - "home_big_chances_missed_rate_ema_5"
+          - "home_point_sum_5"
 
       model:
         name: xgboost
@@ -102,12 +155,12 @@ training:
           search_spaces:
             max_depth: { type: Integer, low: 2, high: 8 }
             learning_rate: { type: Real, low: 0.001, high: 0.05, prior: log-uniform }
-            min_child_weight: { type: Integer, low: 10, high: 60 }
+            min_child_weight: { type: Integer, low: 8, high: 60 }
             gamma: { type: Real, low: 1.0, high: 10.0 }
-            subsample: { type: Real, low: 0.4, high: 0.8 }
-            colsample_bytree: { type: Real, low: 0.3, high: 0.8 }
+            subsample: { type: Real, low: 0.3, high: 0.8 }
+            colsample_bytree: { type: Real, low: 0.2, high: 0.8 }
             reg_alpha: { type: Real, low: 0.1, high: 10, prior: log-uniform }
-            reg_lambda: { type: Real, low: 2.0, high: 50, prior: log-uniform }
+            reg_lambda: { type: Real, low: 1.0, high: 50, prior: log-uniform }
 
 llm:
   default:
