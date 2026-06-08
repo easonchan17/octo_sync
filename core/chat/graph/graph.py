@@ -5,7 +5,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from core.chat.llm.prompts import SYSTEM_PROMPT
+from core.chat.llm.prompts import build_system_prompt
 from core.chat.llm import get_chat_llm_client
 from langchain_core.messages import SystemMessage, ToolMessage, trim_messages, get_buffer_string
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -37,7 +37,7 @@ class ChatGraph:
             start_on="human",
             allow_partial=False,
         )
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + trimmed
+        messages = [SystemMessage(content=build_system_prompt())] + trimmed
         response = await self.llm.ainvoke(messages)
         return {"messages": [response]}
 
