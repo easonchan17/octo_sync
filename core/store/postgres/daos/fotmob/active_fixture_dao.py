@@ -5,6 +5,7 @@ from sqlalchemy import or_, func, cast
 from sqlalchemy.dialects.postgresql import insert
 from datetime import date, timedelta, datetime
 from core.store.postgres.models.fotmob.fixture import Fixture, ActiveFixtureRaw
+from core.store.postgres.models.common.league import SiteLeague
 from core.types.enums import MatchStatus
 from ..base_dao import BaseDao
 
@@ -214,6 +215,50 @@ class ActiveFixtureDao(BaseDao):
             ).order_by(
                 Fixture.kickoff_time.asc()
             ).limit(limit).all()
+
+    def search_first_of_season_by_ref_league_id(self, ref_league_id: int) -> Optional[Any]:
+        with self.db.get_session() as session:
+            current_season = session.query(func.max(Fixture.season)).join(
+                SiteLeague,
+                (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == "fotmob")
+            ).filter(SiteLeague.ref_league_id == ref_league_id).scalar()
+
+            if current_season is None:
+                return None
+
+            return session.query(
+                Fixture.match_code,
+                Fixture.league_name,
+                Fixture.kickoff_time,
+                Fixture.home_team,
+                Fixture.away_team,
+                Fixture.match_status,
+            ).join(
+                SiteLeague,
+                (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == "fotmob")
+            ).filter(
+                SiteLeague.ref_league_id == ref_league_id,
+                Fixture.season == current_season,
+                Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
+            ).order_by(Fixture.kickoff_time.asc()).first()
+
+    def search_upcoming_by_ref_league_id(self, ref_league_id: int, from_time: datetime, limit: int = 5) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.match_code,
+                Fixture.league_name,
+                Fixture.kickoff_time,
+                Fixture.home_team,
+                Fixture.away_team,
+                Fixture.match_status,
+            ).join(
+                SiteLeague,
+                (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == "fotmob")
+            ).filter(
+                SiteLeague.ref_league_id == ref_league_id,
+                Fixture.kickoff_time >= from_time,
+                Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
+            ).order_by(Fixture.kickoff_time.asc()).limit(limit).all()
 
     def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
         with self.db.get_session() as session:
