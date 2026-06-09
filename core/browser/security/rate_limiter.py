@@ -23,14 +23,13 @@ class RateLimiter:
         -2: 1
     }
 
-    MAX_PENALTY_FACTOR = 15
-
-    def __init__(self, base_interval: float = 60.0) -> None:
+    def __init__(self, base_interval: float, max_backoff: float) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.last_request: dict[str, float] = {}
         self.backoff_until: dict[str, float] = {}
         self.host_penalties: dict[str, int] = {}
         self.base_interval = base_interval
+        self.max_backoff = max_backoff
 
     async def throttle(self, url: str) -> None:
         hostname = urlparse(url).hostname
@@ -73,7 +72,7 @@ class RateLimiter:
         penalty = self.host_penalties.get(hostname, 0) + self.STATUS_PENALTIES.get(status, 1)
         self.host_penalties[hostname] = penalty
 
-        wait_time = min(self.base_interval * (2 ** (penalty - 1)), self.base_interval * self.MAX_PENALTY_FACTOR)
+        wait_time = min(self.base_interval * (2 ** (penalty - 1)), self.max_backoff)
         self.backoff_until[hostname] = time.time() + wait_time
 
         self.logger.warning(f"Rate limit detected ({status}) for {hostname}, backing off for {wait_time}s")

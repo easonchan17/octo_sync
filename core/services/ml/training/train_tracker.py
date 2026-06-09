@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Tuple
 from datetime import datetime
+from sklearn.frozen import FrozenEstimator
 from sklearn.calibration import CalibratedClassifierCV
 from core.logger.logger_manager import get_logger_manager
 from core.store.postgres.models import TrainingRecord
@@ -119,7 +120,7 @@ class TrainTracker:
         self.draw_class = list(self.config.target_names).index('Draw')
 
         if X_calib is not None and y_calib is not None:
-            calibrator = CalibratedClassifierCV(best_estimator, cv='prefit', method='sigmoid')
+            calibrator = CalibratedClassifierCV(FrozenEstimator(best_estimator), method='sigmoid')
             calibrator.fit(X_calib, y_calib)
             y_prob_calib = calibrator.predict_proba(X_test)
             self.calibrator = calibrator
@@ -165,7 +166,7 @@ class TrainTracker:
         if self.calibrator is not None:
             calib_path = base_dir / f"{model_version}_calibrator.json"
             calibrated_clf = self.calibrator.calibrated_classifiers_[0]
-            calib_params = [{'a': float(cal.a_), 'b': float(cal.b_)} for cal in calibrated_clf.calibrators_]
+            calib_params = [{'a': float(cal.a_), 'b': float(cal.b_)} for cal in calibrated_clf.calibrators]
             calib_path.write_text(json.dumps(calib_params), encoding='utf-8')
             self.calibrator_path = str(calib_path)
             self.logger.info(f"Calibrator saved to: {calib_path.resolve()}")

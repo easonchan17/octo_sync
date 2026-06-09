@@ -13,6 +13,7 @@ task_thread_pool:
 
 browser:
   request_interval: 30.0
+  max_backoff: 300.0
   page_pool_size: 5
   sys_mem_threshold: 85
   failure_threshold: 5
@@ -64,6 +65,7 @@ training:
           - "home_total_luck"
           - "home_creativity_ability_sum"
           - "away_defense_ability_sum"
+          - "sharp_vs_market_away_open_diff"
           - "away_attack_form"
           - "home_threat_per_entry_ema_5"
           - "away_threat_per_entry_ema_5"
