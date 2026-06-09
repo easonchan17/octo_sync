@@ -22,7 +22,7 @@ class HistoryFixtureDao(BaseDao):
                 League.league_name,
                 League.page_url,
                 League.max_season,
-                League.valid_seasons,
+                League.cross_year,
                 season_col.label('season'),
                 func.coalesce(HistoryFixtureProgress.page + 1, 1).label('page'),
                 func.coalesce(HistoryFixtureRaw.fetch_attempts, 0).label('fetch_attempts')

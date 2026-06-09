@@ -1,5 +1,5 @@
 from sqlalchemy.sql import text
-from sqlalchemy import Column, Integer, String, Index
+from sqlalchemy import Boolean, Column, Integer, String, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from core.types.enums import SiteName
 from ..base_model import Base, CrawlStatusMixin, RawJsonMixin, RawHtmlMixin
@@ -60,3 +60,4 @@ class League(Base):
     min_season = Column(Integer, nullable=True)
     max_season = Column(Integer, nullable=True)
     valid_seasons = Column(JSONB(none_as_null=True), nullable=True)
+    cross_year = Column(Boolean, nullable=False, default=False, server_default='false')
