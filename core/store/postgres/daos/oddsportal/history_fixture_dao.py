@@ -1,6 +1,6 @@
 import traceback
 from datetime import timedelta
-from sqlalchemy import case, func, or_, and_
+from sqlalchemy import case, func, or_, and_, lateral, select, cast, Integer, true
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.league import League
@@ -8,35 +8,42 @@ from core.store.postgres.models.oddsportal.fixture import HistoryFixtureProgress
 from ..base_dao import BaseDao
 
 class HistoryFixtureDao(BaseDao):
-    def get_pending_fetch_items(self, league_ids: List[int], season: int) -> List[Any]:
+    def get_pending_fetch_items(self, league_ids: List[int], from_season: int) -> List[Any]:
         with self.db.get_session() as session:
+            seasons_lateral = lateral(
+                select(
+                    cast(func.jsonb_array_elements_text(League.valid_seasons), Integer).label('season')
+                ).correlate(League),
+                name='seasons'
+            )
+            season_col = seasons_lateral.c.season
             return session.query(
                 League.league_id,
                 League.league_name,
                 League.page_url,
                 League.max_season,
                 League.valid_seasons,
-                func.coalesce(HistoryFixtureProgress.season, season).label('season'),
+                season_col.label('season'),
                 func.coalesce(HistoryFixtureProgress.page + 1, 1).label('page'),
                 func.coalesce(HistoryFixtureRaw.fetch_attempts, 0).label('fetch_attempts')
+            ).join(
+                seasons_lateral, true()
             ).outerjoin(
                 HistoryFixtureProgress,
                 and_(
                     HistoryFixtureProgress.league_id == League.league_id,
-                    HistoryFixtureProgress.season == season,
+                    HistoryFixtureProgress.season == season_col,
                 )
             ).outerjoin(
                 HistoryFixtureRaw,
                 and_(
                     HistoryFixtureRaw.league_id == League.league_id,
-                    HistoryFixtureRaw.season == season,
-                    HistoryFixtureRaw.page == func.coalesce(HistoryFixtureProgress.page, 0)+1
+                    HistoryFixtureRaw.season == season_col,
+                    HistoryFixtureRaw.page == func.coalesce(HistoryFixtureProgress.page, 0) + 1
                 )
             ).filter(
                 League.league_id.in_(league_ids),
-                League.min_season <= season,
-                League.max_season >= season,
-                League.valid_seasons.op('@>')(func.jsonb_build_array(season)),
+                season_col >= from_season,
                 or_(
                     HistoryFixtureProgress.league_id.is_(None),
                     HistoryFixtureProgress.page < HistoryFixtureProgress.total_page,
