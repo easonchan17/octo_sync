@@ -288,7 +288,12 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                     })
                 records.append(record)
 
-            return pd.DataFrame(records) if records else None
+            if not records:
+                return None
+
+            df = pd.DataFrame(records)
+            missing_cols = {f"{side}_{feat}" for feat in self.TEAM_FEATURES for side in ("home", "away")} - set(df.columns)
+            return df.assign(**{col: np.nan for col in missing_cols})
 
     def _build(self, df: pd.DataFrame) -> pd.DataFrame:
         is_home_win = df["home_score"] > df["away_score"]
@@ -515,7 +520,12 @@ class MatchLatestFeatureBuilder(MatchFeatureBuilder):
                     })
                 records.append(record)
 
-            return pd.DataFrame(records) if records else None
+            if not records:
+                return None
+
+            df = pd.DataFrame(records)
+            missing_cols = {f"{side}_{feat}" for feat in self.TEAM_FEATURES for side in ("home", "away")} - set(df.columns)
+            return df.assign(**{col: np.nan for col in missing_cols})
 
     def _build(self, df: pd.DataFrame) -> pd.DataFrame:
         is_home_win = df["home_score"] > df["away_score"]
