@@ -13,7 +13,7 @@ from core.tasks.poll_task import PollTask
 class MapFixture(PollTask):
     MAPPING_QUERY_LIMIT = 100
     SIMILARITY_THRESHOLD = 70
-    KICKOFF_TOLERANCE = timedelta(minutes=30)
+    KICKOFF_TOLERANCE = timedelta(minutes=150)
     KICKOFF_LOOKAHEAD = timedelta(days=2)
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
