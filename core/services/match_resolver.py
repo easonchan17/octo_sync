@@ -66,7 +66,10 @@ class MatchResolver(BaseService):
         # Ligue 1
         "psg": "paris saint-germain",
         "st etienne": "saint-etienne",
-        "clermont": "clermont foot"
+        "clermont": "clermont foot",
+
+        # National
+        "czech republic": "czech"
     }
 
     def __init__(self, kickoff_tolerance: timedelta, similarity_threshold: int) -> None:
