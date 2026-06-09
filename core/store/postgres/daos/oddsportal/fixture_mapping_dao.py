@@ -1,13 +1,27 @@
-from datetime import datetime
-from sqlalchemy import delete, func, or_, and_, update
+from datetime import timedelta
+from sqlalchemy import delete, func, or_, select, update
 from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture, FixtureMappingLog
 from ..base_dao import BaseDao
 
 class FixtureMappingDao(BaseDao):
-    def get_pending_mapping_items(self, league_ids: List[int], max_kickoff_time: datetime, limit: int) -> List[Any]:
+    def get_pending_mapping_items(self, league_ids: List[int], tolerance: timedelta) -> List[Any]:
         with self.db.get_session() as session:
+            pending_filter = [
+                Fixture.ref_match_id.is_(None),
+                Fixture.league_id.in_(league_ids),
+                or_(
+                    FixtureMappingLog.match_code.is_(None),
+                    FixtureMappingLog.next_attempt_at <= func.now()
+                )
+            ]
+            anchor_subq = (
+                select(func.max(Fixture.kickoff_time).label('anchor_time'))
+                .outerjoin(FixtureMappingLog, FixtureMappingLog.match_code == Fixture.match_code)
+                .where(*pending_filter)
+                .scalar_subquery()
+            )
             return session.query(
                 Fixture.id,
                 Fixture.match_code,
@@ -19,16 +33,11 @@ class FixtureMappingDao(BaseDao):
             ).outerjoin(
                 FixtureMappingLog, FixtureMappingLog.match_code == Fixture.match_code
             ).filter(
-                Fixture.ref_match_id.is_(None),
-                Fixture.league_id.in_(league_ids),
-                Fixture.kickoff_time <= max_kickoff_time,
-                or_(
-                    FixtureMappingLog.match_code.is_(None),
-                    FixtureMappingLog.next_attempt_at <= func.now()
-                )
+                *pending_filter,
+                Fixture.kickoff_time.between(anchor_subq - tolerance, anchor_subq)
             ).order_by(
                 Fixture.kickoff_time.desc()
-            ).limit(limit).all()
+            ).all()
 
     def mark_mapping_failed(self, records: List[Dict[str, Any]]) -> None:
         with self.db.get_session() as session:
