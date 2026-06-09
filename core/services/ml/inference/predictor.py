@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -113,6 +114,13 @@ class BaseWinballPredictor(BasePredictor):
             self.draw_class = record.training_params['draw_class']
             self.feature_builder = self._create_feature_builder(record.feature_names)
 
+            self.calib_params = None
+            calibrator_path = record.training_params.get('calibrator_path')
+            if calibrator_path:
+                calib_file = self._resolve_model_path(calibrator_path)
+                if calib_file is not None:
+                    self.calib_params = json.loads(calib_file.read_text(encoding='utf-8'))
+
             self.logger.info(f"Model {self.model_version} loaded successfully from {model_path.absolute()}")
             return True
         except Exception as e:
@@ -125,6 +133,9 @@ class BaseWinballPredictor(BasePredictor):
 
         df = self.feature_builder.build(fixture, state_provider)
         proba = self.model.predict_proba(df)[0]
+        if self.calib_params is not None:
+            raw = np.array([1.0 / (1.0 + np.exp(p['a'] * proba[i] + p['b'])) for i, p in enumerate(self.calib_params)])
+            proba = raw / raw.sum()
         probabilities = {str(cls): float(prob) for cls, prob in zip(self.model.classes_, proba)}
 
         draw_idx = list(self.model.classes_).index(self.draw_class)

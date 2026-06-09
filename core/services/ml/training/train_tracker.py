@@ -1,5 +1,5 @@
+import json
 import shap
-import joblib
 import numpy as np
 import pandas as pd
 from typing import Optional, Tuple
@@ -27,6 +27,7 @@ class TrainTracker:
         self.shap_imp_df = None
         self.high_corr_pairs = None
         self.calibrator = None
+        self.calibrator_path = None
         self.calib_draw_threshold_report = None
 
     def analysis(self, X_test: pd.DataFrame, y_test: pd.Series, X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None) -> None:
@@ -118,13 +119,13 @@ class TrainTracker:
         self.draw_class = list(self.config.target_names).index('Draw')
 
         if X_calib is not None and y_calib is not None:
-            # sigmoid: non-parametric isotonic overfits on small calib sets (<1000 samples);
-            # switch to isotonic when calib set exceeds ~1000 samples (e.g. 5-league merged dataset)
             calibrator = CalibratedClassifierCV(best_estimator, cv='prefit', method='sigmoid')
             calibrator.fit(X_calib, y_calib)
             y_prob_calib = calibrator.predict_proba(X_test)
             self.calibrator = calibrator
             self.calib_draw_threshold_report = self._build_draw_threshold_report(y_prob_calib, y_test, "Draw")
+            best_calib_row = self.calib_draw_threshold_report.loc[self.calib_draw_threshold_report['Macro F1'].idxmax()]
+            self.draw_threshold = float(best_calib_row['T_draw'])
 
 
     def _build_draw_threshold_report(self, y_prob: np.ndarray, y_true: pd.Series, draw_key: str, t_min: float = 0.24, t_max: float = 0.40, steps: int = 17) -> pd.DataFrame:
@@ -162,8 +163,11 @@ class TrainTracker:
         self.logger.info(f"Model artifact saved to: {model_path}")
 
         if self.calibrator is not None:
-            calib_path = base_dir / f"{model_version}_calibrator.pkl"
-            joblib.dump(self.calibrator, str(calib_path))
+            calib_path = base_dir / f"{model_version}_calibrator.json"
+            calibrated_clf = self.calibrator.calibrated_classifiers_[0]
+            calib_params = [{'a': float(cal.a_), 'b': float(cal.b_)} for cal in calibrated_clf.calibrators_]
+            calib_path.write_text(json.dumps(calib_params), encoding='utf-8')
+            self.calibrator_path = str(calib_path)
             self.logger.info(f"Calibrator saved to: {calib_path.resolve()}")
 
         return model_path, model_version
@@ -181,6 +185,7 @@ class TrainTracker:
                     **self.config.training_params,
                     'draw_threshold': self.draw_threshold,
                     'draw_class': self.draw_class,
+                    'calibrator_path': self.calibrator_path,
                 },
                 best_params=dict(self.optimizer.best_params_),
                 train_score=float(self.train_score),
