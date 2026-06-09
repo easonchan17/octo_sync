@@ -4,6 +4,7 @@ from typing import Callable, List, Optional, Tuple, final
 from urllib3.exceptions import InsecureRequestWarning
 from threading import Event, enumerate as enumerate_threads
 from core.config.config_manager import get_config_manager
+from core.config.env_manager import get_env_manager
 from core.logger.logger_manager import get_logger_manager
 from core.store.postgres.postgresql_manager import get_postgresql_manager
 from core.services.league.league_service import get_league_service
@@ -72,10 +73,6 @@ class BaseLauncher(ABC):
     def _add_service(self, name: str, start: Callable[[], None], stop: Optional[Callable[[], None]]) -> None:
         self.services.append((name, start, stop))
 
-
-FORM_CACHE_PATTERN = r"^build\.fotmob\.form_cache$"
-
-
 class CrawlerLauncher(BaseLauncher):
     def _register_services(self) -> None:
         postgresql_manager = get_postgresql_manager()
@@ -83,12 +80,13 @@ class CrawlerLauncher(BaseLauncher):
         task_executor      = get_task_executor()
         interceptor        = get_interceptor()
         poll_manager       = get_poll_manager()
+        env                = get_env_manager()
 
         self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
         self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
         self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
-        self._add_service("PollManager",       lambda: poll_manager.start(exclude=FORM_CACHE_PATTERN), poll_manager.stop)
+        self._add_service("PollManager",       lambda: poll_manager.start(include=env.TASK_INCLUDE, exclude=env.TASK_EXCLUDE), poll_manager.stop)
 
 
 class ApiLauncher(BaseLauncher):
