@@ -63,15 +63,9 @@ class SyncHistoryFixture(PollTask):
         site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
         if not site_leagues:
             return []
-
         league_ids = [league.league_id for league in site_leagues]
-        from_season, end_season = self.get_fetch_season_range()
-
-        items = []
-        for season in range(end_season, from_season - 1, -1):
-            season_items = self.history_fixture_dao.get_pending_fetch_items(league_ids, season)
-            items.extend(season_items)
-        return items
+        from_season, _ = self.get_fetch_season_range()
+        return self.history_fixture_dao.get_pending_fetch_items(league_ids, from_season)
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
