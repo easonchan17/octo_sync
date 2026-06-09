@@ -8,7 +8,7 @@
 
         if (MATCH_DETAILS_PATTERN.test(url)) {
             response.clone().json().then(function (data) {
-                window.postMessage({ type: 'OCTOPUS_CAPTURE', url: url, data: data }, '*');
+                window.postMessage({ type: 'OCTOPUS_CAPTURE', url: url, data: data }, window.location.origin);
             }).catch(function () {});
         }
 
