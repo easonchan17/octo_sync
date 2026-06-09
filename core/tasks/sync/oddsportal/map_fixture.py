@@ -11,10 +11,8 @@ from core.tasks.poll_task import PollTask
 
 @TaskRegistry.poll('map.oddsportal.fixture')
 class MapFixture(PollTask):
-    MAPPING_QUERY_LIMIT = 100
     SIMILARITY_THRESHOLD = 70
-    KICKOFF_TOLERANCE = timedelta(minutes=150)
-    KICKOFF_LOOKAHEAD = timedelta(days=2)
+    KICKOFF_TOLERANCE = timedelta(minutes=180)
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.ODDSPORTAL.value)
@@ -55,21 +53,20 @@ class MapFixture(PollTask):
             try:
                 site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
                 league_ids = [league.league_id for league in site_leagues]
-
                 oddsportal_fixtures = self.oddsportal_dao.get_pending_mapping_items(
                     league_ids,
-                    datetime.now(timezone.utc) + self.KICKOFF_LOOKAHEAD,
-                    self.MAPPING_QUERY_LIMIT
+                    self.KICKOFF_TOLERANCE
                 )
+
                 if not oddsportal_fixtures:
                     self.idle_sleep()
                     continue
 
-                start_time = oddsportal_fixtures[-1].kickoff_time - self.KICKOFF_TOLERANCE
-                end_time = oddsportal_fixtures[0].kickoff_time + self.KICKOFF_TOLERANCE
+                start_time = oddsportal_fixtures[0].kickoff_time - self.KICKOFF_TOLERANCE
+                end_time = oddsportal_fixtures[-1].kickoff_time + self.KICKOFF_TOLERANCE
                 fotmob_fixtures = self.fotmob_dao.get_by_kickoff_range(start_time, end_time)
                 if not fotmob_fixtures:
-                    self.logger.info(f"No fotmob fixtures found")
+                    self.logger.info(f"No fotmob fixtures found in range [{start_time}, {end_time}], oddsportal_count={len(oddsportal_fixtures)}")
                     self.oddsportal_dao.mark_mapping_failed(self._build_failed_records(oddsportal_fixtures))
                     continue
 
