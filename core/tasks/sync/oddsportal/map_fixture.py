@@ -6,6 +6,7 @@ from core.services.league.league_service import get_league_service
 from core.services.match_resolver import MatchItem, MatchResolver
 from core.store.postgres.daos.fotmob.active_fixture_dao import ActiveFixtureDao as FotmobFixtureDao
 from core.store.postgres.daos.oddsportal.fixture_mapping_dao import FixtureMappingDao
+from core.types.params import CrawlParams
 from core.tasks.refetch_strategy import AttemptStrategy
 from core.tasks.poll_task import PollTask
 
@@ -55,7 +56,8 @@ class MapFixture(PollTask):
                 league_ids = [league.league_id for league in site_leagues]
                 oddsportal_fixtures = self.oddsportal_dao.get_pending_mapping_items(
                     league_ids,
-                    self.KICKOFF_TOLERANCE
+                    self.KICKOFF_TOLERANCE,
+                    CrawlParams.FIXTURE_START_DATE
                 )
 
                 if not oddsportal_fixtures:
