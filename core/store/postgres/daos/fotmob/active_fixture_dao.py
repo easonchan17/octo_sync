@@ -260,6 +260,21 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
             ).order_by(Fixture.kickoff_time.asc()).limit(limit).all()
 
+    def get_by_kickoff_range(self, start_time: datetime, end_time: datetime) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.match_id,
+                Fixture.kickoff_time,
+                Fixture.home_team,
+                Fixture.away_team,
+            ).filter(
+                Fixture.kickoff_time >= start_time,
+                Fixture.kickoff_time < end_time,
+                Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value])
+            ).order_by(
+                Fixture.kickoff_time.asc()
+            ).all()
+
     def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
