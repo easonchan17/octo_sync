@@ -26,7 +26,7 @@ class HistoryFixtureDao(BaseDao):
                 season_col.label('season'),
                 func.coalesce(HistoryFixtureProgress.page + 1, 1).label('page'),
                 func.coalesce(HistoryFixtureRaw.fetch_attempts, 0).label('fetch_attempts')
-            ).join(
+            ).select_from(League).join(
                 seasons_lateral, true()
             ).outerjoin(
                 HistoryFixtureProgress,
