@@ -62,8 +62,8 @@ class MapFixture(PollTask):
                     self.idle_sleep()
                     continue
 
-                start_time = oddsportal_fixtures[0].kickoff_time - self.KICKOFF_TOLERANCE
-                end_time = oddsportal_fixtures[-1].kickoff_time + self.KICKOFF_TOLERANCE
+                start_time = oddsportal_fixtures[-1].kickoff_time - self.KICKOFF_TOLERANCE
+                end_time = oddsportal_fixtures[0].kickoff_time + self.KICKOFF_TOLERANCE
                 fotmob_fixtures = self.fotmob_dao.get_by_kickoff_range(start_time, end_time)
                 if not fotmob_fixtures:
                     self.logger.info(f"No fotmob fixtures found in range [{start_time}, {end_time}], oddsportal_count={len(oddsportal_fixtures)}")
