@@ -42,6 +42,27 @@ class WinballFeatureBuilder:
         return pd.DataFrame([match_features])
 
 
+class WinballNationalFeatureBuilder:
+    def __init__(self, feature_names: List[str]) -> None:
+        self.feature_names = feature_names
+
+    def build(self, fixture: Any, state_provider: Any) -> pd.DataFrame:
+        match_features = MatchPredictFeatureBuilder(fixture, state_provider.get_team_state).build()
+        if match_features is None:
+            raise ValueError(f"Failed to build match features for match_id={fixture.match_id}")
+
+        elo_features = EloRatingPredictFeatureBuilder(fixture).build()
+        if elo_features is not None:
+            match_features.update(elo_features)
+
+        odds_features = OddsPredictFeatureBuilder(fixture).build()
+        if odds_features is not None:
+            match_features.update(odds_features)
+
+        match_features = {k: match_features.get(k) for k in self.feature_names}
+        return pd.DataFrame([match_features])
+
+
 class BasePredictor(ABC):
     def __init__(self) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
@@ -69,8 +90,11 @@ class BasePredictor(ABC):
         pass
 
 
-@TaskRegistry.job('winball.inference')
-class WinballPredictor(BasePredictor):
+class BaseWinballPredictor(BasePredictor):
+    @abstractmethod
+    def _create_feature_builder(self, feature_names: List[str]) -> Any:
+        pass
+
     def load(self, record: TrainingRecord) -> bool:
         model_path = self._resolve_model_path(record.model_path)
         if model_path is None:
@@ -87,7 +111,7 @@ class WinballPredictor(BasePredictor):
             self.model_version = record.model_version
             self.draw_threshold = record.training_params['draw_threshold']
             self.draw_class = record.training_params['draw_class']
-            self.feature_builder = WinballFeatureBuilder(record.feature_names)
+            self.feature_builder = self._create_feature_builder(record.feature_names)
 
             self.logger.info(f"Model {self.model_version} loaded successfully from {model_path.absolute()}")
             return True
@@ -115,3 +139,15 @@ class WinballPredictor(BasePredictor):
             "probabilities": probabilities,
             "prediction": prediction
         }
+
+
+@TaskRegistry.job('winball_club.inference')
+class WinballPredictor(BaseWinballPredictor):
+    def _create_feature_builder(self, feature_names: List[str]) -> WinballFeatureBuilder:
+        return WinballFeatureBuilder(feature_names)
+
+
+@TaskRegistry.job('winball_national.inference')
+class WinballNationalPredictor(BaseWinballPredictor):
+    def _create_feature_builder(self, feature_names: List[str]) -> WinballNationalFeatureBuilder:
+        return WinballNationalFeatureBuilder(feature_names)

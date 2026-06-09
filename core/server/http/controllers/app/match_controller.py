@@ -11,7 +11,6 @@ class MatchController(BaseController):
         self.match_service = MatchService()
         self.model_service = ModelService()
         self.router.get("/v1/matches/{match_code}", response_model=MatchDetailResponse)(self.get_detail)
-        # self.router.get("/v1/matches/{match_code}/prediction", response_model=PredictionResponse)(self.predict)
 
     def get_detail(self, match_code: str) -> MatchDetailResponse:
         try:
@@ -21,13 +20,3 @@ class MatchController(BaseController):
         except Exception as e:
             self.logger.error(f"Failed to get match detail {match_code}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to get match detail: {str(e)}")
-
-    def predict(self, match_code: str, model: Optional[str] = None) -> PredictionResponse:
-        try:
-            result = self.model_service.predict(match_code, model)
-            return PredictionResponse(**result, match_code=match_code)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        except Exception as e:
-            self.logger.error(f"Failed to make prediction for match {match_code}: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Failed to make prediction: {str(e)}")
