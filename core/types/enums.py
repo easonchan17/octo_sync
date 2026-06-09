@@ -1,4 +1,4 @@
-from enum import IntEnum, Enum
+from enum import IntEnum, Enum, StrEnum
 from typing import NamedTuple, Optional, List, Dict, Any
 
 class OddsMarket(NamedTuple):
@@ -46,7 +46,7 @@ SHARP_BOOKMAKER_NAMES: Dict[int, str] = {
     BookmakerID.BETINASIA.value: "Betinasia",
 }
 
-class ModelFamily(str, Enum):
+class ModelFamily(StrEnum):
     WINBALL_CLUB     = "winball_club"
     WINBALL_NATIONAL = "winball_national"
 
