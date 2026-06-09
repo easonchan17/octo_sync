@@ -37,7 +37,7 @@ class TrainSampleBuilder:
         "passes_acc_ema_5_diff", "home_passes_ema_5", "away_passes_acc_ema_5",
     ]
 
-    def __init__(self, league_ids: list, min_season: int, max_season: int, output_path: str, output_format: str = "csv") -> None:
+    def __init__(self, league_ids: list, min_season: int, max_season: int, output_path: str, output_format: str = "csv", with_lineup_features: bool = True) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.config_manager = get_config_manager()
         self.league_ids = league_ids
@@ -45,6 +45,7 @@ class TrainSampleBuilder:
         self.max_season = max_season
         self.output_path = output_path
         self.output_format = output_format
+        self.with_lineup_features = with_lineup_features
         self.league_service = get_league_service()
 
         fotmob_league_ids = [
@@ -54,9 +55,10 @@ class TrainSampleBuilder:
         ]
         self.match_builder      = MatchTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
         self.elo_rating_builder = EloRatingTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
-        self.outfield_builder   = OutfieldPlayerTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
-        self.gk_builder         = GoalkeeperTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
         self.odds_builder       = OddsTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
+        if with_lineup_features:
+            self.outfield_builder = OutfieldPlayerTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
+            self.gk_builder       = GoalkeeperTrainFeatureBuilder(fotmob_league_ids, min_season, max_season)
 
     def build_output_path(self, tag: str) -> Path:
         output_dir = Path(self.output_path)
@@ -88,30 +90,35 @@ class TrainSampleBuilder:
             save_dataframe(match_stats_df, output_file)
             self.logger.info(f"Match stats saved to: {str(output_file.resolve())}")
 
-            outfield_stats_df = self.outfield_builder.build()
-            if outfield_stats_df is None or outfield_stats_df.empty:
-                self.logger.error("No outfield player stats data found")
-                return None
+            if self.with_lineup_features:
+                outfield_stats_df = self.outfield_builder.build()
+                if outfield_stats_df is None or outfield_stats_df.empty:
+                    self.logger.error("No outfield player stats data found")
+                    return None
 
-            gk_stats_df = self.gk_builder.build()
-            if gk_stats_df is None or gk_stats_df.empty:
-                self.logger.error("No goalkeeper stats data found")
-                return None
+                gk_stats_df = self.gk_builder.build()
+                if gk_stats_df is None or gk_stats_df.empty:
+                    self.logger.error("No goalkeeper stats data found")
+                    return None
 
-            player_stats_df = outfield_stats_df.merge(gk_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
-            dropped = len(outfield_stats_df) - len(player_stats_df)
-            del outfield_stats_df, gk_stats_df
-            if dropped > 0:
-                self.logger.warning(f"Player stats merge dropped {dropped} matches")
-            output_file = self.build_output_path("player_stats")
-            save_dataframe(player_stats_df, output_file)
-            self.logger.info(f"Player stats saved to: {str(output_file.resolve())}")
+                player_stats_df = outfield_stats_df.merge(gk_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
+                dropped = len(outfield_stats_df) - len(player_stats_df)
+                del outfield_stats_df, gk_stats_df
+                if dropped > 0:
+                    self.logger.warning(f"Player stats merge dropped {dropped} matches")
+                output_file = self.build_output_path("player_stats")
+                save_dataframe(player_stats_df, output_file)
+                self.logger.info(f"Player stats saved to: {str(output_file.resolve())}")
 
-            merged_df = match_stats_df.merge(player_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
-            dropped = len(match_stats_df) - len(merged_df)
-            del match_stats_df, player_stats_df
-            if dropped > 0:
-                self.logger.warning(f"Match+player merge dropped {dropped} matches")
+                merged_df = match_stats_df.merge(player_stats_df, on=["match_id", "home_id", "away_id"], how="inner")
+                dropped = len(match_stats_df) - len(merged_df)
+                del match_stats_df, player_stats_df
+                if dropped > 0:
+                    self.logger.warning(f"Match+player merge dropped {dropped} matches")
+            else:
+                merged_df = match_stats_df
+                del match_stats_df
+
             if merged_df is None or merged_df.empty:
                 self.logger.error("No merged stats data found")
                 return None

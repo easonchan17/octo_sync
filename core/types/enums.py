@@ -46,6 +46,10 @@ SHARP_BOOKMAKER_NAMES: Dict[int, str] = {
     BookmakerID.BETINASIA.value: "Betinasia",
 }
 
+class ModelFamily(str, Enum):
+    WINBALL_CLUB     = "winball_club"
+    WINBALL_NATIONAL = "winball_national"
+
 class UpsertStrategy(str, Enum):
     OVERWRITE = "overwrite"
     IF_ABSENT = "if_absent"

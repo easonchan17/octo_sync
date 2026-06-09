@@ -8,7 +8,7 @@ from core.store.postgres.daos.common import TrainingRecordDao
 from core.services.ml.inference.predict_service import get_predict_service
 from core.services.model_service import ModelService
 from core.services.league import get_league_service
-from core.types.enums import SiteName
+from core.types.enums import SiteName, ModelFamily
 
 
 @TaskRegistry.poll('build.fotmob.prediction')
@@ -23,39 +23,50 @@ class BuildMatchPrediction(PollTask):
 
         self.retry_interval = timedelta(minutes=5)
         self.rebuild_strategy = (
-            TimelineStrategy(min_interval=timedelta(minutes=30))
-            .add_segment(start_offset=timedelta(hours=-48), end_offset=timedelta(hours=-6),  interval=timedelta(hours=4))
+            TimelineStrategy(min_interval=timedelta(minutes=15))
+            .add_segment(start_offset=timedelta(hours=-48), end_offset=timedelta(hours=-6),  interval=timedelta(hours=2))
             .add_segment(start_offset=timedelta(hours=-6),  end_offset=timedelta(hours=-2),  interval=timedelta(hours=1))
-            .add_segment(start_offset=timedelta(hours=-2),  end_offset=timedelta(hours=0),   interval=timedelta(minutes=30))
+            .add_segment(start_offset=timedelta(hours=-2),  end_offset=timedelta(hours=0),   interval=timedelta(minutes=15))
         )
 
-    def get_pending_predict_items(self, model_version: str) -> List[Any]:
-        min_kickoff_time = datetime.now(timezone.utc)
+    def get_pending_predict_items(self) -> List[Any]:
         site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
-        league_ids = [league.league_id for league in site_leagues]
+        club_league_ids    = [league.league_id for league in site_leagues if league.ref_league_id < 300]
+        national_league_ids = [league.league_id for league in site_leagues if league.ref_league_id >= 300]
 
-        return self.match_dao.get_pending_predict_items(
-            model_version,
-            league_ids,
-            min_kickoff_time,
-            min_kickoff_time + ModelService.PREDICTION_LOOKAHEAD
-        )
+        club_record    = self.training_record_dao.get_default(ModelFamily.WINBALL_CLUB)
+        national_record = self.training_record_dao.get_default(ModelFamily.WINBALL_NATIONAL)
+
+        if not club_record and not national_record:
+            self.logger.warning("No default model available, skipping prediction")
+            return []
+
+        items = []
+        min_kickoff_time = datetime.now(timezone.utc)
+        max_kickoff_time = min_kickoff_time + ModelService.PREDICTION_LOOKAHEAD
+        for record, league_ids in zip((club_record, national_record), (club_league_ids, national_league_ids)):
+            if record is None:
+                continue
+
+            if not league_ids:
+                continue
+
+            self.predict_service.load_predictor(record.model_family, record.model_version, record)
+            pending = self.match_dao.get_pending_predict_items(
+                record.model_version, league_ids, min_kickoff_time, max_kickoff_time
+            )
+            items += [(item, record) for item in pending]
+        return items
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                record = self.training_record_dao.get_default()
-                if record is None:
-                    self.logger.warning("No default model available, skipping prediction")
-                    self.idle_sleep()
-                    continue
-
-                items = self.get_pending_predict_items(record.model_version)
+                items = self.get_pending_predict_items()
                 if not items:
                     self.idle_sleep()
                     continue
 
-                for match_id, match_code, kickoff_time in items:
+                for (match_id, match_code, kickoff_time), record in items:
                     if self.should_stop():
                         return
 
@@ -78,6 +89,7 @@ class BuildMatchPrediction(PollTask):
                             "prediction":    result['prediction'],
                             "predicted_at":  current_time,
                         })
+
                         self.match_dao.reschedule_prediction(
                             match_code,
                             result['model_version'],

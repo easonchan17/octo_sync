@@ -50,7 +50,7 @@ resource:
 
 training:
   tasks:
-    winball:
+    winball_club:
       objective:
         type: classification
         target_col: "target"
@@ -141,6 +141,49 @@ training:
           - "finish_form_sum_diff"
           - "away_aerial_ability_max"
           - "away_keeper_sweeper_per_90_adj_ema_20"
+          - "market_median_ah_line"
+          - "home_net_advantage"
+
+      model:
+        name: xgboost
+        params:
+          n_estimators: 5000
+          early_stopping_rounds: 150
+          objective: multi:softprob
+          eval_metric: mlogloss
+          tree_method: hist
+          num_class: 3
+          random_state: 1
+          n_jobs: -1
+
+      optimizer:
+        name: bayes_search_cv
+        params:
+          n_iter: 200
+          scoring: neg_log_loss
+          random_state: 1
+          n_jobs: 1
+          verbose: 0
+          cv: 5
+          search_spaces:
+            max_depth: { type: Integer, low: 2, high: 8 }
+            learning_rate: { type: Real, low: 0.001, high: 0.1, prior: log-uniform }
+            min_child_weight: { type: Integer, low: 8, high: 60 }
+            gamma: { type: Real, low: 1.0, high: 10.0 }
+            subsample: { type: Real, low: 0.3, high: 0.8 }
+            colsample_bytree: { type: Real, low: 0.2, high: 0.8 }
+            reg_alpha: { type: Real, low: 0.1, high: 10, prior: log-uniform }
+            reg_lambda: { type: Real, low: 1.0, high: 50, prior: log-uniform }
+
+    winball_national:
+      objective:
+        type: classification
+        target_col: "target"
+        target_names: ["Home Loss", "Draw", "Home Win"]
+        eval_set_size: 0.1
+        calibration_set_size: 0
+        test_set_size: 0.2
+        exclude_cols: []
 
       model:
         name: xgboost

@@ -4,6 +4,7 @@ from functools import cached_property
 from typing import Dict, Any, Optional, List
 from core.logger.logger_manager import get_logger_manager
 from core.config.config_manager import get_config_manager
+from core.types.enums import ModelFamily
 
 
 class BaseTrainConfig(ABC):
@@ -88,7 +89,6 @@ class BaseTrainConfig(ABC):
 
 
 class WinballTrainConfig(BaseTrainConfig):
-    MODEL_FAMILY = "winball"
     MODEL_TYPE = "xgboost"
 
     MAJOR_VERSION = 0
@@ -113,42 +113,42 @@ class WinballTrainConfig(BaseTrainConfig):
     def target_col(self) -> str:
         return self.get_param(
             payload_key='objective.target_col',
-            config_key='training.tasks.winball.objective.target_col'
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.objective.target_col'
         )
 
     @cached_property
     def target_names(self) -> List[str]:
         return self.get_param(
             payload_key='objective.target_names',
-            config_key='training.tasks.winball.objective.target_names'
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.objective.target_names'
         )
 
     @cached_property
     def eval_set_size(self) -> float:
         return self.get_param(
             payload_key='objective.eval_set_size',
-            config_key='training.tasks.winball.objective.eval_set_size'
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.objective.eval_set_size'
         )
 
     @cached_property
     def calibration_set_size(self) -> float:
         return self.get_param(
             payload_key='objective.calibration_set_size',
-            config_key='training.tasks.winball.objective.calibration_set_size'
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.objective.calibration_set_size'
         )
 
     @cached_property
     def test_set_size(self) -> float:
         return self.get_param(
             payload_key='objective.test_set_size',
-            config_key='training.tasks.winball.objective.test_set_size'
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.objective.test_set_size'
         )
 
     @cached_property
     def exclude_cols(self) -> List[str]:
         return self.get_param(
             payload_key='objective.exclude_cols',
-            config_key='training.tasks.winball.objective.exclude_cols',
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.objective.exclude_cols',
             default=[]
         )
 
@@ -160,13 +160,13 @@ class WinballTrainConfig(BaseTrainConfig):
     def scoring(self) -> str:
         return self.get_param(
             payload_key='optimizer.params.scoring',
-            config_key='training.tasks.winball.optimizer.params.scoring'
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.optimizer.params.scoring'
         )
 
     @cached_property
     def model_params(self) -> Dict[str, Any]:
         config_params = self.get_param(
-            config_key="training.tasks.winball.model.params",
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.model.params',
             default={}
         )
         payload_params = self._get_payload_value("model.params", {})
@@ -175,8 +175,16 @@ class WinballTrainConfig(BaseTrainConfig):
     @cached_property
     def optimizer_params(self) -> Dict[str, Any]:
         config_params = self.get_param(
-            config_key="training.tasks.winball.optimizer.params",
+            config_key=f'training.tasks.{self.MODEL_FAMILY}.optimizer.params',
             default={}
         )
         payload_params = self._get_payload_value("optimizer.params", {})
         return self.deep_merge(payload_params, config_params)
+
+
+class WinballClubTrainConfig(WinballTrainConfig):
+    MODEL_FAMILY = ModelFamily.WINBALL_CLUB
+
+
+class WinballNationalTrainConfig(WinballTrainConfig):
+    MODEL_FAMILY = ModelFamily.WINBALL_NATIONAL

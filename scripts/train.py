@@ -12,6 +12,8 @@ from core.config.config_manager import get_config_manager
 from core.logger.logger_manager import get_logger_manager
 from core.store.postgres.postgresql_manager import get_postgresql_manager
 from core.services.ml.training.trainer import WinballTrainer
+from core.services.ml.training.train_config import WinballClubTrainConfig, WinballNationalTrainConfig
+from core.types.enums import ModelFamily
 
 logger = get_logger_manager().get_logger(__name__)
 
@@ -29,6 +31,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--random_state',                  type=int,                          help='e.g. 42 (random seed for reproducibility)')
     parser.add_argument('--scoring',                       type=str, choices=['accuracy', 'neg_log_loss'], help='CV scoring metric')
     parser.add_argument('--exclude_cols',                  nargs='*',                                     help='feature columns to exclude from training')
+    parser.add_argument('--model_family',                  type=str, default=ModelFamily.WINBALL_CLUB, choices=[f.value for f in ModelFamily])
     return parser.parse_args()
 
 def build_payload(args: argparse.Namespace) -> dict:
@@ -79,7 +82,12 @@ def main() -> None:
     get_postgresql_manager().startup()
 
     try:
-        WinballTrainer(build_payload(args)).train()
+        config_map = {
+            ModelFamily.WINBALL_CLUB:     WinballClubTrainConfig,
+            ModelFamily.WINBALL_NATIONAL: WinballNationalTrainConfig,
+        }
+        config_cls = config_map[ModelFamily(args.model_family)]
+        WinballTrainer(config_cls(build_payload(args))).train()
     finally:
         get_postgresql_manager().cleanup()
 

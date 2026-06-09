@@ -143,12 +143,6 @@ class BaseMatchResponse(BaseModel):
 class MatchResponse(BaseMatchResponse):
     round: Optional[str] = None
     group_name: Optional[str] = None
-    avg_home_odds: Optional[float] = None
-    avg_draw_odds: Optional[float] = None
-    avg_away_odds: Optional[float] = None
-    ah_main_line: Optional[float] = None
-    avg_ah_home_odds: Optional[float] = None
-    avg_ah_away_odds: Optional[float] = None
 
     @field_serializer('round')
     def serialize_round(self, value: Optional[str]) -> Optional[str]:
@@ -280,7 +274,7 @@ class RecentMatchResponse(BaseMatchResponse):
         return LEAGUE_LOGO_URL.format(league_id=self.ref_league_id) if self.ref_league_id else None
 
 
-class OddsItemResponse(BaseModel):
+class ProbsItemResponse(BaseModel):
     bookmaker_id: Optional[int] = Field(default=None, exclude=True)
     open_label: str = "初"
     close_label: str = "即"
@@ -294,23 +288,23 @@ class OddsItemResponse(BaseModel):
     def name(self) -> str:
         return BOOKMAKER_DISPLAY_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "期望"
 
-class OddsEuMarketResponse(BaseModel):
+class EuProbsResponse(BaseModel):
     label: str = "常规"
     columns: List[str] = ["主队", "平局", "客队"]
-    avg: Optional[OddsItemResponse] = None
-    bookmakers: List[OddsItemResponse] = []
+    avg: Optional[ProbsItemResponse] = None
+    bookmakers: List[ProbsItemResponse] = []
 
 
-class OddsAhMarketResponse(BaseModel):
+class AhProbsResponse(BaseModel):
     label: str = "让球"
     columns: List[str] = ["主队", "让", "客队"]
-    avg: Optional[OddsItemResponse] = None
-    bookmakers: List[OddsItemResponse] = []
+    avg: Optional[ProbsItemResponse] = None
+    bookmakers: List[ProbsItemResponse] = []
 
-class OddsDetailResponse(BaseModel):
+class ProbsResponse(BaseModel):
     label: str = "概率分布"
-    eu: Optional[OddsEuMarketResponse] = None
-    ah: Optional[OddsAhMarketResponse] = None
+    eu: Optional[EuProbsResponse] = None
+    ah: Optional[AhProbsResponse] = None
 
 
 class StandingResponse(BaseModel):
@@ -398,7 +392,7 @@ class MatchDetail(BaseModel):
     lineup: Dict[str, List[PlayerResponse]] = {}
     form: Dict[str, List[RecentMatchResponse]] = {}
     h2h: List[RecentMatchResponse] = []
-    odds: Optional[OddsDetailResponse] = None
+    probs: Optional[ProbsResponse] = None
     prediction: Optional[MatchPredictionResponse] = None
     standings: Optional[StandingsResponse] = None
     knockout: Optional[List[KnockoutRoundResponse]] = None
