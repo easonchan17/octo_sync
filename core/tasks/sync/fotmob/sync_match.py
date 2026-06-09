@@ -99,6 +99,7 @@ class SyncMatch(PollTask):
                             self.match_dao.mark_fetch_failed(
                                 match_id,
                                 kickoff_time,
+                                match_detail_url,
                                 "No response",
                                 self.retry_strategy.suggest_interval(fetch_attempts)
                             )
@@ -109,6 +110,7 @@ class SyncMatch(PollTask):
                             self.match_dao.mark_fetch_failed(
                                 match_id,
                                 kickoff_time,
+                                match_detail_url,
                                 "No data",
                                 self.retry_strategy.suggest_interval(fetch_attempts)
                             )
@@ -135,6 +137,7 @@ class SyncMatch(PollTask):
                         self.match_dao.mark_fetch_failed(
                             match_id,
                             kickoff_time,
+                            match_detail_url,
                             full_stack_trace,
                             self.retry_strategy.suggest_interval(fetch_attempts)
                         )

@@ -12,6 +12,7 @@ from core.logger.logger_manager import get_logger_manager
 from core.server.http.auth import verify_admin
 from core.server.http.controllers.system.model_controller import ModelController
 from core.server.http.controllers.system.data_controller import DataController
+from core.server.http.controllers.system.raw_data_upload_controller import RawDataUploadController
 from core.server.http.controllers.app.fixture_controller import FixtureController
 from core.server.http.controllers.app.league_controller import LeagueController
 from core.server.http.controllers.app.match_controller import MatchController
@@ -91,6 +92,9 @@ class WebApp:
 
         data_controller = DataController()
         self.app.include_router(data_controller.router, prefix="/admin", dependencies=[Depends(verify_admin)], tags=["data"])
+
+        raw_data_upload_controller = RawDataUploadController()
+        self.app.include_router(raw_data_upload_controller.router, prefix="/admin", dependencies=[Depends(verify_admin)], tags=["capture"])
 
     def _setup_docs_protection(self) -> None:
         if not self.env_manager.docs_enabled:
