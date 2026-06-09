@@ -3,14 +3,13 @@ from enum import Enum
 from pydantic import BaseModel, ValidationError
 from typing import Any, Dict, Literal, Optional
 from datetime import datetime, timedelta, timezone
-from core.store.postgres.daos.fotmob import ActiveFixtureDao, MatchDao
-from core.store.postgres.daos.common import FeedbackIssueDao, ChatConversationDao, TrainingRecordDao
+from core.store.postgres.daos.fotmob import ActiveFixtureDao
+from core.store.postgres.daos.common import FeedbackIssueDao, ChatConversationDao
 
 
 class ToolNames(str, Enum):
-    SUBMIT_ISSUE     = "submit_feedback_issue"
-    CHECK_PREDICTION = "check_prediction"
-    SEARCH_FIXTURES  = "search_fixtures"
+    SUBMIT_ISSUE    = "submit_feedback_issue"
+    SEARCH_FIXTURES = "search_fixtures"
 
 
 class FeedbackIssueModel(BaseModel):
@@ -22,20 +21,6 @@ class FeedbackIssueModel(BaseModel):
 
 
 TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": ToolNames.CHECK_PREDICTION,
-            "description": "查询指定比赛的 AI 预测记录是否存在及预测内容",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "match_code": {"type": "string"}
-                },
-                "required": ["match_code"]
-            }
-        }
-    },
     {
         "type": "function",
         "function": {
@@ -75,8 +60,6 @@ TOOLS = [
 
 def execute_tool(name: str, args: Dict[str, Any], conversation_id: str) -> str:
     try:
-        if name == ToolNames.CHECK_PREDICTION:
-            return _check_prediction(**args)
         if name == ToolNames.SEARCH_FIXTURES:
             return _search_fixtures(**args)
         if name == ToolNames.SUBMIT_ISSUE:
@@ -97,25 +80,6 @@ def _submit_issue(conversation_id: str, args: Dict[str, Any]) -> str:
     FeedbackIssueDao().create(conversation_id, user_id, validated.model_dump())
     return json.dumps({"ok": True, "message": "工单已提交"})
 
-
-
-def _check_prediction(match_code: str) -> str:
-    record = TrainingRecordDao().get_default()
-    if record is None:
-        return json.dumps({"found": False, "message": "暂无默认模型"})
-
-    prediction = MatchDao().get_prediction(match_code, record.model_version)
-    if prediction is None:
-        return json.dumps({"found": False, "message": "该比赛暂无预测记录"})
-
-    return json.dumps({
-        "found":         True,
-        "model_version": prediction.model_version,
-        "home_prob":     prediction.home_prob,
-        "draw_prob":     prediction.draw_prob,
-        "away_prob":     prediction.away_prob,
-        "prediction":    prediction.prediction,
-    })
 
 
 def _fixture_to_dict(fixture) -> dict:

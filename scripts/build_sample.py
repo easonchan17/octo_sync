@@ -24,6 +24,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--max_season', type=int, required=True)
     parser.add_argument('--sample_format', type=str, default='csv', choices=['csv', 'parquet'])
     parser.add_argument('--sample_path', type=str, default='artifacts/dataset/training')
+    parser.add_argument('--no_lineup_features', dest='with_lineup_features', action='store_false')
+    parser.set_defaults(with_lineup_features=True)
     return parser.parse_args()
 
 def signal_handler(signum, frame) -> None:
@@ -46,7 +48,7 @@ def main() -> None:
     get_league_service().load()
 
     try:
-        TrainSampleBuilder(args.league_ids, args.min_season, args.max_season, args.sample_path, args.sample_format).build()
+        TrainSampleBuilder(args.league_ids, args.min_season, args.max_season, args.sample_path, args.sample_format, args.with_lineup_features).build()
     finally:
         get_postgresql_manager().cleanup()
 

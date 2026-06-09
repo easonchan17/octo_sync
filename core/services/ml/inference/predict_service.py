@@ -70,15 +70,7 @@ class PredictorManager:
         self._lock = Lock()
         self._training_record_dao = TrainingRecordDao()
 
-    def get(self, version: Optional[str]) -> Optional[BasePredictor]:
-        if version is None:
-            record = self._training_record_dao.get_default()
-            if record is None:
-                raise ValueError("No trained model available")
-
-            self.load(record.model_family, record.model_version, record)
-            version = record.model_version
-
+    def get(self, version: str) -> Optional[BasePredictor]:
         return self._predictors.get(version)
 
     def get_versions(self) -> List[str]:
@@ -113,7 +105,7 @@ class PredictService:
         self._form_cache = FormCache()
         self._predictor_manager = PredictorManager()
 
-    def predict(self, fixture: Any, version: Optional[str]) -> Dict[str, Any]:
+    def predict(self, fixture: Any, version: str) -> Dict[str, Any]:
         predictor = self._predictor_manager.get(version)
         if predictor is None:
             raise ValueError(f"Invalid model {version}")

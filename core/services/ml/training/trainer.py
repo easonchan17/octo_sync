@@ -69,9 +69,9 @@ class BaseTrainer(ABC):
 
 
 class WinballTrainer(BaseTrainer):
-    def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: WinballTrainConfig) -> None:
         super().__init__()
-        self.config = WinballTrainConfig(payload)
+        self.config = config
         self.tracker = TrainTracker(self.config)
 
     def create_model(self) -> XGBoostClassifier:
