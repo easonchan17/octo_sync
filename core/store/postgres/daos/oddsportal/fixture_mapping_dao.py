@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from sqlalchemy import delete, func, or_, select, update
 from typing import List, Dict, Any
 from sqlalchemy.dialects.postgresql import insert
@@ -6,11 +6,12 @@ from core.store.postgres.models.oddsportal.fixture import Fixture, FixtureMappin
 from ..base_dao import BaseDao
 
 class FixtureMappingDao(BaseDao):
-    def get_pending_mapping_items(self, league_ids: List[int], tolerance: timedelta) -> List[Any]:
+    def get_pending_mapping_items(self, league_ids: List[int], tolerance: timedelta, min_kickoff_time: date) -> List[Any]:
         with self.db.get_session() as session:
             pending_filter = [
                 Fixture.ref_match_id.is_(None),
                 Fixture.league_id.in_(league_ids),
+                Fixture.kickoff_time >= min_kickoff_time,
                 or_(
                     FixtureMappingLog.match_code.is_(None),
                     FixtureMappingLog.next_attempt_at <= func.now()
