@@ -30,3 +30,4 @@ configs/jwt_private_key.pem
 *.html
 *.json
 train_logs/
+web/

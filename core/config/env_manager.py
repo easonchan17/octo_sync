@@ -11,6 +11,8 @@ class EnvType(str, Enum):
 
 class EnvManager(BaseSettings):
     ENV: EnvType = Field(..., description="Run environment")
+    TASK_INCLUDE: Optional[str] = Field(default=None, description="Regex pattern for poll tasks to include; if set, only matching tasks start")
+    TASK_EXCLUDE: Optional[str] = Field(default=None, description="Regex pattern for poll tasks to exclude; combined with built-in excludes")
     DOCS_USERNAME: Optional[str] = Field(default=None, description="HTTP Basic username for /docs and /redoc; set with DOCS_PASSWORD to enable docs")
     DOCS_PASSWORD: Optional[str] = Field(default=None, description="HTTP Basic password for docs; set with DOCS_USERNAME to enable docs")
     ADMIN_USERNAME: Optional[str] = Field(default=None, description="HTTP Basic username for admin data endpoints; set with ADMIN_PASSWORD to enable them")

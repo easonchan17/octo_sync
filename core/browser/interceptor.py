@@ -20,6 +20,7 @@ class Interceptor(Thread):
         self,
         sites: List[str],
         request_interval: float,
+        max_backoff: float,
         launch_options: Dict,
         viewport: Dict,
         page_pool_size: int,
@@ -36,7 +37,7 @@ class Interceptor(Thread):
         self.sub_workers: Dict[str, asyncio.Task] = {}
         self.fail_counts: Dict[str, int] = {}
 
-        self.rate_limiter = RateLimiter(base_interval=request_interval)
+        self.rate_limiter = RateLimiter(base_interval=request_interval, max_backoff=max_backoff)
         self.launch_options = launch_options
         self.viewport = viewport
         self.page_pool_size = page_pool_size
@@ -347,6 +348,7 @@ def get_interceptor() -> Interceptor:
     return Interceptor(
         sites=[SiteName.FOTMOB.value, SiteName.FOTMOB_IMAGE.value, SiteName.ODDSPORTAL.value],
         request_interval=config["request_interval"],
+        max_backoff=config["max_backoff"],
         launch_options=config["launch_options"],
         viewport=config["viewport"],
         page_pool_size=config["page_pool_size"],
