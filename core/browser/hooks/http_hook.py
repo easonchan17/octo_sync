@@ -60,6 +60,8 @@ class HttpHook(BaseHook):
                 if not response.ok:
                     if response.status == 304:
                         ctx.result_set.set(http_rule.receiver.instance_id, FetchState.NOT_MODIFIED)
+                    else:
+                        self.logger.warning(f"Non-OK response [{response.status}] for {response.url}")
                     self._latch.mark_completed(http_rule.pattern)
                     return
 
