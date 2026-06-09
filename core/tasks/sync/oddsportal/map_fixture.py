@@ -53,14 +53,11 @@ class MapFixture(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                oddsportal_site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
-                fotmob_site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
-
-                oddsportal_league_map = {league.league_id: league.ref_league_id for league in oddsportal_site_leagues}
-                fotmob_league_map = {league.league_id: league.ref_league_id for league in fotmob_site_leagues}
+                site_leagues = self.league_service.get_site_leagues(SiteName.ODDSPORTAL.value)
+                league_ids = [league.league_id for league in site_leagues]
 
                 oddsportal_fixtures = self.oddsportal_dao.get_pending_mapping_items(
-                    list(oddsportal_league_map.keys()),
+                    league_ids,
                     datetime.now(timezone.utc) + self.KICKOFF_LOOKAHEAD,
                     self.MAPPING_QUERY_LIMIT
                 )
@@ -70,22 +67,18 @@ class MapFixture(PollTask):
 
                 start_time = oddsportal_fixtures[-1].kickoff_time - self.KICKOFF_TOLERANCE
                 end_time = oddsportal_fixtures[0].kickoff_time + self.KICKOFF_TOLERANCE
-                fotmob_fixtures = self.fotmob_dao.get_by_time_range(
-                    start_time,
-                    end_time,
-                    list(fotmob_league_map.keys())
-                )
+                fotmob_fixtures = self.fotmob_dao.get_by_kickoff_range(start_time, end_time)
                 if not fotmob_fixtures:
                     self.logger.info(f"No fotmob fixtures found")
                     self.oddsportal_dao.mark_mapping_failed(self._build_failed_records(oddsportal_fixtures))
                     continue
 
                 source_items = [
-                    MatchItem(match_key=fixture.match_code, league_id=oddsportal_league_map[fixture.league_id], kickoff_time=fixture.kickoff_time, home_team=fixture.home_name, away_team=fixture.away_name)
+                    MatchItem(match_key=fixture.match_code, kickoff_time=fixture.kickoff_time, home_team=fixture.home_name, away_team=fixture.away_name)
                     for fixture in oddsportal_fixtures
                 ]
                 target_items = [
-                    MatchItem(match_key=fixture.match_id, league_id=fotmob_league_map[fixture.league_id], kickoff_time=fixture.kickoff_time, home_team=fixture.home_team, away_team=fixture.away_team)
+                    MatchItem(match_key=fixture.match_id, kickoff_time=fixture.kickoff_time, home_team=fixture.home_team, away_team=fixture.away_team)
                     for fixture in fotmob_fixtures
                 ]
 

@@ -8,13 +8,12 @@ from core.services.base_service import BaseService
 @dataclass
 class MatchItem:
     match_key: Union[int, str]
-    league_id: int
     kickoff_time: datetime
     home_team: str
     away_team: str
 
     def __str__(self) -> str:
-        return f"[L:{self.league_id}|M:{self.match_key}] [{self.kickoff_time}] {self.home_team} vs {self.away_team}"
+        return f"[M:{self.match_key}] [{self.kickoff_time}] {self.home_team} vs {self.away_team}"
 
 class MatchResolver(BaseService):
     TEAM_ALIASES = {
