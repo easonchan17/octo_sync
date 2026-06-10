@@ -1,7 +1,7 @@
 import traceback
 from sqlalchemy import func, or_, and_, text, delete
 from typing import List, Any, Dict, Optional
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.oddsportal.fixture import Fixture
 from core.store.postgres.models.oddsportal.odds import OddsRaw, Odds1x2, OddsAh
@@ -9,7 +9,7 @@ from ..base_dao import BaseDao
 
 
 class OddsDao(BaseDao):
-    def get_pending_fetch_items(self, betting_type_id: int, scope_id: int, limit: int) -> List[Any]:
+    def get_pending_fetch_items(self, betting_type_id: int, scope_id: int, min_kickoff_time: date, limit: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.league_id,
@@ -25,6 +25,7 @@ class OddsDao(BaseDao):
                     OddsRaw.scope_id == scope_id,
                 )
             ).filter(
+                Fixture.kickoff_time >= min_kickoff_time,
                 or_(
                     OddsRaw.match_code.is_(None),
                     OddsRaw.next_fetch_at <= func.now()
