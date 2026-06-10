@@ -334,7 +334,6 @@ class MatchLineup(Base):
 class MatchPrediction(Base):
     __tablename__ = 'match_predictions'
     __table_args__ = (
-        Index('idx_match_predictions_match_id', 'match_id'),
         Index('idx_match_predictions_predicted_at', 'predicted_at'),
         Index('idx_match_predictions_created_at', 'created_at'),
         Index('idx_match_predictions_updated_at', 'updated_at'),
@@ -343,7 +342,6 @@ class MatchPrediction(Base):
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    match_id = Column(Integer, nullable=False)
     match_code = Column(String(16), nullable=False)
     model_version = Column(String(64), nullable=False)
     home_prob = Column(Float, nullable=False)

@@ -455,13 +455,12 @@ class MatchDao(BaseDao):
     def get_pending_predict_items(self, model_version: str, league_ids: List[int], min_kickoff_time: datetime, max_kickoff_time: datetime) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
-                Fixture.match_id,
                 Fixture.match_code,
                 Fixture.kickoff_time,
             ).outerjoin(
                 MatchPrediction,
                 and_(
-                    MatchPrediction.match_id == Fixture.match_id,
+                    MatchPrediction.match_code == Fixture.match_code,
                     MatchPrediction.model_version == model_version
                 )
             ).filter(
@@ -470,7 +469,7 @@ class MatchDao(BaseDao):
                 Fixture.league_id.in_(league_ids),
                 Fixture.match_status == MatchStatus.TIMED.value,
                 or_(
-                    MatchPrediction.match_id.is_(None),
+                    MatchPrediction.match_code.is_(None),
                     MatchPrediction.next_predict_at <= func.now()
                 )
             ).order_by(Fixture.kickoff_time.asc()).all()
@@ -490,7 +489,7 @@ class MatchDao(BaseDao):
         with self.db.get_session() as session:
             stmt = insert(MatchPrediction).values(data)
             stmt = stmt.on_conflict_do_update(
-                index_elements=[MatchPrediction.match_id, MatchPrediction.model_version],
+                index_elements=[MatchPrediction.match_code, MatchPrediction.model_version],
                 set_={
                     MatchPrediction.home_prob.key: stmt.excluded.home_prob,
                     MatchPrediction.draw_prob.key: stmt.excluded.draw_prob,
