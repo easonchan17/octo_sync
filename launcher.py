@@ -94,15 +94,11 @@ class ApiLauncher(BaseLauncher):
         postgresql_manager = get_postgresql_manager()
         league_service     = get_league_service()
         name_i18n_service  = get_name_i18n_service()
-        task_executor      = get_task_executor()
-        poll_manager       = get_poll_manager()
         web_server         = get_web_server()
 
         self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
         self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("NameI18nService",   name_i18n_service.load,     None)
-        self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
-        self._add_service("PollManager",       lambda: poll_manager.start(include="build.fotmob.form_cache"), poll_manager.stop)
         self._add_service("WebServer",         web_server.start,           web_server.stop)
 
 
