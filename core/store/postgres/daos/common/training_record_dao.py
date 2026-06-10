@@ -4,13 +4,13 @@ from ..base_dao import BaseDao
 
 
 class TrainingRecordDao(BaseDao):
-    def get_default(self, model_family: str) -> Optional[TrainingRecord]:
+    def get_recommended(self, model_family: str) -> Optional[TrainingRecord]:
         with self.db.get_session() as session:
             record = session.query(TrainingRecord).filter(
                 TrainingRecord.status == Status.ACTIVE.value,
                 TrainingRecord.model_family == model_family,
+                TrainingRecord.is_recommended == True,
             ).order_by(
-                TrainingRecord.is_recommended.desc(),
                 TrainingRecord.created_at.desc()
             ).first()
 

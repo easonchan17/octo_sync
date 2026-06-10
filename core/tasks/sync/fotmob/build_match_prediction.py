@@ -32,8 +32,8 @@ class BuildMatchPrediction(PollTask):
         )
 
     def get_pending_predict_items(self) -> List[Any]:
-        club_record    = self.training_record_dao.get_default(ModelFamily.WINBALL_CLUB)
-        national_record = self.training_record_dao.get_default(ModelFamily.WINBALL_NATIONAL)
+        club_record    = self.training_record_dao.get_recommended(ModelFamily.WINBALL_CLUB)
+        national_record = self.training_record_dao.get_recommended(ModelFamily.WINBALL_NATIONAL)
 
         if not club_record and not national_record:
             self.logger.warning("No default model available, skipping prediction")
