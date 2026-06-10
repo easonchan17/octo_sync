@@ -102,7 +102,7 @@ class ApiLauncher(BaseLauncher):
         self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("NameI18nService",   name_i18n_service.load,     None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
-        self._add_service("PollManager",       lambda: poll_manager.start(include=FORM_CACHE_PATTERN), poll_manager.stop)
+        self._add_service("PollManager",       lambda: poll_manager.start(include="build.fotmob.form_cache"), poll_manager.stop)
         self._add_service("WebServer",         web_server.start,           web_server.stop)
 
 
