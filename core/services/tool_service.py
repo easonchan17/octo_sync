@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, Literal, Optional
 from pydantic import BaseModel, ValidationError
 from core.services.base_service import BaseService
+from core.types.enums import BROAD_POSITION
 from core.store.postgres.daos.fotmob import MatchDao, ActiveFixtureDao
 from core.store.postgres.daos.common import FeedbackIssueDao, ChatConversationDao
 
@@ -53,13 +54,13 @@ class ToolService(BaseService):
         if not rows:
             return {"found": False, "message": "暂无该比赛的阵容数据"}
 
-        broad_position = {0: "GK", 1: "DF", 2: "MF", 3: "FW"}
-
         result = {}
         for row in rows:
+            usual_id = row.get("usual_playing_position_id")
+            position = row.get("position") or BROAD_POSITION.get(usual_id)
             result.setdefault(row["team_name"], []).append({
                 "name":       row["player_name"],
-                "position":   row.get("position") or broad_position.get(row.get("usual_playing_position_id")),
+                "position":   position,
                 "role":       row.get("role"),
                 "is_captain": row["is_captain"],
             })

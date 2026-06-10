@@ -1,7 +1,7 @@
 from pydantic import BaseModel, computed_field, Field, field_serializer
 from core.services.name_i18n_service import get_name_i18n_service
 from typing import List, TypeVar, Generic, Optional, Dict, Any
-from core.types.enums import MatchStatus, BookmakerID, Position
+from core.types.enums import MatchStatus, BookmakerID, BROAD_POSITION
 from datetime import datetime
 from enum import IntEnum
 
@@ -26,36 +26,6 @@ BOOKMAKER_ZH: Dict[int, str] = {
     BookmakerID.BETINASIA.value: "基准概率",
 }
 
-BROAD_POSITION_ZH: Dict[int, str] = {0: "门将", 1: "后卫", 2: "中场", 3: "前锋"}
-
-POSITION_ZH: Dict[str, str] = {
-    Position.GK.value:  "门将",
-    Position.CB.value:  "中卫",
-    Position.LCB.value: "左中卫",
-    Position.RCB.value: "右中卫",
-    Position.LB.value:  "左后卫",
-    Position.RB.value:  "右后卫",
-    Position.LWB.value: "左翼卫",
-    Position.RWB.value: "右翼卫",
-    Position.CDM.value: "后腰",
-    Position.LDM.value: "左后腰",
-    Position.RDM.value: "右后腰",
-    Position.CM.value:  "中场",
-    Position.LCM.value: "左中场",
-    Position.RCM.value: "右中场",
-    Position.LM.value:  "左中场",
-    Position.RM.value:  "右中场",
-    Position.CAM.value: "前腰",
-    Position.LAM.value: "左前腰",
-    Position.RAM.value: "右前腰",
-    Position.LW.value:  "左边锋",
-    Position.RW.value:  "右边锋",
-    Position.CF.value:  "中锋",
-    Position.ST.value:  "前锋",
-    Position.LST.value: "左前锋",
-    Position.RST.value: "右前锋",
-    Position.SS.value:  "影锋",
-}
 
 
 # ==============================================================================
@@ -284,7 +254,11 @@ class PlayerResponse(BaseModel):
     @computed_field
     @property
     def position(self) -> Optional[str]:
-        return POSITION_ZH.get(self.position_code) or BROAD_POSITION_ZH.get(self.usual_playing_position_id)
+        if self.position_code:
+            return self.position_code
+        if self.usual_playing_position_id is not None:
+            return BROAD_POSITION.get(self.usual_playing_position_id)
+        return None
 
     @computed_field
     @property

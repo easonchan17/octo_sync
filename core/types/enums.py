@@ -11,7 +11,6 @@ class OddsMarkets:
     FT_1X2 = OddsMarket(betting_type_id=1, scope_id=2, betting_type_slug='1X2', outcomes={"home": "0", "draw": "1", "away": "2"})
     FT_AH  = OddsMarket(betting_type_id=5, scope_id=2, betting_type_slug='ah', outcomes={"home": "0", "away": "1"})
 
-
 class LineupRole(IntEnum):
     UNAVAILABLE = 0
     STARTER     = 1
@@ -224,3 +223,5 @@ class Position(str, Enum):
     @classmethod
     def get_goalkeeper(cls) -> List[str]:
         return [cls.GK.value]
+
+BROAD_POSITION: Dict[int, str] = {0: "GK", 1: "DF", 2: "MF", 3: "FW"}
