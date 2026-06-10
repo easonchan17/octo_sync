@@ -99,7 +99,7 @@ class BuildMatchPrediction(PollTask):
                         )
                         self.logger.info(f"Predicted match: match_code={match_code}")
                     except Exception as e:
-                        self.logger.error(f"Failed to predict match {match_code}: {e}", exc_info=True)
+                        self.logger.error(f"Failed to predict match {match_code}: {e}")
                         retry_interval = None if datetime.now(timezone.utc) >= kickoff_time + self.retry_interval else self.retry_interval
                         self.match_dao.reschedule_prediction(match_code, record.model_version, retry_interval)
 
