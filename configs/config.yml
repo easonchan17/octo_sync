@@ -185,7 +185,13 @@ training:
         eval_set_size: 0.1
         calibration_set_size: 0.1
         test_set_size: 0.2
-        exclude_cols: []
+        exclude_cols:
+          - "away_rating_ability_mean"
+          - "away_total_luck"
+          - "home_total_luck"
+          - "home_creativity_ability_sum"
+          - "away_defense_ability_sum"
+          - "sharp_vs_market_away_open_diff"
 
       model:
         name: xgboost
