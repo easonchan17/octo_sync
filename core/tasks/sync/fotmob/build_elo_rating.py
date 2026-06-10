@@ -2,10 +2,10 @@ import math
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta, timezone
 from core.types.enums import SiteName, MatchStatus
+from core.services.league import get_league_service
 from core.types.params import EloParams
 from core.scheduler.task_registry import TaskRegistry
 from core.tasks.poll_task import PollTask
-from core.types.params import CrawlParams
 from core.tasks.refetch_strategy import TimelineStrategy
 from core.store.postgres.daos.fotmob.elo_rating_dao import EloRatingDao
 
@@ -110,7 +110,7 @@ class EloRatingCalculator:
         old_season = self.seasons.get(team_id)
         self.seasons[team_id] = current_season
 
-        if old_season is None or old_season == current_season:
+        if old_season is None or current_season is None or old_season == current_season:
             return
 
         old_rating = self._get_rating(team_id)
@@ -127,17 +127,14 @@ class EloRatingCalculator:
 
 class BuildPlan:
     LOOKBACK = timedelta(days=1)
-    MIN_SEASON = CrawlParams.EARLIEST_SEASON
     MIN_CHECKPOINT = datetime.min.replace(tzinfo=timezone.utc)
 
     def __init__(
         self,
         from_checkpoint: datetime = MIN_CHECKPOINT,
         lookback: timedelta = LOOKBACK,
-        min_season: int = MIN_SEASON
     ) -> None:
         self.from_checkpoint = from_checkpoint
-        self.min_season = min_season
         self.build_time = datetime.now(timezone.utc)
         self.checkpoint = self.build_time - lookback
 
@@ -149,13 +146,14 @@ class BuildEloRating(PollTask):
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
         self.elo_rating_dao = EloRatingDao()
+        self.league_service  = get_league_service()
 
         self.refetch_strategy = (
             TimelineStrategy(min_interval=timedelta(hours=4))
             .add_segment(start_offset=timedelta(0), end_offset=None, interval=timedelta(hours=4))
         )
 
-    def _get_build_plan(self) -> Optional[BuildPlan]:
+    def _get_build_plan(self, league_ids: List[int]) -> Optional[BuildPlan]:
         build_log = self.elo_rating_dao.get_latest_build_log()
 
         if build_log is None:
@@ -163,7 +161,7 @@ class BuildEloRating(PollTask):
 
         if build_log.next_build_at is None or build_log.next_build_at <= datetime.now(timezone.utc):
             rebuild_time = self.elo_rating_dao.get_rebuild_time(
-                build_log.created_at, build_log.checkpoint, BuildPlan.MIN_SEASON
+                build_log.created_at, build_log.checkpoint, league_ids
             )
             if rebuild_time is not None:
                 return BuildPlan(from_checkpoint=rebuild_time)
@@ -172,9 +170,9 @@ class BuildEloRating(PollTask):
 
         return None
 
-    def _get_pending_build_items(self, build_plan: BuildPlan) -> List[Any]:
+    def _get_pending_build_items(self, build_plan: BuildPlan, league_ids: List[int]) -> List[Any]:
         items = self.elo_rating_dao.get_pending_build_items(
-            build_plan.from_checkpoint, build_plan.checkpoint, build_plan.min_season
+            build_plan.from_checkpoint, build_plan.checkpoint, league_ids
         )
         for item in items:
             if not MatchStatus(item.match_status).is_finalized:
@@ -186,12 +184,15 @@ class BuildEloRating(PollTask):
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
             try:
-                build_plan = self._get_build_plan()
+                site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
+                league_ids = [league.league_id for league in site_leagues]
+
+                build_plan = self._get_build_plan(league_ids)
                 if not build_plan:
                     self.logger.info("Elo rating build not scheduled yet")
                     continue
 
-                items = self._get_pending_build_items(build_plan)
+                items = self._get_pending_build_items(build_plan, league_ids)
                 interval = self.refetch_strategy.suggest_interval(
                     base_time=build_plan.build_time,
                     current_time=build_plan.build_time

@@ -375,9 +375,10 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
 
 class MatchLatestFeatureBuilder(MatchFeatureBuilder):
-    def __init__(self, min_kickoff_time: datetime) -> None:
+    def __init__(self, min_kickoff_time: datetime, league_ids: list) -> None:
         super().__init__()
         self.min_kickoff_time = min_kickoff_time
+        self.league_ids = league_ids
 
     def _load(self) -> Optional[pd.DataFrame]:
         with self.db.get_session() as session:
@@ -408,7 +409,7 @@ class MatchLatestFeatureBuilder(MatchFeatureBuilder):
                 MatchStat, Fixture.match_id == MatchStat.match_id
             ).filter(
                 Fixture.kickoff_time >= self.min_kickoff_time,
-                Fixture.season.isnot(None),
+                Fixture.league_id.in_(self.league_ids),
                 Fixture.match_status.in_(MatchStatus.natural_finals())
             ).order_by(Fixture.kickoff_time).all()
 
