@@ -224,4 +224,9 @@ class Position(str, Enum):
     def get_goalkeeper(cls) -> List[str]:
         return [cls.GK.value]
 
-BROAD_POSITION: Dict[int, str] = {0: "GK", 1: "DF", 2: "MF", 3: "FW"}
+BROAD_POSITION: Dict[int, tuple[str, str]] = {
+    0: ("GK", "门将"),
+    1: ("DF", "后卫"),
+    2: ("MF", "中场"),
+    3: ("FW", "前锋"),
+}
