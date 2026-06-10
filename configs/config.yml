@@ -15,7 +15,7 @@ browser:
   request_interval: 20.0
   max_backoff: 300.0
   page_pool_size: 5
-  sys_mem_threshold: 85
+  sys_mem_threshold: 90
   failure_threshold: 5
   addons:
     - "core/browser/extensions/oddsportal_tracer"
