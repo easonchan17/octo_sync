@@ -89,6 +89,7 @@ class BuildMatchPrediction(PollTask):
                             "draw_prob":     probabilities.get('1', 0.0),
                             "away_prob":     probabilities.get('0', 0.0),
                             "prediction":    result['prediction'],
+                            "confidence":    result['confidence'],
                             "predicted_at":  current_time,
                         })
 

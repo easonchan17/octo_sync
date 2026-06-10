@@ -11,7 +11,7 @@ from core.types.enums import SiteName
 class BuildFormCache(PollTask):
     POLL_IDLE_SECONDS = 300
     DEBOUNCE_WINDOW = timedelta(minutes=10)
-    LOOKBACK_WINDOW = timedelta(days=365)
+    LOOKBACK_WINDOW = timedelta(days=730)
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
