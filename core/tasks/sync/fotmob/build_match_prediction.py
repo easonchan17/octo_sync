@@ -86,9 +86,9 @@ class BuildMatchPrediction(PollTask):
                             "match_id":      match_id,
                             "match_code":    match_code,
                             "model_version": result['model_version'],
-                            "home_prob":     probabilities.get('0', 0.0),
+                            "home_prob":     probabilities.get('2', 0.0),
                             "draw_prob":     probabilities.get('1', 0.0),
-                            "away_prob":     probabilities.get('2', 0.0),
+                            "away_prob":     probabilities.get('0', 0.0),
                             "prediction":    result['prediction'],
                             "predicted_at":  current_time,
                         })
