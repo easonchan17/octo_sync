@@ -66,10 +66,9 @@ class BuildMatchPrediction(PollTask):
             try:
                 items = self.get_pending_predict_items()
                 if not items:
-                    self.idle_sleep()
                     continue
 
-                for (match_id, match_code, kickoff_time), record in items:
+                for (match_code, kickoff_time), record in items:
                     if self.should_stop():
                         return
 
@@ -83,7 +82,6 @@ class BuildMatchPrediction(PollTask):
 
                         current_time = datetime.now(timezone.utc)
                         self.match_dao.sync_predict_data({
-                            "match_id":      match_id,
                             "match_code":    match_code,
                             "model_version": result['model_version'],
                             "home_prob":     probabilities.get('2', 0.0),
@@ -100,10 +98,11 @@ class BuildMatchPrediction(PollTask):
                         )
                         self.logger.info(f"Predicted match: match_code={match_code}")
                     except Exception as e:
-                        self.logger.error(f"Failed to predict match {match_code}: {e}")
+                        self.logger.error(f"Failed to predict match {match_code}: {e}", exc_info=True)
                         retry_interval = None if datetime.now(timezone.utc) >= kickoff_time + self.retry_interval else self.retry_interval
                         self.match_dao.reschedule_prediction(match_code, record.model_version, retry_interval)
 
             except Exception as e:
                 self.logger.error(f"PredictMatch error: {e}", exc_info=True)
+            finally:
                 self.idle_sleep()
