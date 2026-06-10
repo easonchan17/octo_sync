@@ -496,6 +496,7 @@ class MatchDao(BaseDao):
                     MatchPrediction.away_prob.key: stmt.excluded.away_prob,
                     MatchPrediction.prediction.key: stmt.excluded.prediction,
                     MatchPrediction.predicted_at.key: stmt.excluded.predicted_at,
+                    MatchPrediction.confidence.key: stmt.excluded.confidence,
                     MatchPrediction.updated_at.key: func.now(),
                 }
             )
