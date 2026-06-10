@@ -102,8 +102,8 @@ class MatchService(BaseService):
             'momentum':  ((match_content.get('momentum') or {}).get('main') or {}).get('data'),
             'events':    ((match_content.get('matchFacts') or {}).get('events') or {}).get('events'),
             'lineup':    {
-                "home": self.match_dao.get_match_lineup(match_id, home_id),
-                "away": self.match_dao.get_match_lineup(match_id, away_id),
+                "home": self.match_dao.get_team_lineup(match_id, home_id),
+                "away": self.match_dao.get_team_lineup(match_id, away_id),
             },
             'stats':     self.match_dao.get_match_stats(match_id),
             'shot_map':  self.match_dao.get_match_shot_map(match_id),

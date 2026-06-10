@@ -240,7 +240,7 @@ class MatchDao(BaseDao):
             ).filter(ShotStat.match_id == match_id).order_by(ShotStat.min.asc()).all()
             return [row._asdict() for row in rows]
 
-    def get_match_lineup(self, match_id: int, team_id: int) -> List[Dict[str, Any]]:
+    def get_team_lineup(self, match_id: int, team_id: int) -> List[Dict[str, Any]]:
         with self.db.get_session() as session:
             rows = session.query(
                 MatchLineup.team_id,
@@ -250,12 +250,31 @@ class MatchDao(BaseDao):
                 MatchLineup.player_code,
                 MatchLineup.shirt_number,
                 MatchLineup.position,
+                MatchLineup.usual_playing_position_id,
                 MatchLineup.role,
                 MatchLineup.is_captain,
                 MatchLineup.rating,
             ).filter(
                 MatchLineup.match_id == match_id,
                 MatchLineup.team_id == team_id,
+            ).all()
+            return [row._asdict() for row in rows]
+
+    def get_match_lineup(self, match_code: str) -> List[Dict[str, Any]]:
+        with self.db.get_session() as session:
+            rows = session.query(
+                MatchLineup.team_name,
+                MatchLineup.player_name,
+                MatchLineup.position,
+                MatchLineup.usual_playing_position_id,
+                MatchLineup.role,
+                MatchLineup.is_captain,
+            ).join(
+                Fixture, Fixture.match_id == MatchLineup.match_id
+            ).filter(
+                Fixture.match_code == match_code,
+            ).order_by(
+                MatchLineup.team_name, MatchLineup.role, MatchLineup.shirt_number
             ).all()
             return [row._asdict() for row in rows]
 
