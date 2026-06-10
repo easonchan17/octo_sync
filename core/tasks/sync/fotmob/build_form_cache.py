@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, timezone
 from core.scheduler.task_registry import TaskRegistry
 from core.store.postgres.daos.fotmob.form_cache_dao import FormCacheDao
 from core.services.ml.inference.predict_service import get_predict_service
+from core.services.league import get_league_service
+from core.types.enums import SiteName
 
 @TaskRegistry.poll('build.fotmob.form_cache')
 class BuildFormCache(PollTask):
@@ -15,6 +17,7 @@ class BuildFormCache(PollTask):
         super().__init__()
         self.form_cache_dao  = FormCacheDao()
         self.predict_service = get_predict_service()
+        self.league_service  = get_league_service()
 
     def execute(self, *args, **kwargs) -> None:
         last_check_time, last_signal_time = datetime.now(timezone.utc), datetime.min.replace(tzinfo=timezone.utc)
@@ -33,7 +36,9 @@ class BuildFormCache(PollTask):
                     continue
 
                 if last_signal_time is not None and last_check_time - last_signal_time >= self.DEBOUNCE_WINDOW:
-                    match_count = self.predict_service.build_form_cache(min_kickoff_time)
+                    site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
+                    league_ids = [league.league_id for league in site_leagues]
+                    match_count = self.predict_service.build_form_cache(min_kickoff_time, league_ids)
                     self.form_cache_dao.add_build_log(min_kickoff_time, match_count)
                     last_signal_time = None
                     self.logger.info(f"FormCache built: match_count={match_count}, checkpoint={min_kickoff_time}")
