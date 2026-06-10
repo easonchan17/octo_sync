@@ -39,7 +39,7 @@ class EloRating(Base):
     match_id = Column(Integer, nullable=False)
 
     kickoff_time = Column[datetime](DateTime(timezone=True), nullable=False)
-    season = Column(Integer, nullable=False)
+    season = Column(Integer, nullable=True)
 
     pre_rating = Column[Decimal](Numeric(10, 4), nullable=False)
     expected_score = Column[Decimal](Numeric(10, 4), nullable=False)

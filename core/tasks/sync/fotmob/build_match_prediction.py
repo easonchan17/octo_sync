@@ -62,6 +62,7 @@ class BuildMatchPrediction(PollTask):
         return items
 
     def execute(self, *args, **kwargs) -> None:
+        self.idle_sleep()
         while not self.should_stop():
             try:
                 items = self.get_pending_predict_items()
