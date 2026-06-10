@@ -57,7 +57,8 @@ class ToolService(BaseService):
         result = {}
         for row in rows:
             usual_id = row.get("usual_playing_position_id")
-            position = row.get("position") or BROAD_POSITION.get(usual_id)
+            broad = BROAD_POSITION.get(usual_id)
+            position = row.get("position") or (broad[0] if broad else None)
             result.setdefault(row["team_name"], []).append({
                 "name":       row["player_name"],
                 "position":   position,

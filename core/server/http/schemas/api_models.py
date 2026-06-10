@@ -245,7 +245,7 @@ class PlayerResponse(BaseModel):
     player_name: str
     player_code: str
     shirt_number: Optional[int] = None
-    position_code: Optional[str] = Field(default=None, exclude=True, validation_alias='position')
+    position: Optional[str]
     usual_playing_position_id: Optional[int] = Field(default=None, exclude=True)
     role: Optional[int] = None
     is_captain: Optional[bool] = None
@@ -253,11 +253,10 @@ class PlayerResponse(BaseModel):
 
     @computed_field
     @property
-    def position(self) -> Optional[str]:
-        if self.position_code:
-            return self.position_code
+    def usual_position(self) -> Optional[str]:
         if self.usual_playing_position_id is not None:
-            return BROAD_POSITION.get(self.usual_playing_position_id)
+            entry = BROAD_POSITION.get(self.usual_playing_position_id)
+            return entry[1] if entry else None
         return None
 
     @computed_field
