@@ -24,14 +24,14 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
     FORMULAS = [
         ("home_shots_acc_ema_5",              "home_shots_on_target_ema_5 / home_shots_ema_5"),
         ("away_shots_acc_ema_5",              "away_shots_on_target_ema_5 / away_shots_ema_5"),
-        ("home_shots_conversion_ema_5",       "home_score_ema_5 / home_shots_ema_5"),
-        ("away_shots_conversion_ema_5",       "away_score_ema_5 / away_shots_ema_5"),
+        ("home_shots_conversion_ema_5",       "np.minimum(home_score_ema_5 / home_shots_ema_5, 1.0)"),
+        ("away_shots_conversion_ema_5",       "np.minimum(away_score_ema_5 / away_shots_ema_5, 1.0)"),
         ("home_xg_per_shot_ema_5",            "home_xg_ema_5 / home_shots_ema_5"),
         ("away_xg_per_shot_ema_5",            "away_xg_ema_5 / away_shots_ema_5"),
         ("home_npxg_per_shot_ema_5",          "home_npxg_ema_5 / home_shots_ema_5"),
         ("away_npxg_per_shot_ema_5",          "away_npxg_ema_5 / away_shots_ema_5"),
-        ("home_goal_to_xg_ema_5",             "home_score_ema_5 / home_xg_ema_5"),
-        ("away_goal_to_xg_ema_5",             "away_score_ema_5 / away_xg_ema_5"),
+        ("home_goal_to_xg_ema_5",             "np.minimum(home_score_ema_5 / home_xg_ema_5, 5)"),
+        ("away_goal_to_xg_ema_5",             "np.minimum(away_score_ema_5 / away_xg_ema_5, 5)"),
         ("home_goal_minus_xg_ema_5",          "home_score_ema_5 - home_xg_ema_5"),
         ("away_goal_minus_xg_ema_5",          "away_score_ema_5 - away_xg_ema_5"),
         ("home_opp_half_pass_rate_ema_5",         "home_opp_half_passes_ema_5 / home_passes_ema_5"),
@@ -342,7 +342,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
             .transform(lambda group: group.ewm(span=5, min_periods=3, adjust=False).mean().shift(1))
             .values
         )
-        team_stats["schedule_rest_days"] = group_by_team["kickoff_time"].diff() / pd.Timedelta(days=1)
+        team_stats["schedule_rest_days"] = (group_by_team["kickoff_time"].diff() / pd.Timedelta(days=1)).clip(upper=30)
         team_stats["lagged_xg"] = group_by_team["xg"].shift(1)
         team_stats["point_sum_5"] = group_by_team["point"].transform(
             lambda group: group.rolling(window=5, min_periods=1).sum().shift(1)
@@ -572,7 +572,7 @@ class MatchLatestFeatureBuilder(MatchFeatureBuilder):
             .transform(lambda group: group.ewm(span=5, min_periods=3, adjust=False).mean().shift(0))
             .values
         )
-        team_stats["schedule_rest_days"] = group_by_team["kickoff_time"].diff() / pd.Timedelta(days=1)
+        team_stats["schedule_rest_days"] = (group_by_team["kickoff_time"].diff() / pd.Timedelta(days=1)).clip(upper=30)
         team_stats["lagged_xg"] = group_by_team["xg"].shift(0)
         team_stats["point_sum_5"] = group_by_team["point"].transform(
             lambda group: group.rolling(window=5, min_periods=1).sum().shift(0)
@@ -609,7 +609,8 @@ class MatchPredictFeatureBuilder(MatchFeatureBuilder):
         home_state = self.get_team_state(self.home_id)
         away_state = self.get_team_state(self.away_id)
         if home_state is None or away_state is None:
-            return None
+            missing = [tid for tid, state in [(self.home_id, home_state), (self.away_id, away_state)] if state is None]
+            raise ValueError(f"No form cache state for team_ids={missing}, match_id={self.match_id}")
 
         return home_state, away_state
 
@@ -625,8 +626,8 @@ class MatchPredictFeatureBuilder(MatchFeatureBuilder):
             if key != "kickoff_time":
                 features[f"away_{key}"] = value
 
-        features["home_schedule_rest_days"] = (self.kickoff_time - home_state["kickoff_time"]).days
-        features["away_schedule_rest_days"] = (self.kickoff_time - away_state["kickoff_time"]).days
+        features["home_schedule_rest_days"] = min((self.kickoff_time - home_state["kickoff_time"]).days, 30)
+        features["away_schedule_rest_days"] = min((self.kickoff_time - away_state["kickoff_time"]).days, 30)
 
         df = pd.DataFrame([features])
         FormulaMutator(df).mutate_batch(self.FORMULAS)
