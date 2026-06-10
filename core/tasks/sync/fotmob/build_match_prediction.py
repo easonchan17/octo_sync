@@ -13,6 +13,8 @@ from core.types.enums import SiteName, ModelFamily
 
 @TaskRegistry.poll('build.fotmob.prediction')
 class BuildMatchPrediction(PollTask):
+    MAX_CLUD_LEAGUES = 300
+
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__()
         self.match_dao = MatchDao()
@@ -30,10 +32,6 @@ class BuildMatchPrediction(PollTask):
         )
 
     def get_pending_predict_items(self) -> List[Any]:
-        site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
-        club_league_ids    = [league.league_id for league in site_leagues if league.ref_league_id < 300]
-        national_league_ids = [league.league_id for league in site_leagues if league.ref_league_id >= 300]
-
         club_record    = self.training_record_dao.get_default(ModelFamily.WINBALL_CLUB)
         national_record = self.training_record_dao.get_default(ModelFamily.WINBALL_NATIONAL)
 
@@ -41,9 +39,14 @@ class BuildMatchPrediction(PollTask):
             self.logger.warning("No default model available, skipping prediction")
             return []
 
-        items = []
         min_kickoff_time = datetime.now(timezone.utc)
         max_kickoff_time = min_kickoff_time + ModelService.PREDICTION_LOOKAHEAD
+
+        site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
+        club_league_ids    = [league.league_id for league in site_leagues if league.ref_league_id <= self.MAX_CLUD_LEAGUES]
+        national_league_ids = [league.league_id for league in site_leagues if league.ref_league_id > self.MAX_CLUD_LEAGUES]
+
+        items = []
         for record, league_ids in zip((club_record, national_record), (club_league_ids, national_league_ids)):
             if record is None:
                 continue

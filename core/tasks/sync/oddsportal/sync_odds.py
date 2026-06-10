@@ -73,6 +73,7 @@ class BaseSyncOdds(PollTask):
                 items = self.odds_dao.get_pending_fetch_items(
                     self.market.betting_type_id,
                     self.market.scope_id,
+                    CrawlParams.FIXTURE_START_DATE,
                     CrawlParams.FETCH_BATCH_SIZE
                 )
                 if not items:
