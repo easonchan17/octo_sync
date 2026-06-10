@@ -22,8 +22,8 @@ class FormCache:
         self._player_stats:      Dict[int, Dict] = {}
         self._position_defaults: Dict[str, Dict] = {}
 
-    def build(self, min_kickoff_time: datetime) -> int:
-        team_df   = MatchLatestFeatureBuilder(min_kickoff_time).build()
+    def build(self, min_kickoff_time: datetime, league_ids: list) -> int:
+        team_df   = MatchLatestFeatureBuilder(min_kickoff_time, league_ids).build()
         player_df = OutfieldPlayerLatestFeatureBuilder(min_kickoff_time).build()
         gk_df     = GoalkeeperLatestFeatureBuilder(min_kickoff_time).build()
 
@@ -112,8 +112,8 @@ class PredictService:
 
         return predictor.predict(fixture, self._form_cache)
 
-    def build_form_cache(self, min_kickoff_time: datetime) -> int:
-        return self._form_cache.build(min_kickoff_time)
+    def build_form_cache(self, min_kickoff_time: datetime, league_ids: list) -> int:
+        return self._form_cache.build(min_kickoff_time, league_ids)
 
     def load_predictor(self, family: str, version: str, record: TrainingRecord) -> Optional[BasePredictor]:
         return self._predictor_manager.load(family, version, record)

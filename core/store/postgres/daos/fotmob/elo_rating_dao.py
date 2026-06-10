@@ -20,19 +20,19 @@ class EloRatingDao(BaseDao):
                 .first()
             )
 
-    def get_rebuild_time(self, built_time: datetime, checkpoint: datetime, min_season: int) -> Optional[datetime]:
+    def get_rebuild_time(self, built_time: datetime, checkpoint: datetime, league_ids: List[int]) -> Optional[datetime]:
         with self.db.get_session() as session:
             return (
                 session.query(func.min(Fixture.kickoff_time))
                 .filter(
                     Fixture.updated_at > built_time,
                     Fixture.kickoff_time <= checkpoint,
-                    Fixture.season >= min_season,
+                    Fixture.league_id.in_(league_ids),
                 )
                 .scalar()
             )
 
-    def get_pending_build_items(self, from_checkpoint: datetime, checkpoint: datetime, min_season: int) -> List[Any]:
+    def get_pending_build_items(self, from_checkpoint: datetime, checkpoint: datetime, league_ids: List[int]) -> List[Any]:
         with self.db.get_session() as session:
             return (
                 session.query(
@@ -48,7 +48,7 @@ class EloRatingDao(BaseDao):
                 .filter(
                     Fixture.kickoff_time >= from_checkpoint,
                     Fixture.kickoff_time <= checkpoint,
-                    Fixture.season >= min_season,
+                    Fixture.league_id.in_(league_ids),
                 )
                 .order_by(Fixture.kickoff_time.asc())
                 .all()
