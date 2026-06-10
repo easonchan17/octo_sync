@@ -285,7 +285,7 @@ class ProbsItemResponse(BaseModel):
 
     @computed_field
     @property
-    def name(self) -> str:
+    def label(self) -> str:
         return BOOKMAKER_DISPLAY_NAMES.get(self.bookmaker_id) if self.bookmaker_id else "期望"
 
 class EuProbsResponse(BaseModel):
