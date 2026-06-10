@@ -54,6 +54,9 @@ class BaseSyncOdds(PollTask):
 
     def _build_page_url(self, match_uri: str) -> str:
         parsed = urlparse(match_uri)
+        if parsed.scheme:
+            return match_uri
+
         path = parsed.path.rstrip('/')
         if parsed.fragment:
             path = f"{path}/#{parsed.fragment.rstrip('/')}"
