@@ -1,39 +1,60 @@
 import json
 from enum import Enum
-from pydantic import BaseModel, ValidationError
-from typing import Any, Dict, Literal, Optional
-from datetime import datetime, timedelta, timezone
-from core.store.postgres.daos.fotmob import ActiveFixtureDao
-from core.store.postgres.daos.common import FeedbackIssueDao, ChatConversationDao
+from typing import Any, Dict
+from core.services.tool_service import ToolService
 
 
 class ToolNames(str, Enum):
     SUBMIT_ISSUE    = "submit_feedback_issue"
-    SEARCH_FIXTURES = "search_fixtures"
-
-
-class FeedbackIssueModel(BaseModel):
-    title:       str
-    description: str
-    category:    Literal["data", "prediction", "display", "other"]
-    severity:    Literal["low", "medium", "high"]
-    match_code:  Optional[str] = None
+    SEARCH_BY_TEAM  = "search_by_team"
+    SEARCH_BY_LEAGUE = "search_by_league"
+    GET_LINEUPS     = "get_match_lineups"
 
 
 TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": ToolNames.SEARCH_FIXTURES,
-            "description": "查询赛程。按球队查询传 team_name；按赛事查询传 league_id（系统赛事ID）。询问首场/开幕战时同时传 first_of_season=true",
+            "name": ToolNames.SEARCH_BY_TEAM,
+            "description": "按球队查询赛程",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "team_name":       {"type": "string",  "description": "英文球队名，如 Argentina、Barcelona、Manchester United"},
-                    "league_id":       {"type": "integer", "description": "系统赛事ID，如世界杯=301、欧冠=100、欧洲杯=401"},
-                    "first_of_season": {"type": "boolean", "description": "是否查询当前赛季首场，仅 league_id 模式有效，默认 false"},
-                    "days_ahead":      {"type": "integer", "description": "查询未来天数，仅 team_name 模式有效，默认 14"}
-                }
+                    "team_name":   {"type": "string", "description": "英文球队名，如 Argentina、Barcelona、Manchester United"},
+                    "anchor_time": {"type": "string", "description": "参考时间点，ISO 8601 格式（如 2025-06-10T08:00:00+00:00）"},
+                    "direction":   {"type": "string", "enum": ["after", "before"], "description": "after=查该时间点之后的比赛，before=查之前的比赛"}
+                },
+                "required": ["team_name", "anchor_time", "direction"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": ToolNames.SEARCH_BY_LEAGUE,
+            "description": "按赛事查询赛程，传系统赛事ID",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "league_id":   {"type": "integer", "description": "系统赛事ID，如世界杯=301、欧冠=100、欧洲杯=401"},
+                    "anchor_time": {"type": "string", "description": "参考时间点，ISO 8601 格式（如 2025-06-10T08:00:00+00:00）"},
+                    "direction":   {"type": "string", "enum": ["after", "before"], "description": "after=查该时间点之后的比赛，before=查之前的比赛"}
+                },
+                "required": ["league_id", "anchor_time", "direction"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": ToolNames.GET_LINEUPS,
+            "description": "查询一场比赛的双方首发和替补阵容。需先通过 search_by_team 或 search_by_league 获取 match_code，再调用本工具。适用于用户询问阵容、主力是否缺阵等问题",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "match_code": {"type": "string", "description": "比赛唯一标识，从 search_by_team 或 search_by_league 返回结果中获取"}
+                },
+                "required": ["match_code"]
             }
         }
     },
@@ -60,59 +81,17 @@ TOOLS = [
 
 def execute_tool(name: str, args: Dict[str, Any], conversation_id: str) -> str:
     try:
-        if name == ToolNames.SEARCH_FIXTURES:
-            return _search_fixtures(**args)
-        if name == ToolNames.SUBMIT_ISSUE:
-            return _submit_issue(conversation_id, args)
+        service = ToolService()
+        if name == ToolNames.SEARCH_BY_TEAM:
+            result = service.search_by_team(**args)
+        elif name == ToolNames.SEARCH_BY_LEAGUE:
+            result = service.search_by_league(**args)
+        elif name == ToolNames.GET_LINEUPS:
+            result = service.get_match_lineup(**args)
+        elif name == ToolNames.SUBMIT_ISSUE:
+            result = service.submit_issue(conversation_id, args)
+        else:
+            result = {"error": f"unknown tool: {name}"}
     except Exception as e:
-        return json.dumps({"error": str(e)})
-
-    return json.dumps({"error": f"unknown tool: {name}"})
-
-
-def _submit_issue(conversation_id: str, args: Dict[str, Any]) -> str:
-    try:
-        validated = FeedbackIssueModel(**args)
-    except ValidationError as e:
-        return json.dumps({"ok": False, "error": f"参数校验失败，请重新整理后再次提交: {e}"})
-
-    user_id = ChatConversationDao().get_user_id(conversation_id) or ""
-    FeedbackIssueDao().create(conversation_id, user_id, validated.model_dump())
-    return json.dumps({"ok": True, "message": "工单已提交"})
-
-
-
-def _fixture_to_dict(fixture) -> dict:
-    return {
-        "match_code":   fixture.match_code,
-        "league_name":  fixture.league_name,
-        "kickoff_time": str(fixture.kickoff_time),
-        "home_team":    fixture.home_team,
-        "away_team":    fixture.away_team,
-    }
-
-
-def _search_fixtures(team_name: str = None, league_id: int = None, first_of_season: bool = False, days_ahead: int = 14) -> str:
-    dao = ActiveFixtureDao()
-
-    if league_id is not None:
-        if first_of_season:
-            fixture = dao.search_first_of_season_by_ref_league_id(league_id)
-            if not fixture:
-                return json.dumps({"found": False, "message": "未找到该赛事的赛程数据"})
-            return json.dumps({"found": True, "fixtures": [_fixture_to_dict(fixture)]})
-
-        fixtures = dao.search_upcoming_by_ref_league_id(league_id, datetime.now(timezone.utc))
-        if not fixtures:
-            return json.dumps({"found": False, "message": "未找到该赛事的近期赛程"})
-        return json.dumps({"found": True, "fixtures": [_fixture_to_dict(f) for f in fixtures]})
-
-    if team_name is not None:
-        start_time = datetime.now(timezone.utc)
-        end_time   = start_time + timedelta(days=days_ahead)
-        fixtures   = dao.search_by_team_name(team_name, start_time, end_time)
-        if not fixtures:
-            return json.dumps({"found": False, "message": f"未找到 {team_name} 的近期赛程"})
-        return json.dumps({"found": True, "fixtures": [_fixture_to_dict(f) for f in fixtures]})
-
-    return json.dumps({"error": "team_name 或 league_id 必须提供其中之一"})
+        result = {"error": str(e)}
+    return json.dumps(result)

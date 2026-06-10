@@ -88,6 +88,10 @@ class Odds1x2Parser(BaseOddsParser):
                     self.logger.error(f"Odds data is missing for bookmaker_id={bookmaker_id}")
                     continue
 
+                if not isinstance(closing_bookmaker_odds, dict) or not isinstance(opening_bookmaker_odds, dict):
+                    self.logger.warning(f"Unexpected odds format for bookmaker_id={bookmaker_id}, skipping")
+                    continue
+
                 records.append({
                     "match_code": match_code,
                     "quote_type": quote_type,
