@@ -397,7 +397,8 @@ class MatchDao(BaseDao):
                 ),
                 Fixture.kickoff_time >= min_kickoff_time,
                 Fixture.kickoff_time < max_kickoff_time,
-                Fixture.match_status.in_(MatchStatus.natural_finals())
+                Fixture.match_status.in_(MatchStatus.natural_finals()),
+                SiteLeague.ref_league_id.isnot(None),
             ).order_by(Fixture.kickoff_time.desc()).all()
             return [row._asdict() for row in rows]
 
@@ -425,7 +426,8 @@ class MatchDao(BaseDao):
             ).filter(
                 or_(Fixture.home_id == team_id, Fixture.away_id == team_id),
                 Fixture.kickoff_time < max_kickoff_time,
-                Fixture.match_status.in_(MatchStatus.natural_finals())
+                Fixture.match_status.in_(MatchStatus.natural_finals()),
+                SiteLeague.ref_league_id.isnot(None),
             ).order_by(Fixture.kickoff_time.desc()).limit(limit).all()
             return [row._asdict() for row in rows]
 
