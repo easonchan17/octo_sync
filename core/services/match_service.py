@@ -98,16 +98,19 @@ class MatchService(BaseService):
         data['league_id'] = canonical_league.id if canonical_league is not None else None
         data['league_name'] = canonical_league.name if canonical_league is not None else None
 
+        match_stats = self.match_dao.get_match_stats(match_id)
+
         data['detail'] = {
             'weather':   match_content.get('weather'),
             'stadium':   ((match_content.get('matchFacts') or {}).get('infoBox') or {}).get('Stadium'),
             'momentum':  ((match_content.get('momentum') or {}).get('main') or {}).get('data'),
             'events':    ((match_content.get('matchFacts') or {}).get('events') or {}).get('events'),
             'lineup':    {
+                "lineup_type": match_stats.get('lineup_type') if match_stats else None,
                 "home": self.match_dao.get_team_lineup(match_id, home_id),
                 "away": self.match_dao.get_team_lineup(match_id, away_id),
             },
-            'stats':     self.match_dao.get_match_stats(match_id),
+            'stats':     match_stats,
             'shot_map':  self.match_dao.get_match_shot_map(match_id),
             'form':      {
                 "home": self.match_dao.get_team_form(home_id, kickoff_time, self.FORM_LIMIT),

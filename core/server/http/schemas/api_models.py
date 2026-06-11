@@ -432,6 +432,24 @@ class KnockoutRoundResponse(BaseModel):
         return KNOCKOUT_STAGE_ZH.get(value, value)
 
 
+LINEUP_TYPE_LABELS = {
+    "standard":       "官方首发",
+    "lastStarting11": "上场首发",
+    "predicted":      "预测阵容",
+    "simple":         "简单阵容",
+}
+
+class LineupResponse(BaseModel):
+    lineup_type: Optional[str] = Field(default=None, exclude=True)
+    home: List[PlayerResponse] = []
+    away: List[PlayerResponse] = []
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return LINEUP_TYPE_LABELS.get(self.lineup_type or "", "未知")
+
+
 class MatchDetail(BaseModel):
     events: Optional[List[EventResponse]] = None
     shot_map: List[ShotResponse] = []
@@ -439,7 +457,7 @@ class MatchDetail(BaseModel):
     weather: Optional[WeatherResponse] = None
     stadium: Optional[StadiumResponse] = None
     stats: Optional[Dict[str, Any]] = None
-    lineup: Dict[str, List[PlayerResponse]] = {}
+    lineup: Optional[LineupResponse] = None
     form: Dict[str, List[RecentMatchResponse]] = {}
     h2h: List[RecentMatchResponse] = []
     probs: Optional[ProbsResponse] = None
