@@ -435,8 +435,8 @@ class KnockoutRoundResponse(BaseModel):
 LINEUP_TYPE_LABELS = {
     "standard":       "官方首发",
     "lastStarting11": "上场首发",
-    "predicted":      "预测阵容",
-    "simple":         "简单阵容",
+    "predicted":      "预测首发",
+    "simple":         "球员列表",
 }
 
 class LineupResponse(BaseModel):
@@ -447,7 +447,7 @@ class LineupResponse(BaseModel):
     @computed_field
     @property
     def label(self) -> str:
-        return LINEUP_TYPE_LABELS.get(self.lineup_type or "", "未知")
+        return LINEUP_TYPE_LABELS.get(self.lineup_type or "", "未知类型")
 
 
 class MatchDetail(BaseModel):
