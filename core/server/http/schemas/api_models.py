@@ -303,6 +303,7 @@ class MatchPredictionResponse(BaseModel):
     probabilities: Dict[str, float]
     prediction: int
     confidence: Optional[float] = None
+    predicted_at: Optional[datetime] = None
 
     @field_serializer('probabilities')
     def serialize_probabilities(self, values: Dict[str, float]) -> dict:
