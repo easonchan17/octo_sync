@@ -73,6 +73,7 @@ class MatchService(BaseService):
             "model_version": prediction.model_version,
             "probabilities": {"0": prediction.away_prob, "1": prediction.draw_prob, "2": prediction.home_prob},
             "prediction":    prediction.prediction,
+            "confidence":    prediction.confidence,
             "predicted_at":  prediction.predicted_at,
         }
 
