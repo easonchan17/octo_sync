@@ -448,6 +448,7 @@ class MatchDao(BaseDao):
                 MatchPrediction.draw_prob,
                 MatchPrediction.away_prob,
                 MatchPrediction.prediction,
+                MatchPrediction.predicted_at,
             ).filter(
                 MatchPrediction.match_code == match_code,
             ).order_by(MatchPrediction.predicted_at.desc()).first()
