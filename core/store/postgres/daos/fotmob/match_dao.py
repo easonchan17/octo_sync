@@ -196,6 +196,8 @@ class MatchDao(BaseDao):
                 Fixture.away_code,
                 Fixture.home_score,
                 Fixture.away_score,
+                Fixture.home_pen_score,
+                Fixture.away_pen_score,
                 Fixture.match_status,
                 MatchRaw.json_body.label('match_json_body'),
                 HistoryFixtureRaw.json_body.label('standings_json_body'),
