@@ -22,8 +22,8 @@ KNOCKOUT_STAGE_ZH = {
 }
 
 BOOKMAKER_ZH: Dict[int, str] = {
-    BookmakerID.BETFAIR_EXCHANGE.value: "动态概率",
-    BookmakerID.BETINASIA.value: "基准概率",
+    BookmakerID.BETFAIR_EXCHANGE.value: "动态",
+    BookmakerID.BETINASIA.value: "基准",
 }
 
 
@@ -241,6 +241,13 @@ class WeatherResponse(BaseModel):
     precipitation: Optional[float] = None
 
 
+class StadiumResponse(BaseModel):
+    name: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    surface: Optional[str] = None
+
+
 class PlayerResponse(BaseModel):
     player_name: str
     player_code: str
@@ -296,7 +303,7 @@ class ProbsItemResponse(BaseModel):
     @computed_field
     @property
     def label(self) -> str:
-        return BOOKMAKER_ZH.get(self.bookmaker_id) if self.bookmaker_id else "期望"
+        return BOOKMAKER_ZH.get(self.bookmaker_id) if self.bookmaker_id else "综合"
 
 class EuProbsResponse(BaseModel):
     label: str = "常规"
@@ -312,7 +319,8 @@ class AhProbsResponse(BaseModel):
     bookmakers: List[ProbsItemResponse] = []
 
 class ProbsResponse(BaseModel):
-    label: str = "概率分布"
+    label: str = "概率分析"
+    prob_format: str = "decimal"
     eu: Optional[EuProbsResponse] = None
     ah: Optional[AhProbsResponse] = None
 
@@ -359,9 +367,12 @@ class StandingsResponse(BaseModel):
 
 
 class MatchPredictionResponse(BaseModel):
+    label: str = "AI预测"
     model_version: str
     probabilities: Dict[str, float]
     prediction: int
+    confidence: Optional[float] = None
+    prob_format: str = "decimal"
 
 
 class KnockoutMatchupResponse(BaseModel):
@@ -398,6 +409,7 @@ class MatchDetail(BaseModel):
     shot_map: List[ShotResponse] = []
     momentum: Optional[List[Any]] = None
     weather: Optional[WeatherResponse] = None
+    stadium: Optional[StadiumResponse] = None
     stats: Optional[Dict[str, Any]] = None
     lineup: Dict[str, List[PlayerResponse]] = {}
     form: Dict[str, List[RecentMatchResponse]] = {}
