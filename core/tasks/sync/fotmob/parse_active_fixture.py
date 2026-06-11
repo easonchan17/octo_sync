@@ -126,21 +126,23 @@ class FixtureParser:
             match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), CrawlParams.MATCH_LIFESPAN)
 
             fixture = {
-                "match_id":     match_id,
-                "league_id":    league_id,
+                "match_id":      match_id,
+                "league_id":     league_id,
                 "sub_league_id": sub_league_id,
-                "league_name":  league_name,
-                "round":        round,
-                "group_name":   group,
-                "page_url":     page_url,
-                "home_id":      home.get('id'),
-                "home_team":    home_team,
-                "away_id":      away.get('id'),
-                "away_team":    away_team,
-                "kickoff_time": kickoff_time,
-                "home_score":   home_score,
-                "away_score":   away_score,
-                "match_status": match_status
+                "league_name":   league_name,
+                "round":         round,
+                "group_name":    group,
+                "page_url":      page_url,
+                "home_id":       home.get('id'),
+                "home_team":     home_team,
+                "away_id":       away.get('id'),
+                "away_team":     away_team,
+                "kickoff_time":  kickoff_time,
+                "home_score":    home_score,
+                "away_score":    away_score,
+                "home_pen_score": home.get('penScore'),
+                "away_pen_score": away.get('penScore'),
+                "match_status":  match_status
             }
             fixtures.append(fixture)
 
