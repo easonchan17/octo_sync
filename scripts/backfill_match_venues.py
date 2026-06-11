@@ -24,37 +24,31 @@ def main():
     match_dao = MatchDao()
     parser = MatchParser()
 
-    with db_manager.get_session() as session:
-        pending_ids = [row.match_id for row in session.query(MatchRaw.match_id)
-            .outerjoin(MatchVenue, MatchRaw.match_id == MatchVenue.match_id)
-            .filter(
-                MatchRaw.is_parsed == True,
-                MatchVenue.id.is_(None)
-            ).order_by(MatchRaw.match_id).all()]
-
-    total = len(pending_ids)
-    logger.info(f"Found {total} matches pending venue backfill")
-
     success, skipped = 0, 0
-    for i in range(0, total, BATCH_SIZE):
-        batch_ids = pending_ids[i:i + BATCH_SIZE]
-
+    while True:
         with db_manager.get_session() as session:
             batch = session.query(MatchRaw.match_id, MatchRaw.json_body)\
-                .filter(MatchRaw.match_id.in_(batch_ids)).all()
+                .outerjoin(MatchVenue, MatchRaw.match_id == MatchVenue.match_id)\
+                .filter(
+                    MatchRaw.is_parsed == True,
+                    MatchVenue.id.is_(None)
+                ).order_by(MatchRaw.match_id).limit(BATCH_SIZE).all()
+
+        if not batch:
+            break
 
         for match_id, json_body in batch:
             stadium = (((json_body.get('content') or {}).get('matchFacts') or {}).get('infoBox') or {}).get('Stadium')
-            if not stadium:
-                skipped += 1
-                continue
-            venue = parser._parse_venue(match_id, stadium)
+            venue = parser._parse_venue(match_id, stadium) if stadium else {"match_id": match_id}
             match_dao.sync_parsed_data({"match_id": match_id, "venue": venue})
-            success += 1
+            if stadium:
+                success += 1
+            else:
+                skipped += 1
 
-        logger.info(f"Progress: {min(i + BATCH_SIZE, total)}/{total} (success={success}, skipped={skipped})")
+        logger.info(f"Batch done (success={success}, skipped={skipped})")
 
-    logger.info(f"Backfill complete: success={success}, skipped={skipped}, total={total}")
+    logger.info(f"Backfill complete: success={success}, skipped={skipped}")
 
 if __name__ == '__main__':
     main()
