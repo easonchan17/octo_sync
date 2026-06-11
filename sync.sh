@@ -9,8 +9,7 @@
 
 PROJECT_DIR="${OCTO_PROJECT_DIR:-$(pwd)}"
 
-CURRENT_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-if [[ "$CURRENT_IP" == "122.51.0.210" ]]; then
+if [[ "$(whoami)" == "root" ]]; then
     TARGET_HOST="ubuntu@124.156.160.112"
     TARGET_PROJECT="/home/ubuntu/workspace/octo_sync"
 else
