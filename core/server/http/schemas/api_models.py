@@ -98,6 +98,13 @@ class DisplayMatchStatus(IntEnum):
     FINISHED = 2
 
 
+class ProbFormat(IntEnum):
+    DECIMAL = 0
+    PERCENT = 1
+
+DEFAULT_PROB_FORMAT = ProbFormat.PERCENT
+
+
 class BaseMatchResponse(BaseModel):
     match_code: str
     kickoff_time: datetime
@@ -290,6 +297,18 @@ class RecentMatchResponse(BaseMatchResponse):
     def league_logo(self) -> Optional[str]:
         return LEAGUE_LOGO_URL.format(league_id=self.ref_league_id) if self.ref_league_id else None
 
+class MatchPredictionResponse(BaseModel):
+    label: str = "AI预测"
+    model_version: str
+    probabilities: Dict[str, float]
+    prediction: int
+    confidence: Optional[float] = None
+
+    @field_serializer('probabilities')
+    def serialize_probabilities(self, values: Dict[str, float]) -> dict:
+        if DEFAULT_PROB_FORMAT == ProbFormat.PERCENT:
+            return {k: f"{round(v * 100)}%" for k, v in values.items()}
+        return {k: round(v, 2) for k, v in values.items()}
 
 class ProbsItemResponse(BaseModel):
     bookmaker_id: Optional[int] = Field(default=None, exclude=True)
@@ -305,6 +324,21 @@ class ProbsItemResponse(BaseModel):
     def label(self) -> str:
         return BOOKMAKER_ZH.get(self.bookmaker_id) if self.bookmaker_id else "综合"
 
+    @field_serializer('open', 'close')
+    def serialize_probs(self, values: List[Optional[float]]) -> list:
+        if DEFAULT_PROB_FORMAT == ProbFormat.PERCENT:
+            return [f"{round(v * 100)}%" if v is not None else v for v in values]
+        return [round(v, 2) if v is not None else v for v in values]
+
+
+class AhProbsItemResponse(ProbsItemResponse):
+    @field_serializer('open', 'close')
+    def serialize_probs(self, values: List[Optional[float]]) -> list:
+        if DEFAULT_PROB_FORMAT == ProbFormat.PERCENT:
+            return [f"{round(v * 100)}%" if v is not None and i != 1 else v for i, v in enumerate(values)]
+        return [round(v, 2) if v is not None else v for v in values]
+
+
 class EuProbsResponse(BaseModel):
     label: str = "常规"
     columns: List[str] = ["主队", "平局", "客队"]
@@ -315,12 +349,11 @@ class EuProbsResponse(BaseModel):
 class AhProbsResponse(BaseModel):
     label: str = "让球"
     columns: List[str] = ["主队", "让", "客队"]
-    avg: Optional[ProbsItemResponse] = None
-    bookmakers: List[ProbsItemResponse] = []
+    avg: Optional[AhProbsItemResponse] = None
+    bookmakers: List[AhProbsItemResponse] = []
 
 class ProbsResponse(BaseModel):
     label: str = "概率分析"
-    prob_format: str = "decimal"
     eu: Optional[EuProbsResponse] = None
     ah: Optional[AhProbsResponse] = None
 
@@ -364,16 +397,6 @@ class StandingsResponse(BaseModel):
     home: Optional[List[StandingResponse]] = None
     away: Optional[List[StandingResponse]] = None
     xg: Optional[List[StandingResponse]] = None
-
-
-class MatchPredictionResponse(BaseModel):
-    label: str = "AI预测"
-    model_version: str
-    probabilities: Dict[str, float]
-    prediction: int
-    confidence: Optional[float] = None
-    prob_format: str = "decimal"
-
 
 class KnockoutMatchupResponse(BaseModel):
     home_short_name: str          = Field(validation_alias='homeTeamShortName')
