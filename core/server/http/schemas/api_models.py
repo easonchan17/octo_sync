@@ -301,15 +301,19 @@ class MatchPredictionResponse(BaseModel):
     label: str = "AI预测"
     model_version: str
     probabilities: Dict[str, float]
+    probability_labels: List[str] = ["主队", "平局", "客队"]
     prediction: int
     confidence: Optional[float] = None
+    confidence_label: str = "置信度"
     predicted_at: Optional[datetime] = None
+    predicted_at_label: str = "预测时间"
 
     @field_serializer('probabilities')
-    def serialize_probabilities(self, values: Dict[str, float]) -> dict:
+    def serialize_probabilities(self, values: Dict[str, float]) -> list:
+        ordered = [values[k] for k in ("2", "1", "0")]
         if DEFAULT_PROB_FORMAT == ProbFormat.PERCENT:
-            return {k: f"{round(v * 100)}%" for k, v in values.items()}
-        return {k: round(v, 2) for k, v in values.items()}
+            return [f"{round(v * 100)}%" for v in ordered]
+        return [round(v, 2) for v in ordered]
 
 class ProbsItemResponse(BaseModel):
     bookmaker_id: Optional[int] = Field(default=None, exclude=True)
