@@ -13,7 +13,7 @@ from core.store.postgres.models.fotmob.match import MatchRaw, MatchVenue
 from core.store.postgres.daos.fotmob import MatchDao
 from core.tasks.sync.fotmob.parse_match import MatchParser
 
-BATCH_SIZE = 200
+BATCH_SIZE = 500
 
 def main():
     get_config_manager().load_config('configs/config.yml')
@@ -25,24 +25,23 @@ def main():
     parser = MatchParser()
 
     with db_manager.get_session() as session:
-        total = session.query(MatchRaw.match_id)\
-            .outerjoin(MatchVenue, MatchRaw.match_id == MatchVenue.match_id)\
+        pending_ids = [row.match_id for row in session.query(MatchRaw.match_id)
+            .outerjoin(MatchVenue, MatchRaw.match_id == MatchVenue.match_id)
             .filter(
                 MatchRaw.is_parsed == True,
                 MatchVenue.id.is_(None)
-            ).count()
+            ).order_by(MatchRaw.match_id).all()]
 
+    total = len(pending_ids)
     logger.info(f"Found {total} matches pending venue backfill")
 
-    success, skipped, offset = 0, 0, 0
-    while offset < total:
+    success, skipped = 0, 0
+    for i in range(0, total, BATCH_SIZE):
+        batch_ids = pending_ids[i:i + BATCH_SIZE]
+
         with db_manager.get_session() as session:
             batch = session.query(MatchRaw.match_id, MatchRaw.json_body)\
-                .outerjoin(MatchVenue, MatchRaw.match_id == MatchVenue.match_id)\
-                .filter(
-                    MatchRaw.is_parsed == True,
-                    MatchVenue.id.is_(None)
-                ).order_by(MatchRaw.match_id).offset(offset).limit(BATCH_SIZE).all()
+                .filter(MatchRaw.match_id.in_(batch_ids)).all()
 
         for match_id, json_body in batch:
             stadium = (((json_body.get('content') or {}).get('matchFacts') or {}).get('infoBox') or {}).get('Stadium')
@@ -53,8 +52,7 @@ def main():
             match_dao.sync_parsed_data({"match_id": match_id, "venue": venue})
             success += 1
 
-        offset += BATCH_SIZE
-        logger.info(f"Progress: {min(offset, total)}/{total} (success={success}, skipped={skipped})")
+        logger.info(f"Progress: {min(i + BATCH_SIZE, total)}/{total} (success={success}, skipped={skipped})")
 
     logger.info(f"Backfill complete: success={success}, skipped={skipped}, total={total}")
 
