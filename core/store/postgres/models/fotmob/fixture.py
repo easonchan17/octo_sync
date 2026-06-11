@@ -83,5 +83,7 @@ class Fixture(Base):
 
     home_score = Column(Integer, nullable=True)
     away_score = Column(Integer, nullable=True)
+    home_pen_score = Column(Integer, nullable=True)
+    away_pen_score = Column(Integer, nullable=True)
 
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
