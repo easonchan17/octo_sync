@@ -304,10 +304,18 @@ class MatchPredictionResponse(BaseModel):
     probabilities: Dict[str, float]
     probability_labels: List[str] = ["主队", "平局", "客队"]
     prediction: int
-    confidence: Optional[float] = None
-    confidence_label: str = "置信度"
+    certainty: Optional[float] = None
+    certainty_label: str = "预测强度"
     predicted_at: Optional[datetime] = None
     predicted_at_label: str = "预测时间"
+
+    @field_serializer('certainty')
+    def serialize_certainty(self, value: Optional[float]) -> Optional[Any]:
+        if value is None:
+            return None
+        if DEFAULT_PROB_FORMAT == ProbFormat.PERCENT:
+            return f"{round(value * 100)}%"
+        return round(value, 2)
 
     @field_serializer('probabilities')
     def serialize_probabilities(self, values: Dict[str, float]) -> list:

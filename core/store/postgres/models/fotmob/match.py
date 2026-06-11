@@ -352,7 +352,7 @@ class MatchPrediction(Base):
     is_correct = Column(Boolean, nullable=True)
     predicted_at = Column(DateTime(timezone=True), nullable=False)
     next_predict_at = Column(DateTime(timezone=True), nullable=True)
-    confidence = Column(Float, nullable=True)
+    certainty = Column(Float, nullable=True)
 
 
 class FormCacheBuildLog(Base):

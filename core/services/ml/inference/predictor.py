@@ -133,19 +133,13 @@ class BaseWinballPredictor(BasePredictor):
 
         df = self.feature_builder.build(fixture, state_provider)
 
-        home_state = state_provider.get_team_state(fixture.home_id)
-        away_state = state_provider.get_team_state(fixture.away_id)
-        staleness_days = max(
-            (fixture.kickoff_time - home_state['kickoff_time']).days if home_state else 365,
-            (fixture.kickoff_time - away_state['kickoff_time']).days if away_state else 365,
-        )
-        confidence = min(1.0, max(0.0, round(1.0 - staleness_days / 365, 3)))
-
         proba = self.model.predict_proba(df)[0]
         if self.calib_params is not None:
             raw = np.array([1.0 / (1.0 + np.exp(p['a'] * proba[i] + p['b'])) for i, p in enumerate(self.calib_params)])
             proba = raw / raw.sum()
         probabilities = {str(cls): float(prob) for cls, prob in zip(self.model.classes_, proba)}
+        max_prob = max(probabilities.values())
+        certainty = min(1.0, max(0.0, round((max_prob - 1/3) / (2/3), 3)))
 
         draw_idx = list(self.model.classes_).index(self.draw_class)
         if proba[draw_idx] >= self.draw_threshold:
@@ -158,7 +152,7 @@ class BaseWinballPredictor(BasePredictor):
             "model_version": self.model_version,
             "probabilities": probabilities,
             "prediction": prediction,
-            "confidence": confidence,
+            "certainty": certainty,
         }
 
 
