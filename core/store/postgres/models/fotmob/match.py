@@ -331,6 +331,26 @@ class MatchLineup(Base):
     market_value = Column(BigInteger, nullable=True)
 
 
+class MatchVenue(Base):
+    __tablename__ = 'match_venues'
+    __table_args__ = (
+        Index('idx_match_venues_created_at', 'created_at'),
+        Index('idx_match_venues_updated_at', 'updated_at'),
+        {'schema': SiteName.FOTMOB.value}
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    match_id = Column(Integer, nullable=False, unique=True)
+
+    name = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
+    surface = Column(String(32), nullable=True)
+    capacity = Column(Integer, nullable=True)
+    lat = Column(Float, nullable=True)
+    long = Column(Float, nullable=True)
+
+
 class MatchPrediction(Base):
     __tablename__ = 'match_predictions'
     __table_args__ = (

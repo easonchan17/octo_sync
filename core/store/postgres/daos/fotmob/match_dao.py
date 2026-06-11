@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.store.postgres.models.fotmob.fixture import Fixture, HistoryFixtureRaw, ActiveFixtureRaw
-from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat, MatchPrediction
+from core.store.postgres.models.fotmob.match import MatchRaw, MatchLineup, MatchStat, MatchPlayerStat, ShotStat, MatchVenue, MatchPrediction
 from core.store.postgres.models.common.league import SiteLeague
 from core.types.enums import MatchStatus, SiteName
 from ..base_dao import BaseDao
@@ -160,12 +160,24 @@ class MatchDao(BaseDao):
 
     def sync_parsed_data(self, parsed_data: Dict[str, Any]) -> None:
         match_id = parsed_data.get("match_id")
+        venue = parsed_data.get("venue")
         lineup = parsed_data.get("lineup")
         match_stats = parsed_data.get("match_stats")
         player_stats = parsed_data.get("player_stats")
         shot_stats = parsed_data.get('shot_stats')
 
         with self.db.get_session() as session:
+            if venue:
+                venue_stmt = insert(MatchVenue).values(venue)
+                set_clauses, where_clause = self.build_upsert_clauses(
+                    MatchVenue, venue_stmt, immutable_cols={'id', 'match_id', 'created_at'}
+                )
+                venue_stmt = venue_stmt.on_conflict_do_update(
+                    index_elements=[MatchVenue.match_id.key],
+                    set_=set_clauses,
+                    where=where_clause
+                )
+                session.execute(venue_stmt)
             if lineup:
                 session.query(MatchLineup).filter(MatchLineup.match_id == match_id).delete(synchronize_session=False)
                 session.execute(insert(MatchLineup).values(lineup))
