@@ -114,6 +114,8 @@ class BaseMatchResponse(BaseModel):
     away_team: str
     home_score: Optional[int] = None
     away_score: Optional[int] = None
+    home_pen_score: Optional[int] = None
+    away_pen_score: Optional[int] = None
     match_status: int = Field(exclude=True)
 
     @field_serializer('home_team')
