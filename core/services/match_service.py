@@ -99,6 +99,7 @@ class MatchService(BaseService):
 
         data['detail'] = {
             'weather':   match_content.get('weather'),
+            'stadium':   ((match_content.get('matchFacts') or {}).get('infoBox') or {}).get('Stadium'),
             'momentum':  ((match_content.get('momentum') or {}).get('main') or {}).get('data'),
             'events':    ((match_content.get('matchFacts') or {}).get('events') or {}).get('events'),
             'lineup':    {
