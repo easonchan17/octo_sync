@@ -6,7 +6,7 @@ from core.scheduler.task_registry import TaskRegistry
 from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
-from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat, ShotStat
+from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat, ShotStat, MatchVenue
 from core.tasks.sync.fotmob.utils import extract_status, encode_id
 from core.config.env_manager import get_env_manager
 from core.store.postgres.daos.fotmob import MatchDao
@@ -641,6 +641,10 @@ class MatchParser:
 
         result = {"match_id": match_id}
 
+        raw_stadium = ((content.get('matchFacts') or {}).get('infoBox') or {}).get('Stadium')
+        if raw_stadium is not None:
+            result["venue"] = self._parse_venue(match_id, raw_stadium)
+
         lineup_type, home_formation, away_formation = None, None, None
         raw_lineup = content.get('lineup')
         if raw_lineup is not None:
@@ -688,6 +692,18 @@ class MatchParser:
         keys = MatchStat.get_column_keys(exclude=('created_at', 'updated_at', 'status'))
         record = {key: None for key in keys}
         record["match_id"] = match_id
+        return record
+
+    def _parse_venue(self, match_id: int, stadium: Dict[str, Any]) -> Dict[str, Any]:
+        record = {}
+        record["match_id"] = match_id
+        record["name"]     = stadium.get("name")
+        record["city"]     = stadium.get("city")
+        record["country"]  = stadium.get("country")
+        record["surface"]  = stadium.get("surface")
+        record["capacity"] = stadium.get("capacity")
+        record["lat"]      = stadium.get("lat")
+        record["long"]     = stadium.get("long")
         return record
 
     def _create_player_stats_record(

@@ -456,7 +456,7 @@ class LineupResponse(BaseModel):
     @computed_field
     @property
     def label(self) -> str:
-        return LINEUP_TYPE_LABELS.get(self.lineup_type or "", "未知类型")
+        return LINEUP_TYPE_LABELS.get(self.lineup_type or "", "")
 
 
 class MatchDetail(BaseModel):
