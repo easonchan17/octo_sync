@@ -26,6 +26,17 @@ BOOKMAKER_ZH: Dict[int, str] = {
     BookmakerID.BETINASIA.value: "基准",
 }
 
+class DisplayMatchStatus(IntEnum):
+    UPCOMING = 0
+    LIVE = 1
+    FINISHED = 2
+
+
+class ProbFormat(IntEnum):
+    DECIMAL = 0
+    PERCENT = 1
+
+DEFAULT_PROB_FORMAT = ProbFormat.DECIMAL
 
 
 # ==============================================================================
@@ -92,18 +103,6 @@ class LeagueResponse(BaseModel):
 # ==============================================================================
 # Fixture and Match Models
 # ==============================================================================
-class DisplayMatchStatus(IntEnum):
-    UPCOMING = 0
-    LIVE = 1
-    FINISHED = 2
-
-
-class ProbFormat(IntEnum):
-    DECIMAL = 0
-    PERCENT = 1
-
-DEFAULT_PROB_FORMAT = ProbFormat.PERCENT
-
 
 class BaseMatchResponse(BaseModel):
     match_code: str
