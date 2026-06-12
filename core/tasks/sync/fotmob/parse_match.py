@@ -1,4 +1,10 @@
 import traceback, re, json
+
+_COUNTRY_NAME_ALIASES = {
+    'Macedonia':            'North Macedonia',
+    'Dominican Rep.':       'Dominican Republic',
+    'Central African Rep.': 'Central African Republic',
+}
 from datetime import datetime, timezone
 from core.types.enums import SiteName, Position, LineupRole
 from core.logger.logger_manager import get_logger_manager
@@ -668,7 +674,7 @@ class MatchParser:
             result["match_stats"]["away_formation"] = away_formation
 
         status = json_data.get('header', {}).get('status')
-        match_status, kickoff_time, _, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
+        match_status, kickoff_time, _, _, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
         result["match_status"] = match_status
         result["kickoff_time"] = kickoff_time
         return result
@@ -695,11 +701,12 @@ class MatchParser:
         return record
 
     def _parse_venue(self, match_id: int, stadium: Dict[str, Any]) -> Dict[str, Any]:
+        country = stadium.get("country")
         record = {}
         record["match_id"] = match_id
         record["name"]     = stadium.get("name")
         record["city"]     = stadium.get("city")
-        record["country"]  = stadium.get("country")
+        record["country"]  = _COUNTRY_NAME_ALIASES.get(country, country)
         record["surface"]  = stadium.get("surface")
         record["capacity"] = stadium.get("capacity")
         record["lat"]      = stadium.get("lat")

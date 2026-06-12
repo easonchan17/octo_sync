@@ -87,6 +87,7 @@ class Fixture(Base):
     home_pen_score = Column(Integer, nullable=True)
     away_pen_score = Column(Integer, nullable=True)
     halfs_status = Column(JSONB, nullable=True)
+    live_status  = Column(JSONB, nullable=True)
     local_time   = Column(String(32), nullable=True)
 
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
