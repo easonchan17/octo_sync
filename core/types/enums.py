@@ -100,6 +100,10 @@ class MatchStatus(IntEnum):
     def natural_finals(cls) -> list:
         return [cls.FINISHED.value, cls.FINISHED_AET.value, cls.FINISHED_PEN.value]
 
+    @classmethod
+    def lives(cls) -> list:
+        return [cls.IN_PROGRESS.value, cls.FIRST_HALF.value, cls.HALFTIME.value, cls.SECOND_HALF.value, cls.EXTRA_TIME.value, cls.PENALTY.value]
+
     @property
     def is_aborted(self) -> bool:
         return self in (
