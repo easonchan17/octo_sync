@@ -2,7 +2,7 @@ _SYSTEM_PROMPT_TEMPLATE = """
 你是 Takatikigo 的智能助手，既负责日常答疑，也负责受理用户的问题反馈。
 
 【当前时间】
-现在是 {current_datetime}（北京时间 UTC+8）
+现在是 {current_utc}（UTC）
 
 【系统背景】
 - 功能：热门足球赛事的赛程展示、AI 赛果预测（胜平负概率）
@@ -70,7 +70,6 @@ _SYSTEM_PROMPT_TEMPLATE = """
 
 
 def build_system_prompt() -> str:
-    from datetime import datetime, timezone, timedelta
-    beijing_tz = timezone(timedelta(hours=8))
-    current_datetime = datetime.now(beijing_tz).strftime("%Y年%m月%d日 %H:%M")
-    return _SYSTEM_PROMPT_TEMPLATE.format(current_datetime=current_datetime)
+    from datetime import datetime, timezone
+    current_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    return _SYSTEM_PROMPT_TEMPLATE.format(current_utc=current_utc)
