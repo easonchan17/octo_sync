@@ -4,10 +4,47 @@ from typing import Callable, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy import func, select, and_
 from core.types.enums import MatchStatus
-from core.store.postgres.models.fotmob import Fixture, MatchStat, MatchPlayerStat
-
+from core.store.postgres.models.fotmob import Fixture, MatchStat, MatchPlayerStat, MatchVenue
 from ..transforms import ColumnFilter, FormulaMutator
 from .base import BaseFeatureBuilder
+
+class TournamentClassifier:
+    _EXACT = frozenset({
+        'UEFA Nations League A Final Stage',
+        'UEFA Nations League A Championship Playoff',
+        'CONCACAF Nations League A Championship Playoff',
+    })
+
+    _FUZZY = frozenset({
+        'World Cup',
+        'EURO',
+        'Copa America',
+        'Asian Cup',
+        'Africa Cup of Nations',
+        'CONCACAF Gold Cup',
+        'Finalissima',
+    })
+
+    @classmethod
+    def is_tournament(cls, league_name: str) -> bool:
+        if 'Qualification' in league_name:
+            return False
+
+        if league_name in cls._EXACT:
+            return True
+
+        return any(league_name.startswith(prefix) for prefix in cls._FUZZY)
+
+def _compute_host_flags(venue_country, home_team, away_team, league_name: str):
+    if not TournamentClassifier.is_tournament(league_name):
+        return None, None
+
+    if venue_country == home_team:
+        return 1, 0
+    elif venue_country == away_team:
+        return 0, 1
+    else:
+        return 0, 0
 
 class MatchFeatureBuilder(BaseFeatureBuilder):
     TEAM_FEATURES = [
@@ -103,6 +140,7 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "target",
         "home_schedule_rest_days", "away_schedule_rest_days", "schedule_rest_days_diff",
         "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
+        "home_is_host", "away_is_host",
         "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
         "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
         "home_lagged_xg", "away_lagged_xg",
@@ -171,8 +209,11 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                 Fixture, MatchStat,
                 home_pift.label("home_passes_into_final_third"),
                 away_pift.label("away_passes_into_final_third"),
+                MatchVenue.country.label("venue_country"),
             ).outerjoin(
                 MatchStat, Fixture.match_id == MatchStat.match_id
+            ).outerjoin(
+                MatchVenue, MatchVenue.match_id == Fixture.match_id
             ).filter(
                 Fixture.league_id.in_(self.league_ids),
                 Fixture.season >= self.min_season,
@@ -181,7 +222,8 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
             ).order_by(Fixture.kickoff_time).all()
 
             records = []
-            for fixture, stat, home_passes_into_final_third, away_passes_into_final_third in results:
+            for fixture, stat, home_passes_into_final_third, away_passes_into_final_third, venue_country in results:
+                home_is_host, away_is_host = _compute_host_flags(venue_country, fixture.home_team, fixture.away_team, fixture.league_name)
                 record = {
                     "match_id": fixture.match_id,
                     "league_id": fixture.league_id,
@@ -197,6 +239,8 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                     "away_score": fixture.away_score,
                     "home_passes_into_final_third": home_passes_into_final_third or 0,
                     "away_passes_into_final_third": away_passes_into_final_third or 0,
+                    "home_is_host": home_is_host,
+                    "away_is_host": away_is_host,
                 }
 
                 if stat:
@@ -371,6 +415,13 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
         df = df.reset_index()
 
         FormulaMutator(df).mutate_batch(self.FORMULAS)
+
+        venue_cols = [
+            "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
+            "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
+        ]
+        df.loc[df["home_is_host"].notna(), venue_cols] = np.nan
+
         return ColumnFilter(df).keep(self.OUTPUT)
 
 
@@ -605,6 +656,9 @@ class MatchPredictFeatureBuilder(MatchFeatureBuilder):
         self.away_id      = fixture.away_id
         self.kickoff_time = fixture.kickoff_time
         self.get_team_state = get_team_state
+        self.home_is_host, self.away_is_host = _compute_host_flags(
+            fixture.venue_country, fixture.home_team, fixture.away_team, fixture.league_name
+        )
 
     def _load(self) -> Optional[Any]:
         home_state = self.get_team_state(self.home_id)
@@ -629,9 +683,18 @@ class MatchPredictFeatureBuilder(MatchFeatureBuilder):
 
         features["home_schedule_rest_days"] = min((self.kickoff_time - home_state["kickoff_time"]).days, 30)
         features["away_schedule_rest_days"] = min((self.kickoff_time - away_state["kickoff_time"]).days, 30)
+        features["home_is_host"] = self.home_is_host
+        features["away_is_host"] = self.away_is_host
 
         df = pd.DataFrame([features])
         FormulaMutator(df).mutate_batch(self.FORMULAS)
+
+        if self.home_is_host is not None:
+            venue_cols = [
+                "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
+                "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
+            ]
+            df.loc[0, venue_cols] = np.nan
 
         row = df.iloc[0].to_dict()
         row.pop("match_id", None)

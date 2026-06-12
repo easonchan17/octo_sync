@@ -124,7 +124,7 @@ class FixtureParser:
                 page_url = PageUrlBuilder.build(match_id, home, away)
 
             local_time = match.get('time')
-            match_status, kickoff_time, home_score, away_score, halfs_status = extract_status(
+            match_status, kickoff_time, home_score, away_score, halfs_status, live_status = extract_status(
                 match.get('status', {}), CrawlParams.MATCH_LIFESPAN
             )
 
@@ -146,6 +146,7 @@ class FixtureParser:
                 "home_pen_score": home.get('penScore'),
                 "away_pen_score": away.get('penScore'),
                 "halfs_status":  halfs_status,
+                "live_status":   live_status,
                 "local_time":    local_time,
                 "match_status":  match_status
             }

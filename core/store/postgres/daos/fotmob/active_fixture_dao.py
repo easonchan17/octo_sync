@@ -5,6 +5,7 @@ from sqlalchemy import or_, func, cast
 from sqlalchemy.dialects.postgresql import insert
 from datetime import date, timedelta, datetime
 from core.store.postgres.models.fotmob.fixture import Fixture, ActiveFixtureRaw
+from core.store.postgres.models.fotmob.match import MatchVenue
 from core.store.postgres.models.common.league import SiteLeague
 from core.types.enums import MatchStatus
 from ..base_dao import BaseDao
@@ -191,6 +192,9 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.home_score,
                 Fixture.away_score,
                 Fixture.match_status,
+                MatchVenue.country.label("venue_country"),
+            ).outerjoin(
+                MatchVenue, MatchVenue.match_id == Fixture.match_id
             ).filter(
                 Fixture.match_code == match_code
             ).first()
@@ -275,8 +279,7 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.away_score,
                 Fixture.home_pen_score,
                 Fixture.away_pen_score,
-                Fixture.halfs_status,
-                Fixture.local_time,
+                Fixture.live_status,
                 Fixture.match_status,
             ).filter(
                 Fixture.kickoff_time >= start_time,
