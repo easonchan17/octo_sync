@@ -16,19 +16,20 @@ def parse_scores(scores: str) -> Tuple[Optional[int], Optional[int]]:
     return None, None
 
 
-def extract_status(status: Dict[str, Any], time_window: timedelta) -> Tuple[int, Optional[str], Optional[int], Optional[int], Optional[Dict]]:
+def extract_status(status: Dict[str, Any], time_window: timedelta) -> Tuple[int, Optional[str], Optional[int], Optional[int], Optional[Dict], Optional[Dict]]:
     if not status:
-        return MatchStatus.SCHEDULED.value, None, None, None, None
+        return MatchStatus.SCHEDULED.value, None, None, None, None, None
 
     utctime = status.get('utcTime')
     if not utctime:
-        return MatchStatus.SCHEDULED.value, None, None, None, None
+        return MatchStatus.SCHEDULED.value, None, None, None, None, None
 
     halfs_status = status.get('halfs')
+    live_status = status.get('liveTime')
 
     cancelled = status.get('cancelled', False)
     if cancelled:
-        return MatchStatus.CANCELLED.value, utctime, None, None, None
+        return MatchStatus.CANCELLED.value, utctime, None, None, None, None
 
     score_str = status.get('scoreStr')
     home_score, away_score = parse_scores(score_str)
@@ -37,19 +38,19 @@ def extract_status(status: Dict[str, Any], time_window: timedelta) -> Tuple[int,
     if finished:
         awarded = status.get('awarded', False)
         if awarded:
-            return MatchStatus.FINISHED_AWARDED.value, utctime, home_score, away_score, halfs_status
-        return MatchStatus.FINISHED.value, utctime, home_score, away_score, halfs_status
+            return MatchStatus.FINISHED_AWARDED.value, utctime, home_score, away_score, halfs_status, live_status
+        return MatchStatus.FINISHED.value, utctime, home_score, away_score, halfs_status, live_status
 
     started = status.get('started', False)
     if started:
-        return MatchStatus.IN_PROGRESS.value, utctime, home_score, away_score, halfs_status
+        return MatchStatus.IN_PROGRESS.value, utctime, home_score, away_score, halfs_status, live_status
 
     post_match_duration = datetime.now(timezone.utc) - datetime.fromisoformat(utctime)
     if post_match_duration.total_seconds() > time_window.total_seconds():
         if halfs_status:
-            return MatchStatus.FINISHED.value, utctime, home_score, away_score, halfs_status
+            return MatchStatus.FINISHED.value, utctime, home_score, away_score, halfs_status, live_status
 
-    return MatchStatus.TIMED.value, utctime, None, None, None
+    return MatchStatus.TIMED.value, utctime, None, None, None, None
 
 
 def encode_id(raw_id: int, salt: str) -> str:

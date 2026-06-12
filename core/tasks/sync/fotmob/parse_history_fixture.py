@@ -35,7 +35,7 @@ class HistoryFixtureParser:
                 continue
 
             status = match.get("status", {})
-            match_status, kickoff_time, home_score, away_score, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
+            match_status, kickoff_time, home_score, away_score, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
             if not kickoff_time:
                 self.logger.error(f"kickoff_time is missing for match_id={match_id}")
                 continue
