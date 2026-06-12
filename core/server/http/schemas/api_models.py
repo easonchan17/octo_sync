@@ -152,6 +152,7 @@ class BaseMatchResponse(BaseModel):
     def elapsed_minutes(self) -> Optional[int]:
         if not MatchStatus(self.match_status).is_playing:
             return None
+
         now = datetime.now(timezone.utc)
         if self.halfs_status and self.local_time:
             local_scheduled = datetime.strptime(self.local_time, "%d.%m.%Y %H:%M")
