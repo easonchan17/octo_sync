@@ -205,7 +205,7 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value]),
             ]
             if start_time is not None:
-                filters.append(Fixture.kickoff_time >= start_time)
+                filters.append(or_(Fixture.kickoff_time >= start_time, Fixture.match_status.in_(MatchStatus.lives())))
             if end_time is not None:
                 filters.append(Fixture.kickoff_time < end_time)
             order = Fixture.kickoff_time.asc() if ascending else Fixture.kickoff_time.desc()
@@ -227,7 +227,7 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.match_status.not_in([MatchStatus.POSTPONED.value, MatchStatus.CANCELLED.value]),
             ]
             if from_time is not None:
-                filters.append(Fixture.kickoff_time >= from_time)
+                filters.append(or_(Fixture.kickoff_time >= from_time, Fixture.match_status.in_(MatchStatus.lives())))
             if to_time is not None:
                 filters.append(Fixture.kickoff_time < to_time)
             order = Fixture.kickoff_time.asc() if ascending else Fixture.kickoff_time.desc()
@@ -273,6 +273,10 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.away_code,
                 Fixture.home_score,
                 Fixture.away_score,
+                Fixture.home_pen_score,
+                Fixture.away_pen_score,
+                Fixture.halfs_status,
+                Fixture.local_time,
                 Fixture.match_status,
             ).filter(
                 Fixture.kickoff_time >= start_time,

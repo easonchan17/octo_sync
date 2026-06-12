@@ -123,7 +123,10 @@ class FixtureParser:
             if not page_url:
                 page_url = PageUrlBuilder.build(match_id, home, away)
 
-            match_status, kickoff_time, home_score, away_score = extract_status(match.get('status', {}), CrawlParams.MATCH_LIFESPAN)
+            local_time = match.get('time')
+            match_status, kickoff_time, home_score, away_score, halfs_status = extract_status(
+                match.get('status', {}), CrawlParams.MATCH_LIFESPAN
+            )
 
             fixture = {
                 "match_id":      match_id,
@@ -142,6 +145,8 @@ class FixtureParser:
                 "away_score":    away_score,
                 "home_pen_score": home.get('penScore'),
                 "away_pen_score": away.get('penScore'),
+                "halfs_status":  halfs_status,
+                "local_time":    local_time,
                 "match_status":  match_status
             }
             fixtures.append(fixture)

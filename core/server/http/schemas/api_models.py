@@ -2,7 +2,7 @@ from pydantic import BaseModel, computed_field, Field, field_serializer
 from core.services.name_i18n_service import get_name_i18n_service
 from typing import List, TypeVar, Generic, Optional, Dict, Any
 from core.types.enums import MatchStatus, BookmakerID, BROAD_POSITION
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import IntEnum
 
 T = TypeVar('T')
@@ -115,6 +115,8 @@ class BaseMatchResponse(BaseModel):
     away_score: Optional[int] = None
     home_pen_score: Optional[int] = None
     away_pen_score: Optional[int] = None
+    halfs_status: Optional[Dict] = Field(default=None, exclude=True)
+    local_time: Optional[str] = Field(default=None, exclude=True)
     match_status: int = Field(exclude=True)
 
     @field_serializer('home_team')
@@ -144,6 +146,29 @@ class BaseMatchResponse(BaseModel):
         if ms.is_finalized:
             return DisplayMatchStatus.FINISHED
         return DisplayMatchStatus.UPCOMING
+
+    @computed_field
+    @property
+    def elapsed_minutes(self) -> Optional[int]:
+        if not MatchStatus(self.match_status).is_playing:
+            return None
+        now = datetime.now(timezone.utc)
+        if self.halfs_status and self.local_time:
+            local_scheduled = datetime.strptime(self.local_time, "%d.%m.%Y %H:%M")
+            utc_scheduled   = self.kickoff_time.astimezone(timezone.utc).replace(tzinfo=None)
+            tz = timezone(local_scheduled - utc_scheduled)
+            half_priority = [
+                ('secondExtraHalfStarted', 105),
+                ('firstExtraHalfStarted',   90),
+                ('secondHalfStarted',        45),
+                ('firstHalfStarted',          0),
+            ]
+            for key, offset in half_priority:
+                val = self.halfs_status.get(key)
+                if val:
+                    dt = datetime.strptime(val, "%d.%m.%Y %H:%M:%S").replace(tzinfo=tz).astimezone(timezone.utc)
+                    return offset + int((now - dt).total_seconds() / 60)
+        return int((now - self.kickoff_time).total_seconds() / 60)
 
     class Config:
         from_attributes = True

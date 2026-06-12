@@ -1,6 +1,7 @@
 from sqlalchemy.sql import func
 from ..base_model import Base
 from sqlalchemy import Column, Integer, String, DateTime, Index, Date, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB
 from core.store.postgres.models.base_model import CrawlStatusMixin, RawJsonMixin
 from core.types.enums import MatchStatus, SiteName
 
@@ -85,5 +86,7 @@ class Fixture(Base):
     away_score = Column(Integer, nullable=True)
     home_pen_score = Column(Integer, nullable=True)
     away_pen_score = Column(Integer, nullable=True)
+    halfs_status = Column(JSONB, nullable=True)
+    local_time   = Column(String(32), nullable=True)
 
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)
