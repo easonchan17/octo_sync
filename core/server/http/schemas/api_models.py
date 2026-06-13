@@ -319,7 +319,7 @@ class RecentMatchResponse(BaseMatchResponse):
         return LEAGUE_LOGO_URL.format(league_id=self.ref_league_id) if self.ref_league_id else None
 
 class MatchPredictionResponse(BaseModel):
-    label: str = "AI预测"
+    label: str = "赛前预测"
     model_version: str
     probabilities: Dict[str, float]
     probability_labels: List[str] = ["主队", "平局", "客队"]
