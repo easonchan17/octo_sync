@@ -11,7 +11,7 @@ class FixtureController(BaseController):
         super().__init__()
         self.fixture_service = FixtureService()
         self.router.get("/v1/fixtures", response_model=List[FixtureResponse])(self.get_fixtures)
-        self.router.get("/v1/leagues/{league_id}/fixture", response_model=List[MatchResponse])(self.get_round_fixtures)
+        self.router.get("/v1/leagues/{league_id}/fixtures", response_model=List[MatchResponse])(self.get_round_fixtures)
 
     def get_fixtures(
         self,
