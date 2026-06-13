@@ -7,7 +7,7 @@ from datetime import date, timedelta, datetime
 from core.store.postgres.models.fotmob.fixture import Fixture, ActiveFixtureRaw
 from core.store.postgres.models.fotmob.match import MatchVenue
 from core.store.postgres.models.common.league import SiteLeague
-from core.types.enums import MatchStatus
+from core.types.enums import MatchStatus, SiteName
 from ..base_dao import BaseDao
 
 class ActiveFixtureDao(BaseDao):
@@ -244,7 +244,7 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.match_status,
             ).join(
                 SiteLeague,
-                (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == "fotmob")
+                (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == SiteName.FOTMOB.value)
             ).filter(*filters).order_by(order).limit(limit).all()
 
     def get_by_kickoff_range(self, start_time: datetime, end_time: datetime) -> List[Any]:
@@ -261,6 +261,33 @@ class ActiveFixtureDao(BaseDao):
             ).order_by(
                 Fixture.kickoff_time.asc()
             ).all()
+
+    def get_round_fixtures(self, ref_league_id: int, round: str) -> List[Any]:
+        with self.db.get_session() as session:
+            return session.query(
+                Fixture.match_code,
+                Fixture.league_name,
+                Fixture.kickoff_time,
+                Fixture.round,
+                Fixture.group_name,
+                Fixture.home_team,
+                Fixture.home_code,
+                Fixture.away_team,
+                Fixture.away_code,
+                Fixture.home_score,
+                Fixture.away_score,
+                Fixture.home_pen_score,
+                Fixture.away_pen_score,
+                Fixture.live_status,
+                Fixture.match_status,
+            ).join(
+                SiteLeague,
+                (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == SiteName.FOTMOB.value)
+            ).filter(
+                SiteLeague.ref_league_id == ref_league_id,
+                Fixture.round == round,
+                Fixture.match_status.not_in(MatchStatus.finals())
+            ).order_by(Fixture.kickoff_time.asc()).all()
 
     def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
         with self.db.get_session() as session:
