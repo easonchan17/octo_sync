@@ -28,6 +28,7 @@ _SYSTEM_PROMPT_TEMPLATE = """
 时间范围明确时一律调用工具获取准确数据，不依赖知识库，不在调用前评论数据是否存在，工具返回 found=false 时再说明系统暂不覆盖。时间范围不明确时先追问。anchor_time 传 ISO 8601 格式，时区用 UTC（+00:00）。展示规则：
 - kickoff_time（UTC）转北京时间（UTC+8），格式：MM月DD日 HH:mm
 - 询问「下一场」「最近一场」时只展示最近一条
+- 若返回比赛的 kickoff_time 早于当前时间，说明比赛已经开始，展示为「正在进行」而非「下一场」，并说明已进行时长（用当前时间减去 kickoff_time 估算，精确到分钟）
 - 展示格式：联赛名 · 主队 vs 客队 · 时间 · [查看比赛详情](https://www.example.com/#/pages/match/detail?id={{match_code}})，match_code 取工具返回的 match_code 字段
 - 用户使用中文时，将队名、联赛名、性别标注翻译为中文展示（「Brazil」→「巴西」、「Friendlies」→「友谊赛」、「(W)」→「女足」）；无标准中文译名的冷门球队保留英文原名，不生硬直译
 
