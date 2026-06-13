@@ -206,7 +206,8 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
             )
 
             results = session.query(
-                Fixture, MatchStat,
+                Fixture,
+                MatchStat,
                 home_pift.label("home_passes_into_final_third"),
                 away_pift.label("away_passes_into_final_third"),
                 MatchVenue.country.label("venue_country"),
@@ -223,7 +224,9 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
             records = []
             for fixture, stat, home_passes_into_final_third, away_passes_into_final_third, venue_country in results:
-                home_is_host, away_is_host = _compute_host_flags(venue_country, fixture.home_team, fixture.away_team, fixture.league_name)
+                home_is_host, away_is_host = _compute_host_flags(
+                    venue_country, fixture.home_team, fixture.away_team, fixture.league_name
+                )
                 record = {
                     "match_id": fixture.match_id,
                     "league_id": fixture.league_id,
