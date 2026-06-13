@@ -37,14 +37,14 @@ class TournamentClassifier:
 
 def _compute_host_flags(venue_country, home_team, away_team, league_name: str):
     if not TournamentClassifier.is_tournament(league_name):
-        return None, None
+        return 0, 0, 0
 
     if venue_country == home_team:
-        return 1, 0
+        return 1, 0, 1
     elif venue_country == away_team:
-        return 0, 1
+        return 0, 1, 1
     else:
-        return 0, 0
+        return 0, 0, 1
 
 class MatchFeatureBuilder(BaseFeatureBuilder):
     TEAM_FEATURES = [
@@ -140,7 +140,7 @@ class MatchFeatureBuilder(BaseFeatureBuilder):
         "target",
         "home_schedule_rest_days", "away_schedule_rest_days", "schedule_rest_days_diff",
         "home_point_sum_5", "away_point_sum_5", "point_sum_5_diff",
-        "home_is_host", "away_is_host",
+        "home_is_host", "away_is_host", "is_tournament",
         "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
         "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
         "home_lagged_xg", "away_lagged_xg",
@@ -224,7 +224,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
 
             records = []
             for fixture, stat, home_passes_into_final_third, away_passes_into_final_third, venue_country in results:
-                home_is_host, away_is_host = _compute_host_flags(
+                home_is_host, away_is_host, is_tournament = _compute_host_flags(
                     venue_country, fixture.home_team, fixture.away_team, fixture.league_name
                 )
                 record = {
@@ -244,6 +244,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
                     "away_passes_into_final_third": away_passes_into_final_third or 0,
                     "home_is_host": home_is_host,
                     "away_is_host": away_is_host,
+                    "is_tournament": is_tournament,
                 }
 
                 if stat:
@@ -423,7 +424,7 @@ class MatchTrainFeatureBuilder(MatchFeatureBuilder):
             "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
             "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",
         ]
-        df.loc[df["home_is_host"].notna(), venue_cols] = np.nan
+        df.loc[df["is_tournament"] == 1, venue_cols] = np.nan
 
         return ColumnFilter(df).keep(self.OUTPUT)
 
@@ -659,7 +660,7 @@ class MatchPredictFeatureBuilder(MatchFeatureBuilder):
         self.away_id      = fixture.away_id
         self.kickoff_time = fixture.kickoff_time
         self.get_team_state = get_team_state
-        self.home_is_host, self.away_is_host = _compute_host_flags(
+        self.home_is_host, self.away_is_host, self.is_tournament = _compute_host_flags(
             fixture.venue_country, fixture.home_team, fixture.away_team, fixture.league_name
         )
 
@@ -688,11 +689,12 @@ class MatchPredictFeatureBuilder(MatchFeatureBuilder):
         features["away_schedule_rest_days"] = min((self.kickoff_time - away_state["kickoff_time"]).days, 30)
         features["home_is_host"] = self.home_is_host
         features["away_is_host"] = self.away_is_host
+        features["is_tournament"] = self.is_tournament
 
         df = pd.DataFrame([features])
         FormulaMutator(df).mutate_batch(self.FORMULAS)
 
-        if self.home_is_host is not None:
+        if self.is_tournament == 1:
             venue_cols = [
                 "home_points_ema_5_at_home", "home_points_ema_5_at_away", "home_venue_dependency",
                 "away_points_ema_5_at_home", "away_points_ema_5_at_away", "away_venue_dependency",

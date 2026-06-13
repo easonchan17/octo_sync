@@ -85,6 +85,7 @@ dataset_start() {
         --min_season    "$SAMPLE_MIN_SEASON"
         --max_season    "$SAMPLE_MAX_SEASON"
         --sample_format "$SAMPLE_FORMAT"
+        --model_type    "$SAMPLE_TYPE"
     )
     [ "$SAMPLE_TYPE" = "national" ] && cmd+=(--no_lineup_features)
 
