@@ -212,6 +212,7 @@ class MatchDao(BaseDao):
                 Fixture.away_pen_score,
                 Fixture.live_status,
                 Fixture.match_status,
+                Fixture.season,
                 MatchRaw.json_body.label('match_json_body'),
                 HistoryFixtureRaw.json_body.label('standings_json_body'),
             ).outerjoin(
