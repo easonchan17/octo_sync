@@ -101,6 +101,10 @@ class MatchStatus(IntEnum):
         return [cls.FINISHED.value, cls.FINISHED_AET.value, cls.FINISHED_PEN.value]
 
     @classmethod
+    def finals(cls) -> list:
+        return [cls.FINISHED.value, cls.FINISHED_AET.value, cls.FINISHED_PEN.value, cls.FINISHED_AWARDED.value, cls.POSTPONED.value, cls.CANCELLED.value]
+
+    @classmethod
     def lives(cls) -> list:
         return [cls.IN_PROGRESS.value, cls.FIRST_HALF.value, cls.HALFTIME.value, cls.SECOND_HALF.value, cls.EXTRA_TIME.value, cls.PENALTY.value]
 

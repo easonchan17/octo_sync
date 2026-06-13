@@ -13,6 +13,9 @@ class FixtureService(BaseService):
         self.odds_dao = OddsDao()
         self.league_service = get_league_service()
 
+    def get_round_fixtures(self, league_id: int, round: str) -> List[Any]:
+        return self.fixture_dao.get_round_fixtures(league_id, round)
+
     def get_fixture_groups(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         leagues = {
             league.site_leagues[SiteName.FOTMOB.value].league_id: league
