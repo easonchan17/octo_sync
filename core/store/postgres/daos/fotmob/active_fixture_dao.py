@@ -285,8 +285,7 @@ class ActiveFixtureDao(BaseDao):
                 (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == SiteName.FOTMOB.value)
             ).filter(
                 SiteLeague.ref_league_id == ref_league_id,
-                Fixture.round == round,
-                Fixture.match_status.not_in(MatchStatus.finals())
+                Fixture.round == round
             ).order_by(Fixture.kickoff_time.asc()).all()
 
     def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
