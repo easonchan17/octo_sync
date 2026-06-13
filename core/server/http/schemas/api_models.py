@@ -2,7 +2,7 @@ from pydantic import BaseModel, computed_field, Field, field_serializer
 from core.services.name_i18n_service import get_name_i18n_service
 from typing import List, TypeVar, Generic, Optional, Dict, Any
 from core.types.enums import MatchStatus, BookmakerID, BROAD_POSITION
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import IntEnum
 
 T = TypeVar('T')
@@ -151,9 +151,12 @@ class BaseMatchResponse(BaseModel):
     def elapsed_minutes(self) -> Optional[str]:
         if not MatchStatus(self.match_status).is_playing:
             return None
-        if self.live_status:
-            return self.live_status.get("short")
-        return None
+
+        if short := (self.live_status or {}).get("short"):
+            return short
+
+        elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
+        return str(max(0, elapsed))
 
     class Config:
         from_attributes = True
