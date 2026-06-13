@@ -150,7 +150,7 @@ class WinballTrainConfig(BaseTrainConfig):
             payload_key='objective.exclude_cols',
             config_key=f'training.tasks.{self.MODEL_FAMILY}.objective.exclude_cols',
             default=[]
-        )
+        ) or []
 
     @cached_property
     def balanced(self) -> bool:
