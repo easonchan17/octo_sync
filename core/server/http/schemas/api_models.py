@@ -159,7 +159,7 @@ class BaseMatchResponse(BaseModel):
             return None
 
         if short := (self.live_status or {}).get("short"):
-            return ELAPSED_SHORT_ZH.get(short, short)
+            return ELAPSED_SHORT_ZH.get(short) or (short[:-1] if short.endswith("'") else short)
 
         elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
         return str(max(0, elapsed))
