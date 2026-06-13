@@ -172,12 +172,13 @@ class MatchResponse(BaseMatchResponse):
     round: Optional[str] = None
     group_name: Optional[str] = None
 
-    @field_serializer('round')
-    def serialize_round(self, value: Optional[str]) -> Optional[str]:
-        if not value:
-            return value
-        zh = KNOCKOUT_STAGE_ZH.get(value)
-        return zh if zh else f"第{value}轮"
+    @computed_field
+    @property
+    def display_round(self) -> Optional[str]:
+        if not self.round:
+            return self.round
+        zh = KNOCKOUT_STAGE_ZH.get(self.round)
+        return zh if zh else f"第{self.round}轮"
 
     @field_serializer('group_name')
     def serialize_group_name(self, value: Optional[str]) -> Optional[str]:
