@@ -38,6 +38,12 @@ class ProbFormat(IntEnum):
 
 DEFAULT_PROB_FORMAT = ProbFormat.PERCENT
 
+ELAPSED_SHORT_ZH: Dict[str, str] = {
+    "HT":  "中场",
+    "FT":  "全场",
+    "ET":  "加时",
+    "PEN": "点球",
+}
 
 # ==============================================================================
 # Pagination Models
@@ -148,18 +154,15 @@ class BaseMatchResponse(BaseModel):
 
     @computed_field
     @property
-    def elapsed_minutes(self) -> Optional[int]:
+    def elapsed_minutes(self) -> Optional[str]:
         if not MatchStatus(self.match_status).is_playing:
             return None
 
         if short := (self.live_status or {}).get("short"):
-            try:
-                return int(short.rstrip("'"))
-            except ValueError:
-                pass
+            return ELAPSED_SHORT_ZH.get(short, short)
 
         elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
-        return max(0, elapsed)
+        return str(max(0, elapsed))
 
     class Config:
         from_attributes = True
