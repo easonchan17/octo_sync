@@ -155,14 +155,12 @@ class BaseMatchResponse(BaseModel):
     @computed_field
     @property
     def elapsed_minutes(self) -> Optional[str]:
-        if not MatchStatus(self.match_status).is_playing:
-            return None
-
         if short := (self.live_status or {}).get("short"):
             return ELAPSED_SHORT_ZH.get(short, short)
 
         elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
-        return f"{max(0, elapsed)}'"
+        if elapsed >= 0 and (MatchStatus(self.match_status).is_playing or self.match_status == MatchStatus.TIMED.value):
+            return f"{elapsed}'"
 
     class Config:
         from_attributes = True
