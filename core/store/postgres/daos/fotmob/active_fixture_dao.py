@@ -262,7 +262,7 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.kickoff_time.asc()
             ).all()
 
-    def get_round_fixtures(self, ref_league_id: int, round: str) -> List[Any]:
+    def get_league_fixtures(self, ref_league_id: int, round: str, season: int) -> List[Any]:
         with self.db.get_session() as session:
             return session.query(
                 Fixture.match_code,
@@ -280,12 +280,14 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.away_pen_score,
                 Fixture.live_status,
                 Fixture.match_status,
+                Fixture.season,
             ).join(
                 SiteLeague,
                 (SiteLeague.league_id == Fixture.league_id) & (SiteLeague.site_name == SiteName.FOTMOB.value)
             ).filter(
                 SiteLeague.ref_league_id == ref_league_id,
-                Fixture.round == round
+                Fixture.round == round,
+                Fixture.season == season
             ).order_by(Fixture.kickoff_time.asc()).all()
 
     def get_by_time_range(self, start_time: datetime, end_time: datetime, league_ids: List[int]) -> List[Any]:
@@ -307,6 +309,7 @@ class ActiveFixtureDao(BaseDao):
                 Fixture.away_pen_score,
                 Fixture.live_status,
                 Fixture.match_status,
+                Fixture.season,
             ).filter(
                 Fixture.kickoff_time >= start_time,
                 Fixture.kickoff_time < end_time,

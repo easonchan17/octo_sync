@@ -11,7 +11,7 @@ class FixtureController(BaseController):
         super().__init__()
         self.fixture_service = FixtureService()
         self.router.get("/v1/fixtures", response_model=List[FixtureResponse])(self.get_fixtures)
-        self.router.get("/v1/leagues/{league_id}/fixtures", response_model=List[MatchResponse])(self.get_round_fixtures)
+        self.router.get("/v1/leagues/{league_id}/fixtures", response_model=List[MatchResponse])(self.get_league_fixtures)
 
     def get_fixtures(
         self,
@@ -30,13 +30,14 @@ class FixtureController(BaseController):
             self.logger.error(f"Failed to get fixtures v1: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to get fixtures: {str(e)}")
 
-    def get_round_fixtures(
+    def get_league_fixtures(
         self,
         league_id: int = Path(..., description="Canonical league ID"),
         round: str = Query(..., description="Round identifier"),
+        season: int = Query(..., description="Season year"),
     ) -> List[MatchResponse]:
         try:
-            fixtures = self.fixture_service.get_round_fixtures(league_id, round)
+            fixtures = self.fixture_service.get_league_fixtures(league_id, round, season)
             return [MatchResponse.model_validate(fixture) for fixture in fixtures]
         except Exception as e:
             self.logger.error(f"Failed to get round fixtures: {e}", exc_info=True)

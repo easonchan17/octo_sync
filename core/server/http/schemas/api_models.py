@@ -171,6 +171,7 @@ class BaseMatchResponse(BaseModel):
 class MatchResponse(BaseMatchResponse):
     round: Optional[str] = None
     group_name: Optional[str] = None
+    season: Optional[int] = None
 
     @computed_field
     @property
