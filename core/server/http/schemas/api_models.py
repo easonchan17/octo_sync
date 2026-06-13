@@ -156,7 +156,7 @@ class BaseMatchResponse(BaseModel):
             return short
 
         elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
-        return str(max(0, elapsed))
+        return f"{max(0, elapsed)}'"
 
     class Config:
         from_attributes = True
