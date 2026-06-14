@@ -255,7 +255,7 @@ training:
       optimizer:
         name: bayes_search_cv
         params:
-          n_iter: 200
+          n_iter: 300
           scoring: neg_log_loss
           random_state: 1
           n_jobs: 1
