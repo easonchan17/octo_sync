@@ -57,6 +57,7 @@ class Fixture(Base):
         Index('idx_fixtures_kickoff_time', 'kickoff_time'),
         Index('idx_fixtures_league_id_kickoff_time', 'league_id', 'kickoff_time'),
         Index('idx_fixtures_league_id_season', 'league_id', 'season'),
+        Index('idx_fixtures_league_id_game_ended_at', 'league_id', 'game_ended_at'),
         Index('idx_fixtures_sub_league_id', 'sub_league_id'),
         {'schema': SiteName.FOTMOB.value}
     )
@@ -89,5 +90,6 @@ class Fixture(Base):
     halfs_status = Column(JSONB, nullable=True)
     live_status  = Column(JSONB, nullable=True)
     local_time   = Column(String(32), nullable=True)
+    game_ended_at = Column(DateTime(timezone=True), nullable=True)
 
     match_status = Column(Integer, nullable=False, default=MatchStatus.SCHEDULED.value)

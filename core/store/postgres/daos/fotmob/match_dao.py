@@ -39,6 +39,7 @@ class MatchDao(BaseDao):
                 MatchRaw.match_id,
                 MatchRaw.kickoff_time,
                 MatchRaw.json_body,
+                Fixture.local_time,
             ).join(
                 Fixture, Fixture.match_id == MatchRaw.match_id
             ).filter(
@@ -165,8 +166,16 @@ class MatchDao(BaseDao):
         match_stats = parsed_data.get("match_stats")
         player_stats = parsed_data.get("player_stats")
         shot_stats = parsed_data.get('shot_stats')
+        game_ended_at = parsed_data.get("game_ended_at")
 
         with self.db.get_session() as session:
+            if game_ended_at:
+                session.query(Fixture).filter(
+                    Fixture.match_id == match_id
+                ).update({
+                    Fixture.game_ended_at: game_ended_at,
+                    Fixture.updated_at: func.now(),
+                }, synchronize_session=False)
             if venue:
                 venue_stmt = insert(MatchVenue).values(venue)
                 set_clauses, where_clause = self.build_upsert_clauses(
