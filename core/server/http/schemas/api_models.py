@@ -159,7 +159,7 @@ class BaseMatchResponse(BaseModel):
             return ELAPSED_SHORT_ZH.get(short, short)
 
         elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
-        if elapsed >= 0 and (MatchStatus(self.match_status).is_playing or self.match_status == MatchStatus.TIMED.value):
+        if elapsed >= 0 and not MatchStatus(self.match_status).is_finalized:
             return f"{elapsed}'"
 
     class Config:
@@ -284,6 +284,13 @@ class PlayerResponse(BaseModel):
     role: Optional[int] = None
     is_captain: Optional[bool] = None
     rating: Optional[float] = None
+    club_code: Optional[str] = Field(default=None, exclude=True)
+    market_value: Optional[int] = None
+
+    @computed_field
+    @property
+    def club_name(self) -> Optional[str]:
+        return get_name_i18n_service().get(self.club_code) if self.club_code else None
 
     @computed_field
     @property

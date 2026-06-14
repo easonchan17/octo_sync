@@ -319,6 +319,9 @@ class MatchLineup(Base):
     country_code = Column(String(3), nullable=True)
     country_name = Column(String(100), nullable=True)
 
+    club_id = Column(Integer, nullable=True)
+    club_code = Column(String(16), nullable=True)
+
     shirt_number = Column(Integer, nullable=True)
     position_id = Column(Integer, nullable=True)
     position = Column(String(3), nullable=True)
