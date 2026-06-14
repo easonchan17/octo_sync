@@ -33,11 +33,24 @@ class TrainTracker:
         self.calibrator_path = None
         self.calib_draw_threshold_report = None
         self.market_baseline_score = None
+        self.calibrated_test_score = None
+        self.blend_weight = None
+        self.blended_test_score = None
 
     def validate(self, X: pd.DataFrame) -> None:
         missing = [col for col in self.MARKET_BASELINE_COLS if col not in X.columns]
         if missing:
             raise ValueError(f"Market baseline columns missing from dataset: {missing}")
+
+    def _fit_blend_weight(self, market_probs: np.ndarray, model_probs: np.ndarray, y_true: pd.Series, labels: np.ndarray) -> float:
+        candidate_weights = np.linspace(0.0, 1.0, 101)
+        best_weight, best_score = 0.0, float('inf')
+        for weight in candidate_weights:
+            blended_probs = weight * market_probs + (1 - weight) * model_probs
+            score = log_loss(y_true, blended_probs, labels=labels)
+            if score < best_score:
+                best_score, best_weight = score, weight
+        return best_weight
 
     def analysis(self, X_test: pd.DataFrame, y_test: pd.Series, X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None) -> None:
         if self.optimizer is None:
@@ -139,6 +152,14 @@ class TrainTracker:
             self.calib_draw_threshold_report = self._build_draw_threshold_report(y_prob_calib, y_test, "Draw")
             best_calib_row = self.calib_draw_threshold_report.loc[self.calib_draw_threshold_report['Macro F1'].idxmax()]
             self.draw_threshold = float(best_calib_row['T_draw'])
+            self.calibrated_test_score = log_loss(y_test, y_prob_calib, labels=best_estimator.classes_)
+
+            market_probs_calib = X_calib[self.MARKET_BASELINE_COLS].values
+            model_probs_calib = best_estimator.predict_proba(X_calib)
+            self.blend_weight = self._fit_blend_weight(market_probs_calib, model_probs_calib, y_calib, best_estimator.classes_)
+            market_probs_test = X_test[self.MARKET_BASELINE_COLS].values
+            blended_probs_test = self.blend_weight * market_probs_test + (1 - self.blend_weight) * y_prob_test
+            self.blended_test_score = log_loss(y_test, blended_probs_test, labels=best_estimator.classes_)
 
 
     def _build_draw_threshold_report(self, y_prob: np.ndarray, y_true: pd.Series, draw_key: str, t_min: float = 0.24, t_max: float = 0.40, steps: int = 17) -> pd.DataFrame:
@@ -230,6 +251,11 @@ class TrainTracker:
         lines.append(f"Best CV Score         : {self.train_score:.4f}")
         lines.append(f"Test Set Score        : {self.test_score:.4f}")
         lines.append(f"Market Baseline Score : {self.market_baseline_score:.4f}")
+        if self.calibrated_test_score is not None:
+            lines.append(f"Calibrated Test Score : {self.calibrated_test_score:.4f}")
+        if self.blended_test_score is not None:
+            lines.append(f"Blended Test Score    : {self.blended_test_score:.4f}")
+            lines.append(f"Blend Weight (market) : {self.blend_weight:.2f}")
         if self.score_gap > 0.05:
             lines.append(f"WARNING: Potential Overfitting detected! (Gap: {self.score_gap:.4f})")
 
