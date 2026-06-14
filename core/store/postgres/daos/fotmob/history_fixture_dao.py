@@ -1,6 +1,6 @@
 import traceback
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import func, or_, and_
+from sqlalchemy import func, or_, and_, exists
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
 from core.types.enums import MatchStatus
@@ -34,6 +34,16 @@ class HistoryFixtureDao(BaseDao):
                 or_(
                     HistoryFixtureRaw.league_id.is_(None),
                     HistoryFixtureRaw.next_fetch_at <= func.now(),
+                    and_(
+                        League.max_season == season,
+                        HistoryFixtureRaw.last_fetched_at.isnot(None),
+                        exists().where(
+                            and_(
+                                Fixture.league_id == League.league_id,
+                                Fixture.game_ended_at > HistoryFixtureRaw.last_fetched_at,
+                            )
+                        )
+                    )
                 )
             ).all()
 
@@ -186,7 +196,8 @@ class HistoryFixtureDao(BaseDao):
                     Fixture.id.key,
                     Fixture.created_at.key,
                     Fixture.match_id.key,
-                    Fixture.updated_at.key
+                    Fixture.updated_at.key,
+                    Fixture.game_ended_at.key,
                 }
             )
             insert_stmt = insert_stmt.on_conflict_do_update(
