@@ -864,6 +864,8 @@ class MatchParser:
 
 @TaskRegistry.poll('parse.fotmob.match')
 class ParseMatch(PollTask):
+    POLL_IDLE_SECONDS = 15
+
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
         self.payload = payload or {}
