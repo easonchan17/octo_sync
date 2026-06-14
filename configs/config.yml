@@ -186,6 +186,59 @@ training:
         calibration_set_size: 0.1
         test_set_size: 0.2
         exclude_cols:
+          - "big_chances_ema_5_diff"
+          - "away_passes_into_final_third_ema_5"
+          - "away_big_chances_ema_5"
+          - "shots_on_target_ema_5_diff"
+          - "home_shots_on_target_ema_5"
+          - "home_lagged_xg"
+          - "away_lagged_xg"
+          - "away_is_host"
+          - "is_tournament"
+          - "home_schedule_rest_days"
+          - "away_schedule_rest_days"
+          - "home_point_sum_5"
+          - "home_is_host"
+          - "npxga_ema_5_diff"
+          - "home_npxg_per_shot_ema_5"
+          - "home_venue_dependency"
+          - "npxg_ema_5_diff"
+          - "npxg_per_shot_ema_5_diff"
+          - "home_passes_into_final_third_ema_5"
+          - "passes_into_final_third_ema_5_diff"
+          - "home_shots_ema_5"
+          - "away_clearances_ema_5"
+          - "interceptions_ema_5_diff"
+          - "tackles_ema_5_diff"
+          - "away_interceptions_ema_5"
+          - "home_tackles_ema_5"
+          - "away_tackles_ema_5"
+          - "home_long_passes_ema_5"
+          - "shots_ema_5_diff"
+          - "home_goal_to_xg_ema_5"
+          - "away_aerial_win_rate_ema_5"
+          - "home_shots_conversion_ema_5"
+          - "shots_acc_ema_5_diff"
+          - "away_long_passes_acc_ema_5"
+          - "long_passes_acc_ema_5_diff"
+          - "away_crosses_acc_ema_5"
+          - "crosses_acc_ema_5_diff"
+          - "home_disruption_ema_5"
+          - "away_disruption_ema_5"
+          - "away_keeper_performance_ema_5"
+          - "keeper_performance_ema_5_diff"
+          - "home_keeper_performance_ema_5"
+          - "shot_quality_index_ema_5_diff"
+          - "set_piece_reliance_ema_5_diff"
+          - "away_set_piece_reliance_ema_5"
+          - "home_net_advantage"
+          - "home_threat_per_entry_ema_5"
+          - "home_prob_open_std"
+          - "market_vig_open_std"
+          - "market_vig_close_std"
+          - "ah_line_up_ratio"
+          - "sharp_vs_market_home_open_diff"
+          - "sharp_vs_market_away_close_diff"
 
       model:
         name: xgboost
@@ -209,14 +262,14 @@ training:
           verbose: 0
           cv: 5
           search_spaces:
-            max_depth: { type: Integer, low: 2, high: 8 }
+            max_depth: { type: Integer, low: 3, high: 5 }
             learning_rate: { type: Real, low: 0.001, high: 0.1, prior: log-uniform }
             min_child_weight: { type: Integer, low: 3, high: 30 }
-            gamma: { type: Real, low: 0.0, high: 5.0 }
+            gamma: { type: Real, low: 0.0, high: 10.0 }
             subsample: { type: Real, low: 0.3, high: 0.8 }
-            colsample_bytree: { type: Real, low: 0.2, high: 0.8 }
+            colsample_bytree: { type: Real, low: 0.3, high: 0.6 }
             reg_alpha: { type: Real, low: 0.1, high: 10, prior: log-uniform }
-            reg_lambda: { type: Real, low: 0.5, high: 10, prior: log-uniform }
+            reg_lambda: { type: Real, low: 0.1, high: 10, prior: log-uniform }
 
 llm:
   default:

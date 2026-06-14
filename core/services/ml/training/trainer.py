@@ -128,6 +128,7 @@ class WinballTrainer(BaseTrainer):
     def train(self) -> None:
         try:
             X_train, y_train, X_test, y_test, X_calib, y_calib = self.load_dataset()
+            self.tracker.validate(X_test)
 
             sample_weight = self.build_sample_weight(y_train) if self.config.balanced else None
             tree_counts: list = []
