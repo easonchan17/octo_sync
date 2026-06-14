@@ -156,7 +156,7 @@ class FixtureParser:
 
 @TaskRegistry.poll("parse.fotmob.active_fixture")
 class ParseActiveFixture(PollTask):
-    POLL_IDLE_SECONDS = 30
+    POLL_IDLE_SECONDS = 15
 
     def __init__(self, payload: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(site_name=SiteName.FOTMOB.value)
