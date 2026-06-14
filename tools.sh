@@ -53,10 +53,11 @@ tool_sync() {
         return 1
     fi
 
+    LOCAL_LABEL="$(hostname -s)"
     echo ""
     echo "Action:"
-    echo "  1) push  (local → $TARGET_LABEL)"
-    echo "  2) pull  ($TARGET_LABEL → local)"
+    echo "  1) push  ($LOCAL_LABEL → $TARGET_LABEL)"
+    echo "  2) pull  ($TARGET_LABEL → $LOCAL_LABEL)"
     echo ""
     read -rp "> " action_idx
     case "$action_idx" in
