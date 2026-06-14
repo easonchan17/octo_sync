@@ -13,6 +13,8 @@ from sklearn.metrics import classification_report, confusion_matrix, log_loss
 from .train_config import BaseTrainConfig
 
 class TrainTracker:
+    MARKET_BASELINE_COLS = ['market_median_away_real', 'market_median_draw_real', 'market_median_home_real']
+
     def __init__(self, config: BaseTrainConfig) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.db = get_postgresql_manager()
@@ -30,6 +32,12 @@ class TrainTracker:
         self.calibrator = None
         self.calibrator_path = None
         self.calib_draw_threshold_report = None
+        self.market_baseline_score = None
+
+    def validate(self, X: pd.DataFrame) -> None:
+        missing = [col for col in self.MARKET_BASELINE_COLS if col not in X.columns]
+        if missing:
+            raise ValueError(f"Market baseline columns missing from dataset: {missing}")
 
     def analysis(self, X_test: pd.DataFrame, y_test: pd.Series, X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None) -> None:
         if self.optimizer is None:
@@ -45,10 +53,13 @@ class TrainTracker:
             train_score = -best_score
             test_score = log_loss(y_test, y_prob_test, labels=best_estimator.classes_)
             score_gap = test_score - train_score
+            market_baseline_score = log_loss(y_test, X_test[self.MARKET_BASELINE_COLS].values, labels=best_estimator.classes_)
         elif scoring == 'accuracy':
             train_score = best_score
             test_score = best_estimator.score(X_test, y_test)
             score_gap = train_score - test_score
+            market_pred = np.argmax(X_test[self.MARKET_BASELINE_COLS].values, axis=1)
+            market_baseline_score = (market_pred == y_test.values).mean()
         else:
             raise ValueError(f"Invalid scoring method: {scoring}")
 
@@ -108,6 +119,7 @@ class TrainTracker:
         self.train_score = train_score
         self.test_score = test_score
         self.score_gap = score_gap
+        self.market_baseline_score = market_baseline_score
         self.test_report_df = report_df
         self.test_cm_df = cm_df
         self.feature_names = feature_names
@@ -217,6 +229,7 @@ class TrainTracker:
         lines.append(f"Early Stopping Rounds : {self.config.model_params.get('early_stopping_rounds')}")
         lines.append(f"Best CV Score         : {self.train_score:.4f}")
         lines.append(f"Test Set Score        : {self.test_score:.4f}")
+        lines.append(f"Market Baseline Score : {self.market_baseline_score:.4f}")
         if self.score_gap > 0.05:
             lines.append(f"WARNING: Potential Overfitting detected! (Gap: {self.score_gap:.4f})")
 
