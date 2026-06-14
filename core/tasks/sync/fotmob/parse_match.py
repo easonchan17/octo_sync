@@ -607,6 +607,7 @@ class MatchParser:
         "name": [("player_name", lambda x: x)],
         "countryName": [("country_name", lambda x: x)],
         "countryCode": [("country_code", lambda x: x)],
+        "primaryTeamId": [("club_id", lambda x: x)],
         "marketValue": [("market_value", lambda x: x or 0)],
         "positionId": [("position_id", lambda x: x or 0)],
         "position": [("position", lambda x: x or "")],
@@ -785,6 +786,9 @@ class MatchParser:
                     if player_id and player_id not in seen:
                         seen.add(player_id)
                         record["player_code"] = encode_id(player_id, self.env_manager.PLAYER_CODE_SALT)
+                        club_id = record.get("club_id")
+                        if club_id:
+                            record["club_code"] = encode_id(club_id, self.env_manager.TEAM_CODE_SALT)
                         records.append(record)
 
             return formation, records
