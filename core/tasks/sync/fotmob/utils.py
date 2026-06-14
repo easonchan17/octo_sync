@@ -4,6 +4,24 @@ from typing import Any, Dict, Optional, Tuple
 from core.types.enums import MatchStatus
 
 
+def parse_finish_time(halfs: Optional[Dict], kickoff_str_utc: Optional[str], kickoff_str_local: Optional[str]) -> Optional[datetime]:
+    if not halfs or not kickoff_str_utc or not kickoff_str_local:
+        return None
+
+    game_ended_str_local = halfs.get("gameEnded")
+    if not game_ended_str_local:
+        return None
+
+    try:
+        kickoff_utc = datetime.fromisoformat(kickoff_str_utc)
+        kickoff_local = datetime.strptime(kickoff_str_local, "%d.%m.%Y %H:%M")
+        utc_offset = kickoff_local - kickoff_utc.replace(tzinfo=None)
+        game_ended_local = datetime.strptime(game_ended_str_local, "%d.%m.%Y %H:%M:%S")
+        return (game_ended_local - utc_offset).replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return None
+
+
 def parse_scores(scores: str) -> Tuple[Optional[int], Optional[int]]:
     if not scores:
         return None, None

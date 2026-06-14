@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional, List, Callable, Tuple
 from core.tasks.poll_task import PollTask
 from core.types.params import CrawlParams
 from core.store.postgres.models.fotmob.match import MatchLineup, MatchStat, MatchPlayerStat, ShotStat, MatchVenue
-from core.tasks.sync.fotmob.utils import extract_status, encode_id
+from core.tasks.sync.fotmob.utils import extract_status, encode_id, parse_finish_time
 from core.config.env_manager import get_env_manager
 from core.store.postgres.daos.fotmob import MatchDao
 
@@ -622,7 +622,7 @@ class MatchParser:
         self.formation_resolver = FormationResolver()
         self.env_manager = get_env_manager()
 
-    def parse(self, json_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def parse(self, json_data: Dict[str, Any], local_time: Optional[str] = None) -> Optional[Dict[str, Any]]:
         if not json_data:
             self.logger.error(f"json data is empty")
             return None
@@ -674,9 +674,11 @@ class MatchParser:
             result["match_stats"]["away_formation"] = away_formation
 
         status = json_data.get('header', {}).get('status')
-        match_status, kickoff_time, _, _, _, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
+        match_status, kickoff_time, _, _, halfs_status, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
+        game_ended_at = parse_finish_time(halfs_status, kickoff_time, local_time)
         result["match_status"] = match_status
         result["kickoff_time"] = kickoff_time
+        result["game_ended_at"] = game_ended_at
         return result
 
     def _create_lineup_record(
@@ -880,12 +882,12 @@ class ParseMatch(PollTask):
                     self.idle_sleep()
                     continue
 
-                for match_id, kickoff_time, json_body in items:
+                for match_id, kickoff_time, json_body, local_time in items:
                     if self.should_stop():
                         return
 
                     try:
-                        parsed_data = self.parser.parse(json_body)
+                        parsed_data = self.parser.parse(json_body, local_time)
                         if parsed_data is None:
                             self.match_dao.mark_parse_failed(match_id, "match data is None")
                             continue
