@@ -279,6 +279,8 @@ class MatchDao(BaseDao):
                 MatchLineup.role,
                 MatchLineup.is_captain,
                 MatchLineup.rating,
+                MatchLineup.club_code,
+                MatchLineup.market_value,
             ).filter(
                 MatchLineup.match_id == match_id,
                 MatchLineup.team_id == team_id,
