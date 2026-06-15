@@ -158,6 +158,23 @@ training:
           - "home_std_change"
           - "market_entropy_close"
           - "home_net_advantage"
+          - "home_venue_dependency"
+          - "npxg_ema_5_diff"
+          - "home_lagged_xg"
+          - "away_is_host"
+          - "npxga_ema_5_diff"
+          - "is_tournament"
+          - "home_is_host"
+          - "goal_to_xg_ema_5_diff"
+          - "away_keeper_performance_ema_5"
+          - "home_keeper_performance_ema_5"
+          - "keeper_performance_ema_5_diff"
+          - "final_third_entry_rate_ema_5_diff"
+          - "away_disruption_ema_5"
+          - "home_shots_on_target_ema_5"
+          - "away_shots_ema_5"
+          - "shots_on_target_ema_5_diff"
+          - "home_npxg_ema_5"
 
       model:
         name: xgboost
