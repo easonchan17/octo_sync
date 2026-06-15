@@ -146,7 +146,7 @@ class FixtureParser:
                 "home_pen_score": home.get('penScore'),
                 "away_pen_score": away.get('penScore'),
                 "halfs_status":  halfs_status,
-                "live_status":   live_status,
+                "live_status":   live_status or {},
                 "local_time":    local_time,
                 "match_status":  match_status
             }
