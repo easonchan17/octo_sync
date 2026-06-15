@@ -87,8 +87,8 @@ class Fixture(Base):
     away_score = Column(Integer, nullable=True)
     home_pen_score = Column(Integer, nullable=True)
     away_pen_score = Column(Integer, nullable=True)
-    halfs_status = Column(JSONB, nullable=True)
-    live_status  = Column(JSONB, nullable=True)
+    halfs_status = Column(JSONB(none_as_null=True), nullable=True)
+    live_status  = Column(JSONB(none_as_null=True), nullable=True)
     local_time   = Column(String(32), nullable=True)
     game_ended_at = Column(DateTime(timezone=True), nullable=True)
 

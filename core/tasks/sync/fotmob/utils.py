@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 from core.types.enums import MatchStatus
 
@@ -34,7 +34,7 @@ def parse_scores(scores: str) -> Tuple[Optional[int], Optional[int]]:
     return None, None
 
 
-def extract_status(status: Dict[str, Any], time_window: timedelta) -> Tuple[int, Optional[str], Optional[int], Optional[int], Optional[Dict], Optional[Dict]]:
+def extract_status(status: Dict[str, Any]) -> Tuple[int, Optional[str], Optional[int], Optional[int], Optional[Dict], Optional[Dict]]:
     if not status:
         return MatchStatus.SCHEDULED.value, None, None, None, None, None
 
@@ -63,10 +63,10 @@ def extract_status(status: Dict[str, Any], time_window: timedelta) -> Tuple[int,
     if started:
         return MatchStatus.IN_PROGRESS.value, utctime, home_score, away_score, halfs_status, live_status
 
-    post_match_duration = datetime.now(timezone.utc) - datetime.fromisoformat(utctime)
-    if post_match_duration.total_seconds() > time_window.total_seconds():
-        if halfs_status:
-            return MatchStatus.FINISHED.value, utctime, home_score, away_score, halfs_status, live_status
+    if home_score is not None:
+        if live_status is not None:
+            return MatchStatus.IN_PROGRESS.value, utctime, home_score, away_score, halfs_status, live_status
+        return MatchStatus.FINISHED.value, utctime, home_score, away_score, halfs_status, live_status
 
     return MatchStatus.TIMED.value, utctime, None, None, None, None
 
