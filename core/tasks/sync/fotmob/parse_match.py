@@ -675,7 +675,7 @@ class MatchParser:
             result["match_stats"]["away_formation"] = away_formation
 
         status = json_data.get('header', {}).get('status')
-        match_status, kickoff_time, _, _, halfs_status, _ = extract_status(status, CrawlParams.MATCH_LIFESPAN)
+        match_status, kickoff_time, _, _, halfs_status, _ = extract_status(status)
         game_ended_at = parse_finish_time(halfs_status, kickoff_time, local_time)
         result["match_status"] = match_status
         result["kickoff_time"] = kickoff_time

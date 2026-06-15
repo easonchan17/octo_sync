@@ -125,7 +125,7 @@ class FixtureParser:
 
             local_time = match.get('time')
             match_status, kickoff_time, home_score, away_score, halfs_status, live_status = extract_status(
-                match.get('status', {}), CrawlParams.MATCH_LIFESPAN
+                match.get('status', {})
             )
 
             fixture = {
