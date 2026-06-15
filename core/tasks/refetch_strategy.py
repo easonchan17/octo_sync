@@ -106,33 +106,36 @@ class AttemptStrategy:
 
 @dataclass
 class ScheduleSegment:
-    time: datetime
-    is_active: bool
+    is_live: bool
+    is_finished: bool
+    start_time: datetime
+    finish_time: Optional[datetime]
 
 class ScheduleStrategy:
-    def __init__(self, active_window: timedelta, active_interval: timedelta) -> None:
-        self._active_window = active_window
+    def __init__(self, active_interval: timedelta) -> None:
         self._active_interval = active_interval
 
-    def suggest_interval(self, last_fetch_time: datetime, scheduled_items: List[ScheduleSegment], max_scheduled_time: datetime) -> Optional[timedelta]:
-        return self._suggest_interval(last_fetch_time, scheduled_items, max_scheduled_time)
+    def suggest_interval(self, last_fetch_time: datetime, scheduled_items: List[ScheduleSegment], fallback_ended_at: Optional[datetime] = None) -> Optional[timedelta]:
+        return self._suggest_interval(last_fetch_time, scheduled_items, fallback_ended_at)
 
-    def _suggest_interval(self, last_fetch_time: datetime, scheduled_items: List[ScheduleSegment], max_scheduled_time: datetime) -> Optional[timedelta]:
+    def _suggest_interval(self, last_fetch_time: datetime, scheduled_items: List[ScheduleSegment], fallback_ended_at: Optional[datetime]) -> Optional[timedelta]:
         current_time = datetime.now(timezone.utc)
 
-        if scheduled_items:
-            sorted_items = sorted(scheduled_items, key=lambda item: item.time)
-
-            for item in sorted_items:
-                if item.time + self._active_window < last_fetch_time:
-                    continue
-
-                if item.time > last_fetch_time:
-                    return max(item.time - current_time, self._active_interval)
-
+        sorted_items = sorted(scheduled_items, key=lambda item: item.start_time)
+        for item in sorted_items:
+            if item.is_live:
                 return self._active_interval
 
-        archived_time = max_scheduled_time + self._active_window
+            if item.is_finished:
+                if item.finish_time is None:
+                    return self._active_interval
+                elif last_fetch_time < item.finish_time:
+                    return self._active_interval
 
-        if last_fetch_time < archived_time:
-            return max(archived_time - current_time, self._active_interval)
+            if item.start_time > last_fetch_time:
+                return max(item.start_time - current_time, self._active_interval)
+
+        if fallback_ended_at is not None and last_fetch_time < fallback_ended_at:
+            return max(fallback_ended_at - current_time, self._active_interval)
+
+        return None

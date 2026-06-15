@@ -167,7 +167,6 @@ class ParseActiveFixture(PollTask):
         self.fixture_parser = FixtureParser()
 
         self.refetch_strategy = ScheduleStrategy(
-            active_window=timedelta(hours=4),
             active_interval=timedelta(minutes=1)
         )
 
@@ -177,20 +176,28 @@ class ParseActiveFixture(PollTask):
             for fixture in parsed_data
         )
 
-    def get_refetch_interval(self, last_fetch_time: datetime, max_sheduled_time: datetime, fixtures: List[Any]) -> Optional[timedelta]:
-        site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
+    def get_refetch_interval(self, last_fetch_time: datetime, last_kickoff_time: datetime, fixtures: List[Any]) -> Optional[timedelta]:
+        if not fixtures:
+            return self.refetch_strategy.suggest_interval(last_fetch_time, [], last_kickoff_time + CrawlParams.MATCH_LIFESPAN)
 
+        site_leagues = self.league_service.get_site_leagues(SiteName.FOTMOB.value)
         league_ids = {league.league_id for league in site_leagues}
+
+        match_ids = [fixture["match_id"] for fixture in fixtures if fixture["league_id"] in league_ids]
+        game_ended_at_map = self.active_fixture_dao.get_game_ended_at_by_match_ids(match_ids)
+
         scheduled_items = [
             ScheduleSegment(
-                time=datetime.fromisoformat(fixture["kickoff_time"]).astimezone(timezone.utc),
-                is_active=MatchStatus(fixture["match_status"]).is_playing
+                start_time=datetime.fromisoformat(fixture["kickoff_time"]).astimezone(timezone.utc),
+                finish_time=game_ended_at_map.get(fixture["match_id"]),
+                is_live=MatchStatus(fixture["match_status"]).is_playing,
+                is_finished=MatchStatus(fixture["match_status"]).is_finalized,
             )
             for fixture in fixtures
             if fixture["league_id"] in league_ids
         ]
 
-        return self.refetch_strategy.suggest_interval(last_fetch_time, scheduled_items, max_sheduled_time)
+        return self.refetch_strategy.suggest_interval(last_fetch_time, scheduled_items, last_kickoff_time + CrawlParams.MATCH_LIFESPAN)
 
     def execute(self, *args, **kwargs) -> None:
         while not self.should_stop():
