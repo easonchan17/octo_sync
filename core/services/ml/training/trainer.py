@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -41,7 +42,7 @@ class BaseTrainer(ABC):
             index=y_train.index
         )
 
-    def load_dataset(self) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, Optional[pd.DataFrame], Optional[pd.Series]]:
+    def load_dataset(self) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, Optional[pd.DataFrame], Optional[pd.Series], Optional[np.ndarray], Optional[np.ndarray]]:
         if self.config is None:
             raise ValueError("Config is not set")
 
@@ -59,13 +60,19 @@ class BaseTrainer(ABC):
         X_test  = X.iloc[test_split:].copy()
         y_test  = y.iloc[test_split:].copy()
 
+        market_cols = TrainTracker.MARKET_BASELINE_COLS
+        has_market_cols = all(col in df.columns for col in market_cols)
+        market_probs_test = df.iloc[test_split:][market_cols].values if has_market_cols else None
+
         if self.config.calibration_set_size > 0:
             X_calib = X.iloc[calib_split:test_split].copy()
             y_calib = y.iloc[calib_split:test_split].copy()
+            market_probs_calib = df.iloc[calib_split:test_split][market_cols].values if has_market_cols else None
         else:
             X_calib, y_calib = None, None
+            market_probs_calib = None
 
-        return X_train, y_train, X_test, y_test, X_calib, y_calib
+        return X_train, y_train, X_test, y_test, X_calib, y_calib, market_probs_test, market_probs_calib
 
 
 class WinballTrainer(BaseTrainer):
@@ -127,8 +134,7 @@ class WinballTrainer(BaseTrainer):
 
     def train(self) -> None:
         try:
-            X_train, y_train, X_test, y_test, X_calib, y_calib = self.load_dataset()
-            self.tracker.validate(X_test)
+            X_train, y_train, X_test, y_test, X_calib, y_calib, market_probs_test, market_probs_calib = self.load_dataset()
 
             sample_weight = self.build_sample_weight(y_train) if self.config.balanced else None
             tree_counts: list = []
@@ -142,7 +148,7 @@ class WinballTrainer(BaseTrainer):
                 return
 
             self.tracker.optimizer = optimizer
-            self.tracker.analysis(X_test, y_test, X_calib, y_calib)
+            self.tracker.analysis(X_test, y_test, X_calib, y_calib, market_probs_test, market_probs_calib)
 
             model_path, model_version = self.tracker.save_model()
             self.tracker.save_metadata(model_path, model_version)

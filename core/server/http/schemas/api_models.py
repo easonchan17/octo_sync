@@ -283,7 +283,7 @@ class PlayerResponse(BaseModel):
     usual_playing_position_id: Optional[int] = Field(default=None, exclude=True)
     role: Optional[int] = None
     is_captain: Optional[bool] = None
-    rating: Optional[float] = None
+    # rating: Optional[float] = None
     club_code: Optional[str] = Field(default=None, exclude=True)
     market_value: Optional[int] = None
     minutes_played: Optional[int] = None
