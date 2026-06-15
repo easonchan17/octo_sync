@@ -281,6 +281,13 @@ class MatchDao(BaseDao):
                 MatchLineup.rating,
                 MatchLineup.club_code,
                 MatchLineup.market_value,
+                MatchPlayerStat.minutes_played,
+            ).outerjoin(
+                MatchPlayerStat,
+                and_(
+                    MatchPlayerStat.match_id == MatchLineup.match_id,
+                    MatchPlayerStat.player_id == MatchLineup.player_id,
+                )
             ).filter(
                 MatchLineup.match_id == match_id,
                 MatchLineup.team_id == team_id,
