@@ -135,6 +135,9 @@ class ScheduleStrategy:
             if item.start_time > last_fetch_time:
                 return max(item.start_time - current_time, self._active_interval)
 
+            if item.start_time <= current_time:
+                return self._active_interval
+
         if fallback_ended_at is not None and last_fetch_time < fallback_ended_at:
             return max(fallback_ended_at - current_time, self._active_interval)
 
