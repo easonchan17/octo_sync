@@ -37,11 +37,6 @@ class TrainTracker:
         self.blend_weight = None
         self.blended_test_score = None
 
-    def validate(self, X: pd.DataFrame) -> None:
-        missing = [col for col in self.MARKET_BASELINE_COLS if col not in X.columns]
-        if missing:
-            raise ValueError(f"Market baseline columns missing from dataset: {missing}")
-
     def _fit_blend_weight(self, market_probs: np.ndarray, model_probs: np.ndarray, y_true: pd.Series, labels: np.ndarray) -> float:
         candidate_weights = np.linspace(0.0, 1.0, 101)
         best_weight, best_score = 0.0, float('inf')
@@ -52,7 +47,7 @@ class TrainTracker:
                 best_score, best_weight = score, weight
         return best_weight
 
-    def analysis(self, X_test: pd.DataFrame, y_test: pd.Series, X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None) -> None:
+    def analysis(self, X_test: pd.DataFrame, y_test: pd.Series, X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None, market_probs_test: Optional[np.ndarray] = None, market_probs_calib: Optional[np.ndarray] = None) -> None:
         if self.optimizer is None:
             raise ValueError("Optimizer is not set")
 
@@ -61,17 +56,16 @@ class TrainTracker:
 
         y_prob_test = best_estimator.predict_proba(X_test)
         scoring = self.config.scoring
-
         if scoring == 'neg_log_loss':
             train_score = -best_score
             test_score = log_loss(y_test, y_prob_test, labels=best_estimator.classes_)
             score_gap = test_score - train_score
-            market_baseline_score = log_loss(y_test, X_test[self.MARKET_BASELINE_COLS].values, labels=best_estimator.classes_)
+            market_baseline_score = log_loss(y_test, market_probs_test, labels=best_estimator.classes_)
         elif scoring == 'accuracy':
             train_score = best_score
             test_score = best_estimator.score(X_test, y_test)
             score_gap = train_score - test_score
-            market_pred = np.argmax(X_test[self.MARKET_BASELINE_COLS].values, axis=1)
+            market_pred = np.argmax(market_probs_test, axis=1)
             market_baseline_score = (market_pred == y_test.values).mean()
         else:
             raise ValueError(f"Invalid scoring method: {scoring}")
@@ -154,10 +148,8 @@ class TrainTracker:
             self.draw_threshold = float(best_calib_row['T_draw'])
             self.calibrated_test_score = log_loss(y_test, y_prob_calib, labels=best_estimator.classes_)
 
-            market_probs_calib = X_calib[self.MARKET_BASELINE_COLS].values
             model_probs_calib = best_estimator.predict_proba(X_calib)
             self.blend_weight = self._fit_blend_weight(market_probs_calib, model_probs_calib, y_calib, best_estimator.classes_)
-            market_probs_test = X_test[self.MARKET_BASELINE_COLS].values
             blended_probs_test = self.blend_weight * market_probs_test + (1 - self.blend_weight) * y_prob_test
             self.blended_test_score = log_loss(y_test, blended_probs_test, labels=best_estimator.classes_)
 
