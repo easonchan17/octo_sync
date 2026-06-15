@@ -166,9 +166,7 @@ class ParseActiveFixture(PollTask):
         self.league_service = get_league_service()
         self.fixture_parser = FixtureParser()
 
-        self.refetch_strategy = ScheduleStrategy(
-            active_interval=timedelta(minutes=1)
-        )
+        self.refetch_strategy = ScheduleStrategy(active_interval=timedelta(minutes=1))
 
     def get_last_kickoff_time(self, parsed_data: List[Dict[str, Any]]) -> datetime:
         return max(
