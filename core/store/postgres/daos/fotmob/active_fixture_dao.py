@@ -155,6 +155,16 @@ class ActiveFixtureDao(BaseDao):
             upserted_count = result.rowcount
             self.logger.debug(f"Sync fixture raw data completed. upserted: {upserted_count}")
 
+    def get_game_ended_at_by_match_ids(self, match_ids: List[int]) -> Dict[int, Optional[datetime]]:
+        with self.db.get_session() as session:
+            rows = session.query(
+                Fixture.match_id,
+                Fixture.game_ended_at
+            ).filter(
+                Fixture.match_id.in_(match_ids)
+            ).all()
+            return {row.match_id: row.game_ended_at for row in rows}
+
     def sync_parsed_data(self, match_date: date, parsed_data: List[Dict[str, Any]]) -> None:
         with self.db.get_session() as session:
             insert_stmt = insert(Fixture).values(parsed_data)
