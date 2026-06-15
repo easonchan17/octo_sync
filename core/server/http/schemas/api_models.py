@@ -286,6 +286,7 @@ class PlayerResponse(BaseModel):
     rating: Optional[float] = None
     club_code: Optional[str] = Field(default=None, exclude=True)
     market_value: Optional[int] = None
+    minutes_played: Optional[int] = None
 
     @computed_field
     @property
