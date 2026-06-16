@@ -14,11 +14,22 @@ from .train_config import BaseTrainConfig
 
 class TrainTracker:
     MARKET_BASELINE_COLS = ['market_median_away_real', 'market_median_draw_real', 'market_median_home_real']
+    MARKET_VIG_COL = 'market_median_vig_close'
+    DRAW_CLASS = 'Draw'
+    DRAW_COL = 'T_draw'
+
+    @classmethod
+    def validate_dataset(cls, df: pd.DataFrame) -> None:
+        required = cls.MARKET_BASELINE_COLS + [cls.MARKET_VIG_COL]
+        missing = [col for col in required if col not in df.columns]
+        if missing:
+            raise ValueError(f"Dataset is missing required columns {missing}; rebuild the dataset")
 
     def __init__(self, config: BaseTrainConfig) -> None:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.db = get_postgresql_manager()
         self.config = config
+        self.draw_class_idx = list(self.config.target_names).index(self.DRAW_CLASS)
         self.optimizer = None
         self.train_score = None
         self.test_score = None
@@ -36,6 +47,9 @@ class TrainTracker:
         self.calibrated_test_score = None
         self.blend_weight = None
         self.blended_test_score = None
+        self.draw_fair_mean = None
+        self.draw_fair_mean_true = None
+        self.market_vig_mean = None
 
     def _fit_blend_weight(self, market_probs: np.ndarray, model_probs: np.ndarray, y_true: pd.Series, labels: np.ndarray) -> float:
         candidate_weights = np.linspace(0.0, 1.0, 101)
@@ -47,10 +61,14 @@ class TrainTracker:
                 best_score, best_weight = score, weight
         return best_weight
 
-    def analysis(self, X_test: pd.DataFrame, y_test: pd.Series, X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None, market_probs_test: Optional[np.ndarray] = None, market_probs_calib: Optional[np.ndarray] = None) -> None:
+    def analysis(
+        self,
+        X_test: pd.DataFrame, y_test: pd.Series,
+        market_probs_test: np.ndarray, market_vig_test: np.ndarray, market_probs_calib: Optional[np.ndarray] = None,
+        X_calib: Optional[pd.DataFrame] = None, y_calib: Optional[pd.Series] = None,
+    ) -> None:
         if self.optimizer is None:
             raise ValueError("Optimizer is not set")
-
         best_estimator = self.optimizer.best_estimator_
         best_score = self.optimizer.best_score_
 
@@ -133,19 +151,21 @@ class TrainTracker:
         self.feat_imp_df = feat_imp_df
         self.shap_imp_df = shap_imp_df
         self.high_corr_pairs = high_corr_pairs
-        self.draw_threshold_report = self._build_draw_threshold_report(y_prob_test, y_test, "Draw")
-        best_row = self.draw_threshold_report.loc[self.draw_threshold_report['Macro F1'].idxmax()]
-        self.draw_threshold = float(best_row['T_draw'])
-        self.draw_class = list(self.config.target_names).index('Draw')
+        self.draw_fair_mean = market_probs_test[:, self.draw_class_idx].mean()
+        self.market_vig_mean = market_vig_test.mean()
+        draw_baseline = self.draw_fair_mean * self.market_vig_mean
+        self.draw_fair_mean_true = market_probs_test[y_test.values == self.draw_class_idx, self.draw_class_idx].mean()
+        self.draw_threshold_report = self._build_draw_threshold_report(y_prob_test, y_test)
+        self.draw_threshold = self._optimize_draw_threshold(self.draw_threshold_report, draw_baseline)
+        self.draw_class = self.draw_class_idx
 
         if X_calib is not None and y_calib is not None:
             calibrator = CalibratedClassifierCV(FrozenEstimator(best_estimator), method='sigmoid')
             calibrator.fit(X_calib, y_calib)
             y_prob_calib = calibrator.predict_proba(X_test)
             self.calibrator = calibrator
-            self.calib_draw_threshold_report = self._build_draw_threshold_report(y_prob_calib, y_test, "Draw")
-            best_calib_row = self.calib_draw_threshold_report.loc[self.calib_draw_threshold_report['Macro F1'].idxmax()]
-            self.draw_threshold = float(best_calib_row['T_draw'])
+            self.calib_draw_threshold_report = self._build_draw_threshold_report(y_prob_calib, y_test)
+            self.draw_threshold = self._optimize_draw_threshold(self.calib_draw_threshold_report, draw_baseline)
             self.calibrated_test_score = log_loss(y_test, y_prob_calib, labels=best_estimator.classes_)
 
             model_probs_calib = best_estimator.predict_proba(X_calib)
@@ -153,25 +173,39 @@ class TrainTracker:
             blended_probs_test = self.blend_weight * market_probs_test + (1 - self.blend_weight) * y_prob_test
             self.blended_test_score = log_loss(y_test, blended_probs_test, labels=best_estimator.classes_)
 
+        profit_score_col = ((self.draw_threshold_report['Draw Precision'] - draw_baseline).clip(lower=0.0) * self.draw_threshold_report['Draw Recall']).round(5)
+        self.draw_threshold_report['Profit Score'] = profit_score_col
+        if self.calib_draw_threshold_report is not None:
+            calib_profit_score_col = ((self.calib_draw_threshold_report['Draw Precision'] - draw_baseline).clip(lower=0.0) * self.calib_draw_threshold_report['Draw Recall']).round(5)
+            self.calib_draw_threshold_report['Profit Score'] = calib_profit_score_col
 
-    def _build_draw_threshold_report(self, y_prob: np.ndarray, y_true: pd.Series, draw_key: str, t_min: float = 0.24, t_max: float = 0.40, steps: int = 17) -> pd.DataFrame:
-        draw_idx = list(self.config.target_names).index(draw_key)
-        home_indices = [i for i in range(y_prob.shape[1]) if i != draw_idx]
+
+    def _build_draw_threshold_report(self, y_prob: np.ndarray, y_true: pd.Series, t_min: float = 0.24, t_max: float = 0.40, steps: int = 17) -> pd.DataFrame:
+        home_indices = [i for i in range(y_prob.shape[1]) if i != self.draw_class_idx]
 
         rows = []
         for t in np.linspace(t_min, t_max, steps):
             t = round(t, 2)
             non_draw = np.take(home_indices, np.argmax(y_prob[:, home_indices], axis=1))
-            y_pred = np.where(y_prob[:, draw_idx] >= t, draw_idx, non_draw)
+            y_pred = np.where(y_prob[:, self.draw_class_idx] >= t, self.draw_class_idx, non_draw)
             report = classification_report(y_true, y_pred, target_names=self.config.target_names, output_dict=True, zero_division=0.0)
             rows.append({
-                "T_draw":         t,
-                "Draw Precision": round(report[draw_key]["precision"], 4),
-                "Draw Recall":    round(report[draw_key]["recall"],    4),
-                "Draw F1":        round(report[draw_key]["f1-score"],  4),
+                self.DRAW_COL:    t,
+                "Draw Precision": round(report[self.DRAW_CLASS]["precision"], 4),
+                "Draw Recall":    round(report[self.DRAW_CLASS]["recall"],    4),
+                "Draw F1":        round(report[self.DRAW_CLASS]["f1-score"],  4),
                 "Macro F1":       round(report["macro avg"]["f1-score"], 4),
             })
         return pd.DataFrame(rows)
+
+    def _optimize_draw_threshold(self, scan_df: pd.DataFrame, draw_baseline: float) -> float:
+        df = scan_df.copy()
+        precision_premium = (df['Draw Precision'] - draw_baseline).clip(lower=0.0)
+        df['profit_volume_score'] = precision_premium * df['Draw Recall']
+        if df['profit_volume_score'].max() == 0:
+            self.logger.warning("No positive EV threshold found, falling back to Macro F1")
+            return float(df.loc[df['Macro F1'].idxmax(), self.DRAW_COL])
+        return float(df.loc[df['profit_volume_score'].idxmax(), self.DRAW_COL])
 
     def save_model(self) -> Tuple[str, str]:
         base_dir = self.config.model_dir / self.config.model_family
@@ -231,6 +265,7 @@ class TrainTracker:
         lines.append("=" * 50)
         lines.append("MODEL OPTIMIZATION REPORT")
         lines.append("=" * 50)
+        lines.append(f"Model Version         : {model_version}")
         lines.append(f"Dataset               : {self.config.dataset_name}")
         lines.append(f"Balanced              : {self.config.balanced}")
         lines.append(f"Feature Count         : {len(self.feature_names)}")
@@ -248,6 +283,10 @@ class TrainTracker:
         if self.blended_test_score is not None:
             lines.append(f"Blended Test Score    : {self.blended_test_score:.4f}")
             lines.append(f"Blend Weight (market) : {self.blend_weight:.2f}")
+        lines.append(f"Draw Threshold        : {self.draw_threshold:.2f}")
+        lines.append(f"Draw Fair Mean (All)  : {self.draw_fair_mean:.4f}")
+        lines.append(f"Draw Fair Mean (True) : {self.draw_fair_mean_true:.4f}")
+        lines.append(f"Market Vig Mean       : {self.market_vig_mean:.4f}")
         if self.score_gap > 0.05:
             lines.append(f"WARNING: Potential Overfitting detected! (Gap: {self.score_gap:.4f})")
 
@@ -300,7 +339,9 @@ class TrainTracker:
             lines.append("\n" + "-" * 50)
             lines.append("DRAW THRESHOLD SCAN (Calibrated)")
             lines.append("-" * 50)
-            lines.append(f"\n{self.calib_draw_threshold_report.to_string(index=False)}")
+            calib_report = self.calib_draw_threshold_report.copy()
+            calib_report['Selected'] = calib_report[self.DRAW_COL].apply(lambda t: '*' if round(t, 2) == round(self.draw_threshold, 2) else '')
+            lines.append(f"\n{calib_report.to_string(index=False)}")
 
         content = "\n".join(lines)
         for line in lines:
