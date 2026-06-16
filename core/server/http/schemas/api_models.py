@@ -158,8 +158,8 @@ class BaseMatchResponse(BaseModel):
         if short := (self.live_status or {}).get("short"):
             return ELAPSED_SHORT_ZH.get(short, short)
 
-        elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
-        if elapsed >= 0 and not MatchStatus(self.match_status).is_finalized:
+        if MatchStatus(self.match_status).is_playing:
+            elapsed = int((datetime.now(timezone.utc) - self.kickoff_time).total_seconds() / 60)
             return f"{elapsed}'"
 
     class Config:
