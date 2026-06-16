@@ -31,7 +31,8 @@ USAGE="Usage:
   $0 dataset stop
   $0 model [-t club|national] [-f <file>] [-b] start [-d]
   $0 model stop [pid]
-  $0 model list"
+  $0 model list
+  $0 model [-t club|national] -v <version> eval"
 
 die() { echo "$USAGE" >&2; exit 1; }
 
@@ -45,6 +46,7 @@ case "$COMMAND" in
 esac
 
 TRAIN_FILE=""
+MODEL_VERSION=""
 BALANCED=false
 DAEMON=false
 ACTION=""
@@ -60,9 +62,11 @@ while [ $# -gt 0 ]; do
             esac ;;
         -f) [ -z "$2" ] && { echo "Error: -f requires a filename" >&2; die; }
             TRAIN_FILE="$2"; shift 2 ;;
+        -v) [ -z "$2" ] && { echo "Error: -v requires a model version" >&2; die; }
+            MODEL_VERSION="$2"; shift 2 ;;
         -b|--balanced) BALANCED=true; shift ;;
         -d|--daemon)   DAEMON=true;   shift ;;
-        start|list)    ACTION="$1";   shift ;;
+        start|list|eval) ACTION="$1"; shift ;;
         stop)          ACTION="$1";   shift
                        case "${1:-}" in [0-9]*) TARGET_PID="$1"; shift ;; esac ;;
         *) echo "Unknown option: $1" >&2; die ;;
@@ -72,6 +76,8 @@ done
 [ -z "$ACTION" ] && die
 [ "$COMMAND" = model ] && [ "$ACTION" = start ] && [ -z "$TRAIN_FILE" ] && \
     { echo "Error: -f <file> is required for model start" >&2; die; }
+[ "$COMMAND" = model ] && [ "$ACTION" = eval ] && [ -z "$MODEL_VERSION" ] && \
+    { echo "Error: -v <version> is required for model eval" >&2; die; }
 
 cd "$PROJECT_DIR" || exit 1
 
@@ -133,6 +139,12 @@ model_stop() {
     fi
 }
 
+model_eval() {
+    local model_family="winball_club"
+    [ "$SAMPLE_TYPE" = "national" ] && model_family="winball_national"
+    "$PYTHON_BIN" scripts/eval.py --model_version "$MODEL_VERSION" --model_family "$model_family"
+}
+
 model_list() {
     if ! pgrep -f "$MODEL_PATTERN" > /dev/null; then
         echo "[MODEL] No training jobs running"
@@ -157,6 +169,7 @@ case "$COMMAND" in
             start) model_start ;;
             stop)  model_stop  ;;
             list)  model_list  ;;
+            eval)  model_eval  ;;
         esac
         ;;
 esac
