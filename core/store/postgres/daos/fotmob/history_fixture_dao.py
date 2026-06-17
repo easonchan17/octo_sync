@@ -1,5 +1,5 @@
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from sqlalchemy import func, or_, and_, exists
 from typing import List, Dict, Any, Optional
 from sqlalchemy.dialects.postgresql import insert
@@ -163,28 +163,6 @@ class HistoryFixtureDao(BaseDao):
                 }
             )
             session.execute(insert_stmt)
-
-    def get_pending_build_items(self, after_kickoff: Optional[datetime]) -> List[Any]:
-        with self.db.get_session() as session:
-            query = session.query(
-                Fixture.match_id,
-                Fixture.home_id,
-                Fixture.away_id,
-                Fixture.kickoff_time,
-                Fixture.season,
-                Fixture.home_score,
-                Fixture.away_score
-            ).filter(
-                Fixture.match_status.in_(MatchStatus.natural_finals()),
-                Fixture.home_score.isnot(None),
-                Fixture.away_score.isnot(None),
-                Fixture.kickoff_time < datetime.now(timezone.utc) - timedelta(hours=24)
-            )
-            if after_kickoff is not None:
-                query = query.filter(Fixture.kickoff_time >= after_kickoff)
-            return query.order_by(
-                Fixture.kickoff_time.asc(), Fixture.match_id.asc()
-            ).all()
 
     def sync_parsed_data(self, league_id: int, parsed_data: List[Dict[str, Any]]) -> None:
         with self.db.get_session() as session:
