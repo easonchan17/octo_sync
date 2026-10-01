@@ -20,7 +20,7 @@ class CanonicalLeague(Base):
     name = Column(String(200), nullable=False, info={'repr': True})
     priority = Column(Integer, default=LeaguePriority.LEVEL_BASIC.value, info={'repr': True})
 
-    site_leagues = relationship("SiteLeague", back_populates="ref_league", lazy="selectin")
+    site_leagues = relationship("SiteLeague", back_populates="ref_league", lazy="raise")
 
 
 class SiteLeague(Base):

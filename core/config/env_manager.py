@@ -1,10 +1,10 @@
-from enum import Enum
+from enum import StrEnum
 from functools import cache
 from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class EnvType(str, Enum):
+class EnvType(StrEnum):
     DEV  = "dev"
     PROD = "prod"
     ML   = "ml"

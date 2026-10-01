@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from enum import Enum
+from enum import StrEnum
 from pathlib import PurePosixPath
 from typing import Any, List, Dict, Optional, Tuple
 from urllib.parse import urlparse
@@ -9,15 +9,15 @@ from core.tasks.poll_task import PollTask
 from core.store.postgres.daos.common import AssetDao
 from core.scheduler.task_registry import TaskRegistry
 
-class AssetType(str, Enum):
+class AssetType(StrEnum):
     IMAGE = 'image'
 
 
-class AssetUsage(str, Enum):
+class AssetUsage(StrEnum):
     LOGO = 'logo'
 
 
-class EntityType(str, Enum):
+class EntityType(StrEnum):
     TEAM = 'team'
     LEAGUE = 'league'
     PLAYER = 'player'
