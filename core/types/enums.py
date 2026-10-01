@@ -1,5 +1,5 @@
-from enum import IntEnum, Enum, StrEnum
-from typing import NamedTuple, Optional, List, Dict, Any
+from enum import IntEnum, StrEnum
+from typing import NamedTuple, Optional, List, Dict
 
 class OddsMarket(NamedTuple):
     betting_type_id: int
@@ -49,13 +49,13 @@ class ModelFamily(StrEnum):
     WINBALL_CLUB     = "winball_club"
     WINBALL_NATIONAL = "winball_national"
 
-class UpsertStrategy(str, Enum):
+class UpsertStrategy(StrEnum):
     OVERWRITE = "overwrite"
     IF_ABSENT = "if_absent"
     KEEP_MIN = "keep_min"
     KEEP_MAX = "keep_max"
 
-class SiteName(str, Enum):
+class SiteName(StrEnum):
     SYSTEM       = 'system'
     FOTMOB       = 'fotmob'
     ODDSPORTAL   = 'oddsportal'
@@ -147,7 +147,7 @@ class MatchStatus(IntEnum):
             MatchStatus.PENALTY
         )
 
-class Position(str, Enum):
+class Position(StrEnum):
     # ==========================================
     # Goalkeeper
     # ==========================================

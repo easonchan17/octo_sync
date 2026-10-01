@@ -1,10 +1,10 @@
 import json
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Dict
 from core.services.tool_service import ToolService
 
 
-class ToolNames(str, Enum):
+class ToolNames(StrEnum):
     SUBMIT_ISSUE    = "submit_feedback_issue"
     SEARCH_BY_TEAM  = "search_by_team"
     SEARCH_BY_LEAGUE = "search_by_league"

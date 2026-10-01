@@ -39,6 +39,9 @@ class TaskRegistry:
     @classmethod
     def _register(cls, name: str, kind: TaskType, **kwargs) -> Callable:
         def decorator(target):
+            if name in cls._registry:
+                raise ValueError(f"'{name}' already registered")
+
             cls._registry[name] = {
                 "target": target,
                 "name": name,

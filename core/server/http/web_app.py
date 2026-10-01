@@ -135,9 +135,9 @@ class WebApp:
 
         @self.app.middleware("http")
         async def log_requests(request: Request, call_next) -> Any:
-            start_time = time.time()
+            start_time = time.monotonic()
             response = await call_next(request)
-            process_time = time.time() - start_time
+            process_time = time.monotonic() - start_time
 
             client_ip = request.client.host if request.client else "unknown"
 
