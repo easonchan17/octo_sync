@@ -68,57 +68,48 @@ class Interceptor(Thread):
         return future
 
     def _run(self) -> None:
-        loop = asyncio.new_event_loop()
-
-        asyncio.set_event_loop(loop)
         self.task_queue = janus.Queue()
 
         try:
-            loop.run_until_complete(self._async_run())
+            asyncio.run(self._async_run())
         except Exception as e:
             self.logger.error(f"Error in Interceptor thread: {e}")
-        finally:
-            loop.run_until_complete(asyncio.sleep(0.1))
-            loop.close()
 
     async def _async_run(self) -> None:
         try:
-            await self._async_run_loop()
+            loop = asyncio.get_running_loop()
+            loop.set_exception_handler(self._asyncio_exception_handler)
+
+            self.sub_queues = {site: asyncio.Queue() for site in self.sites}
+            self.fail_counts = {site: 0 for site in self.sites}
+
+            while not self.stop_event.is_set():
+                async with AsyncCamoufox(**self.launch_options, addons=self.addons) as browser:
+                    context = await browser.new_context(viewport=self.viewport)
+                    self.page_pool = PagePool(context, self.page_pool_size)
+
+                    recycle_event = asyncio.Event()
+
+                    self.sub_workers = {
+                        site: asyncio.create_task(self._run_worker(sub_queue, recycle_event))
+                        for site, sub_queue in self.sub_queues.items()
+                    }
+
+                    dispatcher = asyncio.create_task(self._dispatch_loop(recycle_event))
+                    await self._wait_for_shutdown_signal(recycle_event)
+
+                    dispatcher.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await dispatcher
+
+                    await asyncio.gather(*self.sub_workers.values(), return_exceptions=True)
+                    self.logger.info("Page pool cleanup")
+                    self.page_pool = None
         except Exception as e:
             if "Connection closed" not in str(e) and "TargetClosed" not in str(e):
                 raise
         finally:
             await self._drain_pending_tasks()
-
-    async def _async_run_loop(self) -> None:
-        loop = asyncio.get_running_loop()
-        loop.set_exception_handler(self._asyncio_exception_handler)
-
-        self.sub_queues = {site: asyncio.Queue() for site in self.sites}
-        self.fail_counts = {site: 0 for site in self.sites}
-
-        while not self.stop_event.is_set():
-            async with AsyncCamoufox(**self.launch_options, addons=self.addons) as browser:
-                context = await browser.new_context(viewport=self.viewport)
-                self.page_pool = PagePool(context, self.page_pool_size)
-
-                recycle_event = asyncio.Event()
-
-                self.sub_workers = {
-                    site: asyncio.create_task(self._run_worker(sub_queue, recycle_event))
-                    for site, sub_queue in self.sub_queues.items()
-                }
-
-                dispatcher = asyncio.create_task(self._dispatch_loop(recycle_event))
-                await self._wait_for_shutdown_signal(recycle_event)
-
-                dispatcher.cancel()
-                with suppress(asyncio.CancelledError):
-                    await dispatcher
-
-                await asyncio.gather(*self.sub_workers.values(), return_exceptions=True)
-                self.logger.info("Page pool cleanup")
-                self.page_pool = None
 
     async def _wait_for_shutdown_signal(self, recycle_event: asyncio.Event) -> None:
         async def wait_stop():

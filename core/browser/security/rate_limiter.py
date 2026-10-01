@@ -42,11 +42,11 @@ class RateLimiter:
         delay = self.base_interval * random.uniform(1.0, 1.5)
         target_time = max(backoff_time, last_time + delay)
 
-        wait_time = max(target_time - time.time(), random.uniform(1.0, 3.0))
+        wait_time = max(target_time - time.monotonic(), random.uniform(1.0, 3.0))
         self.logger.debug(f"Throttling request to {hostname}, waiting {wait_time:.2f}s")
         await asyncio.sleep(wait_time)
 
-        self.last_request[hostname] = time.time()
+        self.last_request[hostname] = time.monotonic()
 
     async def is_rate_limited(self, response: Any) -> bool:
         if response.status in self.STATUS_PENALTIES:
@@ -73,7 +73,7 @@ class RateLimiter:
         self.host_penalties[hostname] = penalty
 
         wait_time = min(self.base_interval * (2 ** (penalty - 1)), self.max_backoff)
-        self.backoff_until[hostname] = time.time() + wait_time
+        self.backoff_until[hostname] = time.monotonic() + wait_time
 
         self.logger.warning(f"Rate limit detected ({status}) for {hostname}, backing off for {wait_time}s")
 
