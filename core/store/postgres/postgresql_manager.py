@@ -1,10 +1,9 @@
 from functools import cache
-from typing import Generator
-from sqlalchemy import text
-from typing import List, Any, Optional
+from typing import Generator, Optional
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from core.config.config_manager import get_config_manager
 from core.config.env_manager import get_env_manager
@@ -15,35 +14,25 @@ class PostgreSQLManager:
         self.logger = get_logger_manager().get_logger(self.__class__.__name__)
         self.db_url = db_url
         self.pool_config = pool_config
-        self.engine = None
-        self.session_maker = None
+        self.engine: Optional[Engine] = None
+        self.session_maker: Optional[sessionmaker[Session]] = None
 
     def startup(self) -> None:
+        if self.engine is not None:
+            raise RuntimeError("PostgreSQLManager is already started")
+
         self.engine = create_engine(self.db_url, **self.pool_config)
         self.session_maker = sessionmaker(bind=self.engine)
         self.logger.info(f"PostgreSQLManager initialized with pool_size={self.pool_config['pool_size']}")
 
     def cleanup(self) -> None:
-        if self.engine is not None:
-            self.engine.dispose()
-            self.logger.info("PostgreSQLManager resources cleaned up")
+        if self.engine is None:
+            raise RuntimeError("PostgreSQLManager is not started")
 
-    def create_schema(self, schema_name: str) -> None:
-        with self.get_session() as session:
-            session.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
-            self.logger.info(f"Schema {schema_name} created")
-
-    def create_tables(self, table_classes: List[Any], schema_name: str = None) -> None:
-            options = {}
-            if schema_name:
-                options["schema_translate_map"] = {"{schema}": schema_name}
-
-            with self.engine.connect().execution_options(**options) as conn:
-                with conn.begin():
-                    for table_class in table_classes:
-                        table_class.__table__.create(conn, checkfirst=True)
-                        table_name = table_class.__table__.name if schema_name is None else f"{schema_name}.{table_class.__table__.name}"
-                        self.logger.info(f"Table {table_name} created successfully")
+        self.engine.dispose()
+        self.engine = None
+        self.session_maker = None
+        self.logger.info("PostgreSQLManager resources cleaned up")
 
     def get_conn_string(self) -> str:
         return self.db_url
@@ -53,15 +42,11 @@ class PostgreSQLManager:
         return 2, max(2, pool_size // 4)
 
     @contextmanager
-    def get_session(self, schema_name: Optional[str] = None, session: Optional[Session] = None) -> Generator[Session, None, None]:
-        if session:
-            yield session
-            return
+    def get_session(self) -> Generator[Session, None, None]:
+        if self.session_maker is None:
+            raise RuntimeError("PostgreSQLManager is not started")
 
         session = self.session_maker()
-        if schema_name:
-            options = {"schema_translate_map": {"{schema}": schema_name}}
-            session.connection().execution_options(**options)
 
         try:
             yield session

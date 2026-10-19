@@ -32,6 +32,7 @@ class EnvManager(BaseSettings):
     HTTP_PORT: int = Field(..., description="HTTP server bind port")
     CORS_ALLOW_ORIGINS: Optional[str] = Field(default=None, description="Comma-separated allowed CORS origins for the browser frontend, or * for all")
     DB_URL: str = Field(..., description="Database connection URL, e.g. postgresql://user:password@localhost:5432/dbname")
+    ASYNC_DB_URL: str = Field(..., description="Async PostgreSQL connection URL, e.g. postgresql+asyncpg://user:password@localhost:5432/dbname")
     REDIS_URL: str = Field(..., description="Redis connection URL, e.g. redis://localhost:6379/0")
 
     model_config = SettingsConfigDict(
