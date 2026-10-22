@@ -1,5 +1,7 @@
 import os, sys, signal, argparse, warnings
+from importlib.resources import files
 from dotenv import load_dotenv
+from sqlalchemy import text
 from typing import Callable, List, Optional, Tuple, final
 from urllib3.exceptions import InsecureRequestWarning
 from threading import Event, enumerate as enumerate_threads
@@ -13,9 +15,10 @@ from core.server.http.web_server import get_web_server
 from core.scheduler.task_executor import get_task_executor
 from core.scheduler.poll_manager import get_poll_manager
 from core.browser.interceptor import get_interceptor
-from abc import ABC, abstractmethod
+from abc import ABC
 
 warnings.filterwarnings("ignore", category=InsecureRequestWarning)
+
 
 class BaseLauncher(ABC):
     def __init__(self, config: str) -> None:
@@ -67,23 +70,39 @@ class BaseLauncher(ABC):
 
         self.shutdown_event.set()
 
-    @abstractmethod
-    def _register_services(self) -> None: ...
+    def _register_services(self) -> None:
+        postgresql_manager = get_postgresql_manager()
+        league_service     = get_league_service()
+
+        self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
+        self._add_service("SeedData",          self._seed_reference_data, None)
+        self._add_service("LeagueService",     league_service.load,        None)
 
     def _add_service(self, name: str, start: Callable[[], None], stop: Optional[Callable[[], None]]) -> None:
         self.services.append((name, start, stop))
 
+    def _seed_reference_data(self) -> None:
+        sql = files("core.store.postgres").joinpath("seeds", "leagues.sql").read_text(encoding="utf-8")
+
+        try:
+            with get_postgresql_manager().get_session() as session:
+                session.execute(text(sql))
+        except Exception:
+            self.logger.exception("Failed to initialize league data")
+            raise
+
+        self.logger.info("League data initialized")
+
+
 class CrawlerLauncher(BaseLauncher):
     def _register_services(self) -> None:
-        postgresql_manager = get_postgresql_manager()
-        league_service     = get_league_service()
+        super()._register_services()
+
         task_executor      = get_task_executor()
         interceptor        = get_interceptor()
         poll_manager       = get_poll_manager()
         env                = get_env_manager()
 
-        self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
-        self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
         self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
         self._add_service("PollManager",       lambda: poll_manager.start(include=env.TASK_INCLUDE, exclude=env.TASK_EXCLUDE), poll_manager.stop)
@@ -91,33 +110,12 @@ class CrawlerLauncher(BaseLauncher):
 
 class ApiLauncher(BaseLauncher):
     def _register_services(self) -> None:
-        postgresql_manager = get_postgresql_manager()
-        league_service     = get_league_service()
+        super()._register_services()
+
         name_i18n_service  = get_name_i18n_service()
         web_server         = get_web_server()
 
-        self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
-        self._add_service("LeagueService",     league_service.load,        None)
         self._add_service("NameI18nService",   name_i18n_service.load,     None)
-        self._add_service("WebServer",         web_server.start,           web_server.stop)
-
-
-class UnifiedLauncher(BaseLauncher):
-    def _register_services(self) -> None:
-        postgresql_manager = get_postgresql_manager()
-        league_service     = get_league_service()
-        name_i18n_service  = get_name_i18n_service()
-        task_executor      = get_task_executor()
-        interceptor        = get_interceptor()
-        poll_manager       = get_poll_manager()
-        web_server         = get_web_server()
-
-        self._add_service("PostgreSQLManager", postgresql_manager.startup, postgresql_manager.cleanup)
-        self._add_service("LeagueService",     league_service.load,        None)
-        self._add_service("NameI18nService",   name_i18n_service.load,     None)
-        self._add_service("TaskExecutor",      task_executor.start,        task_executor.stop)
-        self._add_service("Interceptor",       interceptor.start,          interceptor.stop)
-        self._add_service("PollManager",       poll_manager.start,         poll_manager.stop)
         self._add_service("WebServer",         web_server.start,           web_server.stop)
 
 
@@ -132,14 +130,11 @@ def main() -> None:
     launchers = {
         'crawler': CrawlerLauncher,
         'api': ApiLauncher,
-        'unified': UnifiedLauncher,
     }
     parser = argparse.ArgumentParser(description='Octopus Launcher')
     parser.add_argument(
         'role',
-        nargs='?',
         choices=sorted(launchers.keys()),
-        default='unified',
     )
     parser.add_argument(
         '--config', '-c',
