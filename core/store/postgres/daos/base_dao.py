@@ -57,25 +57,25 @@ class BaseDao(ABC):
 
         return assignment, where_clause
 
-    def validate_batch_duplicates(
-        self,
-        unique_key_columns: List[str],
-        records: List[Dict[str, Any]]
-    ) -> None:
-        seen_records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+    # def validate_batch_duplicates(
+    #     self,
+    #     unique_key_columns: List[str],
+    #     records: List[Dict[str, Any]]
+    # ) -> None:
+    #     seen_records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
 
-        for record in records:
-            key_values = tuple(record.get(col) for col in unique_key_columns)
+    #     for record in records:
+    #         key_values = tuple(record.get(col) for col in unique_key_columns)
 
-            if key_values in seen_records:
-                first_record = seen_records[key_values]
-                formatted_first = json.dumps(first_record, indent=2, default=str)
-                formatted_duplicate = json.dumps(record, indent=2, default=str)
-                self.logger.error(
-                    f"Batch integrity error: Duplicate key within batch. "
-                    f"key_columns={unique_key_columns}. "
-                    f"first_record:\n{formatted_first}\nduplicate_record:\n{formatted_duplicate}"
-                )
-                return
+    #         if key_values in seen_records:
+    #             first_record = seen_records[key_values]
+    #             formatted_first = json.dumps(first_record, indent=2, default=str)
+    #             formatted_duplicate = json.dumps(record, indent=2, default=str)
+    #             self.logger.error(
+    #                 f"Batch integrity error: Duplicate key within batch. "
+    #                 f"key_columns={unique_key_columns}. "
+    #                 f"first_record:\n{formatted_first}\nduplicate_record:\n{formatted_duplicate}"
+    #             )
+    #             return
 
-            seen_records[key_values] = record
+    #         seen_records[key_values] = record

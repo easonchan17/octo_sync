@@ -2,7 +2,7 @@
 #
 # octo.sh - lifecycle controller for octo_sync
 #
-# Usage: ./octo.sh [api|crawler|unified] [monitor] [start|stop] [-d]
+# Usage: ./octo.sh [api|crawler] [monitor] [start|stop] [-d]
 #   monitor   target the watchdog (default: target launcher process)
 #   -d        background mode for 'start' (default: foreground)
 #
@@ -24,7 +24,7 @@ PROJECT_DIR="${OCTO_PROJECT_DIR:-./}"
 PYTHON_BIN="${OCTO_PYTHON_BIN:-.venv/bin/python}"
 
 USAGE="Usage: $0 <role> [monitor] <start|stop> [-d]
-  role:    api | crawler | unified
+  role:    api | crawler
   monitor: optional, target the watchdog instead of the process
   action:  start | stop
   -d:      background mode for 'start' (default: foreground)"
@@ -47,7 +47,7 @@ else
 fi
 
 case "$ROLE" in
-    api|crawler|unified) ;;
+    api|crawler) ;;
     *) echo "Invalid role: $ROLE"; echo "$USAGE"; exit 1 ;;
 esac
 
@@ -78,7 +78,7 @@ start_process() {
     fi
 
     local cmd=()
-    if [ "$ROLE" = "crawler" ] || [ "$ROLE" = "unified" ]; then
+    if [ "$ROLE" = "crawler" ]; then
         pkill -f "camoufox-bin" 2>/dev/null
         local prefix=()
         [ "$ENABLE_XVFB" = "1" ] && prefix=(xvfb-run -a --server-args="-screen 0 1920x1080x24")

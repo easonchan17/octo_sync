@@ -1,56 +1,125 @@
+name: octo-sync
+
+x-app-env: &app-env
+  ENV: ${ENV:-dev}
+  HTTP_HOST: 0.0.0.0
+  HTTP_PORT: "8080"
+  CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:-*}"
+  DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+  DB_URL: postgresql://${POSTGRES_USER:-octopus}:${POSTGRES_PASSWORD:-123456}@postgres:5432/${POSTGRES_DB:-octopus}
+  ASYNC_DB_URL: postgresql+asyncpg://${POSTGRES_USER:-octopus}:${POSTGRES_PASSWORD:-123456}@postgres:5432/${POSTGRES_DB:-octopus}
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:-change_me_jwt_secret}
+  MATCH_CODE_SALT: ${MATCH_CODE_SALT:-change_me_match_salt}
+  TEAM_CODE_SALT: ${TEAM_CODE_SALT:-change_me_team_salt}
+  PLAYER_CODE_SALT: ${PLAYER_CODE_SALT:-change_me_player_salt}
+
+  # Optional features; uncomment the entries you need.
+  # TASK_INCLUDE: ""
+  # TASK_EXCLUDE: ""
+  # DOCS_USERNAME: ""
+  # DOCS_PASSWORD: ""
+  # ADMIN_USERNAME: ""
+  # ADMIN_PASSWORD: ""
+  # TURNSTILE_SECRET: ""
+  # BREVO_API_KEY: ""
+  # MAILJET_API_KEY: ""
+  # MAILJET_API_SECRET: ""
+  # RESEND_API_KEY: ""
+  # MAIL_FROM_ADDRESS: ""
+  # MAIL_FROM_NAME: "Takatikigo"
+  EMAIL_WHITELIST: "${EMAIL_WHITELIST:-}"
+  # GEMINI_API_KEY: ""
+
 services:
-  octo-sync:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-octopus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      POSTGRES_DB: ${POSTGRES_DB:-octopus}
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    volumes:
+      - ./data/postgresql:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-octopus} -d ${POSTGRES_DB:-octopus}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    image: octo-sync:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    ports:
-      - '8080:8080'
+    command: ["alembic", "upgrade", "head"]
+    environment: *app-env
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      PYTHONPATH: /app
-      PYTHONUNBUFFERED: 1
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: octopus
-      DB_USER: octopus
-      DB_PASSWORD: 123456
-      DB_POOL_SIZE: 10
-      DB_MAX_OVERFLOW: 5
-      DB_POOL_TIMEOUT: 30
-      DB_POOL_RECYCLE: 300
+    restart: "no"
+
+  api:
+    image: octo-sync:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: ["python", "launcher.py", "api"]
+    environment: *app-env
+    ports:
+      - "${HOST_HTTP_PORT:-8080}:8080"
     volumes:
-      - ../configs:/app/configs
-      - ../output:/app/output
-    restart: unless-stopped
+      - ../configs:/app/configs:ro
+      - ../artifacts:/app/artifacts:ro
+      - ./data/api:/app/output
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-
-  postgres:
-    image: postgres:15
-    ports:
-      - '5432:5432'
-    command:
-      [
-        "postgres",
-        "-cshared_preload_libraries=pg_stat_statements"
-      ]
-    environment:
-      POSTGRES_USER: octopus
-      POSTGRES_PASSWORD: 123456
-      POSTGRES_DB: octopus
-      PGDATA: "/var/lib/postgresql/data"
-      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      start_period: 120s
+    stop_grace_period: 30s
     restart: unless-stopped
+
+  crawler:
+    image: octo-sync:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: ["python", "launcher.py", "crawler"]
+    environment: *app-env
+    shm_size: "1gb"
+    volumes:
+      - ../configs:/app/configs:ro
+      - ../artifacts:/app/artifacts
+      - ../assets:/app/assets
+      - ./data/crawler:/app/output
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U octopus -d octopus"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      disable: true
+    stop_grace_period: 30s
+    restart: unless-stopped
+

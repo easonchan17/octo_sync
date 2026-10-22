@@ -5,10 +5,27 @@ __pycache__/
 
 .venv*/
 .vscode/
-.git/
 .cursorrules
+.cursor/
+.git/
+.gitignore
 
-docker/
+.env
+.env.*
+
+docker/data/
 output/
 plugins/
 tests/
+web/
+docs/
+artifacts/
+assets/
+
+*.log
+fixture_*.json
+match_*.json
+winball_*.txt
+
+configs/jwt_private_key.pem
+
