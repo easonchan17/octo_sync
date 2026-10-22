@@ -158,5 +158,5 @@ def get_otp_service() -> OtpService:
             email_daily_limit  = config["email_daily_limit"],
             max_wrong_attempts = config["max_wrong_attempts"],
         ),
-        email_whitelist = set(config.get("email_whitelist", [])),
+        email_whitelist = get_env_manager().email_whitelist,
     )
