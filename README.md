@@ -1,5 +1,7 @@
 # Octo Sync
 
+**Live:** <https://example.com>
+
 A football data synchronization and match-outcome prediction system. It scrapes fixtures, results and bookmaker odds from **Fotmob** and **Oddsportal** into PostgreSQL, builds features and trains XGBoost classifiers, and serves fixtures, match details, predictions and LLM chat through FastAPI. The crawler and the API are independent processes.
 
 | Entry point | Command |
