@@ -1,0 +1,2 @@
+.env
+configs/jwt_private_key.pem

@@ -1,7 +1,6 @@
 from sqlalchemy import or_
 from sqlalchemy.sql import func
 from typing import Dict, Optional, Any
-from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from core.types.enums import UpsertStrategy
 from core.store.postgres.models import SysVal, Status
@@ -52,22 +51,19 @@ class SysValDao(BaseDao):
             return {row.key: row.value for row in rows}
 
 
-    def get_val(self, module: str, key: str, session: Optional[Session] = None, for_update: bool = False) -> Optional[Any]:
-        with self.db.get_session(session=session) as session:
+    def get_val(self, module: str, key: str) -> Optional[Any]:
+        with self.db.get_session() as session:
             query = session.query(SysVal).filter(
                 SysVal.module == module,
                 SysVal.key == key,
                 SysVal.status.op('&')(Status.ACTIVE.value) == Status.ACTIVE.value
             )
 
-            if for_update:
-                query = query.with_for_update()
-
             variable = query.first()
             return variable.value if variable else None
 
-    def set_val(self, module: str, key: str, value: Any, strategy: UpsertStrategy, session: Optional[Session] = None) -> bool:
-        with self.db.get_session(session=session) as session:
+    def set_val(self, module: str, key: str, value: Any, strategy: UpsertStrategy) -> bool:
+        with self.db.get_session() as session:
             variable = SysVal(module=module, key=key)
             variable.set_value(value)
 
@@ -94,8 +90,8 @@ class SysValDao(BaseDao):
             result = session.execute(upsert_stmt)
             return result.rowcount > 0
 
-    def del_val(self, module: str, key: str, session: Optional[Session] = None) -> int:
-        with self.db.get_session(session=session) as session:
+    def del_val(self, module: str, key: str) -> int:
+        with self.db.get_session() as session:
             row_count = session.query(SysVal).filter(
                 SysVal.module == module,
                 SysVal.key == key,

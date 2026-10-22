@@ -28,10 +28,12 @@ class EnvManager(BaseSettings):
     RESEND_API_KEY: Optional[str] = Field(default=None, description="Resend API key")
     MAIL_FROM_ADDRESS: Optional[str] = Field(default=None, description="Sender email address")
     MAIL_FROM_NAME: str = Field(default="Takatikigo", description="Sender display name")
+    EMAIL_WHITELIST: Optional[str] = Field(default=None, description="Comma-separated email addresses exempt from OTP send limits")
     HTTP_HOST: str = Field(..., description="HTTP server bind host")
     HTTP_PORT: int = Field(..., description="HTTP server bind port")
     CORS_ALLOW_ORIGINS: Optional[str] = Field(default=None, description="Comma-separated allowed CORS origins for the browser frontend, or * for all")
     DB_URL: str = Field(..., description="Database connection URL, e.g. postgresql://user:password@localhost:5432/dbname")
+    ASYNC_DB_URL: str = Field(..., description="Async PostgreSQL connection URL, e.g. postgresql+asyncpg://user:password@localhost:5432/dbname")
     REDIS_URL: str = Field(..., description="Redis connection URL, e.g. redis://localhost:6379/0")
 
     model_config = SettingsConfigDict(
@@ -46,6 +48,12 @@ class EnvManager(BaseSettings):
         if not self.CORS_ALLOW_ORIGINS:
             return []
         return [origin.strip().rstrip("/") for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def email_whitelist(self) -> set:
+        if not self.EMAIL_WHITELIST:
+            return set()
+        return {email.strip() for email in self.EMAIL_WHITELIST.split(",") if email.strip()}
 
     @property
     def docs_enabled(self) -> bool:
