@@ -1,23 +1,23 @@
-import httpx
-from core.config.env_manager import get_env_manager
-from core.logger.logger_manager import get_logger_manager
+from core.services.email.providers.base import EmailProvider
 
 
-async def send(http_client: httpx.AsyncClient, to_email: str, code: str) -> bool:
-    logger = get_logger_manager().get_logger(__name__)
-    env = get_env_manager()
-    try:
-        response = await http_client.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {env.RESEND_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "from":    f"{env.MAIL_FROM_NAME} <{env.MAIL_FROM_ADDRESS}>",
-                "to":      [to_email],
-                "subject": "Your verification code",
-                "html":    f"Your verification code is <strong>{code}</strong>. Valid for 10 minutes.",
-            }
-        )
-        return response.status_code in (200, 201)
-    except Exception as e:
-        logger.exception(f"resend send failed: {type(e).__name__}: {e}")
-        return False
+class ResendProvider(EmailProvider):
+    name        = "resend"
+    api_url     = "https://api.resend.com/emails"
+    daily_limit = 100
+    ok_status   = (200, 201)
+
+    def is_enabled(self) -> bool:
+        return bool(self.env.RESEND_API_KEY)
+
+    def headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.env.RESEND_API_KEY}", "Content-Type": "application/json"}
+
+    def build_payload(self, to_email: str, subject: str, content: str) -> dict:
+        return {
+            "from":    f"{self.env.MAIL_FROM_NAME} <{self.env.MAIL_FROM_ADDRESS}>",
+            "to":      [to_email],
+            "subject": subject,
+            "html":    content,
+        }
+

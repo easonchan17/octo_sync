@@ -1,22 +1,25 @@
-import httpx
-from core.config.env_manager import get_env_manager
+from core.services.email.providers.base import EmailProvider
 
 
-async def send(http_client: httpx.AsyncClient, to_email: str, code: str) -> bool:
-    env = get_env_manager()
-    try:
-        response = await http_client.post(
-            "https://api.mailjet.com/v3.1/send",
-            auth=(env.MAILJET_API_KEY, env.MAILJET_API_SECRET),
-            json={
-                "Messages": [{
-                    "From": {"Email": env.MAIL_FROM_ADDRESS, "Name": env.MAIL_FROM_NAME},
-                    "To":   [{"Email": to_email}],
-                    "Subject":  "Your verification code",
-                    "HTMLPart": f"Your verification code is <strong>{code}</strong>. Valid for 10 minutes.",
-                }]
-            }
-        )
-        return response.status_code == 200
-    except Exception:
-        return False
+class MailjetProvider(EmailProvider):
+    name        = "mailjet"
+    api_url     = "https://api.mailjet.com/v3.1/send"
+    daily_limit = 200
+    ok_status   = (200,)
+
+    def is_enabled(self) -> bool:
+        return bool(self.env.MAILJET_API_KEY and self.env.MAILJET_API_SECRET)
+
+    def auth(self) -> tuple:
+        return (self.env.MAILJET_API_KEY, self.env.MAILJET_API_SECRET)
+
+    def build_payload(self, to_email: str, subject: str, content: str) -> dict:
+        return {
+            "Messages": [{
+                "From": {"Email": self.env.MAIL_FROM_ADDRESS, "Name": self.env.MAIL_FROM_NAME},
+                "To":   [{"Email": to_email}],
+                "Subject":  subject,
+                "HTMLPart": content,
+            }]
+        }
+

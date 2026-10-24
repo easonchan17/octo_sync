@@ -8,6 +8,10 @@ from core.config.env_manager import get_env_manager
 from core.store.redis.redis_manager import get_redis_manager, RedisManager
 from core.services.email.email_router import get_email_router
 
+TURNSTILE_VERIFY_URL   = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+EMAIL_SUBJECT          = "Your verification code"
+EMAIL_CONTENT_TEMPLATE = "Your verification code is <strong>{code}</strong>. Valid for {minutes} minutes."
+
 
 class CodeStore:
     def __init__(
@@ -109,7 +113,11 @@ class OtpService:
 
         code = f"{secrets.randbelow(1000000):06d}"
         await self.code_store.save_code(email, code, user_ip)
-        await self.email_router.send(email, code)
+        await self.email_router.send(email, EMAIL_SUBJECT, self._build_email_content(code))
+
+    def _build_email_content(self, code: str) -> str:
+        minutes = max(1, self.code_store.code_ttl // 60)
+        return EMAIL_CONTENT_TEMPLATE.format(code=code, minutes=minutes)
 
     async def verify_code(self, email: str, code: str) -> None:
         data = await self.code_store.load_code(email)
@@ -135,7 +143,7 @@ class OtpService:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(
-                    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                    TURNSTILE_VERIFY_URL,
                     data={"secret": secret, "response": token}
                 )
                 result = response.json()
