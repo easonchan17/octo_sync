@@ -1,8 +1,10 @@
 import httpx
 from core.config.env_manager import get_env_manager
+from core.logger.logger_manager import get_logger_manager
 
 
 async def send(http_client: httpx.AsyncClient, to_email: str, code: str) -> bool:
+    logger = get_logger_manager().get_logger(__name__)
     env = get_env_manager()
     try:
         response = await http_client.post(
@@ -16,5 +18,6 @@ async def send(http_client: httpx.AsyncClient, to_email: str, code: str) -> bool
             }
         )
         return response.status_code in (200, 201)
-    except Exception:
+    except Exception as e:
+        logger.exception(f"resend send failed: {type(e).__name__}: {e}")
         return False

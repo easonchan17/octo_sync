@@ -45,7 +45,7 @@ class EmailRouter:
             if success:
                 return
 
-            self.logger.warning(f"Provider {provider['name']} failed, trying next")
+            self.logger.warning(f"Provider {provider['name']} failed, trying next, quota_key={quota_key}")
 
         raise ValueError("今日发信额度已耗尽，请明天再试")
 
