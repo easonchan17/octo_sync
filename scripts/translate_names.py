@@ -3,20 +3,21 @@ import json
 import argparse
 from pathlib import Path
 from typing import Annotated, TypedDict
+from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 if Path('.').resolve() != Path(__file__).resolve().parents[1]:
     sys.exit(f"Must be run from project root: {Path(__file__).resolve().parents[1]}")
 
-from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 
 from core.config.config_manager import get_config_manager
 from core.store.postgres.postgresql_manager import get_postgresql_manager
-from core.chat.llm import get_chat_llm_client
+from core.chat.llm import get_llm_client
 from core.store.postgres.daos.common import NameI18nDao
 
 
@@ -159,11 +160,11 @@ class TranslationState(TypedDict):
 
 def build_graph():
     dao = NameI18nDao()
-    llm = get_chat_llm_client().build_llm(max_tokens=4096).bind_tools(TOOLS)
+    llm_client = get_llm_client()
+    llm_client.bind_tools(TOOLS)
 
     def agent(state: TranslationState) -> dict:
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-        return {"messages": [llm.invoke(messages)]}
+        return {"messages": [llm_client.call_llm(state["messages"], SYSTEM_PROMPT)]}
 
     def tool_executor(state: TranslationState) -> dict:
         last    = state["messages"][-1]
@@ -251,6 +252,7 @@ def main():
     parser.add_argument("--config", "-c", type=str, default="configs/config.yml")
     args = parser.parse_args()
 
+    load_dotenv()
     get_config_manager().load_config(args.config)
     get_postgresql_manager().startup()
 

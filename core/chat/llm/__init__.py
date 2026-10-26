@@ -1,3 +1,3 @@
-from .client import ChatLLMClient, get_chat_llm_client
+from .client import LLMClient, get_llm_client
 
-__all__ = ['ChatLLMClient', 'get_chat_llm_client']
+__all__ = ['LLMClient', 'get_llm_client']

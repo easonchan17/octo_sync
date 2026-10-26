@@ -1,15 +1,14 @@
 import asyncio
-import litellm
-from typing import TypedDict, Annotated, Optional
+from typing import Any, TypedDict, Annotated, Optional
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from core.chat.llm.prompts import build_system_prompt
-from core.chat.llm import get_chat_llm_client
-from langchain_core.messages import SystemMessage, ToolMessage, trim_messages, get_buffer_string
+from core.chat.llm import get_llm_client
+from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from core.chat.graph.tools import TOOLS, execute_tool
+from core.chat.llm.prompts import build_system_prompt
 
 
 class ChatState(TypedDict):
@@ -19,29 +18,15 @@ class ChatState(TypedDict):
 
 class ChatGraph:
     def __init__(self) -> None:
-        chat_llm_client         = get_chat_llm_client()
-        self.llm                = chat_llm_client.build_llm().bind_tools(TOOLS)
-        self.model              = chat_llm_client.model
-        self.max_context_tokens = chat_llm_client.max_context_tokens
+        self.llm_client = get_llm_client()
+        self.llm_client.bind_tools(TOOLS)
         self.pool: Optional[AsyncConnectionPool] = None
 
-    def _count_tokens(self, messages: list) -> int:
-        return litellm.token_counter(model=self.model, text=get_buffer_string(messages))
-
-    async def agent(self, state: ChatState) -> dict:
-        trimmed  = trim_messages(
-            state["messages"],
-            max_tokens=self.max_context_tokens,
-            token_counter=self._count_tokens,
-            strategy="last",
-            start_on="human",
-            allow_partial=False,
-        )
-        messages = [SystemMessage(content=build_system_prompt())] + trimmed
-        response = await self.llm.ainvoke(messages)
+    async def call_llm(self, state: ChatState) -> dict:
+        response = await self.llm_client.acall_llm(state["messages"], build_system_prompt())
         return {"messages": [response]}
 
-    async def tool_executor(self, state: ChatState) -> dict:
+    async def call_tools(self, state: ChatState) -> dict:
         last_message    = state["messages"][-1]
         conversation_id = state["conversation_id"]
         tool_calls      = getattr(last_message, "tool_calls", []) or []
@@ -60,9 +45,9 @@ class ChatGraph:
 
     def route(self, state: ChatState) -> str:
         last_message = state["messages"][-1]
-        return "tool_executor" if getattr(last_message, "tool_calls", None) else END
+        return "call_tools" if getattr(last_message, "tool_calls", None) else END
 
-    async def compile(self, conn_string: str, min_size: int = 2, max_size: int = 10):
+    async def compile(self, conn_string: str, min_size: int = 2, max_size: int = 10) -> Any:
         self.pool = AsyncConnectionPool(
             conn_string,
             min_size=min_size,
@@ -76,15 +61,15 @@ class ChatGraph:
         await checkpointer.setup()
 
         graph = StateGraph(ChatState)
-        graph.add_node("agent",         self.agent)
-        graph.add_node("tool_executor", self.tool_executor)
+        graph.add_node("call_llm",   self.call_llm)
+        graph.add_node("call_tools", self.call_tools)
 
-        graph.set_entry_point("agent")
-        graph.add_conditional_edges("agent", self.route, {
-            "tool_executor": "tool_executor",
-            END:             END,
+        graph.set_entry_point("call_llm")
+        graph.add_conditional_edges("call_llm", self.route, {
+            "call_tools": "call_tools",
+            END:          END,
         })
-        graph.add_edge("tool_executor", "agent")
+        graph.add_edge("call_tools", "call_llm")
 
         return graph.compile(checkpointer=checkpointer)
 

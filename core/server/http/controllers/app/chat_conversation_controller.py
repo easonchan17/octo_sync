@@ -209,7 +209,7 @@ class ChatConversationController(BaseController):
             if token:
                 await self._send_message(websocket, "chat", "token", content=token)
 
-        elif kind == "on_chain_end" and name == "tool_executor":
+        elif kind == "on_chain_end" and name == "call_tools":
             messages = event.get("data", {}).get("output", {}).get("messages", [])
             for message in messages:
                 if getattr(message, "name", None) != ToolNames.SUBMIT_ISSUE:

@@ -5,7 +5,7 @@ from functools import cache
 from typing import Any, AsyncIterator, Dict, List, Optional
 from core.services.base_service import BaseService
 from core.chat.graph import ChatGraph
-from core.chat.llm.client import get_chat_llm_client
+from core.chat.llm.client import get_llm_client
 from core.store.postgres.daos.common import ChatConversationDao
 from core.chat.llm.token_rate_limiter import get_token_rate_limiter
 
@@ -15,12 +15,11 @@ class ChatConversationService(BaseService):
         super().__init__()
         self.conversation_dao   = ChatConversationDao()
         self.chat_graph         = ChatGraph()
-        self.chat_llm_client    = get_chat_llm_client()
+        self.llm_client         = get_llm_client()
         self.token_rate_limiter = get_token_rate_limiter()
         self.graph              = None
 
     async def initialize(self) -> None:
-        self.chat_llm_client.validate_environment()
         conn_string        = self.db.get_conn_string()
         min_size, max_size = self.db.get_checkpoint_pool_size()
         self.graph = await self.chat_graph.compile(
@@ -86,7 +85,7 @@ class ChatConversationService(BaseService):
                 "标题："
             )
             response = await litellm.acompletion(
-                model=self.chat_llm_client.model,
+                model=self.llm_client.model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=30,
                 temperature=0.3,
@@ -98,7 +97,7 @@ class ChatConversationService(BaseService):
             return fallback
 
     def build_content(self, text: str, image_b64: Optional[str] = None) -> list:
-        return self.chat_llm_client.build_content(text, image_b64)
+        return self.llm_client.build_content(text, image_b64)
 
     async def get_messages(self, conversation_id: str) -> List[Any]:
         config = {"configurable": {"thread_id": conversation_id}}
@@ -110,7 +109,7 @@ class ChatConversationService(BaseService):
 
     async def stream(self, conversation_id: str, user_id: str, user_content: list) -> AsyncIterator[Dict[str, Any]]:
         user_tokens  = litellm.token_counter(
-            model=self.chat_llm_client.model,
+            model=self.llm_client.model,
             messages=[{"role": "user", "content": user_content}],
         )
         reserved_tokens  = user_tokens * 5
@@ -118,8 +117,8 @@ class ChatConversationService(BaseService):
         reserved_keys = await self.token_rate_limiter.reserve(
             user_id,
             reserved_tokens,
-            self.chat_llm_client.max_tokens_per_hour,
-            self.chat_llm_client.max_tokens_per_day,
+            self.llm_client.max_tokens_per_hour,
+            self.llm_client.max_tokens_per_day,
         )
 
         total_actual = 0
