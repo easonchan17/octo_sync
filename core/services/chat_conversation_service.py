@@ -5,6 +5,7 @@ from functools import cache
 from typing import Any, AsyncIterator, Dict, List, Optional
 from core.services.base_service import BaseService
 from core.chat.graph import ChatGraph
+from core.chat.graph.tools import TOOLS
 from core.chat.llm.client import get_llm_client
 from core.store.postgres.daos.common import ChatConversationDao
 from core.chat.llm.token_rate_limiter import get_token_rate_limiter
@@ -14,8 +15,8 @@ class ChatConversationService(BaseService):
     def __init__(self) -> None:
         super().__init__()
         self.conversation_dao   = ChatConversationDao()
-        self.chat_graph         = ChatGraph()
         self.llm_client         = get_llm_client()
+        self.chat_graph         = ChatGraph(self.llm_client, TOOLS)
         self.token_rate_limiter = get_token_rate_limiter()
         self.graph              = None
 

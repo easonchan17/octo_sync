@@ -4,10 +4,10 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from core.chat.llm import get_llm_client
+from core.chat.llm import LLMClient
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from core.chat.graph.tools import TOOLS, execute_tool
+from core.chat.graph.tools import execute_tool
 from core.chat.llm.prompts import build_system_prompt
 
 
@@ -17,9 +17,9 @@ class ChatState(TypedDict):
 
 
 class ChatGraph:
-    def __init__(self) -> None:
-        self.llm_client = get_llm_client()
-        self.llm_client.bind_tools(TOOLS)
+    def __init__(self, llm_client: LLMClient, tools: list) -> None:
+        self.llm_client = llm_client
+        self.llm_client.bind_tools(tools)
         self.pool: Optional[AsyncConnectionPool] = None
 
     async def call_llm(self, state: ChatState) -> dict:
