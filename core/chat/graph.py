@@ -4,11 +4,11 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from core.chat.llm import LLMClient
+from core.chat.llm_client import LLMClient
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from core.chat.graph.tools import execute_tool
-from core.chat.llm.prompts import build_system_prompt
+from core.chat.tools import execute_tool
+from core.chat.prompts import build_system_prompt
 
 
 class ChatState(TypedDict):

@@ -5,10 +5,10 @@ from functools import cache
 from typing import Any, AsyncIterator, Dict, List, Optional
 from core.services.base_service import BaseService
 from core.chat.graph import ChatGraph
-from core.chat.graph.tools import TOOLS
-from core.chat.llm.client import get_llm_client
+from core.chat.tools import TOOLS
+from core.chat.llm_client import get_llm_client
 from core.store.postgres.daos.common import ChatConversationDao
-from core.chat.llm.token_rate_limiter import get_token_rate_limiter
+from core.chat.token_rate_limiter import get_token_rate_limiter
 
 
 class ChatConversationService(BaseService):
